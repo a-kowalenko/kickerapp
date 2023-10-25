@@ -9,10 +9,13 @@ import Kicker from "./pages/Kicker";
 import Match from "./pages/Match";
 import Tournament from "./pages/Tournament";
 import PageNotFound from "./pages/PageNotFound";
+import Rankings from "./pages/Rankings";
+import GlobalStyles from "./styles/GlobalStyles";
 
 function App() {
     return (
         <>
+            <GlobalStyles />
             <BrowserRouter>
                 <Routes>
                     <Route element={<AppLayout />}>
@@ -23,6 +26,7 @@ function App() {
                             path="forgotpassword"
                             element={<ForgotPassword />}
                         />
+                        <Route path="rankings" element={<Rankings />} />
                         <Route path="user/:userId" element={<User />} />
                         <Route path="kicker/:kickerId" element={<Kicker />} />
                         <Route path="match/:matchId" element={<Match />} />
