@@ -11,6 +11,7 @@ const GlobalStyles = createGlobalStyle`
     --color-amber-75: #fef4de;
     --color-amber-100: rgb(254 243 199);
     --color-amber-200: rgb(253 230 138);
+    --color-amber-300: rgb(252 211 77);
 
   
   /* Grey */
@@ -100,6 +101,14 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   font-size: 1.6rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+*:disabled {
+  cursor: not-allowed;
 }
 
 
