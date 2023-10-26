@@ -53,8 +53,7 @@ const PaginationButton = styled.button`
     }
 `;
 
-function Pagination() {
-    const numEntries = 111; // TODO: Replace this
+function Pagination({ numEntries }) {
     const [searchParams, setSearchParams] = useSearchParams();
     const numPages = Math.ceil(numEntries / PAGE_SIZE);
 

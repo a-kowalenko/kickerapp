@@ -8,7 +8,7 @@ const StyledSidebar = styled.aside`
     padding: 1.2rem 2.4rem;
     background-color: var(--color-amber-75);
     grid-row: 1 / -1;
-    border-right: 1px solid black;
+    border-right: 1px solid var(--color-amber-100);
 `;
 
 function Sidebar() {
