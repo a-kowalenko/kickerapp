@@ -12,6 +12,7 @@ import PageNotFound from "./pages/PageNotFound";
 import Rankings from "./pages/Rankings";
 import GlobalStyles from "./styles/GlobalStyles";
 import Shame from "./pages/Shame";
+import CreateMatch from "./pages/CreateMatch";
 
 function App() {
     return (
@@ -31,7 +32,12 @@ function App() {
                         <Route path="shame" element={<Shame />} />
                         <Route path="user/:userId" element={<User />} />
                         <Route path="kicker/:kickerId" element={<Kicker />} />
-                        <Route path="match/:matchId" element={<Match />} />
+                        <Route path="matches/" element={<Match />} />
+                        <Route
+                            path="matches/create"
+                            element={<CreateMatch />}
+                        />
+                        <Route path="matches/:matchId" element={<Match />} />
                         <Route
                             path="tournament/:tourId"
                             element={<Tournament />}

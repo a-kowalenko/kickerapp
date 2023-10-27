@@ -1,5 +1,11 @@
+import NewMatch from "../features/home/NewMatchButton";
+
 function Home() {
-    return <div>Home</div>;
+    return (
+        <div>
+            <NewMatch />
+        </div>
+    );
 }
 
 export default Home;

@@ -75,9 +75,9 @@ function MainNav() {
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/history">
+                    <StyledNavLink to="/matches">
                         <HiOutlineBookOpen />
-                        <span>History</span>
+                        <span>Matches</span>
                     </StyledNavLink>
                 </li>
                 <li>
