@@ -47,7 +47,7 @@ function App() {
                                 path="kicker/:kickerId"
                                 element={<Kicker />}
                             />
-                            <Route path="matches/" element={<Match />} />
+                            <Route path="matches/" element={<PageNotFound />} />
                             <Route
                                 path="matches/create"
                                 element={<CreateMatch />}

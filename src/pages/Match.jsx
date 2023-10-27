@@ -1,5 +1,11 @@
+import MatchDetail from "../features/matches/MatchDetail";
+
 function Match() {
-    return <div>Match</div>;
+    return (
+        <div>
+            <MatchDetail />
+        </div>
+    );
 }
 
 export default Match;
