@@ -2,6 +2,8 @@ import { useState } from "react";
 import styled from "styled-components";
 import PlayerDropdown from "./PlayerDropdown";
 import { HiOutlinePlus } from "react-icons/hi2";
+import { usePlayers } from "../../hooks/usePlayers";
+import { useCreateMatch } from "./useCreateMatch";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -57,13 +59,6 @@ const SubmitRow = styled.div`
     background-color: white;
 `;
 
-const fakePlayers = [
-    { id: 1, name: "Andy" },
-    { id: 2, name: "Frank" },
-    { id: 3, name: "Maxim" },
-    { id: 4, name: "Sergej" },
-];
-
 function ChoosePlayers() {
     const [selectedPlayers, setSelectedPlayers] = useState({
         player1: null,
@@ -79,6 +74,13 @@ function ChoosePlayers() {
         player4: false,
     });
 
+    const { players, isLoading, error } = usePlayers();
+    const { createMatch } = useCreateMatch();
+
+    if (!players || isLoading) {
+        return null;
+    }
+
     function handleSelect(key, player) {
         setSelectedPlayers((state) => ({ ...state, [key]: player }));
         if (player === null && (key === "player3" || key === "player4")) {
@@ -90,11 +92,20 @@ function ChoosePlayers() {
         setDisplayDropdowns((prev) => ({ ...prev, [key]: !prev[key] }));
     }
 
+    function handleSubmit() {
+        if (!selectedPlayers.player1 || !selectedPlayers.player2) {
+            console.log("you must select player 1 and player 2");
+            return;
+        }
+
+        createMatch(selectedPlayers);
+    }
+
     return (
         <Container>
             <PlayersContainer>
                 {Object.keys(selectedPlayers).map((key) => {
-                    const options = fakePlayers.filter(
+                    const options = players.filter(
                         (player) =>
                             !Object.values(selectedPlayers).includes(player) ||
                             selectedPlayers[key] === player
@@ -134,7 +145,7 @@ function ChoosePlayers() {
                     <input type="checkbox" />
                     <input type="checkbox" />
                 </div>
-                <button>Start match</button>
+                <button onClick={handleSubmit}>Start match</button>
             </SubmitRow>
         </Container>
     );
