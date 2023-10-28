@@ -5,7 +5,6 @@ const Rank = styled.div`
     font-size: 1.6rem;
     font-weight: 600;
     color: var(--color-grey-600);
-    text-align: center;
 `;
 
 const Name = styled.div`
@@ -23,7 +22,8 @@ const Stat = styled.div`
 
 function RankingsRow({ player }) {
     const totalGames = player.wins + player.losses;
-    const winrate = ((player.wins / totalGames) * 100).toFixed(1);
+    const winrate =
+        totalGames > 0 ? ((player.wins / totalGames) * 100).toFixed(1) : 0;
     return (
         <Table.Row>
             <Rank>{player.rank}</Rank>
@@ -46,6 +46,10 @@ function RankingsRow({ player }) {
 
             <Stat>
                 <span>{winrate}%</span>
+            </Stat>
+
+            <Stat>
+                <span>{player.mmr}</span>
             </Stat>
         </Table.Row>
     );

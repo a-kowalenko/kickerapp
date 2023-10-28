@@ -69,7 +69,7 @@ function MainNav() {
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/shame">
+                    <StyledNavLink to="/disgraces">
                         <HiOutlineTrash />
                         <span>Schande</span>
                     </StyledNavLink>

@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+
 import AppLayout from "./ui/AppLayout";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -13,8 +15,9 @@ import Tournament from "./pages/Tournament";
 import PageNotFound from "./pages/PageNotFound";
 import Rankings from "./pages/Rankings";
 import GlobalStyles from "./styles/GlobalStyles";
-import Shame from "./pages/Shame";
 import CreateMatch from "./pages/CreateMatch";
+import Matches from "./pages/Matches";
+import Disgraces from "./pages/Disgraces";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -41,13 +44,13 @@ function App() {
                                 element={<ForgotPassword />}
                             />
                             <Route path="rankings" element={<Rankings />} />
-                            <Route path="shame" element={<Shame />} />
+                            <Route path="disgraces" element={<Disgraces />} />
                             <Route path="user/:userId" element={<User />} />
                             <Route
                                 path="kicker/:kickerId"
                                 element={<Kicker />}
                             />
-                            <Route path="matches/" element={<PageNotFound />} />
+                            <Route path="matches/" element={<Matches />} />
                             <Route
                                 path="matches/create"
                                 element={<CreateMatch />}
@@ -64,6 +67,27 @@ function App() {
                         </Route>
                     </Routes>
                 </BrowserRouter>
+
+                <Toaster
+                    position="top-center"
+                    gutter={12}
+                    containerStyle={{ margin: "8px" }}
+                    toastOptions={{
+                        success: {
+                            duration: 3000,
+                        },
+                        error: {
+                            duration: 5000,
+                        },
+                        style: {
+                            fontSize: "16px",
+                            maxWidth: "500px",
+                            padding: "16px 24px",
+                            backgroundColor: "var(--color-grey-0)",
+                            color: "var(--color-grey-700)",
+                        },
+                    }}
+                />
             </QueryClientProvider>
         </>
     );

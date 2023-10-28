@@ -5,14 +5,12 @@ import { getMatch } from "../../services/apiMatches";
 export function useMatch() {
     const { matchId } = useParams();
 
-    console.log(matchId);
-
     const {
         data: match,
         isLoading,
         error,
     } = useQuery({
-        queryKey: ["match", matchId],
+        queryKey: ["match", Number(matchId)],
         queryFn: () => getMatch(matchId),
     });
 

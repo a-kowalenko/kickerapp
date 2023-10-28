@@ -2,13 +2,6 @@ import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
 
-const Rank = styled.div`
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: var(--color-grey-600);
-    text-align: center;
-`;
-
 const Name = styled.div`
     font-size: 1.6rem;
     font-weight: 400;
@@ -21,22 +14,27 @@ const Stat = styled.div`
     font-weight: 500;
 `;
 
-function ShameRow({ shame }) {
+function DisgraceRow({ disgrace }) {
+    const winner =
+        disgrace.scoreTeam1 === 0 ? disgrace.player2 : disgrace.player1;
+    const loser =
+        disgrace.scoreTeam1 === 0 ? disgrace.player1 : disgrace.player2;
+
     return (
         <Table.Row>
             <Name>
-                <span>{shame.player}</span>
+                <span>{loser.name}</span>
             </Name>
 
             <Name>
-                <span>{shame.shamedBy}</span>
+                <span>{winner.name}</span>
             </Name>
 
             <Stat>
-                <span>{format(shame.date, "dd.MM.yyyy")}</span>
+                <span>{format(new Date(disgrace.end_time), "dd.MM.yyyy")}</span>
             </Stat>
         </Table.Row>
     );
 }
 
-export default ShameRow;
+export default DisgraceRow;
