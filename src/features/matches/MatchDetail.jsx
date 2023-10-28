@@ -25,32 +25,64 @@ const TeamHeader = styled.h1`
 
 const ScoreContainer = styled.div`
     display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.2rem;
+`;
+
+const ScoreInput = styled.input`
+    padding: 1.4rem 2.8rem;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    width: 20%;
 `;
 
 const TeamContainer = styled.div`
     display: flex;
     flex-direction: column;
+    gap: 1.8rem;
 `;
 
 const Player = styled.div`
     display: flex;
-    flex-direction: column;
+    justify-content: ${(props) =>
+        props.$team === "1" ? "flex-start" : "flex-end"};
     gap: 1.2rem;
     align-items: center;
     font-weight: 500;
-    font-size: 1.4rem;
+    font-size: 3.8rem;
     color: var(--color-grey-600);
 `;
 
 const Avatar = styled.img`
     display: block;
     width: 4rem;
-    width: 3.6rem;
+    width: 12.6rem;
     aspect-ratio: 1;
     object-fit: cover;
     object-position: center;
     border-radius: 50%;
     outline: 2px solid var(--color-grey-100);
+`;
+
+const Timer = styled.label`
+    font-size: large;
+    padding: 1.4rem 2.8rem;
+`;
+
+const EndMatchButton = styled.button`
+    padding: 1.4rem 2.8rem;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    background-color: var(--color-amber-100);
+
+    &:hover {
+        background-color: var(--color-amber-200);
+    }
+
+    &:active {
+        background-color: var(--color-amber-300);
+    }
 `;
 
 function MatchDetail() {
@@ -70,31 +102,53 @@ function MatchDetail() {
             <TopRow>
                 <TeamHeader>Team A</TeamHeader>
                 <ScoreContainer>
-                    <input />
-                    - <input />
+                    <ScoreInput />
+                    - <ScoreInput />
                 </ScoreContainer>
                 <TeamHeader>Team B</TeamHeader>
             </TopRow>
             <MainRow>
                 <TeamContainer>
-                    <Player>
+                    <Player $team="1">
                         <Avatar
-                            src={"default-user.jpg"}
+                            src={"/default-user.jpg"}
                             alt={`Avatar of ${player1.name}`}
                         />
                         <span>{player1.name}</span>
                     </Player>
-                    <Player>Player 3</Player>
+                    {player3 && (
+                        <Player $team="1">
+                            <Avatar
+                                src={"/default-user.jpg"}
+                                alt={`Avatar of ${player3.name}`}
+                            />
+                            <span>{player3.name}</span>
+                        </Player>
+                    )}
                 </TeamContainer>
                 <div>Image</div>
                 <TeamContainer>
-                    <Player>Player 2</Player>
-                    <Player>Player 4</Player>
+                    <Player $team="2">
+                        <span>{player2.name}</span>
+                        <Avatar
+                            src={"/default-user.jpg"}
+                            alt={`Avatar of ${player2.name}`}
+                        />
+                    </Player>
+                    {player4 && (
+                        <Player $team="2">
+                            <span>{player4.name}</span>
+                            <Avatar
+                                src={"/default-user.jpg"}
+                                alt={`Avatar of ${player4.name}`}
+                            />
+                        </Player>
+                    )}
                 </TeamContainer>
             </MainRow>
             <BottomRow>
-                <div>Timer</div>
-                <div>End match</div>
+                <Timer>Timer</Timer>
+                <EndMatchButton>End match</EndMatchButton>
             </BottomRow>
         </>
     );
