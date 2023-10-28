@@ -211,7 +211,7 @@ function MatchDetail() {
                 <TeamContainer>
                     <Player $team="1">
                         <Avatar
-                            src={"/default-user.jpg"}
+                            src={player1.avatar || "/default-user.jpg"}
                             alt={`Avatar of ${player1.name}`}
                         />
                         <span>{player1.name}</span>
@@ -219,7 +219,7 @@ function MatchDetail() {
                     {player3 && (
                         <Player $team="1">
                             <Avatar
-                                src={"/default-user.jpg"}
+                                src={player3.avatar || "/default-user.jpg"}
                                 alt={`Avatar of ${player3.name}`}
                             />
                             <span>{player3.name}</span>
@@ -233,7 +233,7 @@ function MatchDetail() {
                     <Player $team="2">
                         <span>{player2.name}</span>
                         <Avatar
-                            src={"/default-user.jpg"}
+                            src={player2.avatar || "/default-user.jpg"}
                             alt={`Avatar of ${player2.name}`}
                         />
                     </Player>
@@ -241,7 +241,7 @@ function MatchDetail() {
                         <Player $team="2">
                             <span>{player4.name}</span>
                             <Avatar
-                                src={"/default-user.jpg"}
+                                src={player4.avatar || "/default-user.jpg"}
                                 alt={`Avatar of ${player4.name}`}
                             />
                         </Player>

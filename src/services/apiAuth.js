@@ -1,5 +1,5 @@
-import { createPlayer } from "./apiPlayer";
-import supabase from "./supabase";
+import { createPlayer, updatePlayerByUserId } from "./apiPlayer";
+import supabase, { supabaseUrl } from "./supabase";
 
 export async function register({ username, email, password }) {
     const { data, error } = await supabase.auth.signUp({
@@ -57,4 +57,51 @@ export async function logout() {
     if (error) {
         throw new Error(error.message);
     }
+}
+
+export async function updateCurrentUser({ username, avatar }) {
+    const { data, error } = await supabase.auth.updateUser({
+        data: { username },
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    console.log("updated data", data);
+
+    let avatarLink;
+
+    // If avatar is provided, handle its upload
+    if (avatar) {
+        const filename = `avatars-${data.user.id}-${Math.random()}`;
+
+        const { error: storageError } = await supabase.storage
+            .from("avatars")
+            .upload(filename, avatar);
+
+        if (storageError) {
+            throw new Error(storageError.message);
+        }
+
+        avatarLink = `${supabaseUrl}/storage/v1/object/public/avatars/${filename}`;
+
+        const { error: avatarError } = await supabase.auth.updateUser({
+            data: {
+                avatar: avatarLink,
+            },
+        });
+
+        if (avatarError) {
+            throw new Error(avatarError.message);
+        }
+    }
+
+    await updatePlayerByUserId({
+        username,
+        avatar: avatarLink,
+        userId: data.user.id,
+    });
+
+    return data;
 }

@@ -22,3 +22,21 @@ export async function createPlayer(user) {
 
     return data;
 }
+
+export async function updatePlayerByUserId({ username, avatar, userId }) {
+    console.log("updatePlayerByUserId", username, avatar, userId);
+    const { data, error } = await supabase
+        .from("player")
+        .update({ name: username, avatar })
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    console.log("updatedPlayer:", data);
+
+    return data;
+}

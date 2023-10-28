@@ -6,6 +6,12 @@ const StyledFormRow = styled.div`
     grid-template-columns: 24rem 1fr 1.2fr;
     gap: 2.4rem;
     padding: 1.2rem 0;
+
+    &:has(button) {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1.2rem;
+    }
 `;
 
 function FormRow({ label, error, children }) {

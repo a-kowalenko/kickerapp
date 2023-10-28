@@ -181,7 +181,10 @@ function ChoosePlayers() {
                                 <>
                                     {selectedPlayers[key] && (
                                         <Avatar
-                                            src={"/default-user.jpg"}
+                                            src={
+                                                selectedPlayers[key].avatar ||
+                                                "/default-user.jpg"
+                                            }
                                             alt={`Avatar of ${selectedPlayers[key].name}`}
                                         />
                                     )}
