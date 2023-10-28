@@ -109,8 +109,7 @@ export async function getActiveMatch() {
     const { data, error } = await supabase
         .from("matches")
         .select("*")
-        .eq("status", "active")
-        .single();
+        .eq("status", "active");
 
     if (error) {
         console.error(error);

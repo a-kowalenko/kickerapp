@@ -8,13 +8,11 @@ function CreateMatch() {
     const { activeMatch, isLoading, error } = useActiveMatch();
     const navigate = useNavigate();
 
-    console.log("activeMatch", activeMatch);
-
     useEffect(
         function () {
-            if (activeMatch) {
+            if (activeMatch?.length > 0) {
                 toast.error(`There is already an active match`);
-                navigate(`/matches/${activeMatch.id}`);
+                navigate(`/matches/${activeMatch[0].id}`);
             }
         },
         [activeMatch, navigate]
