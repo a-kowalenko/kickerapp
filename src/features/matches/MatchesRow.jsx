@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
+import Avatar from "../../ui/Avatar";
 
 const Rank = styled.div`
     font-size: 1.6rem;
@@ -9,9 +10,10 @@ const Rank = styled.div`
 `;
 
 const Name = styled.div`
+    display: flex;
+    gap: 0.8rem;
     font-size: 1.6rem;
     font-weight: 400;
-    color: var(--color-grey-600);
 `;
 
 const Stat = styled.div`
@@ -35,8 +37,12 @@ const Score = styled.div`
 const TeamContainer = styled.div`
     display: flex;
     flex-direction: column;
-    text-align: ${(props) => (props.$team === "1" ? "right" : "left")};
-    color: ${(props) => (props.$won ? "green" : "red")};
+
+    & div {
+        justify-content: ${(props) =>
+            props.$team === "1" ? "flex-end" : "flex-start"};
+        color: ${(props) => (props.$won ? "green" : "red")};
+    }
 `;
 
 const GameModeCeontainer = styled.div`
@@ -72,8 +78,16 @@ function MatchesRow({ match }) {
             <Rank>{match.id}</Rank>
 
             <TeamContainer $won={team1Won} $team="1">
-                <span>{player1.name}</span>
-                <span>{player3?.name}</span>
+                <Name>
+                    <span>{player1.name}</span>
+                    <Avatar $size="xs" src={player1.avatar} />
+                </Name>
+                {player3 && (
+                    <Name>
+                        <span>{player3?.name}</span>
+                        <Avatar $size="xs" src={player3.avatar} />
+                    </Name>
+                )}
             </TeamContainer>
 
             <ScoreContainer>
@@ -83,8 +97,16 @@ function MatchesRow({ match }) {
             </ScoreContainer>
 
             <TeamContainer $won={!team1Won} $team="2">
-                <span>{player2.name}</span>
-                <span>{player4?.name}</span>
+                <Name>
+                    <Avatar $size="xs" src={player2.avatar} />
+                    <span>{player2.name}</span>
+                </Name>
+                {player4 && (
+                    <Name>
+                        <Avatar $size="xs" src={player4?.avatar} />
+                        <span>{player4.name}</span>
+                    </Name>
+                )}
             </TeamContainer>
 
             <GameModeCeontainer>

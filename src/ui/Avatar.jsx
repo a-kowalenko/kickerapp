@@ -2,7 +2,12 @@ import styled from "styled-components";
 
 const Avatar = styled.img`
     display: block;
-    width: ${(props) => (props.$size === "sm" ? "3.4rem" : "10rem")};
+    width: ${(props) =>
+        props.$size === "sm"
+            ? "3.4rem"
+            : props.$size === "xs"
+            ? "2.6rem"
+            : "10rem"};
     aspect-ratio: 1;
     object-fit: cover;
     object-position: center;

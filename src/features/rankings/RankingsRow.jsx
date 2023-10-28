@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import Table from "../../ui/Table";
+import Avatar from "../../ui/Avatar";
 
 const Rank = styled.div`
     font-size: 1.6rem;
@@ -8,6 +9,9 @@ const Rank = styled.div`
 `;
 
 const Name = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
     font-size: 1.6rem;
     font-weight: 400;
     color: var(--color-grey-600);
@@ -29,6 +33,7 @@ function RankingsRow({ player }) {
             <Rank>{player.rank}</Rank>
 
             <Name>
+                <Avatar $size="xs" src={player.avatar} />
                 <span>{player.name}</span>
             </Name>
 

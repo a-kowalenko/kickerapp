@@ -196,10 +196,10 @@ export async function getDisgraces() {
         .select(
             `
         *,
-        player1: player!matches_player1_fkey (id, name, mmr, wins, losses),
-        player2: player!matches_player2_fkey (id, name, mmr, wins, losses),
-        player3: player!matches_player3_fkey (id, name, mmr, wins, losses),
-        player4: player!matches_player4_fkey (id, name, mmr, wins, losses)
+        player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
+        player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
+        player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
+        player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
     `
         )
         .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
