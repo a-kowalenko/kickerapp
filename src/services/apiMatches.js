@@ -105,6 +105,21 @@ export async function getMatches() {
     return { data, error, count };
 }
 
+export async function getActiveMatch() {
+    const { data, error } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("status", "active")
+        .single();
+
+    if (error) {
+        console.error(error);
+        throw new Error("There was an error while checking for active matches");
+    }
+
+    return { data, error };
+}
+
 export async function endMatch({ id, score1, score2 }) {
     const match = await getMatch(id);
 
