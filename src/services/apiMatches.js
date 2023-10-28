@@ -76,7 +76,8 @@ export async function getMatch(matchId) {
             player4: player!matches_player4_fkey (id, name)
         `
         )
-        .eq("id", matchId);
+        .eq("id", matchId)
+        .single();
 
     if (error) {
         console.error(error);
