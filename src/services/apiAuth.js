@@ -2,6 +2,10 @@ import { createPlayer, updatePlayerByUserId } from "./apiPlayer";
 import supabase, { supabaseUrl } from "./supabase";
 
 export async function register({ username, email, password }) {
+    if (await existsUsername(username)) {
+        throw new Error("Username is already taken");
+    }
+
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -60,6 +64,14 @@ export async function logout() {
 }
 
 export async function updateCurrentUser({ username, avatar }) {
+    const {
+        user_metadata: { username: currentUsername },
+    } = await getCurrentUser();
+
+    if (currentUsername !== username && (await existsUsername(username))) {
+        throw new Error("Username is already taken");
+    }
+
     const { data, error } = await supabase.auth.updateUser({
         data: { username },
     });
@@ -106,4 +118,17 @@ export async function updateCurrentUser({ username, avatar }) {
     });
 
     return updatedData;
+}
+
+async function existsUsername(username) {
+    const { data: checkPlayers, error: checkPlayerError } = await supabase
+        .from("player")
+        .select("*")
+        .eq("name", username);
+
+    if (checkPlayerError) {
+        throw new Error(checkPlayerError.message);
+    }
+
+    return checkPlayers.length > 0;
 }
