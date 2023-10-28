@@ -42,9 +42,8 @@ const DropdownListItem = styled.li`
 
 function PlayerDropdown({ id, options, selectedPlayer, onSelect }) {
     const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useOutsideClick(() => {
-        if (isOpen) setIsOpen(false);
-    });
+    const close = () => setIsOpen(false);
+    const dropdownRef = useOutsideClick(close);
 
     function handleToggle() {
         setIsOpen(!isOpen);

@@ -13,8 +13,8 @@ export function useLogin() {
         error,
     } = useMutation({
         mutationFn: ({ email, password }) => loginApi({ email, password }),
-        onSuccess: (data) => {
-            queryClient.setQueryData(["user", data.user]);
+        onSuccess: () => {
+            queryClient.setQueryData(["user"]);
             navigate("/home", { replace: true });
         },
         onError: (err) => toast.error(err.message),
