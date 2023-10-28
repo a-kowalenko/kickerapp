@@ -24,7 +24,6 @@ export async function createPlayer(user) {
 }
 
 export async function updatePlayerByUserId({ username, avatar, userId }) {
-    console.log("updatePlayerByUserId", username, avatar, userId);
     const { data, error } = await supabase
         .from("player")
         .update({ name: username, avatar })
@@ -35,8 +34,6 @@ export async function updatePlayerByUserId({ username, avatar, userId }) {
     if (error) {
         throw new Error(error.message);
     }
-
-    console.log("updatedPlayer:", data);
 
     return data;
 }

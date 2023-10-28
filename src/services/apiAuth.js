@@ -68,9 +68,8 @@ export async function updateCurrentUser({ username, avatar }) {
         throw new Error(error.message);
     }
 
-    console.log("updated data", data);
-
     let avatarLink;
+    let updatedData = data;
 
     // If avatar is provided, handle its upload
     if (avatar) {
@@ -86,15 +85,18 @@ export async function updateCurrentUser({ username, avatar }) {
 
         avatarLink = `${supabaseUrl}/storage/v1/object/public/avatars/${filename}`;
 
-        const { error: avatarError } = await supabase.auth.updateUser({
-            data: {
-                avatar: avatarLink,
-            },
-        });
+        const { data: dataAvatar, error: avatarError } =
+            await supabase.auth.updateUser({
+                data: {
+                    avatar: avatarLink,
+                },
+            });
 
         if (avatarError) {
             throw new Error(avatarError.message);
         }
+
+        updatedData = dataAvatar;
     }
 
     await updatePlayerByUserId({
@@ -103,5 +105,5 @@ export async function updateCurrentUser({ username, avatar }) {
         userId: data.user.id,
     });
 
-    return data;
+    return updatedData;
 }

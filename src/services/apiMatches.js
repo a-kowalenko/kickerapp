@@ -68,10 +68,10 @@ export async function getMatch(matchId) {
         .select(
             `
             *,
-            player1: player!matches_player1_fkey (id, name, mmr, wins, losses),
-            player2: player!matches_player2_fkey (id, name, mmr, wins, losses),
-            player3: player!matches_player3_fkey (id, name, mmr, wins, losses),
-            player4: player!matches_player4_fkey (id, name, mmr, wins, losses)
+            player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
+            player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
+            player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
+            player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
         `
         )
         .eq("id", matchId)
@@ -89,10 +89,10 @@ export async function getMatches() {
     const { data, error, count } = await supabase.from("matches").select(
         `
         *,
-        player1: player!matches_player1_fkey (id, name, mmr, wins, losses),
-        player2: player!matches_player2_fkey (id, name, mmr, wins, losses),
-        player3: player!matches_player3_fkey (id, name, mmr, wins, losses),
-        player4: player!matches_player4_fkey (id, name, mmr, wins, losses)
+        player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
+        player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
+        player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
+        player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
     `,
         { count: "exact" }
     );

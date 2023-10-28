@@ -158,6 +158,7 @@ function MatchDetail() {
     }
 
     const { player1, player2, player3, player4 } = match;
+
     const isActive = match.status === "active";
     const isEnded = match.status === "ended";
     const winner = isEnded
