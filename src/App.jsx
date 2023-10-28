@@ -18,6 +18,7 @@ import GlobalStyles from "./styles/GlobalStyles";
 import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
 import Disgraces from "./pages/Disgraces";
+import ProtectedRoute from "./features/authentication/ProtectedRoute";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -35,10 +36,17 @@ function App() {
                 <GlobalStyles />
                 <BrowserRouter>
                     <Routes>
-                        <Route element={<AppLayout />}>
-                            <Route index element={<Home />} />
+                        <Route index element={<Login />} />
+                        <Route path="register" element={<Register />} />
+                        <Route
+                            element={
+                                <ProtectedRoute>
+                                    <AppLayout />
+                                </ProtectedRoute>
+                            }
+                        >
+                            <Route path="home" element={<Home />} />
                             <Route path="login" element={<Login />} />
-                            <Route path="register" element={<Register />} />
                             <Route
                                 path="forgotpassword"
                                 element={<ForgotPassword />}

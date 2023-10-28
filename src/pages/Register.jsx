@@ -1,5 +1,11 @@
+import RegisterForm from "../features/authentication/RegisterForm";
+
 function Register() {
-    return <div>Register</div>;
+    return (
+        <div>
+            <RegisterForm />
+        </div>
+    );
 }
 
 export default Register;

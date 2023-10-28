@@ -57,7 +57,7 @@ function MainNav() {
         <nav>
             <NavList>
                 <li>
-                    <StyledNavLink to="/">
+                    <StyledNavLink to="/home">
                         <HiOutlineHome />
                         <span>Home</span>
                     </StyledNavLink>
