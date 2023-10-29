@@ -64,11 +64,12 @@ const List = styled.ul`
     left: 0; // Ausgerichtet am linken Rand des Containers
     width: 100%; // Nimmt die volle Breite des Containers ein
 
-    display: flex;
     align-items: flex-start;
     flex-direction: column;
     border-radius: 0 0 5px 5px;
     background-color: grey;
+
+    box-shadow: 1px 1px 1px black, -1px -1px 1px black;
 
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
     overflow: hidden;

@@ -15,7 +15,7 @@ function Testwiese() {
     const isDisabled = false;
 
     return (
-        <form>
+        <>
             <FormRow>
                 <Input placeholder="Default" />
                 <Input placeholder="Default disabled" disabled />
@@ -89,7 +89,7 @@ function Testwiese() {
                     Danger
                 </Button>
             </FormRow>
-        </form>
+        </>
     );
 }
 
