@@ -43,6 +43,10 @@ const PaginationButton = styled.button`
         background-color: var(--color-amber-200);
     }
 
+    &:active:not(:disabled) {
+        background-color: var(--color-amber-300);
+    }
+
     &:disabled {
         background-color: var(--color-amber-75);
     }

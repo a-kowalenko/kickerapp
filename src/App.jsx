@@ -19,6 +19,7 @@ import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
 import Disgraces from "./pages/Disgraces";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
+import Testwiese from "./pages/Testwiese";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -59,6 +60,7 @@ function App() {
                                 element={<Kicker />}
                             />
                             <Route path="matches/" element={<Matches />} />
+                            <Route path="testwiese" element={<Testwiese />} />
                             <Route
                                 path="matches/create"
                                 element={<CreateMatch />}

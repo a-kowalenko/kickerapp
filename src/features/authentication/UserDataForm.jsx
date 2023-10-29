@@ -4,6 +4,7 @@ import FormRow from "../../ui/FormRow";
 import { useUpdateUser } from "./useUpdateUser";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import Button from "../../ui/Button";
 
 function UserDataForm() {
     const { userId } = useParams();
@@ -49,7 +50,13 @@ function UserDataForm() {
             </FormRow>
 
             <FormRow>
-                <button disabled={isUpdating}>Update</button>
+                <Button
+                    $size="large"
+                    $variation="primary"
+                    disabled={isUpdating}
+                >
+                    Update
+                </Button>
             </FormRow>
         </form>
     );

@@ -48,7 +48,7 @@ const StyledNavLink = styled(NavLink)`
     &:active svg,
     &.active:link svg,
     &.active:visited svg {
-        color: var(--color-brand-600);
+        color: #666666;
     }
 `;
 
@@ -81,7 +81,7 @@ function MainNav() {
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/settings">
+                    <StyledNavLink to="/testwiese">
                         <HiOutlineCog6Tooth />
                         <span>Settings</span>
                     </StyledNavLink>

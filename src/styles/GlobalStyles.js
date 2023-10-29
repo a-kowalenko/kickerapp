@@ -59,13 +59,11 @@ const GlobalStyles = createGlobalStyle`
 --color-brand-100: #e0e7ff;
 --color-brand-200: #c7d2fe;
 --color-brand-500: #6366f1;
-/* --color-brand-600: #4f46e5; */
+--color-brand-600: #4f46e5;
 --color-brand-700: #4338ca;
 --color-brand-800: #3730a3;
 --color-brand-900: #312e81;
 
-
---color-brand-600: #666666;
 
 
 --border-radius-tiny: 3px;
@@ -101,6 +99,14 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   font-size: 1.6rem;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
 }
 
 button {
