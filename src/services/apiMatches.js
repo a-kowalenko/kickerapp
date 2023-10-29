@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../utils/constants";
 import { calculateMmrChange } from "../utils/helpers";
 import supabase from "./supabase";
 
@@ -85,8 +86,8 @@ export async function getMatch(matchId) {
     return data;
 }
 
-export async function getMatches() {
-    const { data, error, count } = await supabase.from("matches").select(
+export async function getMatches({ currentPage }) {
+    let query = supabase.from("matches").select(
         `
         *,
         player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
@@ -97,12 +98,20 @@ export async function getMatches() {
         { count: "exact" }
     );
 
+    if (currentPage) {
+        const from = (currentPage - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        query = query.range(from, to);
+    }
+
+    const { data, error, count } = await query;
+
     if (error) {
         console.error(error);
         throw new Error("There was an error selecting the matches");
     }
 
-    return { data, error, count };
+    return { data, count };
 }
 
 export async function getActiveMatch() {
@@ -200,7 +209,8 @@ export async function getDisgraces() {
         player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
         player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
         player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
-    `
+    `,
+            { count: "exact" }
         )
         .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
         .not("scoreTeam1", "eq", 0, "scoreTeam2", "eq", 0);

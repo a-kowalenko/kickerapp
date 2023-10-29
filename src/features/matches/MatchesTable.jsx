@@ -1,4 +1,5 @@
 import Pagination from "../../ui/Pagination";
+import Spinner from "../../ui/Spinner";
 import Table from "../../ui/Table";
 import MatchesRow from "./MatchesRow";
 import { useMatches } from "./useMatches";
@@ -6,8 +7,8 @@ import { useMatches } from "./useMatches";
 function MatchesTable() {
     const { matches, count, isLoadingMatches, errorMatches } = useMatches();
 
-    if (isLoadingMatches || matches?.length === 0) {
-        return null; // TODO: Loading spinner
+    if (isLoadingMatches) {
+        return <Spinner />;
     }
 
     return (

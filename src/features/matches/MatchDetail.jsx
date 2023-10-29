@@ -7,6 +7,7 @@ import { useRef } from "react";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
+import Spinner from "../../ui/Spinner";
 
 const Row = styled.div`
     display: flex;
@@ -153,8 +154,8 @@ function MatchDetail() {
         [match]
     );
 
-    if (!match || isLoading) {
-        return null;
+    if (isLoading) {
+        return <Spinner />;
     }
 
     const { player1, player2, player3, player4 } = match;

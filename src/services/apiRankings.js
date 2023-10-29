@@ -3,7 +3,7 @@ import supabase from "./supabase";
 export async function getRankings() {
     const { data, error, count } = await supabase
         .from("player")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("mmr", { ascending: false });
 
     if (error) {

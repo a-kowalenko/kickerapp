@@ -1,4 +1,5 @@
 import Pagination from "../../ui/Pagination";
+import Spinner from "../../ui/Spinner";
 import Table from "../../ui/Table";
 import RankingsRow from "./RankingsRow";
 import { useRankings } from "./useRankings";
@@ -6,8 +7,8 @@ import { useRankings } from "./useRankings";
 function RankingsTable() {
     const { rankings, count, isLoadingRankings, errorRankings } = useRankings();
 
-    if (isLoadingRankings || !rankings?.length) {
-        return null;
+    if (isLoadingRankings) {
+        <Spinner />;
     }
 
     return (

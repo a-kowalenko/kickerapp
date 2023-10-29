@@ -1,4 +1,5 @@
 import Pagination from "../../ui/Pagination";
+import Spinner from "../../ui/Spinner";
 import Table from "../../ui/Table";
 import DisgraceRow from "./DisgraceRow";
 import { useDisgraces } from "./useDisgraces";
@@ -7,7 +8,7 @@ function DisgraceTable() {
     const { disgraces, isLoading, count, error } = useDisgraces();
 
     if (isLoading) {
-        return null;
+        return <Spinner />;
     }
 
     return (

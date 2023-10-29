@@ -6,6 +6,7 @@ import { useCreateMatch } from "./useCreateMatch";
 import PlayerDropdown from "./PlayerDropdown";
 import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
+import Spinner from "../../ui/Spinner";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -134,8 +135,8 @@ function ChoosePlayers() {
     const { players, isLoading, error } = usePlayers();
     const { createMatch } = useCreateMatch();
 
-    if (!players || isLoading) {
-        return null;
+    if (isLoading) {
+        return <Spinner />;
     }
 
     function handleSelect(key, player) {
