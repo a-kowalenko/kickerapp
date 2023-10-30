@@ -1,13 +1,8 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
 const Avatar = styled.img`
     display: block;
-    width: ${(props) =>
-        props.$size === "sm"
-            ? "3.4rem"
-            : props.$size === "xs"
-            ? "2.6rem"
-            : "10rem"};
+    ${(props) => sizes[props.$size]}
     aspect-ratio: 1;
     object-fit: cover;
     object-position: center;
@@ -25,8 +20,27 @@ const Avatar = styled.img`
 `;
 
 Avatar.defaultProps = {
-    $size: "lg",
+    $size: "large",
     $cursor: "none",
+};
+
+const sizes = {
+    xs: css`
+        width: 2.6rem;
+        height: 2.6rem;
+    `,
+    small: css`
+        width: 3.4rem;
+        height: 3.4rem;
+    `,
+    large: css`
+        width: 10rem;
+        height: 10rem;
+    `,
+    huge: css`
+        width: 30rem;
+        height: 30rem;
+    `,
 };
 
 export default Avatar;

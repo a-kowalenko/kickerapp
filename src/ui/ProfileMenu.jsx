@@ -87,7 +87,7 @@ function ProfileMenu() {
     return (
         <div ref={dropdownRef}>
             <StyledProfileMenu onClick={handleToggle}>
-                <Avatar $size="sm" src={avatar || "/default-user.jpg"} />
+                <Avatar $size="small" src={avatar || "/default-user.jpg"} />
                 <label>{username}</label>
             </StyledProfileMenu>
             {isOpen && (
