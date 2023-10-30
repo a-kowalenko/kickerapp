@@ -4,6 +4,10 @@ const Button = styled.button`
     border-radius: var(--border-radius-sm);
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
     transition: box-shadow 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4rem;
 
     &:hover {
         box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.7);
@@ -79,6 +83,11 @@ const sizes = {
         padding: 1.2rem 2.4rem;
         font-weight: 500;
         font-size: 1.6rem;
+    `,
+    huge: css`
+        padding: 1.2rem 2.4rem;
+        font-weight: 500;
+        font-size: 3.2rem;
     `,
 };
 

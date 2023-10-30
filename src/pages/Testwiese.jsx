@@ -3,6 +3,7 @@ import SwitchButton from "../ui/SwitchButton";
 import Dropdown from "../ui/Dropdown";
 import FormRow from "../ui/FormRow";
 import Input from "../ui/Input";
+import ContentBox from "../ui/ContentBox";
 
 const fakeOptions = [
     { text: "Element 1", value: 1 },
@@ -117,6 +118,13 @@ function Testwiese() {
                 <Button $size="large" $variation="danger" disabled={isDisabled}>
                     Danger
                 </Button>
+            </FormRow>
+
+            <FormRow>
+                <ContentBox>
+                    ContentBox<div>asdasd</div>
+                </ContentBox>
+                <ContentBox>ContentBox</ContentBox>
             </FormRow>
         </>
     );

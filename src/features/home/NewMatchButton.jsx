@@ -1,6 +1,7 @@
 import { HiOutlinePlusCircle } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import Button from "../../ui/Button";
 
 const StyledNewMatch = styled.button`
     display: flex;
@@ -26,10 +27,16 @@ const StyledNewMatch = styled.button`
 function NewMatchButton() {
     const navigate = useNavigate();
     return (
-        <StyledNewMatch onClick={() => navigate("/matches/create")}>
-            <HiOutlinePlusCircle />
-            <span>New Match</span>
-        </StyledNewMatch>
+        <>
+            {/* <StyledNewMatch onClick={() => navigate("/matches/create")}>
+                <HiOutlinePlusCircle />
+                <span>New Match</span>
+            </StyledNewMatch> */}
+            <Button $size="huge" onClick={() => navigate("/matches/create")}>
+                <HiOutlinePlusCircle />
+                New Match
+            </Button>
+        </>
     );
 }
 

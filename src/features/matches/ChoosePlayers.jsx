@@ -35,7 +35,7 @@ const PlayerBox = styled.div`
     background-color: var(--color-grey-100);
     border: 1px solid var(--color-grey-200);
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
     transition: all 0.3s ease;
     gap: 1.8rem;
     min-width: 400px;
@@ -44,7 +44,7 @@ const PlayerBox = styled.div`
     &:hover {
         background-color: var(--color-grey-300);
         transform: scale(1.05);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.4);
     }
 `;
 
@@ -77,7 +77,8 @@ const SubmitRow = styled.div`
     justify-content: space-between;
     padding: 2.4rem;
     background-color: white;
-    border-top: 1px solid var(--color-grey-200);
+    border-radius: var(--border-radius-sm);
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
 `;
 
 const CheckboxContainer = styled.div`

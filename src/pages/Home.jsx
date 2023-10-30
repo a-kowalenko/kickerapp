@@ -1,9 +1,9 @@
-import NewMatch from "../features/home/NewMatchButton";
+import HomeLayout from "../features/home/HomeLayout";
 
 function Home() {
     return (
         <div>
-            <NewMatch />
+            <HomeLayout />
         </div>
     );
 }
