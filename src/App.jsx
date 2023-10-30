@@ -20,6 +20,7 @@ import Matches from "./pages/Matches";
 import Disgraces from "./pages/Disgraces";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
 import Testwiese from "./pages/Testwiese";
+import Players from "./pages/Players";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -60,6 +61,7 @@ function App() {
                                 element={<Kicker />}
                             />
                             <Route path="matches/" element={<Matches />} />
+                            <Route path="players/" element={<Players />} />
                             <Route path="testwiese" element={<Testwiese />} />
                             <Route
                                 path="matches/create"

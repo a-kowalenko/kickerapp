@@ -47,3 +47,18 @@ export async function getMostPlayed() {
 
     return data;
 }
+
+export async function getPlayerByName(name) {
+    const { data, error } = await supabase
+        .from("player")
+        .select("*")
+        .eq("name", name)
+        .single();
+
+    if (error) {
+        console.error(error);
+        throw new Error("Player could not be loaded");
+    }
+
+    return data;
+}

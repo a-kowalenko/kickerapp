@@ -3,6 +3,9 @@ import UserDataForm from "../features/authentication/UserDataForm";
 import { useUser } from "../features/authentication/useUser";
 import styled from "styled-components";
 import Avatar from "../ui/Avatar";
+import Profile from "../features/players/Profile";
+import Row from "../ui/Row";
+import Heading from "../ui/Heading";
 
 const StyledUser = styled.div`
     display: flex;
@@ -20,10 +23,23 @@ function User() {
 
     const ownAccount = userId === username;
     return (
-        <StyledUser>
-            {ownAccount ? <UserDataForm /> : <div>Gucki</div>}
-            <Avatar src={avatar} $size="huge" />
-        </StyledUser>
+        <>
+            <Row type="horizontal">
+                <Heading as="h1" uppercase>
+                    Profile of {userId}
+                </Heading>
+            </Row>
+            <StyledUser>
+                {ownAccount ? (
+                    <>
+                        <UserDataForm />
+                        <Avatar src={avatar} $size="huge" />
+                    </>
+                ) : (
+                    <Profile username={userId} />
+                )}
+            </StyledUser>
+        </>
     );
 }
 

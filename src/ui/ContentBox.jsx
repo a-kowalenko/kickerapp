@@ -4,7 +4,8 @@ const ContentBox = styled.div`
     background-color: white;
 
     display: flex;
-    flex-direction: column;
+    flex-direction: ${(props) =>
+        props.type === "horizontal" ? "row" : "column"};
     gap: 2.4rem;
     padding: 3.2rem;
     border: 1px solid var(--color-amber-100);

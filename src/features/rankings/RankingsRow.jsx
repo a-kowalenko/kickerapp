@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import Table from "../../ui/Table";
 import Avatar from "../../ui/Avatar";
+import { Link } from "react-router-dom";
 
 const Rank = styled.div`
     font-size: 1.6rem;
@@ -8,7 +9,7 @@ const Rank = styled.div`
     color: var(--color-grey-600);
 `;
 
-const Name = styled.div`
+const Name = styled(Link)`
     display: flex;
     align-items: center;
     gap: 0.8rem;
@@ -32,7 +33,7 @@ function RankingsRow({ player }) {
         <Table.Row>
             <Rank>{player.rank}</Rank>
 
-            <Name>
+            <Name to={`/user/${player.name}`}>
                 <Avatar $size="xs" src={player.avatar || "/default-user.jpg"} />
                 <span>{player.name}</span>
             </Name>
