@@ -8,9 +8,7 @@ const StyledTable = styled.div`
     background-color: var(--color-grey-0);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow:
-        -1px -1px 1px rgba(0, 0, 0, 0.1),
-        1px 1px 1px rgba(0, 0, 0, 0.1);
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
 `;
 
 const DefaultRow = styled.div`
@@ -36,9 +34,7 @@ const StyledRow = styled(DefaultRow)`
 
     &:hover {
         background-color: var(--color-amber-50);
-        box-shadow:
-            0 -2px 5px rgba(0, 0, 0, 0.1),
-            0 2px 5px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     &:not(:last-child) {

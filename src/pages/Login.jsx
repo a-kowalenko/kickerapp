@@ -9,6 +9,8 @@ const StyledLogin = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
+
+    background-color: var(--color-amber-50);
 `;
 
 function Login() {

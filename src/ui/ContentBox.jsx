@@ -11,7 +11,7 @@ const ContentBox = styled.div`
     border-radius: var(--border-radius-md);
     width: 100%;
     height: 100%;
-    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
 
     /* &:hover {
