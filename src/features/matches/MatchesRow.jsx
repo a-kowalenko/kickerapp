@@ -80,12 +80,18 @@ function MatchesRow({ match }) {
             <TeamContainer $won={team1Won} $team="1">
                 <Name>
                     <span>{player1.name}</span>
-                    <Avatar $size="xs" src={player1.avatar} />
+                    <Avatar
+                        $size="xs"
+                        src={player1.avatar || "/default-user.jpg"}
+                    />
                 </Name>
                 {player3 && (
                     <Name>
                         <span>{player3?.name}</span>
-                        <Avatar $size="xs" src={player3.avatar} />
+                        <Avatar
+                            $size="xs"
+                            src={player3.avatar || "/default-user.jpg"}
+                        />
                     </Name>
                 )}
             </TeamContainer>
@@ -98,12 +104,18 @@ function MatchesRow({ match }) {
 
             <TeamContainer $won={!team1Won} $team="2">
                 <Name>
-                    <Avatar $size="xs" src={player2.avatar} />
+                    <Avatar
+                        $size="xs"
+                        src={player2.avatar || "/default-user.jpg"}
+                    />
                     <span>{player2.name}</span>
                 </Name>
                 {player4 && (
                     <Name>
-                        <Avatar $size="xs" src={player4?.avatar} />
+                        <Avatar
+                            $size="xs"
+                            src={player4?.avatar || "/default-user.jpg"}
+                        />
                         <span>{player4.name}</span>
                     </Name>
                 )}

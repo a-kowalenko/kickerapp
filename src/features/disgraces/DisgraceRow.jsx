@@ -27,12 +27,12 @@ function DisgraceRow({ disgrace }) {
     return (
         <Table.Row>
             <Name>
-                <Avatar $size="xs" src={loser.avatar} />
+                <Avatar $size="xs" src={loser.avatar || "/default-user.jpg"} />
                 <span>{loser.name}</span>
             </Name>
 
             <Name>
-                <Avatar $size="xs" src={winner.avatar} />
+                <Avatar $size="xs" src={winner.avatar || "/default-user.jpg"} />
                 <span>{winner.name}</span>
             </Name>
 

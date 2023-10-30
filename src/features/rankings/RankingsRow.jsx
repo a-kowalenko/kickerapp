@@ -33,7 +33,7 @@ function RankingsRow({ player }) {
             <Rank>{player.rank}</Rank>
 
             <Name>
-                <Avatar $size="xs" src={player.avatar} />
+                <Avatar $size="xs" src={player.avatar || "/default-user.jpg"} />
                 <span>{player.name}</span>
             </Name>
 
