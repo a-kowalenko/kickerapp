@@ -5,6 +5,9 @@ import { useUpdateUser } from "./useUpdateUser";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import Button from "../../ui/Button";
+import Input from "../../ui/Input";
+import Form from "../../ui/Form";
+import InputFile from "../../ui/InputFile";
 
 function UserDataForm() {
     const { userId } = useParams();
@@ -28,12 +31,12 @@ function UserDataForm() {
     }
 
     return (
-        <form onSubmit={handleSubmit}>
+        <Form onSubmit={handleSubmit}>
             <FormRow label="Email address">
-                <input value={email} disabled />
+                <Input value={email} disabled />
             </FormRow>
             <FormRow label="Username">
-                <input
+                <Input
                     type="text"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
@@ -42,7 +45,7 @@ function UserDataForm() {
             </FormRow>
 
             <FormRow label="Avatar">
-                <input
+                <InputFile
                     type="file"
                     disabled={isUpdating}
                     onChange={(e) => setNewAvatar(e.target.files[0])}
@@ -58,7 +61,7 @@ function UserDataForm() {
                     Update
                 </Button>
             </FormRow>
-        </form>
+        </Form>
     );
 }
 

@@ -57,7 +57,7 @@ function LoginForm() {
                         disabled={isLoading}
                     />
                 </FormRow>
-                <FormRow>
+                <FormRow fill={true}>
                     <Button $size="large" type="submit" disabled={isLoading}>
                         Login
                     </Button>

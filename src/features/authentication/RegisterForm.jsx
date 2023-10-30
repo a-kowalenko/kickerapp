@@ -64,6 +64,7 @@ function RegisterForm() {
                     <Input
                         id="password"
                         type="password"
+                        placeholder="password"
                         disabled={isLoading}
                         autoComplete="new-password"
                         {...formRegister("password", {
@@ -81,6 +82,7 @@ function RegisterForm() {
                     <Input
                         id="passwordConfirm"
                         type="password"
+                        placeholder="confirm password"
                         disabled={isLoading}
                         autoComplete="new-password"
                         {...formRegister("passwordConfirm", {
@@ -92,7 +94,7 @@ function RegisterForm() {
                     />
                 </FormRow>
 
-                <FormRow>
+                <FormRow fill={true}>
                     <Button $size="large" disabled={isLoading}>
                         Register
                     </Button>

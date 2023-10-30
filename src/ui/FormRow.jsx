@@ -9,9 +9,10 @@ const StyledFormRow = styled.div`
     padding: 1.2rem 0;
 
     &:has(button) {
-        /* display: flex;
-        justify-content: flex-end;
-        gap: 1.2rem; */
+        ${(props) => (props.$fill ? "" : "display: flex")};
+        justify-content: ${(props) =>
+            props.$buttonPosition === "end" ? "flex-end" : "flex-start"};
+        gap: 1.2rem;
         width: inherit;
     }
 `;
@@ -20,9 +21,19 @@ const StyledLabel = styled.label`
     font-size: 2rem;
 `;
 
-function FormRow({ label, error, children }) {
+function FormRow({
+    label,
+    error,
+    children,
+    buttonPosition = "end",
+    fill = false,
+}) {
     return (
-        <StyledFormRow $hasError={error}>
+        <StyledFormRow
+            $hasError={error}
+            $buttonPosition={buttonPosition}
+            $fill={fill}
+        >
             {label && <StyledLabel>{label}</StyledLabel>}
             {children}
             {error && <label>{error}</label>}

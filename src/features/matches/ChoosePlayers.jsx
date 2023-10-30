@@ -7,6 +7,8 @@ import PlayerDropdown from "./PlayerDropdown";
 import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
 import Spinner from "../../ui/Spinner";
+import Button from "../../ui/Button";
+import SwitchButton from "../../ui/SwitchButton";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -79,10 +81,7 @@ const SubmitRow = styled.div`
 const CheckboxContainer = styled.div`
     display: flex;
     flex-direction: column;
-
-    & label {
-        cursor: pointer;
-    }
+    gap: 1.2rem;
 `;
 
 const StyledCheckbox = styled.input.attrs({ type: "checkbox" })`
@@ -97,7 +96,9 @@ const StartMatchButton = styled.button`
     border-radius: var(--border-radius-md);
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.2s;
+    transition:
+        background-color 0.2s,
+        transform 0.2s;
 
     &:hover {
         background-color: var(--color-amber-300);
@@ -211,21 +212,25 @@ function ChoosePlayers() {
             <SubmitRow>
                 <CheckboxContainer>
                     <div>
-                        <StyledCheckbox id="random-teams" type="checkbox" />
-                        <label htmlFor="random-teams">
-                            Random teams (noch nicht implementiert)
-                        </label>
+                        <SwitchButton
+                            label="Random teams (noch nicht implementiert)"
+                            id="random-teams"
+                            type="checkbox"
+                            disabled={true}
+                        />
                     </div>
                     <div>
-                        <StyledCheckbox id="random-sides" type="checkbox" />
-                        <label htmlFor="random-sides">
-                            Random sides (noch nicht implementiert)
-                        </label>
+                        <SwitchButton
+                            label="Random sides (noch nicht implementiert)"
+                            id="random-sides"
+                            type="checkbox"
+                            disabled={true}
+                        />
                     </div>
                 </CheckboxContainer>
-                <StartMatchButton onClick={handleSubmit}>
+                <Button $size="large" onClick={handleSubmit}>
                     Start match
-                </StartMatchButton>
+                </Button>
             </SubmitRow>
         </Container>
     );

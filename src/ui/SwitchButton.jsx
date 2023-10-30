@@ -70,7 +70,7 @@ function SwitchButton({ label, value, onChange, disabled = false }) {
             return;
         }
         setIsToggled((prev) => {
-            onChange(!prev);
+            onChange?.(!prev);
             return !prev;
         });
     }
