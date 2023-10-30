@@ -1,4 +1,5 @@
 import Button from "../ui/Button";
+import SwitchButton from "../ui/SwitchButton";
 import Dropdown from "../ui/Dropdown";
 import FormRow from "../ui/FormRow";
 import Input from "../ui/Input";
@@ -14,6 +15,10 @@ const fakeOptions = [
 function Testwiese() {
     const isDisabled = false;
 
+    function handleCheckboxChange(value) {
+        console.log("checkbox set to:", value);
+    }
+
     return (
         <>
             <FormRow>
@@ -27,6 +32,30 @@ function Testwiese() {
             <FormRow>
                 <Dropdown options={fakeOptions} />
                 <Dropdown options={fakeOptions} disabled={true} />
+            </FormRow>
+            <FormRow>
+                <SwitchButton
+                    label={"Switch label"}
+                    value={true}
+                    onChange={handleCheckboxChange}
+                />
+                <SwitchButton
+                    label={"Switch label"}
+                    onChange={handleCheckboxChange}
+                    disabled={true}
+                />
+            </FormRow>
+            <FormRow>
+                <SwitchButton
+                    label={"Switch label"}
+                    onChange={handleCheckboxChange}
+                />
+                <SwitchButton
+                    label={"Switch label"}
+                    value={true}
+                    disabled={true}
+                    onChange={handleCheckboxChange}
+                />
             </FormRow>
             <FormRow>
                 <Button

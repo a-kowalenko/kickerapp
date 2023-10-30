@@ -63,6 +63,7 @@ const List = styled.ul`
     top: 100%; // Beginnt direkt unter dem Toggle-Button
     left: 0; // Ausgerichtet am linken Rand des Containers
     width: 100%; // Nimmt die volle Breite des Containers ein
+    z-index: 10;
 
     align-items: flex-start;
     flex-direction: column;

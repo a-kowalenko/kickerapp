@@ -2,7 +2,16 @@ import styled, { css } from "styled-components";
 
 const Button = styled.button`
     border-radius: var(--border-radius-sm);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.361);
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
+    transition: box-shadow 0.2s ease-in-out;
+
+    &:hover {
+        box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.7);
+    }
+
+    &:active {
+        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.7);
+    }
 
     ${(props) => {
         const size = props.$size;
@@ -21,10 +30,6 @@ const variations = {
         border: 1px solid rgb(235, 202, 33);
         background-color: rgb(235, 202, 33);
 
-        &:hover {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.727);
-        }
-
         &:active {
             border: 1px solid rgb(199, 168, 11);
             background-color: rgb(199, 168, 11);
@@ -37,10 +42,6 @@ const variations = {
         color: #000000;
         border: 1px solid var(--color-secondary-button);
         background-color: var(--color-secondary-button);
-
-        &:hover {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.727);
-        }
 
         &:active {
             border: 1px solid var(--color-secondary-button-active);
@@ -55,10 +56,6 @@ const variations = {
         color: #ffffff;
         border: 1px solid var(--color-danger-button);
         background-color: var(--color-danger-button);
-
-        &:hover {
-            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.727);
-        }
 
         &:active {
             border: 1px solid var(--color-danger-button-active);
