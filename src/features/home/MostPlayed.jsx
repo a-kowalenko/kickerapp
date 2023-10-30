@@ -45,7 +45,7 @@ function MostPlayed() {
             {isLoading ? (
                 <LoadingSpinner />
             ) : (
-                <ResponsiveContainer width="100%" height={240}>
+                <ResponsiveContainer width="100%" height={230}>
                     <PieChart>
                         <Pie
                             data={mostPlayed}
@@ -73,7 +73,7 @@ function MostPlayed() {
                         <Legend
                             verticalAlign="middle"
                             align="right"
-                            width="30%"
+                            width="25%"
                             layout="vertical"
                             iconSize={15}
                             iconType="circle"

@@ -2,8 +2,9 @@ import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
+import { Link } from "react-router-dom";
 
-const Name = styled.div`
+const Name = styled(Link)`
     display: flex;
     align-items: center;
     gap: 0.8rem;
@@ -26,12 +27,12 @@ function DisgraceRow({ disgrace }) {
 
     return (
         <Table.Row>
-            <Name>
+            <Name to={`/user/${loser.name}`}>
                 <Avatar $size="xs" src={loser.avatar || "/default-user.jpg"} />
                 <span>{loser.name}</span>
             </Name>
 
-            <Name>
+            <Name to={`/user/${winner.name}`}>
                 <Avatar $size="xs" src={winner.avatar || "/default-user.jpg"} />
                 <span>{winner.name}</span>
             </Name>

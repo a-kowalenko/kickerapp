@@ -22,7 +22,7 @@ const Heading = styled.h1`
             font-weight: 500;
         `}
 
-    ${(props) => (props.uppercase ? "text-transform: uppercase" : "")};
+    ${(props) => (props.$uppercase ? "text-transform: uppercase" : "")};
 
     line-height: 1.4;
 `;

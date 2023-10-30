@@ -17,11 +17,11 @@ function MonthlyDisgraces() {
             <Row type="horizontal">
                 <Heading as="h2">Strich der Schande - {currentMonth}</Heading>
             </Row>
-            <MiniTable columns="1fr 1fr 0.3fr">
+            <MiniTable columns="0.6fr 1fr 0.3fr">
                 <MiniTable.Header>
                     <div>Player</div>
                     <div>geschändet von</div>
-                    <div>Date</div>
+                    <div>Am</div>
                 </MiniTable.Header>
                 {isLoadingMatches ? (
                     <LoadingSpinner />

@@ -2,6 +2,7 @@ import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
+import { Link } from "react-router-dom";
 
 const Rank = styled.div`
     font-size: 1.6rem;
@@ -9,7 +10,7 @@ const Rank = styled.div`
     color: var(--color-grey-600);
 `;
 
-const Name = styled.div`
+const Name = styled(Link)`
     display: flex;
     gap: 0.8rem;
     font-size: 1.6rem;
@@ -38,7 +39,7 @@ const TeamContainer = styled.div`
     display: flex;
     flex-direction: column;
 
-    & div {
+    & a {
         justify-content: ${(props) =>
             props.$team === "1" ? "flex-end" : "flex-start"};
         color: ${(props) => (props.$won ? "green" : "red")};
@@ -78,7 +79,7 @@ function MatchesRow({ match }) {
             <Rank>{match.id}</Rank>
 
             <TeamContainer $won={team1Won} $team="1">
-                <Name>
+                <Name to={`/user/${player1.name}`}>
                     <span>{player1.name}</span>
                     <Avatar
                         $size="xs"
@@ -86,7 +87,7 @@ function MatchesRow({ match }) {
                     />
                 </Name>
                 {player3 && (
-                    <Name>
+                    <Name to={`/user/${player3.name}`}>
                         <span>{player3?.name}</span>
                         <Avatar
                             $size="xs"
@@ -103,7 +104,7 @@ function MatchesRow({ match }) {
             </ScoreContainer>
 
             <TeamContainer $won={!team1Won} $team="2">
-                <Name>
+                <Name to={`/user/${player2.name}`}>
                     <Avatar
                         $size="xs"
                         src={player2.avatar || "/default-user.jpg"}
@@ -111,7 +112,7 @@ function MatchesRow({ match }) {
                     <span>{player2.name}</span>
                 </Name>
                 {player4 && (
-                    <Name>
+                    <Name to={`/user/${player4.name}`}>
                         <Avatar
                             $size="xs"
                             src={player4?.avatar || "/default-user.jpg"}

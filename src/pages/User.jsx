@@ -25,7 +25,7 @@ function User() {
     return (
         <>
             <Row type="horizontal">
-                <Heading as="h1" uppercase>
+                <Heading as="h1" $uppercase>
                     Profile of {userId}
                 </Heading>
             </Row>
