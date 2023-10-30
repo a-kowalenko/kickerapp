@@ -87,16 +87,19 @@ export async function getMatch(matchId) {
 }
 
 export async function getMatches({ currentPage }) {
-    let query = supabase.from("matches").select(
-        `
+    let query = supabase
+        .from("matches")
+        .select(
+            `
         *,
         player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
         player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
         player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
         player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
     `,
-        { count: "exact" }
-    );
+            { count: "exact" }
+        )
+        .order("created_at", { ascending: false });
 
     if (currentPage) {
         const from = (currentPage - 1) * PAGE_SIZE;
@@ -199,8 +202,33 @@ export async function endMatch({ id, score1, score2 }) {
     return data;
 }
 
-export async function getDisgraces() {
-    const { data, error, count } = await supabase
+// TODO: Löschen oder erweitern
+
+// export async function getDisgraces({ filter }) {
+//     const { data, error, count } = await supabase
+//         .from("matches")
+//         .select(
+//             `
+//         *,
+//         player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
+//         player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
+//         player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
+//         player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
+//     `,
+//             { count: "exact" }
+//         )
+//         .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
+//         .not("scoreTeam1", "eq", 0, "scoreTeam2", "eq", 0);
+
+//     if (error) {
+//         throw new Error("Error while selecting the disgraces");
+//     }
+
+//     return { data, error, count };
+// }
+
+export async function getDisgraces(filter = {}) {
+    let query = supabase
         .from("matches")
         .select(
             `
@@ -214,6 +242,24 @@ export async function getDisgraces() {
         )
         .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
         .not("scoreTeam1", "eq", 0, "scoreTeam2", "eq", 0);
+
+    if (filter.month) {
+        const start = new Date(
+            filter.year || new Date().getFullYear(),
+            filter.month - 1,
+            1
+        );
+        const end = new Date(
+            filter.year || new Date().getFullYear(),
+            filter.month,
+            1
+        );
+        query = query
+            .filter("created_at", "gte", start.toISOString())
+            .filter("created_at", "lt", end.toISOString());
+    }
+
+    const { data, error, count } = await query;
 
     if (error) {
         throw new Error("Error while selecting the disgraces");

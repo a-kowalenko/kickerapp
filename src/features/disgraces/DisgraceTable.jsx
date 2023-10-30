@@ -19,6 +19,7 @@ function DisgraceTable() {
                 <div>Datum</div>
             </Table.Header>
             <Table.Body
+                noDataLabel="Bisher noch niemand geschändet"
                 data={disgraces}
                 render={(disgrace) => (
                     <DisgraceRow disgrace={disgrace} key={disgrace.id} />

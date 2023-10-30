@@ -1,7 +1,7 @@
 import styled from "styled-components";
-import CurrentDisgraces from "./CurrentDisgraces";
 import RecentMatches from "./RecentMatches";
 import NewMatchButton from "./NewMatchButton";
+import MonthlyDisgraces from "./MonthlyDisgraces";
 
 const StyledHomeLayout = styled.div`
     display: grid;
@@ -12,7 +12,7 @@ const StyledHomeLayout = styled.div`
 function HomeLayout() {
     return (
         <StyledHomeLayout>
-            <CurrentDisgraces />
+            <MonthlyDisgraces />
             <RecentMatches />
             <NewMatchButton />
         </StyledHomeLayout>

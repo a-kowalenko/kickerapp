@@ -4,6 +4,10 @@ import Dropdown from "../ui/Dropdown";
 import FormRow from "../ui/FormRow";
 import Input from "../ui/Input";
 import ContentBox from "../ui/ContentBox";
+import MiniTable from "../ui/MiniTable";
+import { useMatches } from "../features/matches/useMatches";
+import Row from "../ui/Row";
+import Heading from "../ui/Heading";
 
 const fakeOptions = [
     { text: "Element 1", value: 1 },
@@ -19,6 +23,8 @@ function Testwiese() {
     function handleCheckboxChange(value) {
         console.log("checkbox set to:", value);
     }
+
+    const { matches } = useMatches();
 
     return (
         <>
@@ -122,7 +128,16 @@ function Testwiese() {
 
             <FormRow>
                 <ContentBox>
-                    ContentBox<div>asdasd</div>
+                    <Row type="horizontal">
+                        <Heading as="h2">Strich der Schande</Heading>
+                    </Row>
+                    <MiniTable columns="1fr 1fr 0.3fr">
+                        <MiniTable.Header>
+                            <div>Player</div>
+                            <div>geschändet von</div>
+                            <div>Date</div>
+                        </MiniTable.Header>
+                    </MiniTable>
                 </ContentBox>
                 <ContentBox>ContentBox</ContentBox>
             </FormRow>

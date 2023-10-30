@@ -23,6 +23,7 @@ function RankingsTable() {
                 <div style={{ textAlign: "center" }}>MMR</div>
             </Table.Header>
             <Table.Body
+                noDataLabel="No rankings available"
                 data={rankings}
                 render={(player) => (
                     <RankingsRow key={player.id} player={player} />

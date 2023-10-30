@@ -8,7 +8,9 @@ const StyledTable = styled.div`
     background-color: var(--color-grey-0);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: -1px -1px 1px rgba(0, 0, 0, 0.1), 1px 1px 1px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        -1px -1px 1px rgba(0, 0, 0, 0.1),
+        1px 1px 1px rgba(0, 0, 0, 0.1);
 `;
 
 const DefaultRow = styled.div`
@@ -34,7 +36,9 @@ const StyledRow = styled(DefaultRow)`
 
     &:hover {
         background-color: var(--color-amber-50);
-        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.1);
+        box-shadow:
+            0 -2px 5px rgba(0, 0, 0, 0.1),
+            0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     &:not(:last-child) {
@@ -55,6 +59,13 @@ const Footer = styled.footer`
     &:not(:has(*)) {
         display: none;
     }
+`;
+
+const StyledParagraph = styled.p`
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 500;
+    margin: 3rem 0;
 `;
 
 const TableContext = createContext();
@@ -85,9 +96,9 @@ function Row({ children }) {
     );
 }
 
-function Body({ data, render }) {
+function Body({ data, render, noDataLabel = "No data available" }) {
     if (!data?.length) {
-        return <div>No data available</div>; // TODO: Create Empty component
+        return <StyledParagraph>{noDataLabel}</StyledParagraph>; // TODO: Create Empty component
     }
     return <StyledBody>{data.map(render)}</StyledBody>;
 }

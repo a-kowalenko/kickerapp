@@ -5,6 +5,7 @@ const ContentBox = styled.div`
 
     display: flex;
     flex-direction: column;
+    gap: 2.4rem;
     padding: 3.2rem;
     border: 1px solid var(--color-amber-100);
     border-radius: var(--border-radius-md);

@@ -23,6 +23,7 @@ function MatchesTable() {
                 <div>Duration</div>
             </Table.Header>
             <Table.Body
+                noDataLabel="No matches available"
                 data={matches}
                 render={(match) => <MatchesRow key={match.id} match={match} />}
             />
