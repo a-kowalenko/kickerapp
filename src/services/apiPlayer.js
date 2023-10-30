@@ -37,3 +37,13 @@ export async function updatePlayerByUserId({ username, avatar, userId }) {
 
     return data;
 }
+
+export async function getMostPlayed() {
+    const { data, error } = await supabase.rpc("get_player_match_counts");
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
