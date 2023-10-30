@@ -11,6 +11,8 @@ import Button from "../../ui/Button";
 import SwitchButton from "../../ui/SwitchButton";
 import FormRow from "../../ui/FormRow";
 import { START_MATCH_COUNTDOWN } from "../../utils/constants";
+import Heading from "../../ui/Heading";
+import Row from "../../ui/Row";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -199,6 +201,10 @@ function ChoosePlayers() {
 
     return (
         <Container>
+            <Row type="horizontal">
+                <Heading as="h1">Team 1</Heading>
+                <Heading as="h1">Team 2</Heading>
+            </Row>
             <PlayersContainer>
                 {Object.keys(selectedPlayers).map((key) => {
                     const options = players.filter(
