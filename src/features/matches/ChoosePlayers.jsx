@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
-import { HiOutlinePlus, HiOutlinePlusCircle } from "react-icons/hi2";
+import { HiOutlinePlusCircle } from "react-icons/hi2";
 import { usePlayers } from "../../hooks/usePlayers";
 import { useCreateMatch } from "./useCreateMatch";
 import PlayerDropdown from "./PlayerDropdown";
@@ -9,6 +9,8 @@ import toast from "react-hot-toast";
 import Spinner from "../../ui/Spinner";
 import Button from "../../ui/Button";
 import SwitchButton from "../../ui/SwitchButton";
+import FormRow from "../../ui/FormRow";
+import { START_MATCH_COUNTDOWN } from "../../utils/constants";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -133,8 +135,42 @@ function ChoosePlayers() {
         player4: false,
     });
 
+    const [isStarting, setIsStarting] = useState(false);
+    const [timer, setTimer] = useState(START_MATCH_COUNTDOWN);
+
     const { players, isLoading, error } = usePlayers();
     const { createMatch } = useCreateMatch();
+
+    const countdownAudio = useMemo(() => new Audio("/startMatchSound.mp3"), []);
+
+    useEffect(() => {
+        let timerId;
+        if (timer >= 0 && isStarting) {
+            if (timer === 3) {
+                countdownAudio.play();
+            }
+            timerId = setTimeout(() => setTimer(timer - 1), 1000);
+        } else if (timer === -1) {
+            console.log("GAME STARTED!");
+            createMatch(selectedPlayers);
+        }
+
+        return () => {
+            clearTimeout(timerId);
+        };
+    }, [timer, isStarting, createMatch, selectedPlayers, countdownAudio]);
+
+    function startTimer() {
+        setIsStarting(true);
+        setTimer(START_MATCH_COUNTDOWN);
+    }
+
+    function cancelTimer() {
+        setIsStarting(false);
+        setTimer(START_MATCH_COUNTDOWN);
+        countdownAudio.pause();
+        countdownAudio.currentTime = 0;
+    }
 
     if (isLoading) {
         return <Spinner />;
@@ -157,7 +193,7 @@ function ChoosePlayers() {
             return;
         }
 
-        createMatch(selectedPlayers);
+        startTimer(selectedPlayers);
     }
 
     return (
@@ -228,9 +264,33 @@ function ChoosePlayers() {
                         />
                     </div>
                 </CheckboxContainer>
-                <Button $size="large" onClick={handleSubmit}>
-                    Start match
-                </Button>
+                {!isStarting && (
+                    <FormRow>
+                        <Button $size="large" onClick={handleSubmit}>
+                            Start match
+                        </Button>
+                    </FormRow>
+                )}
+                {isStarting && (
+                    <FormRow
+                        label={
+                            timer <= 0
+                                ? "Good luck have fun!"
+                                : `Starting in ${timer}`
+                        }
+                    >
+                        {timer > 0 && (
+                            <Button
+                                $size="large"
+                                $variation="secondary"
+                                type="button"
+                                onClick={cancelTimer}
+                            >
+                                Cancel match
+                            </Button>
+                        )}
+                    </FormRow>
+                )}
             </SubmitRow>
         </Container>
     );
