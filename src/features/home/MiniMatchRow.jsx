@@ -1,23 +1,26 @@
 import { format } from "date-fns";
 import MiniTable from "../../ui/MiniTable";
 import styled from "styled-components";
+import { Link } from "react-router-dom";
 
 const TeamContainer = styled.div`
     display: flex;
     flex-direction: column;
 
-    & div {
-        justify-content: ${(props) =>
-            props.$team === "1" ? "flex-end" : "flex-start"};
+    align-items: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
+
+    & a {
         color: ${(props) => (props.$won ? "green" : "red")};
     }
 `;
 
-const Name = styled.div`
+const Name = styled(Link)`
     display: flex;
     gap: 0.8rem;
     font-size: 1.6rem;
     font-weight: 400;
+    width: fit-content;
 `;
 
 const ScoreContainer = styled.div`
@@ -40,11 +43,11 @@ function MiniMatchRow({ match }) {
         <MiniTable.Row>
             <div>{match.id}</div>
             <TeamContainer $won={team1Won} $team="1">
-                <Name>
+                <Name to={`/user/${player1.name}`}>
                     <span>{player1.name}</span>
                 </Name>
                 {player3 && (
-                    <Name>
+                    <Name to={`/user/${player3.name}`}>
                         <span>{player3?.name}</span>
                     </Name>
                 )}
@@ -57,11 +60,11 @@ function MiniMatchRow({ match }) {
             </ScoreContainer>
 
             <TeamContainer $won={!team1Won} $team="2">
-                <Name>
+                <Name to={`/user/${player2.name}`}>
                     <span>{player2.name}</span>
                 </Name>
                 {player4 && (
-                    <Name>
+                    <Name to={`/user/${player4.name}`}>
                         <span>{player4.name}</span>
                     </Name>
                 )}

@@ -11,6 +11,7 @@ const Name = styled(Link)`
     font-size: 1.6rem;
     font-weight: 400;
     color: var(--color-grey-600);
+    width: fit-content;
 `;
 
 const Stat = styled.div`

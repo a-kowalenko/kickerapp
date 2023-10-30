@@ -15,6 +15,7 @@ const Name = styled(Link)`
     gap: 0.8rem;
     font-size: 1.6rem;
     font-weight: 400;
+    width: fit-content;
 `;
 
 const Stat = styled.div`
@@ -38,10 +39,10 @@ const Score = styled.div`
 const TeamContainer = styled.div`
     display: flex;
     flex-direction: column;
+    align-items: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
 
     & a {
-        justify-content: ${(props) =>
-            props.$team === "1" ? "flex-end" : "flex-start"};
         color: ${(props) => (props.$won ? "green" : "red")};
     }
 `;
