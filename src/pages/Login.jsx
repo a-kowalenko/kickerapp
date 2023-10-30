@@ -1,7 +1,15 @@
 import { useEffect } from "react";
-import LoginForm from "../features/authentication/LoginForm";
-import { useUser } from "../features/authentication/useUser";
 import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { useUser } from "../features/authentication/useUser";
+import LoginForm from "../features/authentication/LoginForm";
+
+const StyledLogin = styled.div`
+    height: 100dvh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+`;
 
 function Login() {
     const { user, isLoading } = useUser();
@@ -17,9 +25,9 @@ function Login() {
     );
 
     return (
-        <div>
+        <StyledLogin>
             <LoginForm />
-        </div>
+        </StyledLogin>
     );
 }
 
