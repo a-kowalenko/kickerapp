@@ -17,8 +17,6 @@ function MiniDisgraceRow({ disgrace }) {
     const loser =
         disgrace.scoreTeam1 === 0 ? disgrace.player1 : disgrace.player2;
 
-    console.log("lol", disgrace);
-
     return (
         <MiniTable.Row>
             <Name to={`/user/${loser.name}/profile`}>{loser.name}</Name>

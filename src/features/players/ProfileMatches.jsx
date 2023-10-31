@@ -1,8 +1,8 @@
 import Pagination from "../../ui/Pagination";
 import Table from "../../ui/Table";
-import MatchesRow from "./MatchesRow";
+import MatchesRow from "../matches/MatchesRow";
 
-function MatchesTable({ matches, count }) {
+function ProfileMatches({ matches, count }) {
     return (
         <Table columns="0.1fr 0.5fr 0.5fr 0.5fr 0.4fr 1fr 0.5fr">
             <Table.Header>
@@ -26,4 +26,4 @@ function MatchesTable({ matches, count }) {
     );
 }
 
-export default MatchesTable;
+export default ProfileMatches;

@@ -1,5 +1,6 @@
 import { PAGE_SIZE } from "../utils/constants";
 import { calculateMmrChange } from "../utils/helpers";
+import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
 
 export async function getPlayers() {
@@ -86,20 +87,27 @@ export async function getMatch(matchId) {
     return data;
 }
 
-export async function getMatches({ currentPage }) {
-    let query = supabase
-        .from("matches")
-        .select(
-            `
+export async function getMatches({ currentPage, name }) {
+    let query = supabase.from("matches").select(
+        `
         *,
         player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
         player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
         player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
         player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
     `,
-            { count: "exact" }
-        )
-        .order("created_at", { ascending: false });
+        { count: "exact" }
+    );
+
+    if (name) {
+        const player = await getPlayerByName(name);
+        const { id } = player;
+        query = query.or(
+            `player1.eq.${id},player2.eq.${id},player3.eq.${id},player4.eq.${id}`
+        );
+    }
+
+    query = query.order("created_at", { ascending: false });
 
     if (currentPage) {
         const from = (currentPage - 1) * PAGE_SIZE;
@@ -265,8 +273,6 @@ export async function getDisgraces(filter = {}) {
     if (error) {
         throw new Error("Error while selecting the disgraces");
     }
-
-    console.log(data);
 
     return { data, error, count };
 }

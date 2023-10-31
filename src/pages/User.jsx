@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useUser } from "../features/authentication/useUser";
 import styled from "styled-components";
 import Profile from "../features/players/Profile";
@@ -7,9 +7,9 @@ import Heading from "../ui/Heading";
 import TabView from "../ui/TabView";
 import { usePlayerName } from "../features/players/usePlayerName";
 import Spinner from "../ui/Spinner";
-import UserDataForm from "../features/authentication/UserDataForm";
 import ProfileSettings from "../features/players/ProfileSettings";
-import { useEffect, useMemo } from "react";
+import ProfileMatches from "../features/players/ProfileMatches";
+import { useMatchHistory } from "../features/players/useMatchHistory";
 
 const StyledUser = styled.div`
     /* display: flex;
@@ -25,11 +25,11 @@ function User() {
         },
     } = useUser();
 
+    const { player, isLoading } = usePlayerName(userId);
+    const { matches, count, isLoadingMatches } = useMatchHistory(userId);
     const ownAccount = userId === username;
 
-    const { player, isLoading } = usePlayerName(userId);
-
-    if (isLoading) {
+    if (isLoading || isLoadingMatches) {
         return <Spinner />;
     }
 
@@ -42,7 +42,7 @@ function User() {
         {
             path: `/user/${userId}/history`,
             label: "Match History",
-            component: <div>History Content</div>,
+            component: <ProfileMatches matches={matches} count={count} />,
         },
         {
             path: `/user/${userId}/statistics`,

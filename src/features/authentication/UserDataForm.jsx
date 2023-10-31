@@ -42,9 +42,6 @@ function UserDataForm() {
         const [file] = e.target.files;
         if (file) {
             test = URL.createObjectURL(file);
-            console.log(test);
-            console.log(file);
-            console.log(e.target.files[0]);
             setAvatarSrc(test);
         }
 
