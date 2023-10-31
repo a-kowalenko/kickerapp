@@ -55,13 +55,14 @@ function App() {
                             />
                             <Route path="rankings" element={<Rankings />} />
                             <Route path="disgraces" element={<Disgraces />} />
-                            <Route path="user/:userId" element={<User />} />
+                            <Route path="user/:userId/*" element={<User />} />
+
                             <Route
                                 path="kicker/:kickerId"
                                 element={<Kicker />}
                             />
-                            <Route path="matches/" element={<Matches />} />
-                            <Route path="players/" element={<Players />} />
+                            <Route path="matches" element={<Matches />} />
+                            <Route path="players" element={<Players />} />
                             <Route path="testwiese" element={<Testwiese />} />
                             <Route
                                 path="matches/create"

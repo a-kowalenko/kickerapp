@@ -246,14 +246,15 @@ export async function getDisgraces(filter = {}) {
     if (filter.month) {
         const start = new Date(
             filter.year || new Date().getFullYear(),
-            filter.month - 1,
+            filter.month,
             1
         );
         const end = new Date(
             filter.year || new Date().getFullYear(),
-            filter.month,
+            filter.month + 1,
             1
         );
+
         query = query
             .filter("created_at", "gte", start.toISOString())
             .filter("created_at", "lt", end.toISOString());
@@ -264,6 +265,8 @@ export async function getDisgraces(filter = {}) {
     if (error) {
         throw new Error("Error while selecting the disgraces");
     }
+
+    console.log(data);
 
     return { data, error, count };
 }

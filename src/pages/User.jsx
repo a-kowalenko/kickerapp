@@ -1,15 +1,19 @@
-import { useParams } from "react-router-dom";
-import UserDataForm from "../features/authentication/UserDataForm";
+import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../features/authentication/useUser";
 import styled from "styled-components";
-import Avatar from "../ui/Avatar";
 import Profile from "../features/players/Profile";
 import Row from "../ui/Row";
 import Heading from "../ui/Heading";
+import TabView from "../ui/TabView";
+import { usePlayerName } from "../features/players/usePlayerName";
+import Spinner from "../ui/Spinner";
+import UserDataForm from "../features/authentication/UserDataForm";
+import ProfileSettings from "../features/players/ProfileSettings";
+import { useEffect, useMemo } from "react";
 
 const StyledUser = styled.div`
-    display: flex;
-    gap: 12rem;
+    /* display: flex;
+    gap: 12rem; */
 `;
 
 function User() {
@@ -22,6 +26,39 @@ function User() {
     } = useUser();
 
     const ownAccount = userId === username;
+
+    const { player, isLoading } = usePlayerName(userId);
+
+    if (isLoading) {
+        return <Spinner />;
+    }
+
+    const tabs = [
+        {
+            path: `/user/${userId}/profile`,
+            label: "Profile",
+            component: <Profile player={player} />,
+        },
+        {
+            path: `/user/${userId}/history`,
+            label: "Match History",
+            component: <div>History Content</div>,
+        },
+        {
+            path: `/user/${userId}/statistics`,
+            label: "Statistics",
+            component: <div>Statistics Content</div>,
+        },
+    ];
+
+    if (ownAccount) {
+        tabs.push({
+            path: `/user/${userId}/settings`,
+            label: "Settings",
+            component: <ProfileSettings />,
+        });
+    }
+
     return (
         <>
             <Row type="horizontal">
@@ -29,16 +66,7 @@ function User() {
                     Profile of {userId}
                 </Heading>
             </Row>
-            <StyledUser>
-                {ownAccount ? (
-                    <>
-                        <UserDataForm />
-                        <Avatar src={avatar} $size="huge" />
-                    </>
-                ) : (
-                    <Profile username={userId} />
-                )}
-            </StyledUser>
+            <TabView tabs={tabs} />
         </>
     );
 }

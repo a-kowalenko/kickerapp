@@ -3,6 +3,7 @@ import Table from "../../ui/Table";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import { Link } from "react-router-dom";
+import { DEFAULT_AVATAR } from "../../utils/constants";
 
 const Name = styled(Link)`
     display: flex;
@@ -28,13 +29,13 @@ function DisgraceRow({ disgrace }) {
 
     return (
         <Table.Row>
-            <Name to={`/user/${loser.name}`}>
-                <Avatar $size="xs" src={loser.avatar || "/default-user.jpg"} />
+            <Name to={`/user/${loser.name}/profile`}>
+                <Avatar $size="xs" src={loser.avatar || DEFAULT_AVATAR} />
                 <span>{loser.name}</span>
             </Name>
 
-            <Name to={`/user/${winner.name}`}>
-                <Avatar $size="xs" src={winner.avatar || "/default-user.jpg"} />
+            <Name to={`/user/${winner.name}/profile`}>
+                <Avatar $size="xs" src={winner.avatar || DEFAULT_AVATAR} />
                 <span>{winner.name}</span>
             </Name>
 

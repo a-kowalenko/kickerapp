@@ -1,18 +1,17 @@
 import styled from "styled-components";
 import Avatar from "../../ui/Avatar";
-import { usePlayerName } from "./usePlayerName";
-import Spinner from "../../ui/Spinner";
+import { DEFAULT_AVATAR } from "../../utils/constants";
 
 const StyledProfile = styled.div`
     display: flex;
+    align-items: start;
     margin-top: 2rem;
+    gap: 2.4rem;
 `;
 
 const StatsContainer = styled.div`
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: first baseline;
 `;
 
 const Stat = styled.div`
@@ -33,35 +32,25 @@ const LeftBox = styled.div`
     gap: 2.4rem;
 `;
 
-function Profile({ username }) {
-    console.log("username", username);
-    const { player, isLoading } = usePlayerName(username);
-
-    if (isLoading) {
-        return <Spinner />;
-    }
+function Profile({ player }) {
     const { avatar, wins, losses, mmr } = player;
-
-    console.log(player);
     return (
         <StyledProfile>
-            <LeftBox>
-                <Avatar $size="huge" src={avatar || "/default-user.jpg"} />
-                <StatsContainer>
-                    <Stat>
-                        <div>Wins:</div>
-                        <div>{wins}</div>
-                    </Stat>
-                    <Stat>
-                        <div>Losses:</div>
-                        <div>{losses}</div>
-                    </Stat>
-                    <Stat>
-                        <div>MMR:</div>
-                        <div>{mmr}</div>
-                    </Stat>
-                </StatsContainer>
-            </LeftBox>
+            <Avatar $size="huge" src={avatar || DEFAULT_AVATAR} />
+            <StatsContainer>
+                <Stat>
+                    <div>Wins:</div>
+                    <div>{wins}</div>
+                </Stat>
+                <Stat>
+                    <div>Losses:</div>
+                    <div>{losses}</div>
+                </Stat>
+                <Stat>
+                    <div>MMR:</div>
+                    <div>{mmr}</div>
+                </Stat>
+            </StatsContainer>
         </StyledProfile>
     );
 }

@@ -10,7 +10,7 @@ import Spinner from "../../ui/Spinner";
 import Button from "../../ui/Button";
 import SwitchButton from "../../ui/SwitchButton";
 import FormRow from "../../ui/FormRow";
-import { START_MATCH_COUNTDOWN } from "../../utils/constants";
+import { DEFAULT_AVATAR, START_MATCH_COUNTDOWN } from "../../utils/constants";
 import Heading from "../../ui/Heading";
 import Row from "../../ui/Row";
 
@@ -228,7 +228,7 @@ function ChoosePlayers() {
                                         <Avatar
                                             src={
                                                 selectedPlayers[key].avatar ||
-                                                "/default-user.jpg"
+                                                DEFAULT_AVATAR
                                             }
                                             alt={`Avatar of ${selectedPlayers[key].name}`}
                                         />

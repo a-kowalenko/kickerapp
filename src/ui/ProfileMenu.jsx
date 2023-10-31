@@ -9,6 +9,7 @@ import {
 import { useLogout } from "../features/authentication/useLogout";
 import { useNavigate } from "react-router-dom";
 import { useOutsideClick } from "../hooks/useOutsideClick";
+import { DEFAULT_AVATAR } from "../utils/constants";
 
 const StyledProfileMenu = styled.div`
     display: flex;
@@ -76,7 +77,7 @@ function ProfileMenu() {
 
     function goToProfile() {
         close();
-        navigate(`/user/${username}`);
+        navigate(`/user/${username}/profile`);
     }
 
     function handleLogout() {
@@ -87,7 +88,7 @@ function ProfileMenu() {
     return (
         <div ref={dropdownRef}>
             <StyledProfileMenu onClick={handleToggle}>
-                <Avatar $size="small" src={avatar || "/default-user.jpg"} />
+                <Avatar $size="small" src={avatar || DEFAULT_AVATAR} />
                 <label>{username}</label>
             </StyledProfileMenu>
             {isOpen && (

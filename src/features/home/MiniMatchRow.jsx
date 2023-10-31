@@ -43,11 +43,11 @@ function MiniMatchRow({ match }) {
         <MiniTable.Row>
             <div>{match.id}</div>
             <TeamContainer $won={team1Won} $team="1">
-                <Name to={`/user/${player1.name}`}>
+                <Name to={`/user/${player1.name}/profile`}>
                     <span>{player1.name}</span>
                 </Name>
                 {player3 && (
-                    <Name to={`/user/${player3.name}`}>
+                    <Name to={`/user/${player3.name}/profile`}>
                         <span>{player3?.name}</span>
                     </Name>
                 )}
@@ -60,11 +60,11 @@ function MiniMatchRow({ match }) {
             </ScoreContainer>
 
             <TeamContainer $won={!team1Won} $team="2">
-                <Name to={`/user/${player2.name}`}>
+                <Name to={`/user/${player2.name}/profile`}>
                     <span>{player2.name}</span>
                 </Name>
                 {player4 && (
-                    <Name to={`/user/${player4.name}`}>
+                    <Name to={`/user/${player4.name}/profile`}>
                         <span>{player4.name}</span>
                     </Name>
                 )}
