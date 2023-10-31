@@ -11,7 +11,6 @@ import { useMonthlyDisgraces } from "./useMonthlyDisgraces";
 function MonthlyDisgraces() {
     const { disgraces, isLoadingMatches } = useMonthlyDisgraces();
     const currentMonth = format(new Date(), "LLLL", { locale: de });
-    console.log(disgraces);
 
     return (
         <ContentBox>

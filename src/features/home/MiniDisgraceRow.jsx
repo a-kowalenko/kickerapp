@@ -12,14 +12,17 @@ const Name = styled(Link)`
 `;
 
 function MiniDisgraceRow({ disgrace }) {
+    const winner =
+        disgrace.scoreTeam1 === 0 ? disgrace.player2 : disgrace.player1;
+    const loser =
+        disgrace.scoreTeam1 === 0 ? disgrace.player1 : disgrace.player2;
+
+    console.log("lol", disgrace);
+
     return (
         <MiniTable.Row>
-            <Name to={`/user/${disgrace.player1.name}/profile`}>
-                {disgrace.player1.name}
-            </Name>
-            <Name to={`/user/${disgrace.player2.name}/profile`}>
-                {disgrace.player2.name}
-            </Name>
+            <Name to={`/user/${loser.name}/profile`}>{loser.name}</Name>
+            <Name to={`/user/${winner.name}/profile`}>{winner.name}</Name>
             <div>{format(new Date(disgrace.end_time), "dd.")}</div>
         </MiniTable.Row>
     );
