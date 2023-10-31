@@ -10,7 +10,7 @@ export function useRecentMatches() {
         errorMatches,
     } = useQuery({
         queryKey: ["matches", firstPage],
-        queryFn: () => getMatches({ firstPage }),
+        queryFn: () => getMatches({ currentPage: firstPage }),
     });
 
     return { matches, isLoadingMatches };
