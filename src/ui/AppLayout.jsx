@@ -12,7 +12,7 @@ const StyledAppLayout = styled.div`
 
 const Main = styled.main`
     background-color: var(--color-amber-50);
-    padding: 3.2rem 4.8rem 6.4rem;
+    padding: 3.2rem 4.8rem 0rem;
     overflow: auto;
 `;
 

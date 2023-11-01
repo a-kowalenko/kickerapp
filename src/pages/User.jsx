@@ -9,7 +9,6 @@ import { usePlayerName } from "../features/players/usePlayerName";
 import Spinner from "../ui/Spinner";
 import ProfileSettings from "../features/players/ProfileSettings";
 import ProfileMatches from "../features/players/ProfileMatches";
-import { useMatchHistory } from "../features/players/useMatchHistory";
 
 const StyledUser = styled.div`
     /* display: flex;
@@ -20,16 +19,15 @@ function User() {
     const { userId } = useParams();
     const {
         user: {
-            email,
-            user_metadata: { username, avatar },
+            user_metadata: { username },
         },
     } = useUser();
 
     const { player, isLoading } = usePlayerName(userId);
-    const { matches, count, isLoadingMatches } = useMatchHistory(userId);
+
     const ownAccount = userId === username;
 
-    if (isLoading || isLoadingMatches) {
+    if (isLoading) {
         return <Spinner />;
     }
 
@@ -42,7 +40,7 @@ function User() {
         {
             path: `/user/${userId}/history`,
             label: "Match History",
-            component: <ProfileMatches matches={matches} count={count} />,
+            component: <ProfileMatches username={userId} />,
         },
         {
             path: `/user/${userId}/statistics`,
