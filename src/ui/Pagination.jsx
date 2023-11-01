@@ -32,6 +32,9 @@ const Buttons = styled.div`
 `;
 
 const PaginationButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background-color: var(--color-amber-100);
     border: none;
     padding: 0.6rem 1.2rem;
@@ -82,9 +85,10 @@ function Pagination({ numEntries }) {
 
     if (numPages <= 1) {
         return (
-            <p>
-                1 - {numEntries} of {numEntries}
-            </p>
+            <P>
+                <span>1</span> - <span>{numEntries}</span> of{" "}
+                <span>{numEntries}</span>
+            </P>
         );
     }
 
