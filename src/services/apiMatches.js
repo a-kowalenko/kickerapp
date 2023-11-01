@@ -248,8 +248,7 @@ export async function getDisgraces(filter = {}) {
     `,
             { count: "exact" }
         )
-        .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
-        .not("scoreTeam1", "eq", 0, "scoreTeam2", "eq", 0);
+        .or("scoreTeam1.eq.0, scoreTeam2.eq.0");
 
     if (filter.month) {
         const start = new Date(
