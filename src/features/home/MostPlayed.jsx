@@ -38,7 +38,7 @@ function MostPlayed() {
     const { mostPlayed, isLoading } = useMostPlayed();
 
     return (
-        <ContentBox>
+        <ContentBox $area="2 / 3 / 3 / 5">
             <Row type="horizontal">
                 <Heading as="h2">Most played</Heading>
             </Row>

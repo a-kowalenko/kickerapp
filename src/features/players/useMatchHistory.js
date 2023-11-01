@@ -17,7 +17,7 @@ export function useMatchHistory(name) {
         error,
     } = useQuery({
         queryKey: ["matchHistory", name, currentPage],
-        queryFn: () => getMatches({ name, currentPage }),
+        queryFn: () => getMatches({ filter: { name }, currentPage }),
         enabled: !!name,
     });
 
@@ -26,14 +26,16 @@ export function useMatchHistory(name) {
     if (currentPage < pageCount) {
         queryClient.prefetchQuery({
             queryKey: ["matchHistory", name, currentPage + 1],
-            queryFn: () => getMatches({ name, currentPage: currentPage + 1 }),
+            queryFn: () =>
+                getMatches({ filter: { name }, currentPage: currentPage + 1 }),
         });
     }
 
     if (currentPage > 1) {
         queryClient.prefetchQuery({
             queryKey: ["matchHistory", name, currentPage - 1],
-            queryFn: () => getMatches({ name, currentPage: currentPage - 1 }),
+            queryFn: () =>
+                getMatches({ filter: { name }, currentPage: currentPage - 1 }),
         });
     }
 

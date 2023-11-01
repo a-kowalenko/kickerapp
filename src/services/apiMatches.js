@@ -87,7 +87,7 @@ export async function getMatch(matchId) {
     return data;
 }
 
-export async function getMatches({ currentPage, name }) {
+export async function getMatches({ currentPage, filter }) {
     let query = supabase.from("matches").select(
         `
         *,
@@ -99,12 +99,23 @@ export async function getMatches({ currentPage, name }) {
         { count: "exact" }
     );
 
-    if (name) {
-        const player = await getPlayerByName(name);
+    if (filter?.name) {
+        const player = await getPlayerByName(filter.name);
         const { id } = player;
         query = query.or(
             `player1.eq.${id},player2.eq.${id},player3.eq.${id},player4.eq.${id}`
         );
+    }
+
+    if (filter?.today) {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        query = query
+            .filter("created_at", "gte", start.toISOString())
+            .filter("created_at", "lt", end.toISOString());
     }
 
     query = query.order("created_at", { ascending: false });

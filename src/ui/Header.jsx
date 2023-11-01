@@ -13,11 +13,7 @@ const StyledHeader = styled.header`
 `;
 
 function Header() {
-    return (
-        <StyledHeader>
-            <ProfileMenu />
-        </StyledHeader>
-    );
+    return <StyledHeader>Header</StyledHeader>;
 }
 
 export default Header;

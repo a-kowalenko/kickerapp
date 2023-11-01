@@ -84,6 +84,15 @@ const sizes = {
         font-weight: 500;
         font-size: 1.6rem;
     `,
+    xlarge: css`
+        padding: 1.2rem 2.4rem;
+        font-weight: 500;
+        font-size: 1.8rem;
+
+        & svg {
+            font-size: 3.2rem;
+        }
+    `,
     huge: css`
         padding: 1.2rem 2.4rem;
         font-weight: 500;

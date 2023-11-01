@@ -15,10 +15,7 @@ const ContentBox = styled.div`
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
 
-    /* &:hover {
-        transform: scale(1.05);
-        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.4);
-    } */
+    ${(props) => (props.$area ? `grid-area: ${props.$area};` : "")}
 `;
 
 export default ContentBox;
