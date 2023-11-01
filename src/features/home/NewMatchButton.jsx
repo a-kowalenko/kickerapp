@@ -4,10 +4,9 @@ import Button from "../../ui/Button";
 import styled from "styled-components";
 
 const StyledNewMatchButton = styled(Button)`
-    /* font-size: 1.6rem; */
-    /* & svg {
-        font-size: 3.6rem;
-    } */
+    white-space: nowrap;
+    gap: 1rem;
+    padding: 1.2rem 1.6rem;
 `;
 
 function NewMatchButton() {

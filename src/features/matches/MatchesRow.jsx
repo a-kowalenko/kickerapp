@@ -34,7 +34,12 @@ const ScoreContainer = styled.div`
 `;
 
 const Score = styled.div`
+    display: flex;
     font-weight: 600;
+    min-width: 2rem;
+    align-items: center;
+    justify-content: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
 `;
 
 const TeamContainer = styled.div`
@@ -97,9 +102,9 @@ function MatchesRow({ match }) {
             </TeamContainer>
 
             <ScoreContainer>
-                <Score>{match.scoreTeam1}</Score>
+                <Score $team="1">{match.scoreTeam1}</Score>
                 &mdash;
-                <Score>{match.scoreTeam2}</Score>
+                <Score $team="2">{match.scoreTeam2}</Score>
             </ScoreContainer>
 
             <TeamContainer $won={!team1Won} $team="2">
@@ -126,7 +131,7 @@ function MatchesRow({ match }) {
                 <span>
                     {format(
                         new Date(match.created_at),
-                        "dd.MM.yyyy - hh:mm:ss"
+                        "dd.MM.yyyy - HH:mm:ss"
                     )}
                 </span>
             </StartTimeContainer>

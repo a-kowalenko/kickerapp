@@ -77,7 +77,7 @@ function TodayStats() {
                 value={todaysMatches}
             />
             <Stat
-                title="Time wasted"
+                title="Today's playtime"
                 icon={<HiOutlineClock />}
                 color="yellow"
                 value={timeWasted}

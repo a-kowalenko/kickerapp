@@ -6,7 +6,7 @@ import RightSidebar from "./RightSidebar";
 
 const StyledAppLayout = styled.div`
     display: grid;
-    grid-template-columns: 22rem 1fr;
+    grid-template-columns: 22rem 1fr 22rem;
     grid-template-rows: auto 1fr;
     height: 100dvh;
 `;

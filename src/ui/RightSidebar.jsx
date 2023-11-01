@@ -12,6 +12,8 @@ const StyledSidebar = styled.aside`
     grid-column: 3;
     border-right: 1px solid var(--color-amber-100);
     gap: 3.2rem;
+
+    justify-content: space-between;
 `;
 
 function RightSidebar() {
