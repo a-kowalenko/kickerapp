@@ -9,16 +9,19 @@ import { useTodayStats } from "./useTodayStats";
 import { format } from "date-fns";
 import Spinner from "../../ui/Spinner";
 
-function calcPerformance(match) {
-    const { scoreTeam1, scoreTeam2, player1, player2 } = match;
+function getTeams(match) {
+    const {
+        mmrChangeTeam1,
+        mmrChangeTeam2,
+        player1,
+        player2,
+        player3,
+        player4,
+    } = match;
+    const team1 = [player1, player3];
+    const team2 = [player2, player4];
 
-    const winner = scoreTeam1 > scoreTeam2 ? player1 : player2;
-    const loser = scoreTeam1 > scoreTeam2 ? player2 : player1;
-    if (scoreTeam1 === 0 || scoreTeam2 === 0) {
-        return { winner, points: 3, loser };
-    }
-
-    return { winner, points: 1, loser };
+    return { team1, team2, mmrChangeTeam1, mmrChangeTeam2 };
 }
 
 function TodayStats() {
@@ -45,14 +48,32 @@ function TodayStats() {
 
     // 3. Today's top and flop
     const playerWithPoints = matches.reduce((acc, cur) => {
-        const { winner, points, loser } = calcPerformance(cur);
+        const { team1, team2, mmrChangeTeam1, mmrChangeTeam2 } = getTeams(cur);
+        let newState = {};
+        for (const player of team1) {
+            if (player) {
+                newState = {
+                    ...newState,
+                    [player.name]: acc[player.name]
+                        ? acc[player.name] + mmrChangeTeam1
+                        : mmrChangeTeam1,
+                };
+            }
+        }
+        for (const player of team2) {
+            if (player) {
+                newState = {
+                    ...newState,
+                    [player.name]: acc[player.name]
+                        ? acc[player.name] + mmrChangeTeam2
+                        : mmrChangeTeam2,
+                };
+            }
+        }
+
         return {
             ...acc,
-            [winner.name]: acc[winner.name]
-                ? acc[winner.name] + points
-                : points,
-            ...acc,
-            [loser.name]: acc[loser.name] ? acc[loser.name] - points : -points,
+            ...newState,
         };
     }, {});
 
@@ -65,8 +86,8 @@ function TodayStats() {
         return b[1] - a[1];
     });
 
-    const bestPlayer = topPlayers.length > 1 ? topPlayers[0][0] : "-";
-    const worstPlayer = topPlayers.length > 1 ? topPlayers.at(-1)[0] : " - ";
+    const bestPlayer = topPlayers.length > 1 ? topPlayers[0] : "-";
+    const worstPlayer = topPlayers.length > 1 ? topPlayers.at(-1) : " - ";
 
     return (
         <>
@@ -86,13 +107,13 @@ function TodayStats() {
                 title="Today's top"
                 icon={<HiArrowUpRight />}
                 color="green"
-                value={bestPlayer}
+                value={`${bestPlayer.at(0)} (+${bestPlayer.at(1)})`}
             />
             <Stat
                 title="Today's flop"
                 icon={<HiArrowDownRight />}
                 color="red"
-                value={worstPlayer}
+                value={`${worstPlayer.at(0)} (${worstPlayer.at(1)})`}
             />
         </>
     );
