@@ -7,6 +7,13 @@ export function useMatches() {
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
 
+    // Filtering
+    const filterValue = searchParams.get("gamemode");
+    const filter =
+        !filterValue || filterValue === "all"
+            ? null
+            : { field: "gamemode", value: filterValue };
+
     // Pagination
     const currentPage = searchParams.get("page")
         ? Number(searchParams.get("page"))
@@ -18,8 +25,8 @@ export function useMatches() {
         isLoading: isLoadingMatches,
         errorMatches,
     } = useQuery({
-        queryKey: [MATCHES, currentPage],
-        queryFn: () => getMatchesApi({ currentPage }),
+        queryKey: [MATCHES, filter, currentPage],
+        queryFn: () => getMatchesApi({ currentPage, filter }),
     });
 
     // Prefetch next page
@@ -27,15 +34,17 @@ export function useMatches() {
 
     if (currentPage < pageCount) {
         queryClient.prefetchQuery({
-            queryKey: [MATCHES, currentPage + 1],
-            queryFn: () => getMatchesApi({ currentPage: currentPage + 1 }),
+            queryKey: [MATCHES, filter, currentPage + 1],
+            queryFn: () =>
+                getMatchesApi({ currentPage: currentPage + 1, filter }),
         });
     }
 
     if (currentPage > 1) {
         queryClient.prefetchQuery({
-            queryKey: [MATCHES, currentPage - 1],
-            queryFn: () => getMatchesApi({ currentPage: currentPage - 1 }),
+            queryKey: [MATCHES, filter, currentPage - 1],
+            queryFn: () =>
+                getMatchesApi({ currentPage: currentPage - 1, filter }),
         });
     }
 

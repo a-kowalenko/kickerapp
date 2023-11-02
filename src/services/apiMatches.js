@@ -43,14 +43,19 @@ export async function createMatch(players) {
         throw new Error("There already is an active match");
     }
 
+    const { player1, player2, player3, player4 } = players;
+    const gameMode =
+        !player3 && !player4 ? "1on1" : player3 && player4 ? "2on2" : "2on1";
+
     const { data, error } = await supabase
         .from(MATCHES)
         .insert([
             {
-                player1: players.player1.id,
-                player2: players.player2.id,
-                player3: players.player3?.id,
-                player4: players.player4?.id,
+                player1: player1.id,
+                player2: player2.id,
+                player3: player3?.id,
+                player4: player4?.id,
+                gamemode: gameMode,
             },
         ])
         .select()
@@ -98,6 +103,10 @@ export async function getMatches({ currentPage, filter }) {
     `,
         { count: "exact" }
     );
+
+    if (filter?.field) {
+        query = query[filter.method || "eq"](filter.field, filter.value);
+    }
 
     if (filter?.name) {
         const player = await getPlayerByName(filter.name);
