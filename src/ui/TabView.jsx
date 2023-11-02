@@ -51,7 +51,7 @@ const StyledTabSlider = styled.div`
 const TabContent = styled.div`
     display: block;
     background-color: transparent;
-    padding: 2.4rem;
+    padding: 1rem 2.4rem;
 `;
 
 function TabSlider() {
