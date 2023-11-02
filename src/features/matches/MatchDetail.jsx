@@ -145,9 +145,12 @@ function MatchDetail() {
                 return;
             }
             timerIdRef.current = setInterval(() => {
-                setTimer(
-                    format(new Date() - new Date(match.created_at), "mm:ss")
-                );
+                console.log(new Date() - new Date(match.created_at));
+                const val =
+                    new Date() - new Date(match.created_at) < 0
+                        ? 0
+                        : new Date() - new Date(match.created_at);
+                setTimer(format(val, "mm:ss"));
             }, 1000);
 
             return () => clearInterval(timerIdRef.current);

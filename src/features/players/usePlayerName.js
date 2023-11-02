@@ -1,5 +1,6 @@
 import { useQuery } from "react-query";
 import { getPlayerByName } from "../../services/apiPlayer";
+import { PLAYER } from "../../utils/constants";
 
 export function usePlayerName(name) {
     const {
@@ -7,7 +8,7 @@ export function usePlayerName(name) {
         isLoading,
         error,
     } = useQuery({
-        queryKey: ["player", name],
+        queryKey: [PLAYER, name],
         queryFn: () => getPlayerByName(name),
         enabled: !!name,
     });

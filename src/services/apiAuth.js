@@ -1,3 +1,4 @@
+import { PLAYER } from "../utils/constants";
 import { createPlayer, updatePlayerByUserId } from "./apiPlayer";
 import supabase, { supabaseUrl } from "./supabase";
 
@@ -122,7 +123,7 @@ export async function updateCurrentUser({ username, avatar }) {
 
 async function existsUsername(username) {
     const { data: checkPlayers, error: checkPlayerError } = await supabase
-        .from("player")
+        .from(PLAYER)
         .select("*")
         .eq("name", username);
 

@@ -1,10 +1,10 @@
-import { PAGE_SIZE } from "../utils/constants";
+import { MATCHES, PAGE_SIZE, PLAYER } from "../utils/constants";
 import { calculateMmrChange } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
 
 export async function getPlayers() {
-    const { data, error } = await supabase.from("player").select("*");
+    const { data, error } = await supabase.from(PLAYER).select("*");
 
     if (error) {
         console.error(error);
@@ -16,7 +16,7 @@ export async function getPlayers() {
 
 export async function getPlayerById(id) {
     const { data, error } = await supabase
-        .from("player")
+        .from(PLAYER)
         .select("*")
         .eq("id", id);
 
@@ -30,7 +30,7 @@ export async function getPlayerById(id) {
 
 export async function createMatch(players) {
     const { data: activeMatches, activeMatchesError } = await supabase
-        .from("matches")
+        .from(MATCHES)
         .select("*")
         .eq("status", "active");
 
@@ -44,7 +44,7 @@ export async function createMatch(players) {
     }
 
     const { data, error } = await supabase
-        .from("matches")
+        .from(MATCHES)
         .insert([
             {
                 player1: players.player1.id,
@@ -66,14 +66,14 @@ export async function createMatch(players) {
 
 export async function getMatch(matchId) {
     const { data, error } = await supabase
-        .from("matches")
+        .from(MATCHES)
         .select(
             `
             *,
-            player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
-            player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
-            player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
-            player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
+            player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+            player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+            player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+            player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
         `
         )
         .eq("id", matchId)
@@ -88,13 +88,13 @@ export async function getMatch(matchId) {
 }
 
 export async function getMatches({ currentPage, filter }) {
-    let query = supabase.from("matches").select(
+    let query = supabase.from(MATCHES).select(
         `
         *,
-        player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
-        player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
-        player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
-        player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
+        player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+        player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+        player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+        player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
     `,
         { count: "exact" }
     );
@@ -138,7 +138,7 @@ export async function getMatches({ currentPage, filter }) {
 
 export async function getActiveMatch() {
     const { data, error } = await supabase
-        .from("matches")
+        .from(MATCHES)
         .select("*")
         .eq("status", "active");
 
@@ -157,56 +157,137 @@ export async function endMatch({ id, score1, score2 }) {
         throw new Error("Match has already ended");
     }
 
-    if (!match.player3 && !match.player4) {
-        const { player1, player2 } = match;
-        let resultForPlayer1;
-        const hasWonPlayer1 = score1 > score2;
-        if (hasWonPlayer1) {
-            resultForPlayer1 = 1;
-        } else {
-            resultForPlayer1 = 0;
-        }
+    const { player1, player2, player3, player4 } = match;
+    const gameMode = !player3 && !player4 ? "1on1" : "2on2";
+    const team1Wins = score1 > score2;
 
-        const mmrChangeForPlayer1 = calculateMmrChange(
+    let mmrChangeForTeam1;
+    let mmrChangeForTeam2;
+
+    if (gameMode === "1on1") {
+        mmrChangeForTeam1 = calculateMmrChange(
             player1.mmr,
             player2.mmr,
-            resultForPlayer1
+            team1Wins ? 1 : 0
         );
-        const mmrChangeForPlayer2 = -mmrChangeForPlayer1;
+        mmrChangeForTeam2 = -mmrChangeForTeam1;
 
-        const newPlayer1Wins = hasWonPlayer1 ? player1.wins + 1 : player1.wins;
-        const newPlayer1Losses = hasWonPlayer1
+        const newPlayer1Wins = team1Wins ? player1.wins + 1 : player1.wins;
+        const newPlayer1Losses = team1Wins
             ? player1.losses
             : player1.losses + 1;
-        const newPlayer2Wins = hasWonPlayer1 ? player2.wins : player2.wins + 1;
-        const newPlayer2Losses = hasWonPlayer1
+        const newPlayer2Wins = team1Wins ? player2.wins : player2.wins + 1;
+        const newPlayer2Losses = team1Wins
             ? player2.losses + 1
             : player2.losses;
 
         await supabase
-            .from("player")
+            .from(PLAYER)
             .update({
                 wins: newPlayer1Wins,
                 losses: newPlayer1Losses,
-                mmr: player1.mmr + mmrChangeForPlayer1,
+                mmr: player1.mmr + mmrChangeForTeam1,
             })
             .eq("id", player1.id);
         await supabase
-            .from("player")
+            .from(PLAYER)
             .update({
                 wins: newPlayer2Wins,
                 losses: newPlayer2Losses,
-                mmr: player2.mmr + mmrChangeForPlayer2,
+                mmr: player2.mmr + mmrChangeForTeam2,
             })
             .eq("id", player2.id);
     }
 
+    // 2on2, 1on2, 2on1
+    if (gameMode === "2on2") {
+        // if it's a 1on2, check which team is the single player and assign his own mmr2on2
+        mmrChangeForTeam1 = calculateMmrChange(
+            player3
+                ? Math.round((player1.mmr2on2 + player3.mmr2on2) / 2)
+                : player1.mmr2on2,
+            player4
+                ? Math.round((player2.mmr2on2 + player4.mmr2on2) / 2)
+                : player2.mmr2on2,
+            team1Wins ? 1 : 0
+        );
+        mmrChangeForTeam2 = -mmrChangeForTeam1;
+
+        const newPlayer1Wins = team1Wins
+            ? player1.wins2on2 + 1
+            : player1.wins2on2;
+        const newPlayer3Wins = team1Wins
+            ? player3?.wins2on2 + 1
+            : player3?.wins2on2;
+        const newPlayer1Losses = team1Wins
+            ? player1.losses2on2
+            : player1.losses2on2 + 1;
+        const newPlayer3Losses = team1Wins
+            ? player3?.losses2on2
+            : player3?.losses2on2 + 1;
+        const newPlayer2Wins = team1Wins
+            ? player2.wins2on2
+            : player2.wins2on2 + 1;
+        const newPlayer4Wins = team1Wins
+            ? player4?.wins2on2
+            : player4?.wins2on2 + 1;
+        const newPlayer2Losses = team1Wins
+            ? player2.losses2on2 + 1
+            : player2.losses2on2;
+        const newPlayer4Losses = team1Wins
+            ? player4?.losses2on2 + 1
+            : player4?.losses2on2;
+
+        await supabase
+            .from(PLAYER)
+            .update({
+                wins2on2: newPlayer1Wins,
+                losses2on2: newPlayer1Losses,
+                mmr2on2: player1.mmr2on2 + mmrChangeForTeam1,
+            })
+            .eq("id", player1.id);
+        await supabase
+            .from(PLAYER)
+            .update({
+                wins2on2: newPlayer2Wins,
+                losses2on2: newPlayer2Losses,
+                mmr2on2: player2.mmr2on2 + mmrChangeForTeam2,
+            })
+            .eq("id", player2.id);
+        if (player3) {
+            await supabase
+                .from(PLAYER)
+                .update({
+                    wins2on2: newPlayer3Wins,
+                    losses2on2: newPlayer3Losses,
+                    mmr2on2: player3.mmr2on2 + mmrChangeForTeam1,
+                })
+                .eq("id", player3.id);
+        }
+        if (player4) {
+            await supabase
+                .from(PLAYER)
+                .update({
+                    wins2on2: newPlayer4Wins,
+                    losses2on2: newPlayer4Losses,
+                    mmr2on2: player4.mmr2on2 + mmrChangeForTeam2,
+                })
+                .eq("id", player4.id);
+        }
+    }
+
     const { data, error } = await supabase
-        .from("matches")
+        .from(MATCHES)
         .update({
             status: "ended",
             scoreTeam1: score1,
             scoreTeam2: score2,
+            mmrChangeTeam1: mmrChangeForTeam1,
+            mmrChangeTeam2: mmrChangeForTeam2,
+            mmrPlayer1: gameMode === "1on1" ? player1.mmr : player1.mmr2on2,
+            mmrPlayer2: gameMode === "1on1" ? player2.mmr : player2.mmr2on2,
+            mmrPlayer3: gameMode === "2on2" ? player3?.mmr2on2 : null,
+            mmrPlayer4: gameMode === "2on2" ? player4?.mmr2on2 : null,
             end_time: new Date(),
         })
         .eq("id", id)
@@ -221,41 +302,16 @@ export async function endMatch({ id, score1, score2 }) {
     return data;
 }
 
-// TODO: Löschen oder erweitern
-
-// export async function getDisgraces({ filter }) {
-//     const { data, error, count } = await supabase
-//         .from("matches")
-//         .select(
-//             `
-//         *,
-//         player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
-//         player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
-//         player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
-//         player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
-//     `,
-//             { count: "exact" }
-//         )
-//         .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
-//         .not("scoreTeam1", "eq", 0, "scoreTeam2", "eq", 0);
-
-//     if (error) {
-//         throw new Error("Error while selecting the disgraces");
-//     }
-
-//     return { data, error, count };
-// }
-
 export async function getDisgraces(filter = {}) {
     let query = supabase
-        .from("matches")
+        .from(MATCHES)
         .select(
             `
         *,
-        player1: player!matches_player1_fkey (id, name, mmr, wins, losses, avatar),
-        player2: player!matches_player2_fkey (id, name, mmr, wins, losses, avatar),
-        player3: player!matches_player3_fkey (id, name, mmr, wins, losses, avatar),
-        player4: player!matches_player4_fkey (id, name, mmr, wins, losses, avatar)
+        player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+        player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+        player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+        player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
     `,
             { count: "exact" }
         )

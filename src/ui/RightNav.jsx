@@ -13,10 +13,9 @@ const NavList = styled.ul`
 
 function RightNav() {
     const location = useLocation();
-
-    console.log(location);
     const isCreatingMatch = location.pathname === "/matches/create";
     const navigate = useNavigate();
+
     return (
         <nav>
             <NavList>

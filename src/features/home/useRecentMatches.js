@@ -1,5 +1,6 @@
 import { useQuery } from "react-query";
 import { getMatches } from "../../services/apiMatches";
+import { MATCHES } from "../../utils/constants";
 
 export function useRecentMatches() {
     const firstPage = 1;
@@ -9,7 +10,7 @@ export function useRecentMatches() {
         isLoading: isLoadingMatches,
         errorMatches,
     } = useQuery({
-        queryKey: ["matches", firstPage],
+        queryKey: [MATCHES, firstPage],
         queryFn: () => getMatches({ currentPage: firstPage }),
     });
 

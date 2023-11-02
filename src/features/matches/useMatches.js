@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 import { getMatches as getMatchesApi } from "../../services/apiMatches";
 import { useSearchParams } from "react-router-dom";
-import { PAGE_SIZE } from "../../utils/constants";
+import { MATCHES, PAGE_SIZE } from "../../utils/constants";
 
 export function useMatches() {
     const [searchParams] = useSearchParams();
@@ -18,7 +18,7 @@ export function useMatches() {
         isLoading: isLoadingMatches,
         errorMatches,
     } = useQuery({
-        queryKey: ["matches", currentPage],
+        queryKey: [MATCHES, currentPage],
         queryFn: () => getMatchesApi({ currentPage }),
     });
 
@@ -27,14 +27,14 @@ export function useMatches() {
 
     if (currentPage < pageCount) {
         queryClient.prefetchQuery({
-            queryKey: ["matches", currentPage + 1],
+            queryKey: [MATCHES, currentPage + 1],
             queryFn: () => getMatchesApi({ currentPage: currentPage + 1 }),
         });
     }
 
     if (currentPage > 1) {
         queryClient.prefetchQuery({
-            queryKey: ["matches", currentPage - 1],
+            queryKey: [MATCHES, currentPage - 1],
             queryFn: () => getMatchesApi({ currentPage: currentPage - 1 }),
         });
     }

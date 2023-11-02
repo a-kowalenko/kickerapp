@@ -1,8 +1,9 @@
+import { PLAYER } from "../utils/constants";
 import supabase from "./supabase";
 
 export async function getRankings() {
     const { data, error, count } = await supabase
-        .from("player")
+        .from(PLAYER)
         .select("*", { count: "exact" })
         .order("mmr", { ascending: false });
 
