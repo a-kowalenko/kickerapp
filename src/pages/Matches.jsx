@@ -12,7 +12,7 @@ const StyledMatches = styled.div`
 `;
 
 function Matches() {
-    const { matches, count, isLoadingMatches, errorMatches } = useMatches();
+    const { matches, count, isLoadingMatches } = useMatches();
 
     if (isLoadingMatches) {
         return <Spinner />;

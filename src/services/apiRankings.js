@@ -1,11 +1,14 @@
 import { PLAYER } from "../utils/constants";
 import supabase from "./supabase";
 
-export async function getRankings() {
-    const { data, error, count } = await supabase
-        .from(PLAYER)
-        .select("*", { count: "exact" })
-        .order("mmr", { ascending: false });
+export async function getRankings({ filter }) {
+    let query = supabase.from(PLAYER).select("*", { count: "exact" });
+
+    if (filter) {
+        query = query.order(filter.field, { ascending: false });
+    }
+
+    const { data, error, count } = await query;
 
     if (error) {
         throw new Error("Error while selecting the rankings");
