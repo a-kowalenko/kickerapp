@@ -87,7 +87,7 @@ function TodayStats() {
     });
 
     const bestPlayer = topPlayers.length > 1 ? topPlayers[0] : "-";
-    const worstPlayer = topPlayers.length > 1 ? topPlayers.at(-1) : " - ";
+    const worstPlayer = topPlayers.length > 1 ? topPlayers.at(-1) : "-";
 
     return (
         <>
@@ -107,13 +107,19 @@ function TodayStats() {
                 title="Today's top"
                 icon={<HiArrowUpRight />}
                 color="green"
-                value={`${bestPlayer.at(0)} (+${bestPlayer.at(1)})`}
+                value={
+                    `${bestPlayer.at(0)}` +
+                    (topPlayers.length > 1 ? ` (+${bestPlayer.at(1)})` : "")
+                }
             />
             <Stat
                 title="Today's flop"
                 icon={<HiArrowDownRight />}
                 color="red"
-                value={`${worstPlayer.at(0)} (${worstPlayer.at(1)})`}
+                value={
+                    `${worstPlayer.at(0)}` +
+                    (topPlayers.length > 1 ? ` (${worstPlayer.at(1)})` : "")
+                }
             />
         </>
     );
