@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { useMostPlayed } from "./useMostPlayed";
 import LoadingSpinner from "../../ui/LoadingSpinner";
+import styled from "styled-components";
 
 const colorsLight = [
     "#84cc16",
@@ -34,18 +35,22 @@ const colorsDark = [
     "#7e22ce",
 ];
 
+const StyledPie = styled(Pie)`
+    z-index: 9999;
+`;
+
 function MostPlayed() {
     const { mostPlayed, isLoading } = useMostPlayed();
 
     return (
-        <ContentBox>
+        <ContentBox $area="2 / 3 / 3 / 5">
             <Row type="horizontal">
                 <Heading as="h2">Most played</Heading>
             </Row>
             {isLoading ? (
                 <LoadingSpinner />
             ) : (
-                <ResponsiveContainer width="100%" height={230}>
+                <ResponsiveContainer width="100%" height={240}>
                     <PieChart>
                         <Pie
                             data={mostPlayed}
@@ -56,6 +61,8 @@ function MostPlayed() {
                             cx="40%"
                             cy="50%"
                             paddingAngle={3}
+                            label
+                            labelLine
                         >
                             {mostPlayed.map((entry, index) => (
                                 <Cell

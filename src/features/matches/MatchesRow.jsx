@@ -34,7 +34,12 @@ const ScoreContainer = styled.div`
 `;
 
 const Score = styled.div`
+    display: flex;
     font-weight: 600;
+    min-width: 2rem;
+    align-items: center;
+    justify-content: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
 `;
 
 const TeamContainer = styled.div`
@@ -83,11 +88,23 @@ function MatchesRow({ match }) {
             <TeamContainer $won={team1Won} $team="1">
                 <Name to={`/user/${player1.name}/profile`}>
                     <span>{player1.name}</span>
+                    {match.mmrChangeTeam1 && match.mmrPlayer1 && (
+                        <span>
+                            ({match.mmrPlayer1}){team1Won ? "+" : ""}
+                            {match.mmrChangeTeam1}
+                        </span>
+                    )}
                     <Avatar $size="xs" src={player1.avatar || DEFAULT_AVATAR} />
                 </Name>
                 {player3 && (
                     <Name to={`/user/${player3.name}/profile`}>
                         <span>{player3?.name}</span>
+                        {match.mmrChangeTeam1 && match.mmrPlayer3 && (
+                            <span>
+                                ({match.mmrPlayer3}){team1Won ? "+" : ""}
+                                {match.mmrChangeTeam1}
+                            </span>
+                        )}
                         <Avatar
                             $size="xs"
                             src={player3.avatar || DEFAULT_AVATAR}
@@ -97,15 +114,21 @@ function MatchesRow({ match }) {
             </TeamContainer>
 
             <ScoreContainer>
-                <Score>{match.scoreTeam1}</Score>
+                <Score $team="1">{match.scoreTeam1}</Score>
                 &mdash;
-                <Score>{match.scoreTeam2}</Score>
+                <Score $team="2">{match.scoreTeam2}</Score>
             </ScoreContainer>
 
             <TeamContainer $won={!team1Won} $team="2">
                 <Name to={`/user/${player2.name}/profile`}>
                     <Avatar $size="xs" src={player2.avatar || DEFAULT_AVATAR} />
                     <span>{player2.name}</span>
+                    {match.mmrChangeTeam2 && match.mmrPlayer2 && (
+                        <span>
+                            ({match.mmrPlayer2}){team1Won ? "" : "+"}
+                            {match.mmrChangeTeam2}
+                        </span>
+                    )}
                 </Name>
                 {player4 && (
                     <Name to={`/user/${player4.name}/profile`}>
@@ -114,6 +137,12 @@ function MatchesRow({ match }) {
                             src={player4?.avatar || DEFAULT_AVATAR}
                         />
                         <span>{player4.name}</span>
+                        {match.mmrChangeTeam2 && match.mmrPlayer4 && (
+                            <span>
+                                ({match.mmrPlayer4}){team1Won ? "" : "+"}
+                                {match.mmrChangeTeam2}
+                            </span>
+                        )}
                     </Name>
                 )}
             </TeamContainer>
@@ -126,7 +155,7 @@ function MatchesRow({ match }) {
                 <span>
                     {format(
                         new Date(match.created_at),
-                        "dd.MM.yyyy - hh:mm:ss"
+                        "dd.MM.yyyy - HH:mm:ss"
                     )}
                 </span>
             </StartTimeContainer>

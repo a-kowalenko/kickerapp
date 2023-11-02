@@ -101,9 +101,7 @@ const StartMatchButton = styled.button`
     border-radius: var(--border-radius-md);
     font-weight: 600;
     cursor: pointer;
-    transition:
-        background-color 0.2s,
-        transform 0.2s;
+    transition: background-color 0.2s, transform 0.2s;
 
     &:hover {
         background-color: var(--color-amber-300);
@@ -148,6 +146,7 @@ function ChoosePlayers() {
 
     useEffect(() => {
         let timerId;
+
         if (timer >= 0 && isStarting) {
             if (timer === 3) {
                 countdownAudio.play();

@@ -3,7 +3,14 @@ import styled from "styled-components";
 
 const StyledTable = styled.div`
     font-size: 1.6rem;
-    overflow: hidden;
+    overflow: scroll;
+
+    /* Removing scrollbars for webkit, firefox, and ms, respectively */
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 `;
 
 const StyledHeader = styled.div`

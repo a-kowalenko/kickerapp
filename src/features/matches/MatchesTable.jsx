@@ -4,7 +4,7 @@ import MatchesRow from "./MatchesRow";
 
 function MatchesTable({ matches, count }) {
     return (
-        <Table columns="0.1fr 0.5fr 0.5fr 0.5fr 0.4fr 1fr 0.5fr">
+        <Table columns="0.1fr 0.6fr 0.3fr 0.6fr 0.4fr 1fr 0.5fr">
             <Table.Header>
                 <div>Id</div>
                 <div style={{ textAlign: "right" }}>Team 1</div>

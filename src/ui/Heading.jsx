@@ -22,6 +22,12 @@ const Heading = styled.h1`
             font-size: 2rem;
             font-weight: 500;
         `}
+    ${(props) =>
+        props.type === "page" &&
+        css`
+            text-transform: uppercase;
+            margin-bottom: unset;
+        `}
 
     ${(props) => (props.$uppercase ? "text-transform: uppercase" : "")};
 

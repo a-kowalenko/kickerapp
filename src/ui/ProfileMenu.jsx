@@ -12,6 +12,7 @@ import { useOutsideClick } from "../hooks/useOutsideClick";
 import { DEFAULT_AVATAR } from "../utils/constants";
 
 const StyledProfileMenu = styled.div`
+    position: relative;
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -29,8 +30,11 @@ const StyledList = styled.ul`
     box-shadow: var(--shadow-md);
     border-radius: var(--border-radius-md);
 
-    right: 32px;
-    top: 52px;
+    position: absolute; // Die Liste wird über anderen Elementen angezeigt
+    top: 110%; // Beginnt direkt unter dem Toggle-Button
+    right: 0; // Ausgerichtet am linken Rand des Containers
+    /* width: 100%; // Nimmt die volle Breite des Containers ein */
+    z-index: 10;
 `;
 
 const StyledButton = styled.button`
@@ -90,23 +94,24 @@ function ProfileMenu() {
             <StyledProfileMenu onClick={handleToggle}>
                 <Avatar $size="small" src={avatar || DEFAULT_AVATAR} />
                 <label>{username}</label>
+
+                {isOpen && (
+                    <StyledList>
+                        <li>
+                            <StyledButton onClick={goToProfile}>
+                                <HiOutlineUserCircle />
+                                Profile
+                            </StyledButton>
+                        </li>
+                        <li>
+                            <StyledButton onClick={handleLogout}>
+                                <HiMiniArrowLeftOnRectangle />
+                                Logout
+                            </StyledButton>
+                        </li>
+                    </StyledList>
+                )}
             </StyledProfileMenu>
-            {isOpen && (
-                <StyledList>
-                    <li>
-                        <StyledButton onClick={goToProfile}>
-                            <HiOutlineUserCircle />
-                            Profile
-                        </StyledButton>
-                    </li>
-                    <li>
-                        <StyledButton onClick={handleLogout}>
-                            <HiMiniArrowLeftOnRectangle />
-                            Logout
-                        </StyledButton>
-                    </li>
-                </StyledList>
-            )}
         </div>
     );
 }

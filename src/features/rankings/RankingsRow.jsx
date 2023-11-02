@@ -27,10 +27,13 @@ const Stat = styled.div`
     text-align: center;
 `;
 
-function RankingsRow({ player }) {
-    const totalGames = player.wins + player.losses;
-    const winrate =
-        totalGames > 0 ? ((player.wins / totalGames) * 100).toFixed(1) : 0;
+function RankingsRow({ player, gamemode }) {
+    const wins = gamemode === "1on1" ? player.wins : player.wins2on2;
+    const losses = gamemode === "1on1" ? player.losses : player.losses2on2;
+    const mmr = gamemode === "1on1" ? player.mmr : player.mmr2on2;
+
+    const totalGames = wins + losses;
+    const winrate = totalGames > 0 ? ((wins / totalGames) * 100).toFixed(1) : 0;
     return (
         <Table.Row>
             <Rank>{player.rank}</Rank>
@@ -41,11 +44,11 @@ function RankingsRow({ player }) {
             </Name>
 
             <Stat>
-                <span>{player.wins}</span>
+                <span>{wins}</span>
             </Stat>
 
             <Stat>
-                <span>{player.losses}</span>
+                <span>{losses}</span>
             </Stat>
 
             <Stat>
@@ -57,7 +60,7 @@ function RankingsRow({ player }) {
             </Stat>
 
             <Stat>
-                <span>{player.mmr}</span>
+                <span>{mmr}</span>
             </Stat>
         </Table.Row>
     );

@@ -5,12 +5,18 @@ import Row from "../../ui/Row";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import MiniMatchRow from "./MiniMatchRow";
 import { useRecentMatches } from "./useRecentMatches";
+import styled from "styled-components";
+
+const StyledRecentMatches = styled.div`
+    display: flex;
+    grid-column: 1 / -1;
+`;
 
 function RecentMatches() {
     const { matches, isLoadingMatches } = useRecentMatches();
 
     return (
-        <ContentBox>
+        <ContentBox $area="3 / 1 / 4 / 5">
             <Row type="horizontal">
                 <Heading as="h2">Recent matches</Heading>
             </Row>

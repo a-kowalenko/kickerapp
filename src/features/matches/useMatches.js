@@ -1,11 +1,18 @@
 import { useQuery, useQueryClient } from "react-query";
 import { getMatches as getMatchesApi } from "../../services/apiMatches";
 import { useSearchParams } from "react-router-dom";
-import { PAGE_SIZE } from "../../utils/constants";
+import { MATCHES, PAGE_SIZE } from "../../utils/constants";
 
 export function useMatches() {
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
+
+    // Filtering
+    const filterValue = searchParams.get("gamemode");
+    const filter =
+        !filterValue || filterValue === "all"
+            ? null
+            : { field: "gamemode", value: filterValue };
 
     // Pagination
     const currentPage = searchParams.get("page")
@@ -18,8 +25,8 @@ export function useMatches() {
         isLoading: isLoadingMatches,
         errorMatches,
     } = useQuery({
-        queryKey: ["matches", currentPage],
-        queryFn: () => getMatchesApi({ currentPage }),
+        queryKey: [MATCHES, filter, currentPage],
+        queryFn: () => getMatchesApi({ currentPage, filter }),
     });
 
     // Prefetch next page
@@ -27,15 +34,17 @@ export function useMatches() {
 
     if (currentPage < pageCount) {
         queryClient.prefetchQuery({
-            queryKey: ["matches", currentPage + 1],
-            queryFn: () => getMatchesApi({ currentPage: currentPage + 1 }),
+            queryKey: [MATCHES, filter, currentPage + 1],
+            queryFn: () =>
+                getMatchesApi({ currentPage: currentPage + 1, filter }),
         });
     }
 
     if (currentPage > 1) {
         queryClient.prefetchQuery({
-            queryKey: ["matches", currentPage - 1],
-            queryFn: () => getMatchesApi({ currentPage: currentPage - 1 }),
+            queryKey: [MATCHES, filter, currentPage - 1],
+            queryFn: () =>
+                getMatchesApi({ currentPage: currentPage - 1, filter }),
         });
     }
 

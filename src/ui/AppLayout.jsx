@@ -2,10 +2,11 @@ import { Outlet } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import styled from "styled-components";
+import RightSidebar from "./RightSidebar";
 
 const StyledAppLayout = styled.div`
     display: grid;
-    grid-template-columns: 22rem 1fr;
+    grid-template-columns: 22rem 1fr 22rem;
     grid-template-rows: auto 1fr;
     height: 100dvh;
 `;
@@ -14,6 +15,13 @@ const Main = styled.main`
     background-color: var(--color-amber-50);
     padding: 3.2rem 4.8rem 0rem;
     overflow: auto;
+
+    /* Removing scrollbars for webkit, firefox, and ms, respectively */
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 `;
 
 function AppLayout() {
@@ -24,6 +32,7 @@ function AppLayout() {
             <Main>
                 <Outlet />
             </Main>
+            <RightSidebar />
         </StyledAppLayout>
     );
 }

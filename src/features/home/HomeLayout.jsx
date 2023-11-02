@@ -1,22 +1,24 @@
 import styled from "styled-components";
 import RecentMatches from "./RecentMatches";
-import NewMatchButton from "./NewMatchButton";
 import MonthlyDisgraces from "./MonthlyDisgraces";
 import MostPlayed from "./MostPlayed";
+import TodayStats from "./TodayStats";
 
 const StyledHomeLayout = styled.div`
     display: grid;
-    grid-template-columns: 0.6fr 1fr 0.6fr;
-    gap: 2.4rem;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: auto 34rem auto;
+    grid-column-gap: 24px;
+    grid-row-gap: 24px;
 `;
 
 function HomeLayout() {
     return (
         <StyledHomeLayout>
+            <TodayStats />
             <MonthlyDisgraces />
-            <RecentMatches />
             <MostPlayed />
-            <NewMatchButton />
+            <RecentMatches />
         </StyledHomeLayout>
     );
 }

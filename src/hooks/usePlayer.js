@@ -1,5 +1,6 @@
 import { useQuery } from "react-query";
 import { getPlayerById } from "../services/apiMatches";
+import { PLAYER } from "../utils/constants";
 
 export function usePlayer(playerId) {
     const {
@@ -7,7 +8,7 @@ export function usePlayer(playerId) {
         isLoading,
         error,
     } = useQuery({
-        queryKey: ["player", playerId],
+        queryKey: [PLAYER, playerId],
         queryFn: () => getPlayerById(playerId),
         enabled: !!playerId,
     });

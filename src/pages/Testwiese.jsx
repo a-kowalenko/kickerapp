@@ -8,6 +8,7 @@ import MiniTable from "../ui/MiniTable";
 import { useMatches } from "../features/matches/useMatches";
 import Row from "../ui/Row";
 import Heading from "../ui/Heading";
+import Filter from "../ui/Filter";
 
 const fakeOptions = [
     { text: "Element 1", value: 1 },
@@ -15,6 +16,12 @@ const fakeOptions = [
     { text: "Element 3", value: 3 },
     { text: "Element 4", value: 4 },
     { text: "Element 5", value: 5 },
+];
+
+const fakeFilterOptions = [
+    { value: "1on1" },
+    { value: "2on2" },
+    { value: "2on1" },
 ];
 
 function Testwiese() {
@@ -63,6 +70,9 @@ function Testwiese() {
                     disabled={true}
                     onChange={handleCheckboxChange}
                 />
+            </FormRow>
+            <FormRow>
+                <Filter options={fakeFilterOptions} field="gamemode" />
             </FormRow>
             <FormRow>
                 <Button

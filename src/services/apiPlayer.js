@@ -1,3 +1,4 @@
+import { PLAYER } from "../utils/constants";
 import supabase from "./supabase";
 
 export async function createPlayer(user) {
@@ -7,7 +8,7 @@ export async function createPlayer(user) {
     } = user;
 
     const { data, error } = await supabase
-        .from("player")
+        .from(PLAYER)
         .insert({
             user_id,
             name,
@@ -25,7 +26,7 @@ export async function createPlayer(user) {
 
 export async function updatePlayerByUserId({ username, avatar, userId }) {
     const { data, error } = await supabase
-        .from("player")
+        .from(PLAYER)
         .update({ name: username, avatar })
         .eq("user_id", userId)
         .select()
@@ -50,7 +51,7 @@ export async function getMostPlayed() {
 
 export async function getPlayerByName(name) {
     const { data, error } = await supabase
-        .from("player")
+        .from(PLAYER)
         .select("*")
         .eq("name", name)
         .single();

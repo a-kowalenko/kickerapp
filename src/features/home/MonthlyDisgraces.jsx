@@ -13,7 +13,7 @@ function MonthlyDisgraces() {
     const currentMonth = format(new Date(), "LLLL", { locale: de });
 
     return (
-        <ContentBox>
+        <ContentBox $area="2 / 1 / 3 / 3">
             <Row type="horizontal">
                 <Heading as="h2">Strich der Schande - {currentMonth}</Heading>
             </Row>
