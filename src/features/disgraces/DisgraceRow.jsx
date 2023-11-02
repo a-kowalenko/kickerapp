@@ -22,22 +22,50 @@ const Stat = styled.div`
 `;
 
 function DisgraceRow({ disgrace }) {
-    const winner =
-        disgrace.scoreTeam1 === 0 ? disgrace.player2 : disgrace.player1;
-    const loser =
-        disgrace.scoreTeam1 === 0 ? disgrace.player1 : disgrace.player2;
+    const { player1, player2, player3, player4 } = disgrace;
+    const isTeam1Winner = disgrace.scoreTeam1 !== 0;
+    const team1 = [player1, player3];
+    const team2 = [player2, player4];
+    const winnerTeam = isTeam1Winner ? team1 : team2;
+    const loserTeam = isTeam1Winner ? team2 : team1;
 
     return (
         <Table.Row>
-            <Name to={`/user/${loser.name}/profile`}>
-                <Avatar $size="xs" src={loser.avatar || DEFAULT_AVATAR} />
-                <span>{loser.name}</span>
-            </Name>
+            <div>
+                {loserTeam.map(
+                    (loser) =>
+                        loser && (
+                            <Name
+                                to={`/user/${loser.name}/profile`}
+                                key={loser.id}
+                            >
+                                <Avatar
+                                    $size="xs"
+                                    src={loser.avatar || DEFAULT_AVATAR}
+                                />
+                                <span>{loser.name}</span>
+                            </Name>
+                        )
+                )}
+            </div>
 
-            <Name to={`/user/${winner.name}/profile`}>
-                <Avatar $size="xs" src={winner.avatar || DEFAULT_AVATAR} />
-                <span>{winner.name}</span>
-            </Name>
+            <div>
+                {winnerTeam.map(
+                    (winner) =>
+                        winner && (
+                            <Name
+                                to={`/user/${winner.name}/profile`}
+                                key={winner.id}
+                            >
+                                <Avatar
+                                    $size="xs"
+                                    src={winner.avatar || DEFAULT_AVATAR}
+                                />
+                                <span>{winner.name}</span>
+                            </Name>
+                        )
+                )}
+            </div>
 
             <Stat>
                 <span>{format(new Date(disgrace.end_time), "dd.MM.yyyy")}</span>

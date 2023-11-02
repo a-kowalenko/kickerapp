@@ -311,7 +311,7 @@ export async function endMatch({ id, score1, score2 }) {
     return data;
 }
 
-export async function getDisgraces(filter = {}) {
+export async function getDisgraces({ filter }) {
     let query = supabase
         .from(MATCHES)
         .select(
@@ -326,7 +326,11 @@ export async function getDisgraces(filter = {}) {
         )
         .or("scoreTeam1.eq.0, scoreTeam2.eq.0");
 
-    if (filter.month) {
+    if (filter?.field) {
+        query = query[filter.method || "eq"](filter.field, filter.value);
+    }
+
+    if (filter?.month) {
         const start = new Date(
             filter.year || new Date().getFullYear(),
             filter.month,

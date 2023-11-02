@@ -18,6 +18,7 @@ const Toggle = styled.div`
     width: 100%;
     --color-input-field: #fddf335f;
     --color-input-field-hover: #ffffff9a;
+    cursor: pointer;
 
     display: flex;
     align-items: center;
@@ -97,9 +98,7 @@ function Filter({ options, field, icon }) {
 
     function handleToggle(e) {
         e.stopPropagation();
-        console.log("toggle");
         setIsOpen((open) => {
-            console.log("next:", !isOpen);
             return !open;
         });
     }
