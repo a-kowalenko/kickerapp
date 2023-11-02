@@ -35,10 +35,6 @@ const colorsDark = [
     "#7e22ce",
 ];
 
-const StyledPie = styled(Pie)`
-    z-index: 9999;
-`;
-
 function MostPlayed() {
     const { mostPlayed, isLoading } = useMostPlayed();
 

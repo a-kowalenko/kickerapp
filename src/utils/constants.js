@@ -4,5 +4,5 @@ export const START_MATCH_COUNTDOWN = 10;
 export const DEFAULT_AVATAR = "/default-user.jpg";
 
 // DATABASE CONSTANTS
-export const MATCHES = "matches_duplicate";
-export const PLAYER = "player_duplicate";
+export const MATCHES = "matches";
+export const PLAYER = "player";
