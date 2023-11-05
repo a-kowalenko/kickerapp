@@ -1,6 +1,8 @@
 import styled from "styled-components";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR } from "../../utils/constants";
+import StatsTable from "./StatsTable";
+import StatsFilterRow from "./StatsFilterRow";
 
 const StyledProfile = styled.div`
     display: flex;
@@ -33,24 +35,14 @@ const LeftBox = styled.div`
 `;
 
 function Profile({ player }) {
-    const { avatar, wins, losses, mmr } = player;
+    const { avatar } = player;
     return (
         <StyledProfile>
             <Avatar $size="huge" src={avatar || DEFAULT_AVATAR} />
-            <StatsContainer>
-                <Stat>
-                    <div>Wins:</div>
-                    <div>{wins}</div>
-                </Stat>
-                <Stat>
-                    <div>Losses:</div>
-                    <div>{losses}</div>
-                </Stat>
-                <Stat>
-                    <div>MMR:</div>
-                    <div>{mmr}</div>
-                </Stat>
-            </StatsContainer>
+            <div>
+                <StatsFilterRow />
+                <StatsTable player={player} />
+            </div>
         </StyledProfile>
     );
 }

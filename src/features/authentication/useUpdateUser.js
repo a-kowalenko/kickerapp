@@ -13,7 +13,7 @@ export function useUpdateUser() {
         onSuccess: (data) => {
             toast.success("User updated successfully");
             queryClient.setQueryData(["user"], data.user);
-            navigate(`/user/${data.user.user_metadata.username}`);
+            navigate(`/user/${data.user.user_metadata.username}/settings`);
         },
         onError: (err) => toast.error(err.message),
     });

@@ -127,28 +127,33 @@ function MatchDetail() {
 
     useEffect(
         function () {
+            console.log("start effect");
             if (match && match.status === "ended") {
+                console.log("match status ended");
                 setScore1(match.scoreTeam1);
                 setScore2(match.scoreTeam2);
             }
 
             if (match && match.end_time) {
+                console.log("match has end time");
                 setTimer(
                     format(
-                        new Date(match.end_time) - new Date(match.created_at),
+                        new Date(match.end_time) - new Date(match.start_time),
                         "mm:ss"
                     )
                 );
             }
 
             if (!match || match.status !== "active") {
+                console.log("match is not active");
                 return;
             }
             timerIdRef.current = setInterval(() => {
+                console.log("interval function called");
                 const val =
-                    new Date() - new Date(match.created_at) < 0
+                    new Date() - new Date(match.start_time) < 0
                         ? 0
-                        : new Date() - new Date(match.created_at);
+                        : new Date() - new Date(match.start_time);
                 setTimer(format(val, "mm:ss"));
             }, 1000);
 
