@@ -56,6 +56,7 @@ export async function createMatch(players) {
                 player3: player3?.id,
                 player4: player4?.id,
                 gamemode: gameMode,
+                start_time: new Date(),
             },
         ])
         .select()
@@ -123,11 +124,11 @@ export async function getMatches({ currentPage, filter }) {
         end.setHours(23, 59, 59, 999);
 
         query = query
-            .filter("created_at", "gte", start.toISOString())
-            .filter("created_at", "lt", end.toISOString());
+            .filter("start_time", "gte", start.toISOString())
+            .filter("start_time", "lt", end.toISOString());
     }
 
-    query = query.order("created_at", { ascending: false });
+    query = query.order("start_time", { ascending: false });
 
     if (currentPage) {
         const from = (currentPage - 1) * PAGE_SIZE;
@@ -343,8 +344,8 @@ export async function getDisgraces({ filter }) {
         );
 
         query = query
-            .filter("created_at", "gte", start.toISOString())
-            .filter("created_at", "lt", end.toISOString());
+            .filter("start_time", "gte", start.toISOString())
+            .filter("start_time", "lt", end.toISOString());
     }
 
     const { data, error, count } = await query;

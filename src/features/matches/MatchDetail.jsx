@@ -135,7 +135,7 @@ function MatchDetail() {
             if (match && match.end_time) {
                 setTimer(
                     format(
-                        new Date(match.end_time) - new Date(match.created_at),
+                        new Date(match.end_time) - new Date(match.start_time),
                         "mm:ss"
                     )
                 );
@@ -146,9 +146,9 @@ function MatchDetail() {
             }
             timerIdRef.current = setInterval(() => {
                 const val =
-                    new Date() - new Date(match.created_at) < 0
+                    new Date() - new Date(match.start_time) < 0
                         ? 0
-                        : new Date() - new Date(match.created_at);
+                        : new Date() - new Date(match.start_time);
                 setTimer(format(val, "mm:ss"));
             }, 1000);
 

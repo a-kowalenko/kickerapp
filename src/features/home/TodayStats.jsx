@@ -40,7 +40,7 @@ function TodayStats() {
             .filter((match) => match.status === "ended")
             .reduce(
                 (acc, cur) =>
-                    acc + (new Date(cur.end_time) - new Date(cur.created_at)),
+                    acc + (new Date(cur.end_time) - new Date(cur.start_time)),
                 0
             ),
         "mm:ss"

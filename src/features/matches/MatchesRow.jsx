@@ -154,7 +154,7 @@ function MatchesRow({ match }) {
             <StartTimeContainer>
                 <span>
                     {format(
-                        new Date(match.created_at),
+                        new Date(match.start_time),
                         "dd.MM.yyyy - HH:mm:ss"
                     )}
                 </span>
@@ -165,7 +165,7 @@ function MatchesRow({ match }) {
                     <span>
                         {format(
                             new Date(match.end_time) -
-                                new Date(match.created_at),
+                                new Date(match.start_time),
                             "mm:ss"
                         )}
                     </span>

@@ -99,14 +99,14 @@ function MiniMatchRow({ match }) {
                 )}
             </TeamContainer>
             <div>
-                {format(new Date(match.created_at), "dd.MM.yyyy - HH:mm:ss")}
+                {format(new Date(match.start_time), "dd.MM.yyyy - HH:mm:ss")}
             </div>
             <div>
                 {match.end_time && (
                     <span>
                         {format(
                             new Date(match.end_time) -
-                                new Date(match.created_at),
+                                new Date(match.start_time),
                             "mm:ss"
                         )}
                     </span>

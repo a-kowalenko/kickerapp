@@ -88,7 +88,7 @@ const Element = styled.div`
         props.$isSelected ? "background-color: var(--color-amber-200);" : ""}
 `;
 
-function Filter({ options, field, icon }) {
+function Filter({ options, field, name, icon }) {
     const [searchParams, setSearchParams] = useSearchParams();
     const currentFilter = searchParams.get(field) || options[0].value;
     const [isOpen, setIsOpen] = useState(false);
@@ -113,6 +113,7 @@ function Filter({ options, field, icon }) {
         <StyledFilter>
             <Toggle onClick={handleToggle} $isOpen={isOpen}>
                 {icon && icon}
+                {name && <span>{name}</span>}
                 <span>{currentFilter}</span>
                 <RotateIcon $isOpen={isOpen} />
             </Toggle>
@@ -122,7 +123,13 @@ function Filter({ options, field, icon }) {
                         onClick={() => handleSelect(option)}
                         key={option.value}
                     >
-                        {option.value}
+                        {name && (
+                            <>
+                                <span>{name}</span>
+                                &nbsp;
+                            </>
+                        )}
+                        <span>{option.value}</span>
                     </Element>
                 ))}
             </List>
