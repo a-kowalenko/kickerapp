@@ -32,7 +32,7 @@ function PlayerStatistics() {
                     width={600}
                     height={300}
                     data={data}
-                    margin={{ top: 5, right: 20, bottom: 20, left: 0 }}
+                    margin={{ top: 5, right: 20, bottom: 20, left: 20 }}
                 >
                     <Line type="monotone" dataKey="mmr" stroke="#0c00f3" />
                     <CartesianGrid
@@ -47,6 +47,7 @@ function PlayerStatistics() {
                             dy: 20,
                         }}
                         dy={5}
+                        padding={{ left: 30, right: 30 }}
                     />
                     <YAxis
                         label={{
