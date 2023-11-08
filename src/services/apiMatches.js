@@ -1,3 +1,4 @@
+import { addDays, format, parseISO } from "date-fns";
 import { MATCHES, PAGE_SIZE, PLAYER } from "../utils/constants";
 import { calculateMmrChange } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
@@ -348,11 +349,93 @@ export async function getDisgraces({ filter }) {
             .filter("start_time", "lt", end.toISOString());
     }
 
-    const { data, error, count } = await query;
+    const { data, error, count } = await query.eq("status", "ended");
 
     if (error) {
         throw new Error("Error while selecting the disgraces");
     }
 
     return { data, error, count };
+}
+
+export async function getMmrHistory({ filter }) {
+    if (!filter.name) {
+        throw new Error("A username is needed to get the MMR history");
+    }
+
+    const { data, count } = await getMatches({
+        filter,
+    });
+
+    const player = await getPlayerByName(filter.name);
+
+    data.sort((a, b) => b.end_time - a.end_time);
+
+    const latestPerDay = data.reduce((acc, item) => {
+        const day = item.end_time.split("T")[0];
+        if (!acc[day] || acc[day].end_time < item.end_time) {
+            acc[day] = item;
+        }
+        return acc;
+    }, {});
+
+    // Ermitteln des Start- und Enddatums
+    const dates = Object.keys(latestPerDay).map((date) => new Date(date));
+    const startDate = new Date(Math.min(...dates));
+    const endDate = addDays(new Date(), -1);
+
+    // Erstellen einer Liste aller Tage zwischen Start- und Enddatum
+    const dateList = [];
+    for (
+        let dt = new Date(startDate);
+        dt <= endDate;
+        dt.setDate(dt.getDate() + 1)
+    ) {
+        dateList.push(new Date(dt));
+    }
+
+    let buffer;
+    // Füllen der fehlenden Tage auf
+    const completeList = dateList.map((date) => {
+        const dayStr = date.toISOString().split("T")[0];
+        if (latestPerDay[dayStr]) {
+            buffer = latestPerDay[dayStr];
+            const playerNumber = getPlayersNumberFromMatch(
+                filter.name,
+                latestPerDay[dayStr]
+            );
+            buffer = {
+                date: format(
+                    parseISO(latestPerDay[dayStr].start_time),
+                    "dd.MM.yyyy"
+                ),
+                mmr: latestPerDay[dayStr][`mmrPlayer${playerNumber}`],
+            };
+            return buffer;
+        } else {
+            // Erstellen eines neuen Objekts mit dem Datum als end_time
+            return {
+                ...buffer,
+                date: format(parseISO(date.toISOString()), "dd.MM.yyyy"),
+            };
+        }
+    });
+
+    const result = completeList.filter((item) => item.mmr !== null);
+    result.push({
+        date: format(new Date(), "dd.MM.yyyy"),
+        mmr: filter.value === "1on1" ? player.mmr : player.mmr2on2,
+    });
+
+    return { data: result, count };
+}
+
+function getPlayersNumberFromMatch(username, match) {
+    for (let i = 1; i <= 4; i++) {
+        if (match[`player${i}`]?.name === username) {
+            return i;
+        }
+    }
+
+    return null;
 }

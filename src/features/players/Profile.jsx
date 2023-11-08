@@ -1,8 +1,11 @@
+import { useParams } from "react-router-dom";
 import styled from "styled-components";
-import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import StatsTable from "./StatsTable";
 import StatsFilterRow from "./StatsFilterRow";
+import Avatar from "../../ui/Avatar";
+import Spinner from "../../ui/Spinner";
+import { usePlayerName } from "./usePlayerName";
 
 const StyledProfile = styled.div`
     display: flex;
@@ -34,8 +37,16 @@ const LeftBox = styled.div`
     gap: 2.4rem;
 `;
 
-function Profile({ player }) {
+function Profile() {
+    const { userId } = useParams();
+    const { player, isLoading } = usePlayerName(userId);
+
+    if (isLoading) {
+        return <Spinner />;
+    }
+
     const { avatar } = player;
+
     return (
         <StyledProfile>
             <Avatar $size="huge" src={avatar || DEFAULT_AVATAR} />

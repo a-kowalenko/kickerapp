@@ -6,7 +6,7 @@ import {
 import { PiSoccerBallThin } from "react-icons/pi";
 import Stat from "./Stat";
 import { useTodayStats } from "./useTodayStats";
-import { format } from "date-fns";
+import { addMilliseconds, format } from "date-fns";
 import Spinner from "../../ui/Spinner";
 
 function getTeams(match) {
@@ -35,16 +35,17 @@ function TodayStats() {
     const todaysMatches = count;
 
     // 2. Time wasted
-    const timeWasted = format(
-        matches
-            .filter((match) => match.status === "ended")
-            .reduce(
-                (acc, cur) =>
-                    acc + (new Date(cur.end_time) - new Date(cur.start_time)),
-                0
-            ),
-        "mm:ss"
-    );
+    const todaysTimePlayed = matches
+        .filter((match) => match.status === "ended")
+        .reduce(
+            (acc, cur) =>
+                acc + (new Date(cur.end_time) - new Date(cur.start_time)),
+            0
+        );
+
+    const timePlayedDate = addMilliseconds(new Date(0), todaysTimePlayed);
+    const formatString = todaysTimePlayed >= 3600000 ? "HH:mm:ss" : "mm:ss";
+    const timeWasted = format(timePlayedDate, formatString);
 
     // 3. Today's top and flop
     const playerWithPoints = matches.reduce((acc, cur) => {

@@ -5,10 +5,10 @@ import Profile from "../features/players/Profile";
 import Row from "../ui/Row";
 import Heading from "../ui/Heading";
 import TabView from "../ui/TabView";
-import { usePlayerName } from "../features/players/usePlayerName";
 import Spinner from "../ui/Spinner";
 import ProfileSettings from "../features/players/ProfileSettings";
 import ProfileMatches from "../features/players/ProfileMatches";
+import PlayerStatistics from "../features/players/PlayerStatistics";
 
 const StyledUser = styled.div`
     /* display: flex;
@@ -21,9 +21,8 @@ function User() {
         user: {
             user_metadata: { username },
         },
+        isLoading,
     } = useUser();
-
-    const { player, isLoading } = usePlayerName(userId);
 
     const ownAccount = userId === username;
 
@@ -35,17 +34,17 @@ function User() {
         {
             path: `/user/${userId}/profile`,
             label: "Profile",
-            component: <Profile player={player} />,
+            component: <Profile />,
         },
         {
             path: `/user/${userId}/history`,
             label: "Match History",
-            component: <ProfileMatches username={userId} />,
+            component: <ProfileMatches />,
         },
         {
             path: `/user/${userId}/statistics`,
             label: "Statistics",
-            component: <div>Statistics Content</div>,
+            component: <PlayerStatistics />,
         },
     ];
 
