@@ -11,7 +11,12 @@ const TeamContainer = styled.div`
         props.$team === "1" ? "flex-end" : "flex-start"};
 
     & a {
-        color: ${(props) => (props.$won ? "green" : "red")};
+        color: ${(props) =>
+            props.$won === null
+                ? "black"
+                : props.$won === true
+                ? "green"
+                : "red"};
     }
 `;
 
@@ -42,7 +47,8 @@ const Score = styled.div`
 function MiniMatchRow({ match }) {
     const { player1, player2, player3, player4 } = match;
 
-    const team1Won = match.scoreTeam1 > match.scoreTeam2;
+    const team1Won =
+        match.status !== "ended" ? null : match.scoreTeam1 > match.scoreTeam2;
 
     return (
         <MiniTable.Row>
@@ -76,7 +82,10 @@ function MiniMatchRow({ match }) {
                 <Score $team="2">{match.scoreTeam2}</Score>
             </ScoreContainer>
 
-            <TeamContainer $won={!team1Won} $team="2">
+            <TeamContainer
+                $won={team1Won === null ? null : !team1Won}
+                $team="2"
+            >
                 <Name to={`/user/${player2.name}/profile`}>
                     <span>{player2.name}</span>
                     {match.mmrChangeTeam2 && match.mmrPlayer2 && (

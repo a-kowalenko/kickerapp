@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from "react-query";
 import { getMatches } from "../../services/apiMatches";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { PAGE_SIZE } from "../../utils/constants";
 
-export function useMatchHistory(name) {
+export function useMatchHistory() {
+    const { userId: name } = useParams();
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
 

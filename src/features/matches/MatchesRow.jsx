@@ -49,7 +49,12 @@ const TeamContainer = styled.div`
         props.$team === "1" ? "flex-end" : "flex-start"};
 
     & a {
-        color: ${(props) => (props.$won ? "green" : "red")};
+        color: ${(props) =>
+            props.$won === null
+                ? "black"
+                : props.$won === true
+                ? "green"
+                : "red"};
     }
 `;
 
@@ -79,7 +84,8 @@ function MatchesRow({ match }) {
             ? "2 on 1"
             : "2 on 2";
 
-    const team1Won = match.scoreTeam1 > match.scoreTeam2;
+    const team1Won =
+        match.status !== "ended" ? null : match.scoreTeam1 > match.scoreTeam2;
 
     return (
         <Table.Row>
@@ -119,7 +125,10 @@ function MatchesRow({ match }) {
                 <Score $team="2">{match.scoreTeam2}</Score>
             </ScoreContainer>
 
-            <TeamContainer $won={!team1Won} $team="2">
+            <TeamContainer
+                $won={team1Won === null ? null : !team1Won}
+                $team="2"
+            >
                 <Name to={`/user/${player2.name}/profile`}>
                     <Avatar $size="xs" src={player2.avatar || DEFAULT_AVATAR} />
                     <span>{player2.name}</span>
@@ -170,7 +179,7 @@ function MatchesRow({ match }) {
                         )}
                     </span>
                 )}
-                {match.status === "active" && <span>Is active</span>}
+                {match.status === "active" && <span>IS ACTIVE</span>}
             </DurationContainer>
         </Table.Row>
     );

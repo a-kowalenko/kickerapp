@@ -9,8 +9,8 @@ const StyledMatches = styled.div`
     flex-direction: column;
 `;
 
-function ProfileMatches({ username }) {
-    const { matches, count, isLoadingMatches } = useMatchHistory(username);
+function ProfileMatches() {
+    const { matches, count, isLoadingMatches } = useMatchHistory();
     if (isLoadingMatches) {
         return <Spinner />;
     }
