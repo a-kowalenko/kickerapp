@@ -1,15 +1,7 @@
 import { format } from "date-fns";
 import MiniTable from "../../ui/MiniTable";
-import styled from "styled-components";
-import { Link } from "react-router-dom";
-
-const Name = styled(Link)`
-    display: flex;
-    gap: 0.8rem;
-    font-size: 1.6rem;
-    font-weight: 400;
-    width: fit-content;
-`;
+import PlayerName from "../../ui/PlayerName";
+import { useNavigate } from "react-router-dom";
 
 function MiniDisgraceRow({ disgrace }) {
     const { player1, player2, player3, player4 } = disgrace;
@@ -18,19 +10,26 @@ function MiniDisgraceRow({ disgrace }) {
     const team2 = [player2, player4];
     const winnerTeam = isTeam1Winner ? team1 : team2;
     const loserTeam = isTeam1Winner ? team2 : team1;
+    const navigate = useNavigate();
+
+    function handleClickRow(e) {
+        e.stopPropagation();
+        navigate(`/matches/${disgrace.id}`);
+    }
 
     return (
-        <MiniTable.Row>
+        <MiniTable.Row onClick={handleClickRow}>
             <div>
                 {loserTeam.map(
                     (loser) =>
                         loser && (
-                            <Name
+                            <PlayerName
                                 to={`/user/${loser.name}/profile`}
                                 key={loser.id}
+                                onClick={handleClickRow}
                             >
                                 {loser.name}
-                            </Name>
+                            </PlayerName>
                         )
                 )}
             </div>
@@ -38,12 +37,13 @@ function MiniDisgraceRow({ disgrace }) {
                 {winnerTeam.map(
                     (winner) =>
                         winner && (
-                            <Name
+                            <PlayerName
                                 to={`/user/${winner.name}/profile`}
                                 key={winner.id}
+                                onClick={handleClickRow}
                             >
                                 {winner.name}
-                            </Name>
+                            </PlayerName>
                         )
                 )}
             </div>

@@ -2,18 +2,9 @@ import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
-import { Link } from "react-router-dom";
 import { DEFAULT_AVATAR } from "../../utils/constants";
-
-const Name = styled(Link)`
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    font-size: 1.6rem;
-    font-weight: 400;
-    color: var(--color-grey-600);
-    width: fit-content;
-`;
+import PlayerName from "../../ui/PlayerName";
+import { useNavigate } from "react-router-dom";
 
 const Stat = styled.div`
     font-family: "Sono";
@@ -22,6 +13,7 @@ const Stat = styled.div`
 `;
 
 function DisgraceRow({ disgrace }) {
+    const navigate = useNavigate();
     const { player1, player2, player3, player4 } = disgrace;
     const isTeam1Winner = disgrace.scoreTeam1 !== 0;
     const team1 = [player1, player3];
@@ -29,22 +21,28 @@ function DisgraceRow({ disgrace }) {
     const winnerTeam = isTeam1Winner ? team1 : team2;
     const loserTeam = isTeam1Winner ? team2 : team1;
 
+    function handleClickRow(e) {
+        e.stopPropagation();
+        navigate(`/matches/${disgrace.id}`);
+    }
+
     return (
-        <Table.Row>
+        <Table.Row onClick={handleClickRow}>
             <div>
                 {loserTeam.map(
                     (loser) =>
                         loser && (
-                            <Name
+                            <PlayerName
                                 to={`/user/${loser.name}/profile`}
                                 key={loser.id}
+                                onClick={handleClickRow}
                             >
                                 <Avatar
                                     $size="xs"
                                     src={loser.avatar || DEFAULT_AVATAR}
                                 />
                                 <span>{loser.name}</span>
-                            </Name>
+                            </PlayerName>
                         )
                 )}
             </div>
@@ -53,16 +51,17 @@ function DisgraceRow({ disgrace }) {
                 {winnerTeam.map(
                     (winner) =>
                         winner && (
-                            <Name
+                            <PlayerName
                                 to={`/user/${winner.name}/profile`}
                                 key={winner.id}
+                                onClick={handleClickRow}
                             >
                                 <Avatar
                                     $size="xs"
                                     src={winner.avatar || DEFAULT_AVATAR}
                                 />
                                 <span>{winner.name}</span>
-                            </Name>
+                            </PlayerName>
                         )
                 )}
             </div>

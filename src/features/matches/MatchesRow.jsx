@@ -2,21 +2,14 @@ import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
-import { Link } from "react-router-dom";
 import { DEFAULT_AVATAR } from "../../utils/constants";
+import PlayerName from "../../ui/PlayerName";
+import { useNavigate } from "react-router-dom";
 
 const Rank = styled.div`
     font-size: 1.6rem;
     font-weight: 600;
     color: var(--color-grey-600);
-`;
-
-const Name = styled(Link)`
-    display: flex;
-    gap: 0.8rem;
-    font-size: 1.6rem;
-    font-weight: 400;
-    width: fit-content;
 `;
 
 const Stat = styled.div`
@@ -73,6 +66,7 @@ const DurationContainer = styled.div`
 `;
 
 function MatchesRow({ match }) {
+    const navigate = useNavigate();
     const { player1, player2, player3, player4 } = match;
 
     const gameMode =
@@ -87,12 +81,20 @@ function MatchesRow({ match }) {
     const team1Won =
         match.status !== "ended" ? null : match.scoreTeam1 > match.scoreTeam2;
 
+    function handleClickRow(e) {
+        e.stopPropagation();
+        navigate(`/matches/${match.id}`);
+    }
+
     return (
-        <Table.Row>
+        <Table.Row onClick={handleClickRow}>
             <Rank>{match.id}</Rank>
 
             <TeamContainer $won={team1Won} $team="1">
-                <Name to={`/user/${player1.name}/profile`}>
+                <PlayerName
+                    to={`/user/${player1.name}/profile`}
+                    onClick={handleClickRow}
+                >
                     <span>{player1.name}</span>
                     {match.mmrChangeTeam1 && match.mmrPlayer1 && (
                         <span>
@@ -101,9 +103,12 @@ function MatchesRow({ match }) {
                         </span>
                     )}
                     <Avatar $size="xs" src={player1.avatar || DEFAULT_AVATAR} />
-                </Name>
+                </PlayerName>
                 {player3 && (
-                    <Name to={`/user/${player3.name}/profile`}>
+                    <PlayerName
+                        to={`/user/${player3.name}/profile`}
+                        onClick={handleClickRow}
+                    >
                         <span>{player3?.name}</span>
                         {match.mmrChangeTeam1 && match.mmrPlayer3 && (
                             <span>
@@ -115,7 +120,7 @@ function MatchesRow({ match }) {
                             $size="xs"
                             src={player3.avatar || DEFAULT_AVATAR}
                         />
-                    </Name>
+                    </PlayerName>
                 )}
             </TeamContainer>
 
@@ -129,7 +134,10 @@ function MatchesRow({ match }) {
                 $won={team1Won === null ? null : !team1Won}
                 $team="2"
             >
-                <Name to={`/user/${player2.name}/profile`}>
+                <PlayerName
+                    to={`/user/${player2.name}/profile`}
+                    onClick={handleClickRow}
+                >
                     <Avatar $size="xs" src={player2.avatar || DEFAULT_AVATAR} />
                     <span>{player2.name}</span>
                     {match.mmrChangeTeam2 && match.mmrPlayer2 && (
@@ -138,9 +146,12 @@ function MatchesRow({ match }) {
                             {match.mmrChangeTeam2}
                         </span>
                     )}
-                </Name>
+                </PlayerName>
                 {player4 && (
-                    <Name to={`/user/${player4.name}/profile`}>
+                    <PlayerName
+                        to={`/user/${player4.name}/profile`}
+                        onClick={handleClickRow}
+                    >
                         <Avatar
                             $size="xs"
                             src={player4?.avatar || DEFAULT_AVATAR}
@@ -152,7 +163,7 @@ function MatchesRow({ match }) {
                                 {match.mmrChangeTeam2}
                             </span>
                         )}
-                    </Name>
+                    </PlayerName>
                 )}
             </TeamContainer>
 

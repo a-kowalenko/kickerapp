@@ -31,6 +31,7 @@ const StyledHeader = styled(DefaultRow)`
 const StyledRow = styled(DefaultRow)`
     padding: 1.2rem 2.4rem;
     position: relative;
+    cursor: pointer;
 
     &:hover {
         background-color: var(--color-amber-50);
@@ -83,10 +84,10 @@ function Header({ children }) {
     );
 }
 
-function Row({ children }) {
+function Row({ children, onClick }) {
     const { columns } = useContext(TableContext);
     return (
-        <StyledRow role="row" $columns={columns}>
+        <StyledRow role="row" $columns={columns} onClick={onClick}>
             {children}
         </StyledRow>
     );
