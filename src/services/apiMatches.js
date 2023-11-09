@@ -399,11 +399,15 @@ export async function getMmrHistory({ filter }) {
     const completeList = dateList.map((date) => {
         const dayStr = date.toISOString().split("T")[0];
         if (latestPerDay[dayStr]) {
-            buffer = latestPerDay[dayStr];
             const playerNumber = getPlayersNumberFromMatch(
                 filter.name,
                 latestPerDay[dayStr]
             );
+            const mmrChange =
+                playerNumber === 1 || playerNumber === 3
+                    ? latestPerDay[dayStr].mmrChangeTeam1
+                    : latestPerDay[dayStr].mmrChangeTeam2;
+
             buffer = {
                 date: format(
                     parseISO(latestPerDay[dayStr].start_time),
@@ -411,6 +415,11 @@ export async function getMmrHistory({ filter }) {
                 ),
                 mmr: latestPerDay[dayStr][`mmrPlayer${playerNumber}`],
             };
+
+            if (mmrChange) {
+                buffer.mmr += mmrChange;
+            }
+
             return buffer;
         } else {
             // Erstellen eines neuen Objekts mit dem Datum als end_time
@@ -438,4 +447,71 @@ function getPlayersNumberFromMatch(username, match) {
     }
 
     return null;
+}
+
+export async function getOpponentStats({ username, filter }) {
+    if (!username) {
+        throw new Error("No username was provided");
+    }
+
+    const { data: matches } = await getMatches({
+        filter: { name: username, ...filter },
+    });
+
+    const stats = matches.reduce((acc, cur) => {
+        const { isWinner, opponents } = getResultData(username, cur);
+        for (const opponent of opponents) {
+            if (!acc[opponent.name]) {
+                acc[opponent.name] = { wins: 0, losses: 0, total: 0 };
+            }
+
+            if (isWinner) {
+                acc[opponent.name].wins += 1;
+            } else {
+                acc[opponent.name].losses += 1;
+            }
+            acc[opponent.name].total += 1;
+        }
+
+        return acc;
+    }, {});
+
+    const data = Object.keys(stats).map((key) => {
+        return {
+            name: key,
+            wins: stats[key].wins,
+            losses: stats[key].losses,
+            winrate: parseFloat(stats[key].wins / stats[key].total), // toFixed returns a string, so wrap it with parseFloat
+            total: stats[key].total,
+        };
+    });
+
+    data.sort((a, b) => {
+        if (b.total !== a.total) {
+            return b.total - a.total;
+        }
+
+        return b.winrate - a.winrate;
+    });
+
+    return data;
+}
+
+function getResultData(username, match) {
+    const playerNumber = getPlayersNumberFromMatch(username, match);
+    const team1Won = match.scoreTeam1 > match.scoreTeam2;
+    const opponents = [];
+    if (playerNumber === 1 || playerNumber === 3) {
+        opponents.push(match.player2, match.player4);
+    }
+
+    if (playerNumber === 2 || playerNumber === 4) {
+        opponents.push(match.player1, match.player3);
+    }
+
+    return {
+        isWinner:
+            playerNumber === 1 || playerNumber === 3 ? team1Won : !team1Won,
+        opponents: opponents.filter(Boolean),
+    };
 }

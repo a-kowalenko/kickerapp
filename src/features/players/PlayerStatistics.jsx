@@ -11,10 +11,17 @@ import Spinner from "../../ui/Spinner";
 import styled from "styled-components";
 import RankingsFilterRow from "../rankings/RankingsFilterRow";
 import { useMmrHistory } from "./useMmrHistory";
+import OpponentStatsTable from "./OpponentStatsTable";
 
 const StyledStatistics = styled.div`
     display: flex;
     flex-direction: column;
+`;
+
+const StatisticsContent = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 2.4rem;
 `;
 
 function PlayerStatistics() {
@@ -27,39 +34,42 @@ function PlayerStatistics() {
     return (
         <StyledStatistics>
             <RankingsFilterRow />
-            <ResponsiveContainer width="100%" height={350}>
-                <LineChart
-                    width={600}
-                    height={300}
-                    data={data}
-                    margin={{ top: 5, right: 20, bottom: 20, left: 20 }}
-                >
-                    <Line type="monotone" dataKey="mmr" stroke="#0c00f3" />
-                    <CartesianGrid
-                        stroke="var(--color-grey-300)"
-                        strokeDasharray="5 5"
-                    />
-                    <XAxis
-                        dataKey="date"
-                        label={{
-                            value: "Date",
-                            position: "insideBottom",
-                            dy: 20,
-                        }}
-                        dy={5}
-                        padding={{ left: 30, right: 30 }}
-                    />
-                    <YAxis
-                        label={{
-                            value: "MMR",
-                            angle: -90,
-                            position: "insideLeft",
-                        }}
-                        domain={["auto", "auto"]}
-                    />
-                    <Tooltip />
-                </LineChart>
-            </ResponsiveContainer>
+            <StatisticsContent>
+                <OpponentStatsTable />
+                <ResponsiveContainer width="100%" height={350}>
+                    <LineChart
+                        width={600}
+                        height={300}
+                        data={data}
+                        margin={{ top: 5, right: 20, bottom: 20, left: 20 }}
+                    >
+                        <Line type="monotone" dataKey="mmr" stroke="#0c00f3" />
+                        <CartesianGrid
+                            stroke="var(--color-grey-300)"
+                            strokeDasharray="5 5"
+                        />
+                        <XAxis
+                            dataKey="date"
+                            label={{
+                                value: "Date",
+                                position: "insideBottom",
+                                dy: 20,
+                            }}
+                            dy={5}
+                            padding={{ left: 30, right: 30 }}
+                        />
+                        <YAxis
+                            label={{
+                                value: "MMR",
+                                angle: -90,
+                                position: "insideLeft",
+                            }}
+                            domain={["auto", "auto"]}
+                        />
+                        <Tooltip />
+                    </LineChart>
+                </ResponsiveContainer>
+            </StatisticsContent>
         </StyledStatistics>
     );
 }
