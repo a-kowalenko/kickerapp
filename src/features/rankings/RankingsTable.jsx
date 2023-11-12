@@ -13,7 +13,7 @@ function RankingsTable() {
         : "1on1";
 
     if (isLoadingRankings) {
-        <Spinner />;
+        return <Spinner />;
     }
 
     return (

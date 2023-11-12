@@ -30,6 +30,7 @@ const StyledBody = styled.ul``;
 const StyledRow = styled.div`
     display: grid;
     grid-template-columns: ${(props) => props.$columns};
+    cursor: pointer;
 
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -76,11 +77,11 @@ function Body({ data, render, noDataLabel = "No data available" }) {
     return <StyledBody>{data.map(render)}</StyledBody>;
 }
 
-function Row({ children }) {
+function Row({ children, onClick }) {
     const { columns } = useContext(MiniTableContext);
 
     return (
-        <StyledRow role="row" $columns={columns}>
+        <StyledRow role="row" $columns={columns} onClick={onClick}>
             {children}
         </StyledRow>
     );

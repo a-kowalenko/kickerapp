@@ -1,23 +1,13 @@
 import styled from "styled-components";
 import Table from "../../ui/Table";
 import Avatar from "../../ui/Avatar";
-import { Link } from "react-router-dom";
 import { DEFAULT_AVATAR } from "../../utils/constants";
+import PlayerName from "../../ui/PlayerName";
 
 const Rank = styled.div`
     font-size: 1.6rem;
     font-weight: 600;
     color: var(--color-grey-600);
-`;
-
-const Name = styled(Link)`
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    font-size: 1.6rem;
-    font-weight: 400;
-    color: var(--color-grey-600);
-    width: fit-content;
 `;
 
 const Stat = styled.div`
@@ -38,10 +28,10 @@ function RankingsRow({ player, gamemode }) {
         <Table.Row>
             <Rank>{player.rank}</Rank>
 
-            <Name to={`/user/${player.name}/profile`}>
+            <PlayerName to={`/user/${player.name}/profile`}>
                 <Avatar $size="xs" src={player.avatar || DEFAULT_AVATAR} />
                 <span>{player.name}</span>
-            </Name>
+            </PlayerName>
 
             <Stat>
                 <span>{wins}</span>

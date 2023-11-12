@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
+import { DEFAULT_DATABASE_SCHEMA } from "../utils/constants";
 
-const databaseSchema = import.meta.env.VITE_DB_ENV || "kopecht";
+const databaseSchema = import.meta.env.VITE_DB_ENV || DEFAULT_DATABASE_SCHEMA;
 
 export const supabaseUrl = "https://dixhaxicjwqchhautpje.supabase.co";
 const supabaseKey =
