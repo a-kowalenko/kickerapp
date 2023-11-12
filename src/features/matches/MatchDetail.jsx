@@ -9,6 +9,7 @@ import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
 import Spinner from "../../ui/Spinner";
 import { DEFAULT_AVATAR } from "../../utils/constants";
+import Button from "../../ui/Button";
 
 const Row = styled.div`
     display: flex;
@@ -255,9 +256,9 @@ function MatchDetail() {
             </MainRow>
             <BottomRow>
                 {isActive && (
-                    <EndMatchButton onClick={handleEndMatch}>
+                    <Button $size="xlarge" onClick={handleEndMatch}>
                         End match
-                    </EndMatchButton>
+                    </Button>
                 )}
                 {isEnded && (
                     <label>
