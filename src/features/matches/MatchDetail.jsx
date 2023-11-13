@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import Spinner from "../../ui/Spinner";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import Button from "../../ui/Button";
+import Input from "../../ui/Input";
 
 const Row = styled.div`
     display: flex;
@@ -27,10 +28,10 @@ const BottomRow = styled(Row)`
 `;
 
 const TeamHeader = styled.h1`
-    background-color: var(--color-amber-100);
+    background-color: var(--tertiary-background-color);
     width: 50%;
     border-radius: var(--border-radius-lg);
-    color: var(--color-grey-700);
+    color: var(--primary-text-color);
     padding: 0.8rem 1.2rem;
     text-align: center;
     box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
@@ -48,23 +49,15 @@ const ScoreContainer = styled.div`
     gap: 1.2rem;
 `;
 
-const ScoreInput = styled.input`
+const ScoreInput = styled(Input)`
     padding: 1.4rem 2.8rem;
-    border: 1px solid var(--color-amber-100);
+    border: 1px solid var(--primary-input-border-color);
     border-radius: var(--border-radius-sm);
     width: 25%;
     text-align: center;
     font-size: 2.4rem;
     font-weight: 600;
     transition: border-color 0.3s;
-
-    &:hover {
-        border-color: var(--color-amber-200);
-    }
-
-    &:focus {
-        background-color: var(--color-grey-50);
-    }
 `;
 
 const TeamContainer = styled.div`
@@ -82,7 +75,7 @@ const Player = styled.div`
     align-items: center;
     font-weight: 600;
     font-size: 3.2rem;
-    color: var(--color-grey-700);
+    color: var(--primary-text-color);
 `;
 
 const TimerContainer = styled.div`
@@ -93,29 +86,14 @@ const TimerContainer = styled.div`
 const Timer = styled.label`
     font-size: 3.8rem;
     padding: 1.4rem 2.8rem;
+    text-align: center;
+    min-width: 18rem;
     font-weight: 600;
-    color: var(--color-grey-700);
+    color: var(--primary-text-color);
 
-    background-color: var(--color-grey-100);
+    background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-sm);
-    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.1); // Leichter Schatten
-`;
-
-const EndMatchButton = styled.button`
-    padding: 1.4rem 2.8rem;
-    border: none;
-    border-radius: var(--border-radius-sm);
-    background-color: var(--color-amber-100);
-    font-size: 2.8rem;
-    font-weight: 600;
-
-    &:hover {
-        background-color: var(--color-amber-200);
-    }
-
-    &:active {
-        background-color: var(--color-amber-300);
-    }
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4); // Leichter Schatten
 `;
 
 function MatchDetail() {

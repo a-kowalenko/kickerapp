@@ -3,9 +3,9 @@ import styled from "styled-components";
 
 // TODO: Create styled components for each table component
 const StyledTable = styled.div`
-    border: 1px solid var(--color-amber-100);
+    border: 1px solid var(--table-border-color);
     font-size: 1.4rem;
-    background-color: var(--color-grey-0);
+    background-color: var(--table-background-color);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
@@ -21,11 +21,11 @@ const DefaultRow = styled.div`
 
 const StyledHeader = styled(DefaultRow)`
     padding: 1.6rem 2.4rem;
-    background-color: var(--color-amber-75);
-    border-bottom: 1px solid var(--color-amber-100);
+    background-color: var(--primary-background-color);
+    border-bottom: 1px solid var(--table-border-color);
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    color: var(--color-grey-700);
+    color: var(--primary-text-color);
 `;
 
 const StyledRow = styled(DefaultRow)`
@@ -34,12 +34,12 @@ const StyledRow = styled(DefaultRow)`
     cursor: pointer;
 
     &:hover {
-        background-color: var(--color-amber-50);
+        background-color: var(--table-row-color-hover);
         box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     &:not(:last-child) {
-        border-bottom: 1px solid var(--color-amber-100);
+        border-bottom: 1px solid var(--table-border-color);
     }
 `;
 
@@ -50,7 +50,7 @@ const StyledBody = styled.section`
 const Footer = styled.footer`
     display: flex;
     justify-content: center;
-    background-color: var(--color-amber-50);
+    background-color: var(--table-footer-background-color);
     padding: 1.2rem;
 
     &:not(:has(*)) {

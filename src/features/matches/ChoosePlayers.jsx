@@ -50,35 +50,11 @@ const PlayerBox = styled.div`
     }
 `;
 
-const AddPlayerButton = styled.button`
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    font-family: "Poppins", sans-serif;
-    font-size: 16px;
-    padding: 0.8rem 1.2rem;
-    width: 180px;
-    background-color: var(--color-amber-100);
-    border: 1px solid var(--color-grey-100);
-    border-radius: var(--border-radius-md);
-
-    cursor: pointer;
-    transition: background-color 0.2s;
-
-    &:hover {
-        background-color: var(--color-amber-200);
-    }
-
-    &:active {
-        background-color: var(--color-amber-300);
-    }
-`;
-
 const SubmitRow = styled.div`
     display: flex;
     justify-content: space-between;
     padding: 2.4rem;
-    background-color: white;
+    background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-sm);
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
 `;
@@ -87,30 +63,6 @@ const CheckboxContainer = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
-`;
-
-const StyledCheckbox = styled.input.attrs({ type: "checkbox" })`
-    margin-right: 1rem;
-    cursor: pointer;
-`;
-
-const StartMatchButton = styled.button`
-    padding: 1.4rem 2.8rem;
-    background-color: var(--color-amber-200);
-    border: none;
-    border-radius: var(--border-radius-md);
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s, transform 0.2s;
-
-    &:hover {
-        background-color: var(--color-amber-300);
-        transform: translateY(-3px);
-    }
-
-    &:active {
-        transform: translateY(0);
-    }
 `;
 
 const AddIcon = styled(HiOutlinePlusCircle)`

@@ -23,13 +23,13 @@ const InputFile = styled.input.attrs({ type: "file" })`
         font-weight: 500;
         font-size: 1.6rem;
 
-        color: #000000;
-        border: 1px solid rgb(235, 202, 33);
-        background-color: rgb(235, 202, 33);
+        color: var(--primary-button-color-text);
+        border: 1px solid var(--primary-button-color);
+        background-color: var(--primary-button-color);
 
         &:active {
-            border: 1px solid rgb(199, 168, 11);
-            background-color: rgb(199, 168, 11);
+            border: 1px solid var(--primary-button-color-active);
+            background-color: var(--primary-button-color-active);
         }
     }
 

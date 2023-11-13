@@ -38,7 +38,9 @@ const SwitchContainer = styled.div`
     border-radius: 15px;
     position: relative;
     background-color: ${(props) =>
-        props.$isToggled ? "rgb(235, 202, 33)" : "#ccc"};
+        props.$isToggled
+            ? "var(--primary-switch-color)"
+            : "var(--primary-switch-color-off)"};
     cursor: pointer;
 `;
 

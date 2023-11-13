@@ -35,23 +35,22 @@ const PaginationButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--color-amber-100);
+    background-color: var(--primary-button-color);
     border: none;
     padding: 0.6rem 1.2rem;
     border-radius: var(--border-radius-sm);
-    color: ${(props) => (props.$active ? " var(--color-brand-50)" : "inherit")};
     font-weight: 500;
 
     &:hover:not(:disabled) {
-        background-color: var(--color-amber-200);
+        background-color: var(--primary-button-color-hover);
     }
 
     &:active:not(:disabled) {
-        background-color: var(--color-amber-300);
+        background-color: var(--primary-button-color-active);
     }
 
     &:disabled {
-        background-color: var(--color-amber-75);
+        background-color: var(--disabled-color);
     }
 
     & svg {

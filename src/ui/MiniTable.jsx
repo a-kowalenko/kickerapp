@@ -40,7 +40,7 @@ const StyledRow = styled.div`
     border-bottom: 1px solid #6363633b;
 
     &:hover {
-        background-color: var(--color-amber-50);
+        background-color: var(--table-row-color-hover);
     }
 `;
 
