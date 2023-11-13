@@ -21,6 +21,7 @@ import Disgraces from "./pages/Disgraces";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
 import Testwiese from "./pages/Testwiese";
 import Players from "./pages/Players";
+import { DarkModeProvider } from "./contexts/DarkModeContext";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -32,7 +33,7 @@ const queryClient = new QueryClient({
 
 function App() {
     return (
-        <>
+        <DarkModeProvider>
             <QueryClientProvider client={queryClient}>
                 <ReactQueryDevtools initialIsOpen={false} />
                 <GlobalStyles />
@@ -102,7 +103,7 @@ function App() {
                     }}
                 />
             </QueryClientProvider>
-        </>
+        </DarkModeProvider>
     );
 }
 

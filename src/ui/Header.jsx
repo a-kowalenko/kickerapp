@@ -1,10 +1,10 @@
 import styled from "styled-components";
-import ProfileMenu from "./ProfileMenu";
+import DarkModeToggle from "./DarkModeToggle";
 
 const StyledHeader = styled.header`
-    background-color: var(--color-amber-75);
+    background-color: var(--primary-background-color);
     padding: 1.6rem 4.8rem;
-    border-bottom: 1px solid var(--color-amber-100);
+    border-bottom: 1px solid var(--secondary-border-color);
 
     display: flex;
     gap: 2.4rem;
@@ -13,7 +13,11 @@ const StyledHeader = styled.header`
 `;
 
 function Header() {
-    return <StyledHeader>Header</StyledHeader>;
+    return (
+        <StyledHeader>
+            <DarkModeToggle />
+        </StyledHeader>
+    );
 }
 
 export default Header;

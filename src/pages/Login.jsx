@@ -10,7 +10,7 @@ const StyledLogin = styled.div`
     justify-content: center;
     align-items: center;
 
-    background-color: var(--color-amber-50);
+    background-color: var(--secondary-background-color);
 `;
 
 function Login() {

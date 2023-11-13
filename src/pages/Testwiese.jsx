@@ -9,6 +9,7 @@ import { useMatches } from "../features/matches/useMatches";
 import Row from "../ui/Row";
 import Heading from "../ui/Heading";
 import Filter from "../ui/Filter";
+import Spinner from "../ui/Spinner";
 
 const fakeOptions = [
     { text: "Element 1", value: 1 },
@@ -73,6 +74,9 @@ function Testwiese() {
             </FormRow>
             <FormRow>
                 <Filter options={fakeFilterOptions} field="gamemode" />
+            </FormRow>
+            <FormRow>
+                <Spinner />
             </FormRow>
             <FormRow>
                 <Button

@@ -15,10 +15,10 @@ const TeamContainer = styled.div`
     & a {
         color: ${(props) =>
             props.$won === null
-                ? "black"
+                ? "var(--primary-text-color)"
                 : props.$won === true
-                ? "green"
-                : "red"};
+                ? "var(--winner-name-color)"
+                : "var(--loser-name-color)"};
     }
 `;
 

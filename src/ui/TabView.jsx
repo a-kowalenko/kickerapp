@@ -18,7 +18,7 @@ const TabItem = styled(NavLink)`
     color: var(--color-grey-500);
 
     &:hover {
-        background-color: var(--color-amber-100);
+        background-color: var(--tertiary-background-color);
     }
 
     &:active,

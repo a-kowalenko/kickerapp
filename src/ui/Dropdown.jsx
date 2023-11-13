@@ -5,15 +5,17 @@ import { useOutsideClick } from "../hooks/useOutsideClick";
 
 const variations = {
     default: css`
-        --color-input-field: #fddf335f;
-        --color-input-field-hover: #ffffff9a;
+        --color-input-field: var(--primary-dropdown-background-color);
+        --color-input-field-hover: var(
+            --primary-dropdown-background-color-hover
+        );
 
-        color: black;
+        color: var(--primary-dropdown-text-color);
 
         background-color: ${(props) =>
             props.$isOpen
-                ? "var(--color-input-field-hover)"
-                : "var(--color-input-field)"};
+                ? "var(--primary-dropdown-background-color-hover)"
+                : "var(--primary-dropdown-background-color)"};
 
         box-shadow: ${(props) =>
             props.$isOpen && "0 1px 5px rgba(0, 0, 0, 0.727)"};
@@ -24,12 +26,12 @@ const variations = {
         }
 
         &:hover:not(:disabled) {
-            background-color: var(--color-input-field-hover);
+            background-color: var(--primary-dropdown-background-color-hover);
             box-shadow: 0 1px 5px rgba(0, 0, 0, 0.727);
         }
     `,
     disabled: css`
-        background-color: var(--color-grey-300);
+        background-color: var(--disabled-color);
         cursor: not-allowed;
     `,
 };
@@ -49,7 +51,7 @@ const Toggle = styled.div`
     padding: 1.2rem 2.4rem;
     border-radius: var(--border-radius-sm);
 
-    border: 1px solid black;
+    border: 1px solid var(--primary-dropdown-border-color);
 
     ${(props) => variations[props.$variation]}
 `;
@@ -68,9 +70,9 @@ const List = styled.ul`
     align-items: flex-start;
     flex-direction: column;
     border-radius: 0 0 5px 5px;
-    background-color: grey;
 
-    box-shadow: 1px 1px 1px black, -1px -1px 1px black;
+    box-shadow: 1px 1px 1px var(--primary-dropdown-border-color),
+        -1px -1px 1px var(--primary-dropdown-border-color);
 
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
     overflow: hidden;
@@ -79,20 +81,20 @@ const List = styled.ul`
 `;
 
 const StyledElement = styled.div`
-    --color-input-field: var(--color-amber-100);
-
     display: flex;
     width: 100%;
     padding: 0.6rem 1.2rem;
-    background-color: var(--color-input-field);
+    background-color: var(--dropdown-list-background-color);
     cursor: pointer;
 
     &:hover {
-        background-color: var(--color-amber-200);
+        background-color: var(--dropdown-list-selected-background-color);
     }
 
     ${(props) =>
-        props.$isSelected ? "background-color: var(--color-amber-200);" : ""}
+        props.$isSelected
+            ? "background-color: var(--dropdown-list-selected-background-color);"
+            : ""}
 `;
 
 function Element({ text, onSelect, isSelected }) {

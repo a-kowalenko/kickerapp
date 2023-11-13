@@ -9,10 +9,9 @@ import StyledLink from "../../ui/StyledLink";
 import SpinnerMini from "../../ui/SpinnerMini";
 
 const LoginContainer = styled.div`
-    /* background-color: blue; */
     padding: 1.2rem 2.4rem;
     border-radius: var(--border-radius-lg);
-    border: 1px solid black;
+    border: 1px solid var(--primary-border-color);
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
 `;
 

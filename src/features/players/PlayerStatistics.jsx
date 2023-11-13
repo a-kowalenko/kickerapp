@@ -43,7 +43,11 @@ function PlayerStatistics() {
                         data={data}
                         margin={{ top: 5, right: 20, bottom: 20, left: 20 }}
                     >
-                        <Line type="monotone" dataKey="mmr" stroke="#0c00f3" />
+                        <Line
+                            type="monotone"
+                            dataKey="mmr"
+                            stroke="var(--chart-line-color)"
+                        />
                         <CartesianGrid
                             stroke="var(--color-grey-300)"
                             strokeDasharray="5 5"
@@ -66,7 +70,12 @@ function PlayerStatistics() {
                             }}
                             domain={["auto", "auto"]}
                         />
-                        <Tooltip />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor:
+                                    "var(--tertiary-background-color)",
+                            }}
+                        />
                     </LineChart>
                 </ResponsiveContainer>
             </StatisticsContent>
