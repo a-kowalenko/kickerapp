@@ -6,9 +6,9 @@ const StyledSidebar = styled.aside`
     display: flex;
     flex-direction: column;
     padding: 1.2rem 2.4rem;
-    background-color: var(--color-amber-75);
+    background-color: var(--primary-background-color);
     grid-row: 1 / -1;
-    border-right: 1px solid var(--color-amber-100);
+    border-right: 1px solid var(--secondary-border-color);
 `;
 
 function Sidebar() {

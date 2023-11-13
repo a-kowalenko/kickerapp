@@ -21,7 +21,7 @@ const StyledNavLink = styled(NavLink)`
         align-items: center;
         gap: 1.2rem;
 
-        color: var(--color-grey-600);
+        color: var(--nav-link-color);
         font-size: 1.6rem;
         font-weight: 500;
         padding: 1.2rem 2.4rem;
@@ -32,15 +32,15 @@ const StyledNavLink = styled(NavLink)`
     &:active,
     &.active:link,
     &.active:visited {
-        color: var(--color-grey-800); // todo
-        background-color: var(--color-amber-200); // todo
+        color: var(--nav-link-color-active); // todo
+        background-color: var(--nav-link-background-color-active); // todo
         border-radius: var(--border-radius-sm);
     }
 
     & svg {
         width: 2.4rem;
         height: 2.4rem;
-        color: var(--color-grey-400);
+        color: var(--nav-link-svg-color);
         transition: all 0.3s;
     }
 
@@ -48,7 +48,7 @@ const StyledNavLink = styled(NavLink)`
     &:active svg,
     &.active:link svg,
     &.active:visited svg {
-        color: #666666;
+        color: var(--nav-link-svg-color-active);
     }
 `;
 

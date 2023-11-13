@@ -1,14 +1,14 @@
 import styled from "styled-components";
 
 const ContentBox = styled.div`
-    background-color: white;
+    background-color: var(--color-grey-0);
 
     display: flex;
     flex-direction: ${(props) =>
         props.type === "horizontal" ? "row" : "column"};
     gap: 2.4rem;
     padding: 3.2rem;
-    border: 1px solid var(--color-amber-100);
+    border: 1px solid var(--secondary-border-color);
     border-radius: var(--border-radius-md);
     width: 100%;
     height: 100%;

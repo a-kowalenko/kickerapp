@@ -1,4 +1,5 @@
 import styled, { keyframes } from "styled-components";
+import { useDarkMode } from "../contexts/DarkModeContext";
 
 // Schlüsselrahmen-Animation für den Spinner
 const spin = keyframes`
@@ -54,8 +55,8 @@ const StyledSpinner = styled.div`
         left: 13px;
         right: 13px;
         bottom: 13px;
-        background-color: var(--color-amber-50);
-        border: solid 5px var(--color-amber-50);
+        background-color: var(--secondary-background-color);
+        border: solid 5px var(--secondary-background-color);
         border-radius: 50%;
     }
 `;
@@ -72,10 +73,13 @@ const SpinnerLogo = styled.div`
     content: "";
     position: inherit;
     top: 0;
-    left: -10px;
+    left: 0px;
     right: 0;
     bottom: 0;
-    background-image: url("/spinnerLogo.png");
+    ${(props) =>
+        props.$isDarkMode
+            ? "background-image: url('/logo_darkmode_transparent.png')"
+            : "background-image: url('/logo_transparent.png')"};
     background-position: center;
     background-repeat: no-repeat;
     background-size: contain;
@@ -83,6 +87,8 @@ const SpinnerLogo = styled.div`
 `;
 
 function Spinner() {
+    const { isDarkMode } = useDarkMode();
+
     return (
         <SpinnerContainer>
             <StyledSpinner>
@@ -91,7 +97,7 @@ function Spinner() {
                 <span></span>
                 <span></span>
             </StyledSpinner>
-            <SpinnerLogo />
+            <SpinnerLogo $isDarkMode={isDarkMode} />
         </SpinnerContainer>
     );
 }

@@ -6,7 +6,7 @@ const StyledRegister = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: var(--color-amber-50);
+    background-color: var(--secondary-background-color);
 `;
 
 function Register() {

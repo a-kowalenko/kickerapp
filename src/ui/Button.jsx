@@ -30,40 +30,33 @@ const Button = styled.button`
 
 const variations = {
     primary: css`
-        color: #000000;
-        border: 1px solid rgb(235, 202, 33);
-        background-color: rgb(235, 202, 33);
+        color: var(--primary-button-color-text);
+        border: 1px solid var(--primary-button-color);
+        background-color: var(--primary-button-color);
 
         &:active {
-            border: 1px solid rgb(199, 168, 11);
-            background-color: rgb(199, 168, 11);
+            border: 1px solid var(--primary-button-color-active);
+            background-color: var(--primary-button-color-active);
         }
     `,
     secondary: css`
-        --color-secondary-button: rgb(217, 217, 217);
-        --color-secondary-button-active: rgb(188, 188, 188);
-
-        color: #000000;
-        border: 1px solid var(--color-secondary-button);
-        background-color: var(--color-secondary-button);
+        color: var(--secondary-button-color-text);
+        border: 1px solid var(--secondary-button-color);
+        background-color: var(--secondary-button-color);
 
         &:active {
-            border: 1px solid var(--color-secondary-button-active);
-            background-color: var(--color-secondary-button-active);
+            border: 1px solid var(--secondary-button-color-active);
+            background-color: var(--secondary-button-color-active);
         }
     `,
     danger: css`
-        --color-danger-button: rgb(214, 19, 19);
-        --color-danger-button1: rgb(185, 28, 28);
-        --color-danger-button-active: rgb(255, 72, 72);
-
-        color: #ffffff;
-        border: 1px solid var(--color-danger-button);
-        background-color: var(--color-danger-button);
+        color: var(--danger-button-color-text);
+        border: 1px solid var(--danger-button-color);
+        background-color: var(--danger-button-color);
 
         &:active {
-            border: 1px solid var(--color-danger-button-active);
-            background-color: var(--color-danger-button-active);
+            border: 1px solid var(--danger-button-color-active);
+            background-color: var(--danger-button-color-active);
         }
     `,
 };

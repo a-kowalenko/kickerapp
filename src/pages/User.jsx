@@ -17,12 +17,15 @@ const StyledUser = styled.div`
 
 function User() {
     const { userId } = useParams();
+    const { user, isLoading } = useUser();
+
+    if (!user) {
+        return <Spinner />;
+    }
+
     const {
-        user: {
-            user_metadata: { username },
-        },
-        isLoading,
-    } = useUser();
+        user_metadata: { username },
+    } = user;
 
     const ownAccount = userId === username;
 

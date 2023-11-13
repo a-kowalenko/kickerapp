@@ -16,16 +16,13 @@ const StyledFilter = styled.div`
 const Toggle = styled.div`
     position: relative;
     width: 100%;
-    --color-input-field: #fddf335f;
-    --color-input-field-hover: #ffffff9a;
     cursor: pointer;
 
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border: 1px solid black;
-    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
-    background-color: cyan;
+    border: 1px solid var(--primary-dropdown-border-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.361);
     padding: 1.2rem 2.4rem;
     border-radius: var(--border-radius-sm);
     gap: 1.4rem;
@@ -33,15 +30,15 @@ const Toggle = styled.div`
 
     background-color: ${(props) =>
         props.$isOpen
-            ? "var(--color-input-field-hover)"
-            : "var(--color-input-field)"};
+            ? "var(--primary-dropdown-background-color-hover)"
+            : "var(--primary-dropdown-background-color)"};
 
     box-shadow: ${(props) =>
         props.$isOpen && "2px 2px 2px 2px rgba(0, 0, 0, 0.4)"};
 
     &:hover:not(:disabled) {
-        background-color: var(--color-input-field-hover);
-        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.4);
+        background-color: var(--primary-dropdown-background-color-hover);
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.727);
     }
 
     & svg {
@@ -60,9 +57,9 @@ const List = styled.ul`
     align-items: flex-start;
     flex-direction: column;
     border-radius: var(--border-radius-sm);
-    background-color: grey;
 
-    box-shadow: 1px 1px 1px black, -1px -1px 1px black;
+    box-shadow: 1px 1px 1px var(--primary-dropdown-border-color),
+        -1px -1px 1px var(--primary-dropdown-border-color);
 
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
     max-width: ${(props) => (props.$isOpen ? "100%" : "0")};
@@ -72,20 +69,20 @@ const List = styled.ul`
 `;
 
 const Element = styled.div`
-    --color-input-field: var(--color-amber-100);
-
     display: flex;
     width: 100%;
     padding: 0.6rem 1.2rem;
-    background-color: var(--color-input-field);
+    background-color: var(--dropdown-list-background-color);
     cursor: pointer;
 
     &:hover {
-        background-color: var(--color-amber-200);
+        background-color: var(--dropdown-list-selected-background-color);
     }
 
     ${(props) =>
-        props.$isSelected ? "background-color: var(--color-amber-200);" : ""}
+        props.$isSelected
+            ? "background-color: var(--dropdown-list-selected-background-color);"
+            : ""}
 `;
 
 function Filter({ options, field, name, icon }) {
@@ -122,6 +119,7 @@ function Filter({ options, field, name, icon }) {
                     <Element
                         onClick={() => handleSelect(option)}
                         key={option.value}
+                        $isSelected={currentFilter === option.value}
                     >
                         {name && (
                             <>
