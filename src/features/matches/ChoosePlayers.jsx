@@ -13,6 +13,7 @@ import FormRow from "../../ui/FormRow";
 import { DEFAULT_AVATAR, START_MATCH_COUNTDOWN } from "../../utils/constants";
 import Heading from "../../ui/Heading";
 import Row from "../../ui/Row";
+import { useSound } from "../../contexts/SoundContext";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -90,11 +91,23 @@ function ChoosePlayers() {
 
     const [isStarting, setIsStarting] = useState(false);
     const [timer, setTimer] = useState(START_MATCH_COUNTDOWN);
+    const { isSound } = useSound();
 
     const { players, isLoading, error } = usePlayers();
     const { createMatch } = useCreateMatch();
 
     const countdownAudio = useMemo(() => new Audio("/startMatchSound.mp3"), []);
+
+    useEffect(
+        function () {
+            if (!isSound) {
+                countdownAudio.volume = 0;
+            } else {
+                countdownAudio.volume = 1;
+            }
+        },
+        [isSound, countdownAudio]
+    );
 
     useEffect(() => {
         let timerId;
