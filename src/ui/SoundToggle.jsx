@@ -7,7 +7,7 @@ function SoundToggle() {
 
     return (
         <ButtonIcon onClick={toggleSound}>
-            {isSound ? <HiOutlineSpeakerXMark /> : <HiOutlineSpeakerWave />}
+            {isSound ? <HiOutlineSpeakerWave /> : <HiOutlineSpeakerXMark />}
         </ButtonIcon>
     );
 }

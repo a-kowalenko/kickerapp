@@ -1,4 +1,5 @@
 import { PLAYER } from "../utils/constants";
+import { getBaseUrl } from "../utils/helpers";
 import { createPlayer, updatePlayerByUserId } from "./apiPlayer";
 import supabase, { supabaseUrl } from "./supabase";
 
@@ -132,4 +133,46 @@ async function existsUsername(username) {
     }
 
     return checkPlayers.length > 0;
+}
+
+export async function recover({ email }) {
+    const baseUrl = getBaseUrl();
+    const redirectUrl = `${baseUrl}/update-password`;
+
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    console.log("data", data);
+
+    return data;
+}
+
+export async function updatePassword({ password }) {
+    console.log("password", password);
+    const { data, error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    console.log("data", data);
+
+    return data;
+}
+
+export async function verifyRecoveryToken({ token_hash, type }) {
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash, type });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    console.log("verifyRecoveryToken", data);
+
+    return data;
 }
