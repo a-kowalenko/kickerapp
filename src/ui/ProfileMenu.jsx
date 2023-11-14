@@ -79,7 +79,8 @@ function ProfileMenu() {
         setIsOpen((open) => !open);
     }
 
-    function goToProfile() {
+    function goToProfile(e) {
+        e.stopPropagation();
         close();
         navigate(`/user/${username}/profile`);
     }
