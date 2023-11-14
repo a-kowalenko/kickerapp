@@ -12,7 +12,6 @@ function UpdatePasswordForm() {
     const { updatePassword, isLoading } = useUpdatePassword();
 
     function onSubmit({ password }) {
-        console.log("newPassword", password);
         updatePassword(
             { password },
             {

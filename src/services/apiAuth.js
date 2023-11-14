@@ -147,20 +147,15 @@ export async function recover({ email }) {
         throw new Error(error.message);
     }
 
-    console.log("data", data);
-
     return data;
 }
 
 export async function updatePassword({ password }) {
-    console.log("password", password);
     const { data, error } = await supabase.auth.updateUser({ password });
 
     if (error) {
         throw new Error(error.message);
     }
-
-    console.log("data", data);
 
     return data;
 }
@@ -171,8 +166,6 @@ export async function verifyRecoveryToken({ token_hash, type }) {
     if (error) {
         throw new Error(error.message);
     }
-
-    console.log("verifyRecoveryToken", data);
 
     return data;
 }
