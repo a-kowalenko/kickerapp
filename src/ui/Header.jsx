@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import DarkModeToggle from "./DarkModeToggle";
+import SoundToggle from "./SoundToggle";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -15,6 +16,7 @@ const StyledHeader = styled.header`
 function Header() {
     return (
         <StyledHeader>
+            <SoundToggle />
             <DarkModeToggle />
         </StyledHeader>
     );
