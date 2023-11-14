@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLogin } from "./useLogin";
+import { useRecover } from "./useRecover";
 import toast from "react-hot-toast";
 import styled from "styled-components";
 import FormRow from "../../ui/FormRow";
@@ -17,20 +17,25 @@ const LoginContainer = styled.div`
 
 const StyledForm = styled.form``;
 
-function LoginForm() {
+function RecoveryForm() {
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const { login, isLoading, error } = useLogin();
+    const [isEmailSent, setIsEmailSent] = useState(false);
+    const { recover, isLoading, error } = useRecover();
 
     function handleSubmit(e) {
         e.preventDefault();
-        if (!email || !password) {
+        if (!email) {
             return toast.error(
                 "We couldn't verify your account with that information."
             );
         }
 
-        login({ email, password });
+        recover({ email }, { onSuccess: () => handleRecoverySubmitted() });
+    }
+
+    function handleRecoverySubmitted() {
+        toast.success(`An recovery email has been sent to ${email}`);
+        setIsEmailSent(true);
     }
 
     return (
@@ -43,29 +48,27 @@ function LoginForm() {
                         autoComplete="email"
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="email"
-                        disabled={isLoading}
+                        disabled={isLoading || isEmailSent}
                     />
                 </FormRow>
-                <FormRow label="Password">
-                    <Input
-                        value={password}
-                        id="password"
-                        onChange={(e) => setPassword(e.target.value)}
-                        type="password"
-                        autoComplete="current-password"
-                        placeholder="password"
-                        disabled={isLoading}
-                    />
-                </FormRow>
+
                 <FormRow fill={true}>
-                    <Button $size="large" type="submit" disabled={isLoading}>
-                        {isLoading ? <SpinnerMini /> : "Login"}
+                    <Button
+                        $size="large"
+                        type="submit"
+                        disabled={isLoading || isEmailSent}
+                    >
+                        {isLoading ? (
+                            <SpinnerMini />
+                        ) : isEmailSent ? (
+                            "Recovery email is sent"
+                        ) : (
+                            "Reset password"
+                        )}
                     </Button>
                 </FormRow>
                 <FormRow>
-                    <StyledLink to="/recovery">Forgot password?</StyledLink>
-                </FormRow>
-                <FormRow label="No account?">
+                    <StyledLink to="/login">Login</StyledLink>
                     <StyledLink to="/register">Register</StyledLink>
                 </FormRow>
             </StyledForm>
@@ -73,4 +76,4 @@ function LoginForm() {
     );
 }
 
-export default LoginForm;
+export default RecoveryForm;

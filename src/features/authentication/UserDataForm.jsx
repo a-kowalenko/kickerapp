@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import styled from "styled-components";
 import { useUser } from "./useUser";
 import FormRow from "../../ui/FormRow";
 import { useUpdateUser } from "./useUpdateUser";
@@ -10,6 +11,12 @@ import Form from "../../ui/Form";
 import InputFile from "../../ui/InputFile";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR } from "../../utils/constants";
+
+const UserFormContainer = styled.div`
+    display: flex;
+    justify-content: space-between;
+    gap: 12rem;
+`;
 
 function UserDataForm() {
     const { userId } = useParams();
@@ -49,7 +56,7 @@ function UserDataForm() {
     }
 
     return (
-        <>
+        <UserFormContainer>
             <Form onSubmit={handleSubmit}>
                 <FormRow label="Email address">
                     <Input value={email} disabled />
@@ -83,7 +90,7 @@ function UserDataForm() {
                 </FormRow>
             </Form>
             <Avatar src={avatarSrc || DEFAULT_AVATAR} $size="huge" />
-        </>
+        </UserFormContainer>
     );
 }
 

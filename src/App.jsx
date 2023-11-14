@@ -7,7 +7,7 @@ import AppLayout from "./ui/AppLayout";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
+import ForgotPassword from "./pages/Recovery";
 import User from "./pages/User";
 import Kicker from "./pages/Kicker";
 import Match from "./pages/Match";
@@ -23,6 +23,8 @@ import Testwiese from "./pages/Testwiese";
 import Players from "./pages/Players";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
 import { SoundProvider } from "./contexts/SoundContext";
+import Recovery from "./pages/Recovery";
+import UpdatePassword from "./pages/UpdatePassword";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -43,6 +45,8 @@ function App() {
                         <Routes>
                             <Route index element={<Login />} />
                             <Route path="register" element={<Register />} />
+                            <Route path="recovery" element={<Recovery />} />
+
                             <Route
                                 element={
                                     <ProtectedRoute>
@@ -55,6 +59,10 @@ function App() {
                                 <Route
                                     path="forgotpassword"
                                     element={<ForgotPassword />}
+                                />
+                                <Route
+                                    path="update-password"
+                                    element={<UpdatePassword />}
                                 />
                                 <Route path="rankings" element={<Rankings />} />
                                 <Route
