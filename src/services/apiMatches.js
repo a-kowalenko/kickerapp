@@ -1,6 +1,11 @@
 import { addDays, format, parseISO } from "date-fns";
-import { MATCHES, PAGE_SIZE, PLAYER } from "../utils/constants";
-import { calculateMmrChange } from "../utils/helpers";
+import {
+    DISGRACE_FAKTOR,
+    MATCHES,
+    PAGE_SIZE,
+    PLAYER,
+} from "../utils/constants";
+import { calculateMmrChange, formatTime } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
 
@@ -171,6 +176,7 @@ export async function endMatch({ id, score1, score2 }) {
     const { player1, player2, player3, player4 } = match;
     const gameMode = !player3 && !player4 ? "1on1" : "2on2";
     const team1Wins = score1 > score2;
+    const isDisgrace = score1 === 0 || score2 === 0;
 
     let mmrChangeForTeam1;
     let mmrChangeForTeam2;
@@ -181,6 +187,11 @@ export async function endMatch({ id, score1, score2 }) {
             player2.mmr,
             team1Wins ? 1 : 0
         );
+
+        if (isDisgrace) {
+            mmrChangeForTeam1 = mmrChangeForTeam1 * DISGRACE_FAKTOR;
+        }
+
         mmrChangeForTeam2 = -mmrChangeForTeam1;
 
         const newPlayer1Wins = team1Wins ? player1.wins + 1 : player1.wins;
@@ -222,6 +233,11 @@ export async function endMatch({ id, score1, score2 }) {
                 : player2.mmr2on2,
             team1Wins ? 1 : 0
         );
+
+        if (isDisgrace) {
+            mmrChangeForTeam1 = mmrChangeForTeam1 * DISGRACE_FAKTOR;
+        }
+
         mmrChangeForTeam2 = -mmrChangeForTeam1;
 
         const newPlayer1Wins = team1Wins
@@ -495,6 +511,34 @@ export async function getOpponentStats({ username, filter }) {
     });
 
     return data;
+}
+
+export async function getPlaytime({ name }) {
+    const { data } = await getMatches({ filter: { name } });
+
+    const playtime = data
+        .filter((match) => match.status === "ended")
+        .reduce(
+            (acc, cur) => {
+                const duration =
+                    new Date(cur.end_time).getTime() -
+                    new Date(cur.start_time).getTime();
+                if (cur.gamemode === "1on1") {
+                    acc.solo += duration;
+                }
+                if (cur.gamemode === "2on2") {
+                    acc.duo += duration;
+                }
+                return acc;
+            },
+            { solo: 0, duo: 0 }
+        );
+
+    const playtimeSolo = formatTime(playtime.solo);
+    const playtimeDuo = formatTime(playtime.duo);
+    const playtimeOverall = formatTime(playtime.solo + playtime.duo);
+
+    return { playtimeSolo, playtimeDuo, playtimeOverall };
 }
 
 function getResultData(username, match) {

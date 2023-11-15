@@ -15,3 +15,16 @@ export function getBaseUrl() {
         return "https://zero-hero.vercel.app";
     }
 }
+
+export function formatTime(milliseconds) {
+    let seconds = Math.floor(milliseconds / 1000);
+    let minutes = Math.floor(seconds / 60);
+    let hours = Math.floor(minutes / 60);
+
+    seconds = seconds % 60;
+    minutes = minutes % 60;
+
+    const pad = (num) => num.toString().padStart(2, "0");
+
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
