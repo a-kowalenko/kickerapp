@@ -516,21 +516,23 @@ export async function getOpponentStats({ username, filter }) {
 export async function getPlaytime({ name }) {
     const { data } = await getMatches({ filter: { name } });
 
-    const playtime = data.reduce(
-        (acc, cur) => {
-            const duration =
-                new Date(cur.end_time).getTime() -
-                new Date(cur.start_time).getTime();
-            if (cur.gamemode === "1on1") {
-                acc.solo += duration;
-            }
-            if (cur.gamemode === "2on2") {
-                acc.duo += duration;
-            }
-            return acc;
-        },
-        { solo: 0, duo: 0 }
-    );
+    const playtime = data
+        .filter((match) => match.status === "ended")
+        .reduce(
+            (acc, cur) => {
+                const duration =
+                    new Date(cur.end_time).getTime() -
+                    new Date(cur.start_time).getTime();
+                if (cur.gamemode === "1on1") {
+                    acc.solo += duration;
+                }
+                if (cur.gamemode === "2on2") {
+                    acc.duo += duration;
+                }
+                return acc;
+            },
+            { solo: 0, duo: 0 }
+        );
 
     const playtimeSolo = formatTime(playtime.solo);
     const playtimeDuo = formatTime(playtime.duo);
