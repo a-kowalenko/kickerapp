@@ -10,7 +10,5 @@ export function usePlaytime() {
         queryFn: () => getPlaytime({ name }),
     });
 
-    console.log("data", data);
-
     return { data, isLoading };
 }
