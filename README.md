@@ -21,11 +21,13 @@ ZeroHero is crafted using a blend of modern technologies and tools for a robust 
 - **Frontend**:
   - **ReactJS**: A powerful JavaScript library for building user interfaces.
   - **Vite**: An optimized frontend build tool for faster and leaner development.
+  - **React Router**: Manages navigation and routing within the application.
+  - **React Query**: Handles remote state management efficiently.
+  - **React Forms**: For managing form state and validations in a React environment.
   - **Styled Components**: For stylish, component-based CSS in JS.
   - **React Icons**: Provides diverse icon options for enhancing UI.
   - **Recharts**: Integrated for sophisticated charting and data visualization.
-  - **React Router**: Manages navigation and routing within the application.
-  - **React Query**: Handles remote state management efficiently.
+ 
 
 - **Backend**:
   - **Supabase**: A scalable PostgreSQL-based backend that stores and manages application data.
