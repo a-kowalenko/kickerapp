@@ -36,7 +36,7 @@ ZeroHero is crafted using a blend of modern technologies and tools for a robust 
 ## Getting Started
 1. **Clone the Repository**
    ```
-   git clone https://github.com/your-username/zerohero.git
+   git clone https://github.com/a-kowalenko/zerohero.git
    ```
 2. **Install Dependencies**
    ```
