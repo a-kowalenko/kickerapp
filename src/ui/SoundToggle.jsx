@@ -6,7 +6,10 @@ function SoundToggle() {
     const { isSound, toggleSound } = useSound();
 
     return (
-        <ButtonIcon onClick={toggleSound}>
+        <ButtonIcon
+            onClick={toggleSound}
+            title={isSound ? "Mute sound" : "Unmute sound"}
+        >
             {isSound ? <HiOutlineSpeakerWave /> : <HiOutlineSpeakerXMark />}
         </ButtonIcon>
     );

@@ -118,7 +118,6 @@ function ChoosePlayers() {
             }
             timerId = setTimeout(() => setTimer(timer - 1), 1000);
         } else if (timer === -1) {
-            console.log("GAME STARTED!");
             createMatch(selectedPlayers);
         }
 

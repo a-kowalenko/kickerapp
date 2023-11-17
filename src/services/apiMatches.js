@@ -9,8 +9,11 @@ import { calculateMmrChange, formatTime } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
 
-export async function getPlayers() {
-    const { data, error } = await supabase.from(PLAYER).select("*");
+export async function getPlayers({ filter }) {
+    const { data, error } = await supabase
+        .from(PLAYER)
+        .select("*")
+        .eq("kicker_id", filter.kicker);
 
     if (error) {
         console.error(error);
@@ -34,11 +37,12 @@ export async function getPlayerById(id) {
     return data;
 }
 
-export async function createMatch(players) {
+export async function createMatch({ players, currentKicker }) {
     const { data: activeMatches, activeMatchesError } = await supabase
         .from(MATCHES)
         .select("*")
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("kicker_id", currentKicker);
 
     if (activeMatchesError) {
         console.error(activeMatchesError);
@@ -63,6 +67,7 @@ export async function createMatch(players) {
                 player4: player4?.id,
                 gamemode: gameMode,
                 start_time: new Date(),
+                kicker_id: currentKicker,
             },
         ])
         .select()
@@ -100,23 +105,29 @@ export async function getMatch(matchId) {
 }
 
 export async function getMatches({ currentPage, filter }) {
-    let query = supabase.from(MATCHES).select(
-        `
+    let query = supabase
+        .from(MATCHES)
+        .select(
+            `
         *,
         player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
         player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
         player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
         player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
     `,
-        { count: "exact" }
-    );
+            { count: "exact" }
+        )
+        .eq("kicker_id", filter.kicker);
 
     if (filter?.field) {
         query = query[filter.method || "eq"](filter.field, filter.value);
     }
 
     if (filter?.name) {
-        const player = await getPlayerByName(filter.name);
+        const player = await getPlayerByName({
+            name: filter.name,
+            kicker: filter.kicker,
+        });
         const { id } = player;
         query = query.or(
             `player1.eq.${id},player2.eq.${id},player3.eq.${id},player4.eq.${id}`
@@ -152,11 +163,12 @@ export async function getMatches({ currentPage, filter }) {
     return { data, count };
 }
 
-export async function getActiveMatch() {
+export async function getActiveMatch({ kicker }) {
     const { data, error } = await supabase
         .from(MATCHES)
         .select("*")
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("kicker_id", kicker);
 
     if (error) {
         console.error(error);
@@ -342,7 +354,9 @@ export async function getDisgraces({ filter }) {
     `,
             { count: "exact" }
         )
-        .or("scoreTeam1.eq.0, scoreTeam2.eq.0");
+        .eq("kicker_id", filter.kicker)
+        .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
+        .order("created_at", { ascending: false });
 
     if (filter?.field) {
         query = query[filter.method || "eq"](filter.field, filter.value);
@@ -383,7 +397,10 @@ export async function getMmrHistory({ filter }) {
         filter,
     });
 
-    const player = await getPlayerByName(filter.name);
+    const player = await getPlayerByName({
+        name: filter.name,
+        kicker: filter.kicker,
+    });
 
     data.sort((a, b) => b.end_time - a.end_time);
 
@@ -513,8 +530,8 @@ export async function getOpponentStats({ username, filter }) {
     return data;
 }
 
-export async function getPlaytime({ name }) {
-    const { data } = await getMatches({ filter: { name } });
+export async function getPlaytime({ name, kicker }) {
+    const { data } = await getMatches({ filter: { name, kicker } });
 
     const playtime = data
         .filter((match) => match.status === "ended")

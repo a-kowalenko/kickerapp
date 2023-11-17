@@ -10,6 +10,7 @@ import Row from "../ui/Row";
 import Heading from "../ui/Heading";
 import Filter from "../ui/Filter";
 import Spinner from "../ui/Spinner";
+import { useKickerInfo } from "../hooks/useKickerInfo";
 
 const fakeOptions = [
     { text: "Element 1", value: 1 },
@@ -26,6 +27,9 @@ const fakeFilterOptions = [
 ];
 
 function Testwiese() {
+    const { data: kickerData, isLoading: isLoadingKickerData } =
+        useKickerInfo();
+
     const isDisabled = false;
 
     function handleCheckboxChange(value) {
@@ -36,6 +40,13 @@ function Testwiese() {
 
     return (
         <>
+            <FormRow label={"access token"}>
+                <Input
+                    placeholder="Default disabled"
+                    disabled
+                    value={kickerData.access_token}
+                />
+            </FormRow>
             <FormRow>
                 <Input placeholder="Default" />
                 <Input placeholder="Default disabled" disabled />

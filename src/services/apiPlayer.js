@@ -1,7 +1,7 @@
 import { PLAYER } from "../utils/constants";
 import supabase from "./supabase";
 
-export async function createPlayer(user) {
+export async function createPlayer({ user, kickerId }) {
     const {
         id: user_id,
         user_metadata: { avatar, username: name },
@@ -13,6 +13,7 @@ export async function createPlayer(user) {
             user_id,
             name,
             avatar,
+            kicker_id: kickerId,
         })
         .select()
         .single();
@@ -39,8 +40,12 @@ export async function updatePlayerByUserId({ username, avatar, userId }) {
     return data;
 }
 
-export async function getMostPlayed() {
-    const { data, error } = await supabase.rpc("get_player_match_counts");
+export async function getMostPlayed({ filter }) {
+    const kickerId = filter.kicker;
+
+    const { data, error } = await supabase.rpc("get_player_matches_count", {
+        kicker_id: kickerId,
+    });
 
     if (error) {
         throw new Error(error.message);
@@ -49,15 +54,15 @@ export async function getMostPlayed() {
     return data;
 }
 
-export async function getPlayerByName(name) {
+export async function getPlayerByName({ name, kicker }) {
     const { data, error } = await supabase
         .from(PLAYER)
         .select("*")
+        .eq("kicker_id", kicker)
         .eq("name", name)
         .single();
 
     if (error) {
-        console.error(error);
         throw new Error("Player could not be loaded");
     }
 

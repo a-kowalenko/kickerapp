@@ -10,3 +10,4 @@ export const DEFAULT_DATABASE_SCHEMA = "kopecht";
 
 export const MATCHES = "matches";
 export const PLAYER = "player";
+export const KICKER = "kicker";

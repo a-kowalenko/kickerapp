@@ -1,6 +1,6 @@
 import { PLAYER } from "../utils/constants";
 import { getBaseUrl } from "../utils/helpers";
-import { createPlayer, updatePlayerByUserId } from "./apiPlayer";
+import { updatePlayerByUserId } from "./apiPlayer";
 import supabase, { supabaseUrl } from "./supabase";
 
 export async function register({ username, email, password }) {
@@ -22,8 +22,6 @@ export async function register({ username, email, password }) {
     if (error) {
         throw new Error(error.message);
     }
-
-    await createPlayer(data.user);
 
     return data;
 }
@@ -162,6 +160,18 @@ export async function updatePassword({ password }) {
 
 export async function verifyRecoveryToken({ token_hash, type }) {
     const { data, error } = await supabase.auth.verifyOtp({ token_hash, type });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+export async function setLastKicker(kickerId) {
+    const { data, error } = await supabase.auth.updateUser({
+        data: { last_kicker: kickerId },
+    });
 
     if (error) {
         throw new Error(error.message);
