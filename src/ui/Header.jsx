@@ -44,6 +44,7 @@ function Header() {
 
     function handleKickerSelect(option) {
         setCurrentKicker(option);
+        navigate("/home");
     }
 
     return (
