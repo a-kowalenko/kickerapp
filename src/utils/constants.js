@@ -5,6 +5,13 @@ export const DEFAULT_AVATAR = "/default-user.jpg";
 export const ACTIVE_MATCH_REFETCH_INTERVAL = 1000 * 5;
 export const DISGRACE_FAKTOR = 2;
 
+// MEDIA QUERIES
+export const media = {
+    mobile: "@media(max-width: 480px)",
+    tablet: "@media(max-width: 768px)",
+    desktop: "@media(min-width: 769px)",
+};
+
 // DATABASE CONSTANTS
 export const DEFAULT_DATABASE_SCHEMA = "kopecht";
 
