@@ -2,11 +2,13 @@ import { useQuery, useQueryClient } from "react-query";
 import { getMatches } from "../../services/apiMatches";
 import { useParams, useSearchParams } from "react-router-dom";
 import { PAGE_SIZE } from "../../utils/constants";
+import { useKicker } from "../../contexts/KickerContext";
 
 export function useMatchHistory() {
     const { userId: name } = useParams();
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
+    const { currentKicker: kicker } = useKicker();
 
     // FILTERING
     const filterValue = searchParams.get("gamemode");
@@ -25,8 +27,9 @@ export function useMatchHistory() {
         isLoading: isLoadingMatches,
         error,
     } = useQuery({
-        queryKey: ["matchHistory", name, filter, currentPage],
-        queryFn: () => getMatches({ filter: { name, ...filter }, currentPage }),
+        queryKey: ["matchHistory", name, filter, currentPage, kicker],
+        queryFn: () =>
+            getMatches({ filter: { name, ...filter, kicker }, currentPage }),
         enabled: !!name,
     });
 
@@ -34,10 +37,10 @@ export function useMatchHistory() {
 
     if (currentPage < pageCount) {
         queryClient.prefetchQuery({
-            queryKey: ["matchHistory", name, filter, currentPage + 1],
+            queryKey: ["matchHistory", name, filter, currentPage + 1, kicker],
             queryFn: () =>
                 getMatches({
-                    filter: { name, ...filter },
+                    filter: { name, ...filter, kicker },
                     currentPage: currentPage + 1,
                 }),
         });
@@ -45,10 +48,10 @@ export function useMatchHistory() {
 
     if (currentPage > 1) {
         queryClient.prefetchQuery({
-            queryKey: ["matchHistory", name, filter, currentPage - 1],
+            queryKey: ["matchHistory", name, filter, currentPage - 1, kicker],
             queryFn: () =>
                 getMatches({
-                    filter: { name, ...filter },
+                    filter: { name, ...filter, kicker },
                     currentPage: currentPage - 1,
                 }),
         });

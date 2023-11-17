@@ -102,7 +102,7 @@ function RegisterForm() {
                 </FormRow>
 
                 <FormRow label="Already have an account?">
-                    <StyledLink to="/">Login</StyledLink>
+                    <StyledLink to="/login">Login</StyledLink>
                 </FormRow>
             </form>
         </RegisterContainer>
