@@ -1,8 +1,10 @@
 import { useQuery } from "react-query";
 import { getMatches } from "../../services/apiMatches";
 import { MATCHES } from "../../utils/constants";
+import { useKicker } from "../../contexts/KickerContext";
 
 export function useRecentMatches() {
+    const { currentKicker: kicker } = useKicker();
     const firstPage = 1;
 
     const {
@@ -10,8 +12,12 @@ export function useRecentMatches() {
         isLoading: isLoadingMatches,
         errorMatches,
     } = useQuery({
-        queryKey: [MATCHES, firstPage],
-        queryFn: () => getMatches({ currentPage: firstPage }),
+        queryKey: [MATCHES, firstPage, kicker],
+        queryFn: () =>
+            getMatches({
+                currentPage: firstPage,
+                filter: { kicker },
+            }),
     });
 
     return { matches, isLoadingMatches };

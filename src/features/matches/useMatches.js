@@ -2,10 +2,12 @@ import { useQuery, useQueryClient } from "react-query";
 import { getMatches as getMatchesApi } from "../../services/apiMatches";
 import { useSearchParams } from "react-router-dom";
 import { MATCHES, PAGE_SIZE } from "../../utils/constants";
+import { useKicker } from "../../contexts/KickerContext";
 
 export function useMatches() {
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
+    const { currentKicker: kicker } = useKicker();
 
     // Filtering
     const filterValue = searchParams.get("gamemode");
@@ -25,8 +27,12 @@ export function useMatches() {
         isLoading: isLoadingMatches,
         errorMatches,
     } = useQuery({
-        queryKey: [MATCHES, filter, currentPage],
-        queryFn: () => getMatchesApi({ currentPage, filter }),
+        queryKey: [MATCHES, filter, currentPage, kicker],
+        queryFn: () =>
+            getMatchesApi({
+                currentPage,
+                filter: { ...filter, kicker },
+            }),
     });
 
     // Prefetch next page
@@ -34,17 +40,23 @@ export function useMatches() {
 
     if (currentPage < pageCount) {
         queryClient.prefetchQuery({
-            queryKey: [MATCHES, filter, currentPage + 1],
+            queryKey: [MATCHES, filter, currentPage + 1, kicker],
             queryFn: () =>
-                getMatchesApi({ currentPage: currentPage + 1, filter }),
+                getMatchesApi({
+                    currentPage: currentPage + 1,
+                    filter: { ...filter, kicker },
+                }),
         });
     }
 
     if (currentPage > 1) {
         queryClient.prefetchQuery({
-            queryKey: [MATCHES, filter, currentPage - 1],
+            queryKey: [MATCHES, filter, currentPage - 1, kicker],
             queryFn: () =>
-                getMatchesApi({ currentPage: currentPage - 1, filter }),
+                getMatchesApi({
+                    currentPage: currentPage - 1,
+                    filter: { ...filter, kicker },
+                }),
         });
     }
 

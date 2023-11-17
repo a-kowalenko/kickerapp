@@ -47,6 +47,8 @@ const Toggle = styled.div`
     align-items: center;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.361);
     cursor: pointer;
+    gap: 2.4rem;
+    min-width: 25rem;
 
     padding: 1.2rem 2.4rem;
     border-radius: var(--border-radius-sm);
@@ -78,6 +80,8 @@ const List = styled.ul`
     overflow: hidden;
     display: ${(props) => (props.$isOpen ? "flex" : "hidden")};
     transition: max-height 0.2s ease-in-out;
+
+    overflow: auto;
 `;
 
 const StyledElement = styled.div`
@@ -105,9 +109,14 @@ function Element({ text, onSelect, isSelected }) {
     );
 }
 
-function Dropdown({ options, onSelect, disabled = false }) {
+function Dropdown({
+    options,
+    onSelect,
+    disabled = false,
+    initSelected = null,
+}) {
     const [isOpen, setIsOpen] = useState(false);
-    const [selected, setSelected] = useState(null);
+    const [selected, setSelected] = useState(initSelected);
     const close = () => setIsOpen(false);
     const ref = useOutsideClick(close, false);
 
@@ -120,7 +129,6 @@ function Dropdown({ options, onSelect, disabled = false }) {
     }
 
     function handleSelect(option) {
-        console.log("handleSelect called", option);
         setSelected(option);
         onSelect?.(option.value);
         close();

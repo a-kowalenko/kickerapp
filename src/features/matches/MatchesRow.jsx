@@ -88,7 +88,7 @@ function MatchesRow({ match }) {
 
     return (
         <Table.Row onClick={handleClickRow}>
-            <Rank>{match.id}</Rank>
+            <Rank>{match.nr}</Rank>
 
             <TeamContainer $won={team1Won} $team="1">
                 <PlayerName

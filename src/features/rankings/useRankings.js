@@ -1,9 +1,11 @@
 import { useQuery } from "react-query";
 import { getRankings } from "../../services/apiRankings";
 import { useSearchParams } from "react-router-dom";
+import { useKicker } from "../../contexts/KickerContext";
 
 export function useRankings() {
     const [searchParams] = useSearchParams();
+    const { currentKicker: kicker } = useKicker();
 
     // FILTER
     const filterValue = searchParams.get("gamemode");
@@ -17,8 +19,8 @@ export function useRankings() {
         isLoading: isLoadingRankings,
         errorRankings,
     } = useQuery({
-        queryKey: ["rankings", filter],
-        queryFn: () => getRankings({ filter }),
+        queryKey: ["rankings", filter, kicker],
+        queryFn: () => getRankings({ filter: { ...filter, kicker } }),
     });
 
     return { rankings, count, isLoadingRankings, errorRankings };

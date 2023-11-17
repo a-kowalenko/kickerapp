@@ -9,6 +9,7 @@ const StyledAppLayout = styled.div`
     grid-template-columns: 22rem 1fr 22rem;
     grid-template-rows: auto 1fr;
     height: 100dvh;
+    background-color: var(--secondary-background-color);
 `;
 
 const Main = styled.main`
