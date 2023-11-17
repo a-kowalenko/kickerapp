@@ -6,6 +6,13 @@ import { useKicker } from "../../contexts/KickerContext";
 import { verifyKickerMembership } from "../../services/apiKicker";
 import { useQuery } from "react-query";
 import toast from "react-hot-toast";
+import styled from "styled-components";
+
+const LoadingBackground = styled.div`
+    background-color: var(--secondary-background-color);
+    width: 100%;
+    height: 100dvh;
+`;
 
 function ProtectedRoute({ children }) {
     const { user, isLoading: isUserLoading, isAuthenticated } = useUser();
@@ -56,11 +63,19 @@ function ProtectedRoute({ children }) {
     );
 
     if (isUserLoading || isVerifyingMembership) {
-        return <Spinner />;
+        return (
+            <LoadingBackground>
+                <Spinner />
+            </LoadingBackground>
+        );
     }
 
     if (isError || !isAuthenticated || !currentKicker) {
-        return null;
+        return (
+            <LoadingBackground>
+                <Spinner />
+            </LoadingBackground>
+        );
     }
 
     return <>{children}</>;

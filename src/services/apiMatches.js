@@ -16,7 +16,6 @@ export async function getPlayers({ filter }) {
         .eq("kicker_id", filter.kicker);
 
     if (error) {
-        console.error(error);
         throw new Error("Players could not be loaded");
     }
 
@@ -30,7 +29,6 @@ export async function getPlayerById(id) {
         .eq("id", id);
 
     if (error) {
-        console.error(error);
         throw new Error("Player could not be loaded");
     }
 
@@ -45,8 +43,10 @@ export async function createMatch({ players, currentKicker }) {
         .eq("kicker_id", currentKicker);
 
     if (activeMatchesError) {
-        console.error(activeMatchesError);
-        throw new Error("There was an error while checking for active matches");
+        throw new Error(
+            "There was an error while checking for active matches",
+            activeMatchesError.message
+        );
     }
 
     if (activeMatches.length > 0) {
@@ -74,8 +74,7 @@ export async function createMatch({ players, currentKicker }) {
         .single();
 
     if (error) {
-        console.error(error);
-        throw new Error("There was an error creating the match");
+        throw new Error("There was an error creating the match", error.message);
     }
 
     return data;
@@ -97,8 +96,10 @@ export async function getMatch(matchId) {
         .single();
 
     if (error) {
-        console.error(error);
-        throw new Error("There was an error selecting the match");
+        throw new Error(
+            "There was an error selecting the match",
+            error.message
+        );
     }
 
     return data;
@@ -156,8 +157,10 @@ export async function getMatches({ currentPage, filter }) {
     const { data, error, count } = await query;
 
     if (error) {
-        console.error(error);
-        throw new Error("There was an error selecting the matches");
+        throw new Error(
+            "There was an error selecting the matches",
+            error.message
+        );
     }
 
     return { data, count };
@@ -171,8 +174,10 @@ export async function getActiveMatch({ kicker }) {
         .eq("kicker_id", kicker);
 
     if (error) {
-        console.error(error);
-        throw new Error("There was an error while checking for active matches");
+        throw new Error(
+            "There was an error while checking for active matches",
+            error.message
+        );
     }
 
     return { data, error };
@@ -334,8 +339,7 @@ export async function endMatch({ id, score1, score2 }) {
         .single();
 
     if (error) {
-        console.error(error);
-        throw new Error("There was an error ending the match");
+        throw new Error("There was an error ending the match", error.message);
     }
 
     return data;

@@ -15,7 +15,6 @@ export function useCreateKicker() {
                 await setCurrentKicker(data.id);
                 navigate("/home");
             } catch (error) {
-                console.error("Error setting current kicker:", error);
                 toast.error(error.message);
             }
         },
