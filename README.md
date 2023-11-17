@@ -7,11 +7,12 @@ ZeroHero is an innovative web application built with ReactJS and Vite, designed 
 ## Key Features
 - **Player Profiles**: Customize your profile, monitor your progress, and compare rankings.
 - **Game Tracking**: Log new matches seamlessly, with automated updates to player records and rankings.
-- **Rankings & Statistics**: Access real-time, detailed statistics and rankings of each player.
+- **MMR Rankings & Statistics**: Access real-time, detailed statistics and rankings of each player.
 - **Match Histories**: Explore comprehensive match records, including detailed analyses of past games.
+- **Multiple Tables**: Manage separate player groups or leagues within the same app.
 
 ## Upcoming Enhancements
-- **Multiple Tables**: Manage separate player groups or leagues within the same app.
+- **Mobile Optimization**: Use an optimized version of the app on your mobile devices.
 - **Advanced Statistics**: Gain deeper insights with improved statistical tools and visualizations.
 - **Additional Features**: We're continually adding new functionalities to enhance your experience.
 
