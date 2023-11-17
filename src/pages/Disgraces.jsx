@@ -11,7 +11,7 @@ const StyledDisgrace = styled.div`
 function Disgrace() {
     return (
         <StyledDisgrace>
-            <Heading as="h1" type="page">
+            <Heading as="h1" type="page" hasBackBtn={true}>
                 Disgraces
             </Heading>
             <MatchesFilterRow />

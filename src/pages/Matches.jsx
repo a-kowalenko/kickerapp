@@ -20,7 +20,7 @@ function Matches() {
 
     return (
         <StyledMatches>
-            <Heading as="h1" type="page">
+            <Heading as="h1" type="page" hasBackBtn={true}>
                 Matches
             </Heading>
             <MatchesFilterRow />

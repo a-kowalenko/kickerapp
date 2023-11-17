@@ -1,19 +1,12 @@
 import { useParams } from "react-router-dom";
 import { useUser } from "../features/authentication/useUser";
-import styled from "styled-components";
 import Profile from "../features/players/Profile";
-import Row from "../ui/Row";
 import Heading from "../ui/Heading";
 import TabView from "../ui/TabView";
 import Spinner from "../ui/Spinner";
 import ProfileSettings from "../features/players/ProfileSettings";
 import ProfileMatches from "../features/players/ProfileMatches";
 import PlayerStatistics from "../features/players/PlayerStatistics";
-
-const StyledUser = styled.div`
-    /* display: flex;
-    gap: 12rem; */
-`;
 
 function User() {
     const { userId } = useParams();
@@ -61,11 +54,10 @@ function User() {
 
     return (
         <>
-            <Row type="horizontal">
-                <Heading as="h1" $uppercase>
-                    Profile of {userId}
-                </Heading>
-            </Row>
+            <Heading as="h1" hasBackBtn={true} backDirection="/home" $uppercase>
+                Profile of {userId}
+            </Heading>
+
             <TabView tabs={tabs} />
         </>
     );

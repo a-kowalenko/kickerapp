@@ -134,6 +134,10 @@ const CreateKickerContainer = styled.div`
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+
+    & button {
+        width: 100%;
+    }
 `;
 
 const JoinKickerContainer = styled.div`
@@ -141,6 +145,10 @@ const JoinKickerContainer = styled.div`
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+
+    & button {
+        width: 100%;
+    }
 `;
 
 const Footer = styled.footer`
@@ -171,9 +179,13 @@ const CloseSidebarContainer = styled.div`
 const KickerListTitle = styled.h2`
     color: var(--primary-text-color);
     font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--primary-border-color);
+`;
+
+const SidebarInfoMessage = styled.span`
+    font-style: italic;
 `;
 
 const StyledStartpage = styled.div`
@@ -360,18 +372,24 @@ function Startpage() {
                     ) : (
                         <>
                             <KickerListTitle>Your Kickers</KickerListTitle>
-                            <KickerList>
-                                {kickers?.map((kicker) => (
-                                    <KickerListElement
-                                        key={kicker.id}
-                                        onClick={() =>
-                                            handleKickerSelect(kicker.id)
-                                        }
-                                    >
-                                        {kicker.name}
-                                    </KickerListElement>
-                                ))}
-                            </KickerList>
+                            {kickers?.length > 0 ? (
+                                <KickerList>
+                                    {kickers.map((kicker) => (
+                                        <KickerListElement
+                                            key={kicker.id}
+                                            onClick={() =>
+                                                handleKickerSelect(kicker.id)
+                                            }
+                                        >
+                                            {kicker.name}
+                                        </KickerListElement>
+                                    ))}
+                                </KickerList>
+                            ) : (
+                                <SidebarInfoMessage>
+                                    You have no kickers yet
+                                </SidebarInfoMessage>
+                            )}
                         </>
                     )}
                 </Sidebar>

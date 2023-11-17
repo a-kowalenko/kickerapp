@@ -80,7 +80,7 @@ export async function createMatch({ players, currentKicker }) {
     return data;
 }
 
-export async function getMatch(matchId) {
+export async function getMatch({ matchId, kicker }) {
     const { data, error } = await supabase
         .from(MATCHES)
         .select(
@@ -92,6 +92,7 @@ export async function getMatch(matchId) {
             player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
         `
         )
+        .eq("kicker_id", kicker)
         .eq("id", matchId)
         .single();
 
@@ -183,8 +184,8 @@ export async function getActiveMatch({ kicker }) {
     return { data, error };
 }
 
-export async function endMatch({ id, score1, score2 }) {
-    const match = await getMatch(id);
+export async function endMatch({ id, score1, score2, kicker }) {
+    const match = await getMatch({ matchId: id, kicker });
 
     if (match.status !== "active") {
         throw new Error("Match has already ended");
