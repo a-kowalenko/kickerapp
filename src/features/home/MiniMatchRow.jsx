@@ -51,7 +51,7 @@ function MiniMatchRow({ match }) {
 
     return (
         <MiniTable.Row onClick={handleClickRow}>
-            <div>{match.id}</div>
+            <div>{match.nr}</div>
             <TeamContainer $won={team1Won} $team="1">
                 <PlayerName
                     to={`/user/${player1.name}/profile`}

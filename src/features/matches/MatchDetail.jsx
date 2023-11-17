@@ -11,6 +11,8 @@ import Spinner from "../../ui/Spinner";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
+import Error from "../../ui/Error";
+import SpinnerMini from "../../ui/SpinnerMini";
 
 const Row = styled.div`
     display: flex;
@@ -140,6 +142,10 @@ function MatchDetail() {
         return <Spinner />;
     }
 
+    if (error) {
+        return <Error message={error.message} />;
+    }
+
     const { player1, player2, player3, player4 } = match;
 
     const isActive = match.status === "active";
@@ -235,7 +241,7 @@ function MatchDetail() {
             <BottomRow>
                 {isActive && (
                     <Button $size="xlarge" onClick={handleEndMatch}>
-                        End match
+                        {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
                     </Button>
                 )}
                 {isEnded && (

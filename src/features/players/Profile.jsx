@@ -6,6 +6,7 @@ import StatsFilterRow from "./StatsFilterRow";
 import Avatar from "../../ui/Avatar";
 import Spinner from "../../ui/Spinner";
 import { usePlayerName } from "./usePlayerName";
+import Error from "../../ui/Error";
 
 const StyledProfile = styled.div`
     display: flex;
@@ -39,10 +40,14 @@ const LeftBox = styled.div`
 
 function Profile() {
     const { userId } = useParams();
-    const { player, isLoading } = usePlayerName(userId);
+    const { player, isLoading, error } = usePlayerName(userId);
 
     if (isLoading) {
         return <Spinner />;
+    }
+
+    if (error) {
+        return <Error message={error.message} />;
     }
 
     const { avatar } = player;

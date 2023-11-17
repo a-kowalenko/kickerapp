@@ -11,7 +11,7 @@ const StyledRankings = styled.div`
 function Rankings() {
     return (
         <StyledRankings>
-            <Heading as="h1" type="page">
+            <Heading as="h1" type="page" hasBackBtn={true}>
                 Rankings
             </Heading>
             <RankingsFilterRow />
