@@ -57,13 +57,15 @@ const Player = styled.div`
 
 const PlayerName = styled.span`
     display: flex;
-    min-width: 10rem;
+    min-width: 8rem;
     justify-content: center;
 `;
 
 const ActionsContainer = styled.div`
     display: flex;
-    gap: 2.4rem;
+    gap: 1.8rem;
+
+    flex-direction: column;
 
     justify-content: center;
 
@@ -96,15 +98,15 @@ const TeamContainer = styled.div`
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2.4rem;
+    gap: 2rem;
     min-width: 15rem;
 `;
 
 const Team1Container = styled(TeamContainer)`
-    align-items: end;
+    align-items: center;
 `;
 const Team2Container = styled(TeamContainer)`
-    align-items: start;
+    align-items: center;
 `;
 
 const TimerContainer = styled.div`
@@ -243,7 +245,7 @@ function MatchDetailMobile({ match, timer }) {
                     )}
                 </Team1Container>
 
-                <Divider $variation="vertical" />
+                <Divider $variation="horizontal" />
 
                 <Team2Container>
                     <Player>
