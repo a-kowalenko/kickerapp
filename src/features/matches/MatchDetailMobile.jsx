@@ -19,12 +19,15 @@ const Heading = styled.h1`
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
+    text-transform: uppercase;
 `;
 
 const StyledMatchDetailMobile = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
+    margin-bottom: 5rem;
 `;
 
 const ScoreContainer = styled.div`
@@ -39,6 +42,7 @@ const Score = styled.div`
     min-width: 10rem;
     font-weight: 600;
     font-size: x-large;
+    justify-content: center;
 `;
 
 const ScoreTeam1 = styled(Score)`
@@ -170,13 +174,15 @@ function MatchDetailMobile({ match, timer }) {
 
     return (
         <StyledMatchDetailMobile>
-            <Heading>Active match {match.gamemode}</Heading>
+            <Heading>
+                {match.status} match {match.gamemode}
+            </Heading>
             <TimerContainer>{timer}</TimerContainer>
-            <ScoreContainer>
+            {/* <ScoreContainer>
                 <ScoreTeam1>{match.scoreTeam1}</ScoreTeam1>
                 <span>&mdash;</span>
                 <ScoreTeam2>{match.scoreTeam2}</ScoreTeam2>
-            </ScoreContainer>
+            </ScoreContainer> */}
 
             <ActionsContainer>
                 <Team1Container>
@@ -245,7 +251,11 @@ function MatchDetailMobile({ match, timer }) {
                     )}
                 </Team1Container>
 
+                <Score>{match.scoreTeam1}</Score>
+
                 <Divider $variation="horizontal" />
+
+                <Score>{match.scoreTeam2}</Score>
 
                 <Team2Container>
                     <Player>
