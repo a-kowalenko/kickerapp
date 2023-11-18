@@ -3,6 +3,9 @@ import RecentMatches from "./RecentMatches";
 import MonthlyDisgraces from "./MonthlyDisgraces";
 import MostPlayed from "./MostPlayed";
 import TodayStats from "./TodayStats";
+import { media } from "../../utils/constants";
+import useWindowWidth from "../../hooks/useWindowWidth";
+import NewMatchButton from "./NewMatchButton";
 
 const StyledHomeLayout = styled.div`
     display: grid;
@@ -10,9 +13,19 @@ const StyledHomeLayout = styled.div`
     grid-template-rows: auto 34rem auto;
     grid-column-gap: 24px;
     grid-row-gap: 24px;
+
+    ${media.tablet} {
+        display: none;
+    }
 `;
 
 function HomeLayout() {
+    const windowWidth = useWindowWidth();
+
+    if (windowWidth <= media.maxTablet) {
+        return <NewMatchButton />;
+    }
+
     return (
         <StyledHomeLayout>
             <TodayStats />

@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import ProfileMenu from "./ProfileMenu";
 import RightNav from "./RightNav";
+import { media } from "../utils/constants";
 
 const StyledSidebar = styled.aside`
     display: flex;
@@ -14,6 +15,10 @@ const StyledSidebar = styled.aside`
     gap: 3.2rem;
 
     justify-content: space-between;
+
+    ${media.tablet} {
+        display: none;
+    }
 `;
 
 function RightSidebar() {

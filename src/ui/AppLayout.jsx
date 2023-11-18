@@ -3,6 +3,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import styled from "styled-components";
 import RightSidebar from "./RightSidebar";
+import { media } from "../utils/constants";
 
 const StyledAppLayout = styled.div`
     display: grid;
@@ -10,6 +11,10 @@ const StyledAppLayout = styled.div`
     grid-template-rows: auto 1fr;
     height: 100dvh;
     background-color: var(--secondary-background-color);
+
+    ${media.tablet} {
+        grid-template-columns: 1fr;
+    }
 `;
 
 const Main = styled.main`

@@ -9,6 +9,7 @@ import { useKicker } from "../contexts/KickerContext";
 import { useNavigate } from "react-router-dom";
 import ButtonIcon from "./ButtonIcon";
 import { HiArrowRightOnRectangle } from "react-icons/hi2";
+import { media } from "../utils/constants";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -18,6 +19,10 @@ const StyledHeader = styled.header`
     display: flex;
     align-items: center;
     justify-content: space-between;
+
+    ${media.tablet} {
+        display: none;
+    }
 `;
 
 const KickerInfoWrapper = styled.div`
