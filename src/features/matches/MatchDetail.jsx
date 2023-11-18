@@ -8,11 +8,13 @@ import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
 import Spinner from "../../ui/Spinner";
-import { DEFAULT_AVATAR } from "../../utils/constants";
+import { DEFAULT_AVATAR, media } from "../../utils/constants";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
 import Error from "../../ui/Error";
 import SpinnerMini from "../../ui/SpinnerMini";
+import useWindowWidth from "../../hooks/useWindowWidth";
+import MatchDetailMobile from "./MatchDetailMobile";
 
 const Row = styled.div`
     display: flex;
@@ -23,7 +25,12 @@ const Row = styled.div`
 
 const TopRow = styled(Row)``;
 
-const MainRow = styled(Row)``;
+const MainRow = styled(Row)`
+    @media screen and (max-width: 1248px) {
+        flex-direction: column;
+        gap: 3.4rem;
+    }
+`;
 
 const BottomRow = styled(Row)`
     justify-content: center;
@@ -105,6 +112,7 @@ function MatchDetail() {
     const [score2, setScore2] = useState("");
     const [timer, setTimer] = useState("00:00");
     const timerIdRef = useRef(null);
+    const windowWidth = useWindowWidth();
 
     useEffect(
         function () {
@@ -178,10 +186,14 @@ function MatchDetail() {
         clearInterval(timerIdRef.current);
     }
 
+    if (windowWidth < media.maxTablet) {
+        return <MatchDetailMobile match={match} timer={timer} />;
+    }
+
     return (
         <>
             <TopRow>
-                <TeamHeader>Team A</TeamHeader>
+                <TeamHeader>{windowWidth > 1248 ? "Team A" : "A"}</TeamHeader>
                 <ScoreContainer>
                     <ScoreInput
                         value={score1}
@@ -195,7 +207,7 @@ function MatchDetail() {
                         disabled={isEnded}
                     />
                 </ScoreContainer>
-                <TeamHeader>Team B</TeamHeader>
+                <TeamHeader>{windowWidth > 1248 ? "Team B" : "B"}</TeamHeader>
             </TopRow>
             <MainRow>
                 <TeamContainer>
