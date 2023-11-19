@@ -4,6 +4,10 @@ import Logo from "./Logo";
 import { media } from "../utils/constants";
 import BurgerMenu from "./BurgerMenu";
 import { useLocalStorageState } from "../hooks/useLocalStorageState";
+import { useEffect } from "react";
+import { useRef } from "react";
+import { useOutsideClick } from "../hooks/useOutsideClick";
+import { useCallback } from "react";
 
 const StyledSidebar = styled.aside`
     display: flex;
@@ -64,14 +68,24 @@ const StyledSidebar = styled.aside`
 function Sidebar() {
     const [isOpen, setIsOpen] = useLocalStorageState(true, "isOpenLeftSidebar");
 
-    const toggleSidebar = () => setIsOpen((open) => !open);
+    const close = () => setIsOpen(false);
+    const sidebarRef = useOutsideClick(close, false);
+
+    const toggleSidebar = (e) => {
+        e.stopPropagation();
+        setIsOpen((open) => !open);
+    };
 
     console.log(isOpen);
 
     return (
         <>
             <BurgerMenu onClick={toggleSidebar} />
-            <StyledSidebar className={isOpen ? "active" : ""} $isOpen={isOpen}>
+            <StyledSidebar
+                ref={sidebarRef}
+                className={isOpen ? "active" : ""}
+                $isOpen={isOpen}
+            >
                 <Logo />
                 <MainNav />
             </StyledSidebar>
