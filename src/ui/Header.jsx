@@ -24,6 +24,7 @@ const StyledHeader = styled.header`
 
     ${media.tablet} {
         justify-content: flex-end;
+        padding: 1.6rem 2.4rem;
     }
 `;
 

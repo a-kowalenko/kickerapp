@@ -14,6 +14,7 @@ import { useEndMatch } from "./useEndMatch";
 import toast from "react-hot-toast";
 import SpinnerMini from "../../ui/SpinnerMini";
 import { useState } from "react";
+import Divider from "../../ui/Divider";
 
 const Heading = styled.h1`
     display: flex;
@@ -56,7 +57,7 @@ const Player = styled.div`
     display: flex;
     min-width: 10rem;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
 `;
 
 const PlayerName = styled.span`
@@ -88,14 +89,6 @@ const SingleButtonRow = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-`;
-
-const Divider = styled.div`
-    ${(props) =>
-        props.$variation === "vertical"
-            ? "width: 1px;"
-            : "height: 1px; width: 100%;"}
-    background-color: var(--primary-border-color);
 `;
 
 const TeamContainer = styled.div`
@@ -178,11 +171,6 @@ function MatchDetailMobile({ match, timer }) {
                 {match.status} match {match.gamemode}
             </Heading>
             <TimerContainer>{timer}</TimerContainer>
-            {/* <ScoreContainer>
-                <ScoreTeam1>{match.scoreTeam1}</ScoreTeam1>
-                <span>&mdash;</span>
-                <ScoreTeam2>{match.scoreTeam2}</ScoreTeam2>
-            </ScoreContainer> */}
 
             <ActionsContainer>
                 <Team1Container>

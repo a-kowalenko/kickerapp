@@ -32,9 +32,7 @@ function Testwiese() {
 
     const isDisabled = false;
 
-    function handleCheckboxChange(value) {
-        console.log("checkbox set to:", value);
-    }
+    function handleCheckboxChange(value) {}
 
     const { matches } = useMatches();
 

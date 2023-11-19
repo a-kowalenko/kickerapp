@@ -76,8 +76,6 @@ function Sidebar() {
         setIsOpen((open) => !open);
     };
 
-    console.log(isOpen);
-
     return (
         <>
             <BurgerMenu onClick={toggleSidebar} />

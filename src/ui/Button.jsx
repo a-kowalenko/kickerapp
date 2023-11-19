@@ -11,7 +11,7 @@ const Button = styled.button`
 
     &:hover {
         box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.7);
-        background-color: var(--primary-button-color-hover);
+        /* background-color: var(--primary-button-color-hover); */
     }
 
     &:active {

@@ -6,7 +6,7 @@ const BurgerMenuContainer = styled.div`
     display: flex;
     position: absolute;
     left: 1.5rem;
-    top: 2rem;
+    top: 1.6rem;
     gap: 1rem;
     z-index: 1000;
 `;

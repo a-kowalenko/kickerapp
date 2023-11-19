@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
-import { HiOutlinePlusCircle } from "react-icons/hi2";
+import { HiOutlinePlusCircle, HiPlus } from "react-icons/hi2";
 import { usePlayers } from "../../hooks/usePlayers";
 import { useCreateMatch } from "./useCreateMatch";
 import PlayerDropdown from "./PlayerDropdown";
@@ -14,6 +14,9 @@ import { DEFAULT_AVATAR, START_MATCH_COUNTDOWN } from "../../utils/constants";
 import Heading from "../../ui/Heading";
 import Row from "../../ui/Row";
 import { useSound } from "../../contexts/SoundContext";
+import Dropdown from "../../ui/Dropdown";
+import ContentBox from "../../ui/ContentBox";
+import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -24,9 +27,8 @@ const Container = styled.div`
 `;
 
 const PlayersContainer = styled.div`
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6rem 24rem;
+    display: flex;
+    gap: 5.4rem;
     justify-items: space-evenly;
 `;
 
@@ -74,92 +76,45 @@ const AddLabel = styled.label`
     font-size: 28px;
 `;
 
+const TeamContainer = styled(ContentBox)`
+    min-height: 30rem;
+    justify-content: space-between;
+`;
+
+const PlayerContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+`;
+
+const AddButtonContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: flex-end;
+
+    & button {
+        width: 100%;
+    }
+`;
+
 function ChoosePlayers() {
-    const [selectedPlayers, setSelectedPlayers] = useState({
-        player1: null,
-        player2: null,
-        player3: null,
-        player4: null,
-    });
-
-    const [displayDropdowns, setDisplayDropdowns] = useState({
-        player1: true,
-        player2: true,
-        player3: false,
-        player4: false,
-    });
-
-    const [isStarting, setIsStarting] = useState(false);
-    const [timer, setTimer] = useState(START_MATCH_COUNTDOWN);
-    const { isSound } = useSound();
-
-    const { players, isLoading, error } = usePlayers();
-    const { createMatch } = useCreateMatch();
-
-    const countdownAudio = useMemo(() => new Audio("/startMatchSound.mp3"), []);
-
-    useEffect(
-        function () {
-            if (!isSound) {
-                countdownAudio.volume = 0;
-            } else {
-                countdownAudio.volume = 1;
-            }
-        },
-        [isSound, countdownAudio]
-    );
-
-    useEffect(() => {
-        let timerId;
-
-        if (timer >= 0 && isStarting) {
-            if (timer === 3) {
-                countdownAudio.play();
-            }
-            timerId = setTimeout(() => setTimer(timer - 1), 1000);
-        } else if (timer === -1) {
-            createMatch(selectedPlayers);
-        }
-
-        return () => {
-            clearTimeout(timerId);
-        };
-    }, [timer, isStarting, createMatch, selectedPlayers, countdownAudio]);
-
-    function startTimer() {
-        setIsStarting(true);
-        setTimer(START_MATCH_COUNTDOWN);
-    }
-
-    function cancelTimer() {
-        setIsStarting(false);
-        setTimer(START_MATCH_COUNTDOWN);
-        countdownAudio.pause();
-        countdownAudio.currentTime = 0;
-    }
+    const {
+        isLoading,
+        startCountdown,
+        isStarting,
+        timer,
+        cancelTimer,
+        handleSelect,
+        activatePlayer,
+        isPlayer3Active,
+        isPlayer4Active,
+        filteredPlayers,
+        filteredForPlayer3And4,
+    } = useChoosePlayers();
 
     if (isLoading) {
         return <Spinner />;
-    }
-
-    function handleSelect(key, player) {
-        setSelectedPlayers((state) => ({ ...state, [key]: player }));
-        if (player === null && (key === "player3" || key === "player4")) {
-            setDisplayDropdowns((prev) => ({ ...prev, [key]: false }));
-        }
-    }
-
-    function toggleDropdownDisplay(key) {
-        setDisplayDropdowns((prev) => ({ ...prev, [key]: !prev[key] }));
-    }
-
-    function handleSubmit() {
-        if (!selectedPlayers.player1 || !selectedPlayers.player2) {
-            toast.error("You must select player 1 and player 2");
-            return;
-        }
-
-        startTimer(selectedPlayers);
     }
 
     return (
@@ -169,51 +124,61 @@ function ChoosePlayers() {
                 <Heading as="h1">Team 2</Heading>
             </Row>
             <PlayersContainer>
-                {Object.keys(selectedPlayers).map((key) => {
-                    const options = players.filter(
-                        (player) =>
-                            !Object.values(selectedPlayers).includes(player) ||
-                            selectedPlayers[key] === player
-                    );
+                <TeamContainer>
+                    <PlayerContainer>
+                        <Heading as="h3">Player 1</Heading>
+                        <Dropdown
+                            options={filteredPlayers}
+                            onSelect={(playerId) => handleSelect(playerId, 0)}
+                        />
+                    </PlayerContainer>
+                    {isPlayer3Active ? (
+                        <PlayerContainer>
+                            <Heading as="h3">Player 3</Heading>
+                            <Dropdown
+                                options={filteredForPlayer3And4}
+                                onSelect={(playerId) =>
+                                    handleSelect(playerId, 2)
+                                }
+                            />
+                        </PlayerContainer>
+                    ) : (
+                        <AddButtonContainer>
+                            <Button onClick={() => activatePlayer(3)}>
+                                <HiPlus />
+                                <span>Add Player 3</span>
+                            </Button>
+                        </AddButtonContainer>
+                    )}
+                </TeamContainer>
 
-                    return (
-                        <PlayerBox
-                            key={key}
-                            onClick={
-                                !displayDropdowns[key]
-                                    ? () => toggleDropdownDisplay(key)
-                                    : undefined
-                            }
-                        >
-                            {displayDropdowns[key] ? (
-                                <>
-                                    {selectedPlayers[key] && (
-                                        <Avatar
-                                            src={
-                                                selectedPlayers[key].avatar ||
-                                                DEFAULT_AVATAR
-                                            }
-                                            alt={`Avatar of ${selectedPlayers[key].name}`}
-                                        />
-                                    )}
-                                    <PlayerDropdown
-                                        id={key}
-                                        options={options}
-                                        selectedPlayer={selectedPlayers[key]}
-                                        onSelect={(player) =>
-                                            handleSelect(key, player)
-                                        }
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    <AddIcon style={{ marginRight: "8px" }} />
-                                    <AddLabel>Add {key}</AddLabel>
-                                </>
-                            )}
-                        </PlayerBox>
-                    );
-                })}
+                <TeamContainer>
+                    <PlayerContainer>
+                        <Heading as="h3">Player 2</Heading>
+                        <Dropdown
+                            options={filteredPlayers}
+                            onSelect={(playerId) => handleSelect(playerId, 1)}
+                        />
+                    </PlayerContainer>
+                    {isPlayer4Active ? (
+                        <PlayerContainer>
+                            <Heading as="h3">Player 4</Heading>
+                            <Dropdown
+                                options={filteredForPlayer3And4}
+                                onSelect={(playerId) =>
+                                    handleSelect(playerId, 3)
+                                }
+                            />
+                        </PlayerContainer>
+                    ) : (
+                        <AddButtonContainer>
+                            <Button onClick={() => activatePlayer(4)}>
+                                <HiPlus />
+                                <span>Add Player 4</span>
+                            </Button>
+                        </AddButtonContainer>
+                    )}
+                </TeamContainer>
             </PlayersContainer>
             <SubmitRow>
                 <CheckboxContainer>
@@ -236,7 +201,7 @@ function ChoosePlayers() {
                 </CheckboxContainer>
                 {!isStarting && (
                     <FormRow>
-                        <Button $size="large" onClick={handleSubmit}>
+                        <Button $size="large" onClick={startCountdown}>
                             Start match
                         </Button>
                     </FormRow>

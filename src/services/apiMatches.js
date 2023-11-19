@@ -208,6 +208,12 @@ export async function endMatch({ id, score1, score2, kicker }) {
     const finalScore1 = score1 ? score1 : scoreTeam1;
     const finalScore2 = score2 ? score2 : scoreTeam2;
 
+    if (finalScore1 === finalScore2) {
+        throw new Error(
+            "Draws are not allowed.\nKeep playing until someone wins!"
+        );
+    }
+
     const team1Wins = finalScore1 > finalScore2;
     const isDisgrace = finalScore1 === 0 || finalScore2 === 0;
 
