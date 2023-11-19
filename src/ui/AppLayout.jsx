@@ -7,7 +7,7 @@ import { media } from "../utils/constants";
 
 const StyledAppLayout = styled.div`
     display: grid;
-    grid-template-columns: 22rem 1fr 22rem;
+    grid-template-columns: auto 1fr;
     grid-template-rows: auto 1fr;
     height: 100dvh;
     background-color: var(--secondary-background-color);
@@ -21,6 +21,8 @@ const Main = styled.main`
     background-color: var(--secondary-background-color);
     padding: 3.2rem 4.8rem 0rem;
     overflow: auto;
+
+    grid-column: 2;
 
     /* Removing scrollbars for webkit, firefox, and ms, respectively */
     &::-webkit-scrollbar {
@@ -38,7 +40,7 @@ function AppLayout() {
             <Main>
                 <Outlet />
             </Main>
-            <RightSidebar />
+            {/* <RightSidebar /> */}
         </StyledAppLayout>
     );
 }
