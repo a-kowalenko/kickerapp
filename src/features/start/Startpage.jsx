@@ -65,7 +65,7 @@ const KickerListElement = styled.li`
 const BurgerMenuContainer = styled.div`
     display: flex;
     position: absolute;
-    left: 2.5rem;
+    left: 1.5rem;
     gap: 1rem;
 `;
 

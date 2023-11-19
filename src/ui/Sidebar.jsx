@@ -13,7 +13,7 @@ const StyledSidebar = styled.aside`
     grid-row: 1 / -1;
     border-right: 1px solid var(--secondary-border-color);
     transition: width 0.2s ease-out; // Hinzufügen von Transitions
-    width: 22rem;
+    width: 24rem;
 
     @media (max-width: 850px) {
         &.active {
@@ -35,7 +35,7 @@ const StyledSidebar = styled.aside`
                 
                 & img {
                     height: 6rem;
-                    margin-top: 5rem;
+                    margin-top: 6rem;
                 }
 
                 & span {

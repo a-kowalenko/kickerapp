@@ -5,8 +5,8 @@ import styled from "styled-components";
 const BurgerMenuContainer = styled.div`
     display: flex;
     position: absolute;
-    left: 1rem;
-    top: 0.5rem;
+    left: 1.5rem;
+    top: 2rem;
     gap: 1rem;
     z-index: 1000;
 `;

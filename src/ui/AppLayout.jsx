@@ -35,7 +35,7 @@ const Main = styled.main`
     -ms-overflow-style: none;
 
     ${media.tablet} {
-        padding: 1.6rem 1rem 0rem;
+        padding: 1.6rem 0rem;
     }
 `;
 
