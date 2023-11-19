@@ -7,13 +7,13 @@ import { useKicker } from "../../contexts/KickerContext";
 export function useCreateMatch() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
-    const { currentKicker } = useKicker();
+    const { currentKicker: kicker } = useKicker();
 
     const { mutate: createMatch, isLoading } = useMutation({
-        mutationFn: (players) => createMatchApi({ players, currentKicker }),
+        mutationFn: (players) => createMatchApi({ players, kicker }),
         onSuccess: (data) => {
             toast.success(`Match ${data.id} started`);
-            queryClient.setQueryData(["match", data.id], data);
+            queryClient.setQueryData(["match", data.id, kicker], data);
             navigate(`/matches/${data.id}`);
         },
         onError: (err) => toast.error(err),

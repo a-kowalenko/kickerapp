@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
 const ButtonIcon = styled.button`
     display: flex;
@@ -8,6 +8,7 @@ const ButtonIcon = styled.button`
     background: none;
     padding: 0.6rem;
     border-radius: var(--border-radius-sm);
+
     transition: all 0.2s;
 
     &:hover {
@@ -15,10 +16,39 @@ const ButtonIcon = styled.button`
     }
 
     & svg {
-        width: 2.2rem;
-        height: 2.2rem;
-        color: var(--primary-button-color-text);
+        ${(props) => (props.$size ? sizes[props.$size] : sizes.default)}
+        ${(props) =>
+            props.$variation
+                ? variations[props.$variation]
+                : variations.default}
     }
 `;
+
+const variations = {
+    default: css`
+        color: var(--primary-button-color-text);
+    `,
+    primary: css`
+        /* background-color: var(--primary-button-color-hover); */
+        /* color: var(--primary-button-color); */
+    `,
+    danger: css`
+        color: var(--danger-button-color);
+    `,
+    success: css`
+        color: var(--winner-name-color);
+    `,
+};
+
+const sizes = {
+    default: css`
+        width: 2.2rem;
+        height: 2.2rem;
+    `,
+    large: css`
+        width: 3.6rem;
+        height: 3.6rem;
+    `,
+};
 
 export default ButtonIcon;

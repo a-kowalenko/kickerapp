@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import styled from "styled-components";
+import { media } from "../utils/constants";
 
 const StyledTable = styled.div`
     font-size: 1.6rem;
@@ -41,6 +42,11 @@ const StyledRow = styled.div`
 
     &:hover {
         background-color: var(--table-row-color-hover);
+    }
+
+    ${media.mobile} {
+        justify-content: space-between;
+        padding: 0.6rem 0rem;
     }
 `;
 

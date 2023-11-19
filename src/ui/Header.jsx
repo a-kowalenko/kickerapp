@@ -9,6 +9,8 @@ import { useKicker } from "../contexts/KickerContext";
 import { useNavigate } from "react-router-dom";
 import ButtonIcon from "./ButtonIcon";
 import { HiArrowRightOnRectangle } from "react-icons/hi2";
+import { media } from "../utils/constants";
+import ProfileMenu from "./ProfileMenu";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -18,13 +20,27 @@ const StyledHeader = styled.header`
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
+
+    ${media.tablet} {
+        justify-content: flex-end;
+        padding: 1.6rem 2.4rem;
+    }
 `;
 
 const KickerInfoWrapper = styled.div`
     display: flex;
     align-items: center;
-    width: 40rem;
+    /* width: 40rem; */
     gap: 2.4rem;
+
+    @media (max-width: 850px) {
+        padding-left: 2rem;
+    }
+
+    ${media.tablet} {
+        display: none;
+    }
 `;
 
 const ToggleWrapper = styled.div`
@@ -77,6 +93,7 @@ function Header() {
             <ToggleWrapper>
                 <SoundToggle />
                 <DarkModeToggle />
+                <ProfileMenu />
             </ToggleWrapper>
         </StyledHeader>
     );

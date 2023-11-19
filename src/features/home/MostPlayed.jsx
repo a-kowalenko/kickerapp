@@ -12,6 +12,7 @@ import {
 import { useMostPlayed } from "./useMostPlayed";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import styled from "styled-components";
+import { media } from "../../utils/constants";
 
 const colorsLight = [
     "#84cc16",
@@ -35,11 +36,23 @@ const colorsDark = [
     "#7e22ce",
 ];
 
+const StyledMostPlayed = styled(ContentBox)`
+    grid-area: 2 / 3 / 3 / 5;
+
+    @media (max-width: 1350px) {
+        grid-area: 4 / 1 / 5 / 3;
+    }
+
+    ${media.tablet} {
+        display: none;
+    }
+`;
+
 function MostPlayed() {
     const { mostPlayed, isLoading } = useMostPlayed();
 
     return (
-        <ContentBox $area="2 / 3 / 3 / 5">
+        <StyledMostPlayed>
             <Row type="horizontal">
                 <Heading as="h2">Most played</Heading>
             </Row>
@@ -84,7 +97,7 @@ function MostPlayed() {
                     </PieChart>
                 </ResponsiveContainer>
             )}
-        </ContentBox>
+        </StyledMostPlayed>
     );
 }
 

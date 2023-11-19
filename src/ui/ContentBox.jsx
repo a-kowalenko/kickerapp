@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { media } from "../utils/constants";
 
 const ContentBox = styled.div`
     background-color: var(--color-grey-0);
@@ -15,7 +16,9 @@ const ContentBox = styled.div`
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
 
-    ${(props) => (props.$area ? `grid-area: ${props.$area};` : "")}
+    @media (max-width: 555px) {
+        padding: 1.6rem;
+    }
 `;
 
 export default ContentBox;

@@ -77,11 +77,17 @@ const List = styled.ul`
         -1px -1px 1px var(--primary-dropdown-border-color);
 
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
-    overflow: hidden;
+
     display: ${(props) => (props.$isOpen ? "flex" : "hidden")};
     transition: max-height 0.2s ease-in-out;
 
     overflow: auto;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 `;
 
 const StyledElement = styled.div`

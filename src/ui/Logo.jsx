@@ -6,8 +6,10 @@ const StyledLogo = styled.div`
 `;
 
 const Img = styled.img`
-    height: 12rem;
+    transition: height 0.3s ease-out 0.1s, margin-top 0.3s ease-in-out;
     width: auto;
+    height: 12rem;
+    margin-top: 0;
 `;
 
 function Logo() {
