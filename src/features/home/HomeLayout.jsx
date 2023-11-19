@@ -14,17 +14,22 @@ const StyledHomeLayout = styled.div`
     grid-column-gap: 24px;
     grid-row-gap: 24px;
 
-    ${media.tablet} {
-        display: none;
+    @media (max-width: 1350px) {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: auto auto 34rem auto;
     }
+
+    /* ${media.tablet} {
+        display: none;
+    } */
 `;
 
 function HomeLayout() {
     const windowWidth = useWindowWidth();
 
-    if (windowWidth <= media.maxTablet) {
-        return <NewMatchButton />;
-    }
+    // if (windowWidth <= media.maxTablet) {
+    //     return <NewMatchButton />;
+    // }
 
     return (
         <StyledHomeLayout>

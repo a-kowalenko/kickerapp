@@ -35,11 +35,19 @@ const colorsDark = [
     "#7e22ce",
 ];
 
+const StyledMostPlayed = styled(ContentBox)`
+    grid-area: 2 / 3 / 3 / 5;
+
+    @media (max-width: 1350px) {
+        grid-area: 4 / 1 / 5 / 3;
+    }
+`;
+
 function MostPlayed() {
     const { mostPlayed, isLoading } = useMostPlayed();
 
     return (
-        <ContentBox $area="2 / 3 / 3 / 5">
+        <StyledMostPlayed>
             <Row type="horizontal">
                 <Heading as="h2">Most played</Heading>
             </Row>
@@ -84,7 +92,7 @@ function MostPlayed() {
                     </PieChart>
                 </ResponsiveContainer>
             )}
-        </ContentBox>
+        </StyledMostPlayed>
     );
 }
 

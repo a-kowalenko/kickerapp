@@ -21,10 +21,6 @@ const StyledHeader = styled.header`
     align-items: center;
     justify-content: space-between;
     width: 100%;
-
-    ${media.tablet} {
-        display: none;
-    }
 `;
 
 const KickerInfoWrapper = styled.div`
@@ -32,6 +28,10 @@ const KickerInfoWrapper = styled.div`
     align-items: center;
     /* width: 40rem; */
     gap: 2.4rem;
+
+    @media (max-width: 850px) {
+        padding-left: 2rem;
+    }
 `;
 
 const ToggleWrapper = styled.div`

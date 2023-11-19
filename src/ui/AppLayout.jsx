@@ -6,9 +6,12 @@ import RightSidebar from "./RightSidebar";
 import { media } from "../utils/constants";
 
 const StyledAppLayout = styled.div`
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto 1fr;
+    @media (min-width: 850px) {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
     height: 100dvh;
     background-color: var(--secondary-background-color);
 

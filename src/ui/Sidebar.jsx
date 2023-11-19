@@ -15,14 +15,21 @@ const StyledSidebar = styled.aside`
     transition: width 0.2s ease-out; // Hinzufügen von Transitions
     width: 22rem;
 
-    ${(props) =>
-        props.$isOpen
-            ? `
+    @media (max-width: 850px) {
+        &.active {
+            left: 0;
+        }
+    }
+
+    @media (min-width: 851px) {
+        ${(props) =>
+            props.$isOpen
+                ? `
                 & img {
                     transition: height 0.3s ease-out, margin-top 0.3s ease-out;
                 }
             `
-            : `
+                : `
                 width: 6rem; 
                 padding: 0px;
                 
@@ -40,10 +47,17 @@ const StyledSidebar = styled.aside`
                 & a:link, & a:visited {
                     padding: 1.2rem 1.2rem;
                 }
-    `}
+        `}
+    }
 
-    ${media.tablet} {
-        display: none;
+    @media (max-width: 850px) {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: -100%;
+        width: 25rem;
+        z-index: 100;
+        transition: left 0.3s ease-in-out;
     }
 `;
 
@@ -57,7 +71,7 @@ function Sidebar() {
     return (
         <>
             <BurgerMenu onClick={toggleSidebar} />
-            <StyledSidebar $isOpen={isOpen}>
+            <StyledSidebar className={isOpen ? "active" : ""} $isOpen={isOpen}>
                 <Logo />
                 <MainNav />
             </StyledSidebar>

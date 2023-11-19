@@ -8,6 +8,7 @@ const BurgerMenuContainer = styled.div`
     left: 1rem;
     top: 0.5rem;
     gap: 1rem;
+    z-index: 1000;
 `;
 
 function BurgerMenu({ onClick }) {

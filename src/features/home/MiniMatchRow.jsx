@@ -3,6 +3,7 @@ import MiniTable from "../../ui/MiniTable";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import PlayerName from "../../ui/PlayerName";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const TeamContainer = styled.div`
     display: flex;
@@ -38,12 +39,21 @@ const Score = styled.div`
         props.$team === "1" ? "flex-end" : "flex-start"};
 `;
 
+const DurationContainer = styled.div`
+    display: flex;
+    align-items: center;
+
+    @media screen and (max-width: 900px) {
+        justify-content: center;
+    }
+`;
+
 function MiniMatchRow({ match }) {
     const { player1, player2, player3, player4 } = match;
     const navigate = useNavigate();
     const team1Won =
         match.status !== "ended" ? null : match.scoreTeam1 > match.scoreTeam2;
-
+    const windowWidth = useWindowWidth();
     function handleClickRow(e) {
         e.stopPropagation();
         navigate(`/matches/${match.id}`);
@@ -118,21 +128,28 @@ function MiniMatchRow({ match }) {
                     </PlayerName>
                 )}
             </TeamContainer>
-            <div>
-                {format(new Date(match.start_time), "dd.MM.yyyy - HH:mm:ss")}
-            </div>
-            <div>
-                {match.end_time && (
-                    <span>
-                        {format(
-                            new Date(match.end_time) -
-                                new Date(match.start_time),
-                            "mm:ss"
-                        )}
-                    </span>
-                )}
-                {match.status === "active" && <span>Is active</span>}
-            </div>
+            {windowWidth > 1350 && (
+                <div>
+                    {format(
+                        new Date(match.start_time),
+                        "dd.MM.yyyy - HH:mm:ss"
+                    )}
+                </div>
+            )}
+            {windowWidth > 768 && (
+                <DurationContainer>
+                    {match.end_time && (
+                        <span>
+                            {format(
+                                new Date(match.end_time) -
+                                    new Date(match.start_time),
+                                "mm:ss"
+                            )}
+                        </span>
+                    )}
+                    {match.status === "active" && <span>Is active</span>}
+                </DurationContainer>
+            )}
         </MiniTable.Row>
     );
 }
