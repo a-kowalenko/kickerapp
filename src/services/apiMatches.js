@@ -14,6 +14,7 @@ import {
 import { calculateMmrChange, formatTime } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
+import { getGoalStatisticsByPlayer } from "./apiGoals";
 
 export async function getPlayers({ filter }) {
     const { data, error } = await supabase
@@ -433,6 +434,9 @@ export async function getMmrHistory({ filter }) {
     data.sort((a, b) => b.end_time - a.end_time);
 
     const latestPerDay = data.reduce((acc, item) => {
+        if (!item.end_time) {
+            return acc;
+        }
         const day = item.end_time.split("T")[0];
         if (!acc[day] || acc[day].end_time < item.end_time) {
             acc[day] = item;
@@ -537,6 +541,8 @@ export async function getOpponentStats({ username, filter }) {
         return acc;
     }, {});
 
+    const goalData = await getGoalStatisticsByPlayer(filter.kicker, username);
+
     const data = Object.keys(stats).map((key) => {
         return {
             name: key,
@@ -544,6 +550,8 @@ export async function getOpponentStats({ username, filter }) {
             losses: stats[key].losses,
             winrate: parseFloat(stats[key].wins / stats[key].total), // toFixed returns a string, so wrap it with parseFloat
             total: stats[key].total,
+            goals: goalData[key]?.standardGoals,
+            ownGoals: goalData[key]?.ownGoals,
         };
     });
 

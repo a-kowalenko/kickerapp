@@ -18,7 +18,6 @@ import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
 import Disgraces from "./pages/Disgraces";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
-import Testwiese from "./pages/Testwiese";
 import Players from "./pages/Players";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
 import { SoundProvider } from "./contexts/SoundContext";
@@ -26,6 +25,7 @@ import Recovery from "./pages/Recovery";
 import UpdatePassword from "./pages/UpdatePassword";
 import { KickerProvider } from "./contexts/KickerContext";
 import Start from "./pages/Start";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -87,8 +87,8 @@ function App() {
                                         element={<Players />}
                                     />
                                     <Route
-                                        path="testwiese"
-                                        element={<Testwiese />}
+                                        path="settings"
+                                        element={<Settings />}
                                     />
                                     <Route
                                         path="matches/create"

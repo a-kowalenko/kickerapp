@@ -49,6 +49,7 @@ function FormRow({
     children,
     buttonPosition = "end",
     fill = false,
+    element,
 }) {
     return (
         <StyledFormRow
@@ -58,6 +59,7 @@ function FormRow({
         >
             {label && <StyledLabel>{label}</StyledLabel>}
             {children}
+            {element && <label>{element}</label>}
             {error && <label>{error}</label>}
         </StyledFormRow>
     );

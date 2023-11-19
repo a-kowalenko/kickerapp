@@ -138,7 +138,7 @@ function MatchDetail() {
 
     useEffect(
         function () {
-            if (match && match.status === "ended") {
+            if (match) {
                 setScore1(match.scoreTeam1);
                 setScore2(match.scoreTeam2);
             }
@@ -218,15 +218,15 @@ function MatchDetail() {
                 <TeamHeader>{windowWidth > 1248 ? "Team A" : "A"}</TeamHeader>
                 <ScoreContainer>
                     <ScoreInput
-                        value={score1 || match.scoreTeam1}
+                        value={score1}
                         onChange={(e) => handleScoreChange(e, setScore1)}
-                        disabled={isEnded}
+                        disabled={isEnded || goals.length > 0}
                     />
                     &mdash;{" "}
                     <ScoreInput
-                        value={score2 || match.scoreTeam2}
+                        value={score2}
                         onChange={(e) => handleScoreChange(e, setScore2)}
-                        disabled={isEnded}
+                        disabled={isEnded || goals.length > 0}
                     />
                 </ScoreContainer>
                 <TeamHeader>{windowWidth > 1248 ? "Team B" : "B"}</TeamHeader>
@@ -282,10 +282,10 @@ function MatchDetail() {
                                 src={goal.player.avatar || DEFAULT_AVATAR}
                                 alt={`Avatar of ${goal.player.name}`}
                             />
-                            {`${goal.player.name} scored a ${
+                            {`${goal.player.name} scored ${
                                 goal.goal_type === STANDARD_GOAL
-                                    ? "goal"
-                                    : "own goal"
+                                    ? "a goal"
+                                    : "an own goal"
                             }!`}
                         </GoalItem>
                     </React.Fragment>
