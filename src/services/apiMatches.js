@@ -1,13 +1,20 @@
 import { addDays, format, parseISO } from "date-fns";
 import {
     DISGRACE_FAKTOR,
+    GAMEMODE_1ON1,
+    GAMEMODE_2ON1,
+    GAMEMODE_2ON2,
+    GOALS,
     MATCHES,
+    OWN_GOAL,
     PAGE_SIZE,
     PLAYER,
+    STANDARD_GOAL,
 } from "../utils/constants";
 import { calculateMmrChange, formatTime } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
+import { getGoalStatisticsByPlayer } from "./apiGoals";
 
 export async function getPlayers({ filter }) {
     const { data, error } = await supabase
@@ -35,12 +42,12 @@ export async function getPlayerById(id) {
     return data;
 }
 
-export async function createMatch({ players, currentKicker }) {
+export async function createMatch({ players, kicker }) {
     const { data: activeMatches, activeMatchesError } = await supabase
         .from(MATCHES)
         .select("*")
         .eq("status", "active")
-        .eq("kicker_id", currentKicker);
+        .eq("kicker_id", kicker);
 
     if (activeMatchesError) {
         throw new Error(
@@ -55,7 +62,11 @@ export async function createMatch({ players, currentKicker }) {
 
     const { player1, player2, player3, player4 } = players;
     const gameMode =
-        !player3 && !player4 ? "1on1" : player3 && player4 ? "2on2" : "2on1";
+        !player3 && !player4
+            ? GAMEMODE_1ON1
+            : player3 && player4
+            ? GAMEMODE_2ON2
+            : GAMEMODE_2ON1;
 
     const { data, error } = await supabase
         .from(MATCHES)
@@ -67,7 +78,7 @@ export async function createMatch({ players, currentKicker }) {
                 player4: player4?.id,
                 gamemode: gameMode,
                 start_time: new Date(),
-                kicker_id: currentKicker,
+                kicker_id: kicker,
             },
         ])
         .select()
@@ -191,15 +202,26 @@ export async function endMatch({ id, score1, score2, kicker }) {
         throw new Error("Match has already ended");
     }
 
-    const { player1, player2, player3, player4 } = match;
-    const gameMode = !player3 && !player4 ? "1on1" : "2on2";
-    const team1Wins = score1 > score2;
-    const isDisgrace = score1 === 0 || score2 === 0;
+    const { player1, player2, player3, player4, scoreTeam1, scoreTeam2 } =
+        match;
+    const gameMode = !player3 && !player4 ? GAMEMODE_1ON1 : GAMEMODE_2ON2;
+
+    const finalScore1 = score1 ? score1 : scoreTeam1;
+    const finalScore2 = score2 ? score2 : scoreTeam2;
+
+    if (finalScore1 === finalScore2) {
+        throw new Error(
+            "Draws are not allowed.\nKeep playing until someone wins!"
+        );
+    }
+
+    const team1Wins = finalScore1 > finalScore2;
+    const isDisgrace = finalScore1 === 0 || finalScore2 === 0;
 
     let mmrChangeForTeam1;
     let mmrChangeForTeam2;
 
-    if (gameMode === "1on1") {
+    if (gameMode === GAMEMODE_1ON1) {
         mmrChangeForTeam1 = calculateMmrChange(
             player1.mmr,
             player2.mmr,
@@ -240,7 +262,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
     }
 
     // 2on2, 1on2, 2on1
-    if (gameMode === "2on2") {
+    if (gameMode === GAMEMODE_2ON2) {
         // if it's a 1on2, check which team is the single player and assign his own mmr2on2
         mmrChangeForTeam1 = calculateMmrChange(
             player3
@@ -325,14 +347,16 @@ export async function endMatch({ id, score1, score2, kicker }) {
         .from(MATCHES)
         .update({
             status: "ended",
-            scoreTeam1: score1,
-            scoreTeam2: score2,
+            scoreTeam1: finalScore1,
+            scoreTeam2: finalScore2,
             mmrChangeTeam1: mmrChangeForTeam1,
             mmrChangeTeam2: mmrChangeForTeam2,
-            mmrPlayer1: gameMode === "1on1" ? player1.mmr : player1.mmr2on2,
-            mmrPlayer2: gameMode === "1on1" ? player2.mmr : player2.mmr2on2,
-            mmrPlayer3: gameMode === "2on2" ? player3?.mmr2on2 : null,
-            mmrPlayer4: gameMode === "2on2" ? player4?.mmr2on2 : null,
+            mmrPlayer1:
+                gameMode === GAMEMODE_1ON1 ? player1.mmr : player1.mmr2on2,
+            mmrPlayer2:
+                gameMode === GAMEMODE_1ON1 ? player2.mmr : player2.mmr2on2,
+            mmrPlayer3: gameMode === GAMEMODE_2ON2 ? player3?.mmr2on2 : null,
+            mmrPlayer4: gameMode === GAMEMODE_2ON2 ? player4?.mmr2on2 : null,
             end_time: new Date(),
         })
         .eq("id", id)
@@ -410,6 +434,9 @@ export async function getMmrHistory({ filter }) {
     data.sort((a, b) => b.end_time - a.end_time);
 
     const latestPerDay = data.reduce((acc, item) => {
+        if (!item.end_time) {
+            return acc;
+        }
         const day = item.end_time.split("T")[0];
         if (!acc[day] || acc[day].end_time < item.end_time) {
             acc[day] = item;
@@ -471,7 +498,7 @@ export async function getMmrHistory({ filter }) {
     const result = completeList.filter((item) => item.mmr !== null);
     result.push({
         date: format(new Date(), "dd.MM.yyyy"),
-        mmr: filter.value === "1on1" ? player.mmr : player.mmr2on2,
+        mmr: filter.value === GAMEMODE_1ON1 ? player.mmr : player.mmr2on2,
     });
 
     return { data: result, count };
@@ -514,6 +541,8 @@ export async function getOpponentStats({ username, filter }) {
         return acc;
     }, {});
 
+    const goalData = await getGoalStatisticsByPlayer(filter.kicker, username);
+
     const data = Object.keys(stats).map((key) => {
         return {
             name: key,
@@ -521,6 +550,8 @@ export async function getOpponentStats({ username, filter }) {
             losses: stats[key].losses,
             winrate: parseFloat(stats[key].wins / stats[key].total), // toFixed returns a string, so wrap it with parseFloat
             total: stats[key].total,
+            goals: goalData[key]?.standardGoals,
+            ownGoals: goalData[key]?.ownGoals,
         };
     });
 
@@ -545,10 +576,10 @@ export async function getPlaytime({ name, kicker }) {
                 const duration =
                     new Date(cur.end_time).getTime() -
                     new Date(cur.start_time).getTime();
-                if (cur.gamemode === "1on1") {
+                if (cur.gamemode === GAMEMODE_1ON1) {
                     acc.solo += duration;
                 }
-                if (cur.gamemode === "2on2") {
+                if (cur.gamemode === GAMEMODE_2ON2) {
                     acc.duo += duration;
                 }
                 return acc;
@@ -580,4 +611,156 @@ function getResultData(username, match) {
             playerNumber === 1 || playerNumber === 3 ? team1Won : !team1Won,
         opponents: opponents.filter(Boolean),
     };
+}
+
+export async function scoreGoal(playerId, matchId, kicker) {
+    return updateGoal(playerId, matchId, kicker, STANDARD_GOAL);
+}
+
+export async function scoreOwnGoal(playerId, matchId, kicker) {
+    return updateGoal(playerId, matchId, kicker, OWN_GOAL);
+}
+
+async function updateGoal(playerId, matchId, kicker, goalType) {
+    const match = await getMatch({ matchId, kicker });
+    const { player1, player3 } = match;
+    const team = isPlayerInTeam(playerId, player1, player3) ? 1 : 2;
+    const opposingTeam = team === 1 ? 2 : 1;
+
+    let scoreColumn;
+    let updatedScore;
+    let amount = 1;
+    const ownTeamScoreColumn = `scoreTeam${team}`;
+    const opposingTeamScoreColumn = `scoreTeam${opposingTeam}`;
+
+    if (goalType === STANDARD_GOAL) {
+        scoreColumn = ownTeamScoreColumn;
+        updatedScore = match[scoreColumn] + 1;
+    }
+    if (goalType === OWN_GOAL) {
+        if (match[ownTeamScoreColumn] === 0) {
+            scoreColumn = opposingTeamScoreColumn;
+            updatedScore = match[scoreColumn] + 1;
+        }
+        if (match[ownTeamScoreColumn] > 0) {
+            scoreColumn = ownTeamScoreColumn;
+            updatedScore = match[scoreColumn] - 1;
+            amount = -1;
+        }
+    }
+
+    const newMatchValues = {
+        [scoreColumn]: updatedScore,
+    };
+
+    const updatedMatch = await updateMatch(matchId, newMatchValues);
+
+    const newGoal = {
+        match_id: matchId,
+        player_id: playerId,
+        kicker_id: kicker,
+        goal_type: goalType,
+        amount,
+    };
+
+    const { data, error } = await supabase
+        .from(GOALS)
+        .insert(newGoal)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return updatedMatch;
+}
+
+async function updateMatch(matchId, values) {
+    const { data, error } = await supabase
+        .from(MATCHES)
+        .update(values)
+        .eq("id", matchId)
+        .select(
+            `
+            *,
+            player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+            player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+            player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+            player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
+        `
+        )
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+export async function undoLastAction(matchId, kicker) {
+    const { data, error } = await supabase
+        .from(GOALS)
+        .select("*")
+        .eq("match_id", matchId)
+        .eq("kicker_id", kicker)
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    if (data.length === 0) {
+        throw new Error("There is nothing to undo");
+    }
+
+    const match = await getMatch({ matchId, kicker });
+    const { player1, player3 } = match;
+
+    const latestGoal = data.at(0);
+    const { id, player_id, goal_type, amount } = latestGoal;
+
+    const team = isPlayerInTeam(player_id, player1, player3) ? 1 : 2;
+    const opposingTeam = team === 1 ? 2 : 1;
+
+    let scoreColumn;
+    let updatedScore;
+
+    if (goal_type === STANDARD_GOAL) {
+        scoreColumn = `scoreTeam${team}`;
+        updatedScore = match[scoreColumn] - 1;
+    }
+    if (goal_type === OWN_GOAL) {
+        if (amount === -1) {
+            scoreColumn = `scoreTeam${team}`;
+            updatedScore = match[scoreColumn] + 1;
+        }
+        if (amount === 1) {
+            scoreColumn = `scoreTeam${opposingTeam}`;
+            updatedScore = match[scoreColumn] - 1;
+        }
+    }
+
+    const newMatchValues = {
+        [scoreColumn]: updatedScore,
+    };
+
+    const updatedMatch = await updateMatch(matchId, newMatchValues);
+
+    // DELETE GOAL RECORD
+    const { error: deleteError } = await supabase
+        .from(GOALS)
+        .delete()
+        .eq("id", id);
+
+    if (deleteError) {
+        throw new Error(deleteError.message);
+    }
+
+    return updatedMatch;
+}
+
+function isPlayerInTeam(playerId, ...teamPlayers) {
+    return teamPlayers.some((player) => player?.id === playerId);
 }

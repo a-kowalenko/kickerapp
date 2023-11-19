@@ -3,13 +3,21 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import styled from "styled-components";
 import RightSidebar from "./RightSidebar";
+import { media } from "../utils/constants";
 
 const StyledAppLayout = styled.div`
-    display: grid;
-    grid-template-columns: 22rem 1fr 22rem;
-    grid-template-rows: auto 1fr;
+    @media (min-width: 850px) {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
     height: 100dvh;
     background-color: var(--secondary-background-color);
+
+    ${media.tablet} {
+        grid-template-columns: 1fr;
+    }
 `;
 
 const Main = styled.main`
@@ -17,12 +25,18 @@ const Main = styled.main`
     padding: 3.2rem 4.8rem 0rem;
     overflow: auto;
 
+    grid-column: 2;
+
     /* Removing scrollbars for webkit, firefox, and ms, respectively */
     &::-webkit-scrollbar {
         display: none;
     }
     scrollbar-width: none;
     -ms-overflow-style: none;
+
+    ${media.tablet} {
+        padding: 1.6rem 0rem;
+    }
 `;
 
 function AppLayout() {
@@ -33,7 +47,7 @@ function AppLayout() {
             <Main>
                 <Outlet />
             </Main>
-            <RightSidebar />
+            {/* <RightSidebar /> */}
         </StyledAppLayout>
     );
 }

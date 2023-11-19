@@ -7,6 +7,7 @@ const StyledNewMatchButton = styled(Button)`
     white-space: nowrap;
     gap: 1rem;
     padding: 1.2rem 1.6rem;
+    width: 100%;
 `;
 
 function NewMatchButton() {
@@ -17,7 +18,7 @@ function NewMatchButton() {
             onClick={() => navigate("/matches/create")}
         >
             <HiOutlinePlusCircle />
-            New Match
+            <span>New Match</span>
         </StyledNewMatchButton>
     );
 }

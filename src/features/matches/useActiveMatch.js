@@ -10,8 +10,9 @@ export function useActiveMatch() {
         isLoading,
         error,
     } = useQuery({
-        queryKey: ["match", kicker],
+        queryKey: ["activeMatch", kicker],
         queryFn: () => getActiveMatch({ kicker }),
+        cacheTime: 0,
     });
 
     return { activeMatch, isLoading, error };

@@ -11,13 +11,15 @@ function OpponentStatsTable() {
     }
 
     return (
-        <Table columns="1fr 1fr 1fr 1fr 1fr">
+        <Table columns="1fr 1fr 1fr 1fr 1fr 1fr 1fr">
             <Table.Header>
                 <div>Opponent</div>
                 <div>Wins</div>
                 <div>Losses</div>
                 <div>Total games</div>
                 <div>Winrate</div>
+                <div>Goals</div>
+                <div>Own Goals</div>
             </Table.Header>
             <Table.Body
                 noDataLabel="No stats available"

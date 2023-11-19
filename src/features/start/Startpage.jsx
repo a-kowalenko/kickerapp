@@ -18,11 +18,7 @@ import { useUserKickers } from "../../features/kicker/useUserKickers";
 import { useKicker } from "../../contexts/KickerContext";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { HiXMark } from "react-icons/hi2";
-
-const media = {
-    mobile: "@media(max-width: 768px)",
-    desktop: "@media(min-width: 769px)",
-};
+import { media } from "../../utils/constants";
 
 const Sidebar = styled.aside`
     background-color: var(--primary-background-color);
@@ -42,7 +38,7 @@ const Sidebar = styled.aside`
         left: 0;
     }
 
-    ${media.mobile} {
+    ${media.tablet} {
         width: 100%;
         left: -100%;
     }
@@ -69,7 +65,8 @@ const KickerListElement = styled.li`
 const BurgerMenuContainer = styled.div`
     display: flex;
     position: absolute;
-    left: 2.5rem;
+    left: 1.5rem;
+    top: 1.6rem;
     gap: 1rem;
 `;
 
@@ -77,7 +74,8 @@ const Navbar = styled.nav`
     display: flex;
     border-left: 5px;
     align-items: center;
-    justify-content: center;
+    justify-content: ${(props) =>
+        props.$isAuthenticated ? "center" : "flex-start"};
     padding: 1rem;
     background-color: var(--primary-background-color);
 `;
@@ -122,7 +120,7 @@ const ColumnsContainer = styled.div`
     align-items: flex-end;
     gap: 8rem;
 
-    ${media.mobile} {
+    ${media.tablet} {
         flex-direction: column;
         align-items: center;
         gap: 3rem;
@@ -162,7 +160,7 @@ const Footer = styled.footer`
 `;
 
 const ResponsiveNavButtonsContainer = styled(NavButtonsContainer)`
-    /* ${media.mobile} {
+    /* ${media.tablet} {
         position: static;
         justify-content: space-evenly;
         width: 100%;
@@ -332,7 +330,7 @@ function Startpage() {
 
     return (
         <StyledStartpage>
-            <Navbar>
+            <Navbar $isAuthenticated={isAuthenticated}>
                 {isAuthenticated && (
                     <BurgerMenuContainer>
                         <ButtonIcon onClick={toggleSidebar}>

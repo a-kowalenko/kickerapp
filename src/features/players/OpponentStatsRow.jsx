@@ -2,7 +2,7 @@ import PlayerName from "../../ui/PlayerName";
 import Table from "../../ui/Table";
 
 function OpponentStatsRow({ stats }) {
-    const { name, wins, losses, total, winrate } = stats;
+    const { name, wins, losses, total, winrate, goals, ownGoals } = stats;
 
     return (
         <Table.Row>
@@ -20,6 +20,12 @@ function OpponentStatsRow({ stats }) {
             </div>
             <div>
                 <span>{(winrate * 100).toFixed(1)}</span>%
+            </div>
+            <div>
+                <span>{goals}</span>
+            </div>
+            <div>
+                <span>{ownGoals}</span>
             </div>
         </Table.Row>
     );

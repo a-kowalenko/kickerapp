@@ -9,6 +9,9 @@ import { useKicker } from "../contexts/KickerContext";
 import { useNavigate } from "react-router-dom";
 import ButtonIcon from "./ButtonIcon";
 import { HiArrowRightOnRectangle } from "react-icons/hi2";
+import { media } from "../utils/constants";
+import ProfileMenu from "./ProfileMenu";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -18,13 +21,27 @@ const StyledHeader = styled.header`
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
+
+    ${media.tablet} {
+        justify-content: flex-end;
+        padding: 1.6rem 2.4rem;
+    }
 `;
 
 const KickerInfoWrapper = styled.div`
     display: flex;
     align-items: center;
-    width: 40rem;
+    /* width: 40rem; */
     gap: 2.4rem;
+
+    @media (max-width: 850px) {
+        padding-left: 2rem;
+    }
+
+    ${media.tablet} {
+        display: none;
+    }
 `;
 
 const ToggleWrapper = styled.div`
@@ -37,10 +54,10 @@ function Header() {
     const navigate = useNavigate();
     const { data: kickerData, isLoading: isLoadingKickerData } =
         useKickerInfo();
-
     const { kickers, isLoadingKickers } = useUserKickers();
-
     const { setCurrentKicker } = useKicker();
+    const windowWidth = useWindowWidth();
+    const showLeaveKicker = windowWidth <= media.maxTablet;
 
     function handleKickerSelect(option) {
         setCurrentKicker(option);
@@ -75,8 +92,17 @@ function Header() {
                 )}
             </KickerInfoWrapper>
             <ToggleWrapper>
+                {showLeaveKicker && (
+                    <ButtonIcon
+                        onClick={() => navigate("/")}
+                        title="Exit kicker"
+                    >
+                        <HiArrowRightOnRectangle />
+                    </ButtonIcon>
+                )}
                 <SoundToggle />
                 <DarkModeToggle />
+                <ProfileMenu />
             </ToggleWrapper>
         </StyledHeader>
     );

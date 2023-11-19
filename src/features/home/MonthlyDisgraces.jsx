@@ -7,13 +7,22 @@ import { de } from "date-fns/locale";
 import MiniDisgraceRow from "./MiniDisgraceRow";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { useMonthlyDisgraces } from "./useMonthlyDisgraces";
+import styled from "styled-components";
+
+const StyledMontylyDisgrace = styled(ContentBox)`
+    grid-area: 2 / 1 / 3 / 3;
+
+    @media (max-width: 1350px) {
+        grid-area: 3 / 1 / 4 / 3;
+    }
+`;
 
 function MonthlyDisgraces() {
     const { disgraces, isLoadingMatches } = useMonthlyDisgraces();
     const currentMonth = format(new Date(), "LLLL", { locale: de });
 
     return (
-        <ContentBox $area="2 / 1 / 3 / 3">
+        <StyledMontylyDisgrace>
             <Row type="horizontal">
                 <Heading as="h2">Strich der Schande - {currentMonth}</Heading>
             </Row>
@@ -38,7 +47,7 @@ function MonthlyDisgraces() {
                     />
                 )}
             </MiniTable>
-        </ContentBox>
+        </StyledMontylyDisgrace>
     );
 }
 
