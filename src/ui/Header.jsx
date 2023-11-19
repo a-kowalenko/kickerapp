@@ -11,6 +11,7 @@ import ButtonIcon from "./ButtonIcon";
 import { HiArrowRightOnRectangle } from "react-icons/hi2";
 import { media } from "../utils/constants";
 import ProfileMenu from "./ProfileMenu";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -53,10 +54,10 @@ function Header() {
     const navigate = useNavigate();
     const { data: kickerData, isLoading: isLoadingKickerData } =
         useKickerInfo();
-
     const { kickers, isLoadingKickers } = useUserKickers();
-
     const { setCurrentKicker } = useKicker();
+    const windowWidth = useWindowWidth();
+    const showLeaveKicker = windowWidth <= media.maxTablet;
 
     function handleKickerSelect(option) {
         setCurrentKicker(option);
@@ -91,6 +92,14 @@ function Header() {
                 )}
             </KickerInfoWrapper>
             <ToggleWrapper>
+                {showLeaveKicker && (
+                    <ButtonIcon
+                        onClick={() => navigate("/")}
+                        title="Exit kicker"
+                    >
+                        <HiArrowRightOnRectangle />
+                    </ButtonIcon>
+                )}
                 <SoundToggle />
                 <DarkModeToggle />
                 <ProfileMenu />
