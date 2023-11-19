@@ -123,7 +123,7 @@ function MainNav() {
                     </StyledNavLink>
                 </li> */}
                 <li>
-                    <StyledNavLink to="/testwiese" title="Settings">
+                    <StyledNavLink to="/settings" title="Settings">
                         <HiOutlineCog6Tooth />
                         <span>Settings</span>
                     </StyledNavLink>
