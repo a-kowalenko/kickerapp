@@ -1,13 +1,10 @@
 import styled from "styled-components";
 import MainNav from "./MainNav";
 import Logo from "./Logo";
-import { media } from "../utils/constants";
 import BurgerMenu from "./BurgerMenu";
 import { useLocalStorageState } from "../hooks/useLocalStorageState";
-import { useEffect } from "react";
-import { useRef } from "react";
 import { useOutsideClick } from "../hooks/useOutsideClick";
-import { useCallback } from "react";
+import { isTouchDevice } from "../utils/helpers";
 
 const StyledSidebar = styled.aside`
     display: flex;
@@ -68,7 +65,11 @@ const StyledSidebar = styled.aside`
 function Sidebar() {
     const [isOpen, setIsOpen] = useLocalStorageState(true, "isOpenLeftSidebar");
 
-    const close = () => setIsOpen(false);
+    const close = () => {
+        if (isTouchDevice()) {
+            setIsOpen(false);
+        }
+    };
     const sidebarRef = useOutsideClick(close, false);
 
     const toggleSidebar = (e) => {
