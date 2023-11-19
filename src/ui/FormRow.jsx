@@ -59,7 +59,7 @@ function FormRow({
         >
             {label && <StyledLabel>{label}</StyledLabel>}
             {children}
-            {element && <label>{element}</label>}
+            {element && <div>{element}</div>}
             {error && <label>{error}</label>}
         </StyledFormRow>
     );
