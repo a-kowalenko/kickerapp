@@ -28,3 +28,11 @@ export function formatTime(milliseconds) {
 
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
+
+export function isTouchDevice() {
+    return (
+        "ontouchstart" in window ||
+        navigator.maxTouchPoints > 0 ||
+        navigator.msMaxTouchPoints > 0
+    );
+}
