@@ -312,6 +312,7 @@ html {
 body {
   font-family: "Poppins", sans-serif;
   color: var(--color-grey-700);
+  background-color: var(--primary-background-color);
 
   transition: color 0.3s, background-color 0.3s;
   min-height: 100vh;
