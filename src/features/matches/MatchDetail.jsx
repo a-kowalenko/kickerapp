@@ -1,20 +1,23 @@
 import styled from "styled-components";
 import { useMatch } from "./useMatch";
 import { useEndMatch } from "./useEndMatch";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useEffect } from "react";
 import { useRef } from "react";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
 import Spinner from "../../ui/Spinner";
-import { DEFAULT_AVATAR, media } from "../../utils/constants";
+import { DEFAULT_AVATAR, STANDARD_GOAL, media } from "../../utils/constants";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
 import Error from "../../ui/Error";
 import SpinnerMini from "../../ui/SpinnerMini";
 import useWindowWidth from "../../hooks/useWindowWidth";
 import MatchDetailMobile from "./MatchDetailMobile";
+import { useGoals } from "../../hooks/useGoals";
+import ContentBox from "../../ui/ContentBox";
+import { HiArrowRight } from "react-icons/hi2";
 
 const Row = styled.div`
     display: flex;
@@ -30,6 +33,24 @@ const MainRow = styled(Row)`
         flex-direction: column;
         gap: 3.4rem;
     }
+`;
+
+const GoalRow = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+`;
+
+const GoalItem = styled(ContentBox)`
+    display: flex;
+    flex-direction: row;
+    width: auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.4rem;
+    padding: 1rem;
 `;
 
 const BottomRow = styled(Row)`
@@ -108,6 +129,7 @@ const Timer = styled.label`
 function MatchDetail() {
     const { match, isLoading, error } = useMatch();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
+    const { goals, isLoadingGoals, countGoals } = useGoals();
     const [score1, setScore1] = useState("");
     const [score2, setScore2] = useState("");
     const [timer, setTimer] = useState("00:00");
@@ -146,7 +168,7 @@ function MatchDetail() {
         [match]
     );
 
-    if (isLoading) {
+    if (isLoading || isLoadingGoals) {
         return <Spinner />;
     }
 
@@ -196,13 +218,13 @@ function MatchDetail() {
                 <TeamHeader>{windowWidth > 1248 ? "Team A" : "A"}</TeamHeader>
                 <ScoreContainer>
                     <ScoreInput
-                        value={score1}
+                        value={score1 || match.scoreTeam1}
                         onChange={(e) => handleScoreChange(e, setScore1)}
                         disabled={isEnded}
                     />
                     &mdash;{" "}
                     <ScoreInput
-                        value={score2}
+                        value={score2 || match.scoreTeam2}
                         onChange={(e) => handleScoreChange(e, setScore2)}
                         disabled={isEnded}
                     />
@@ -250,6 +272,25 @@ function MatchDetail() {
                     )}
                 </TeamContainer>
             </MainRow>
+            <GoalRow>
+                {goals.map((goal, index) => (
+                    <React.Fragment key={goal.id}>
+                        {index > 0 && <HiArrowRight />}
+                        <GoalItem>
+                            <Avatar
+                                $size="xs"
+                                src={goal.player.avatar || DEFAULT_AVATAR}
+                                alt={`Avatar of ${goal.player.name}`}
+                            />
+                            {`${goal.player.name} scored a ${
+                                goal.goal_type === STANDARD_GOAL
+                                    ? "goal"
+                                    : "own goal"
+                            }!`}
+                        </GoalItem>
+                    </React.Fragment>
+                ))}
+            </GoalRow>
             <BottomRow>
                 {isActive && (
                     <Button $size="xlarge" onClick={handleEndMatch}>
