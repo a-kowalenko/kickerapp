@@ -12,6 +12,7 @@ import {
 import { useMostPlayed } from "./useMostPlayed";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import styled from "styled-components";
+import { media } from "../../utils/constants";
 
 const colorsLight = [
     "#84cc16",
@@ -40,6 +41,10 @@ const StyledMostPlayed = styled(ContentBox)`
 
     @media (max-width: 1350px) {
         grid-area: 4 / 1 / 5 / 3;
+    }
+
+    ${media.tablet} {
+        display: none;
     }
 `;
 

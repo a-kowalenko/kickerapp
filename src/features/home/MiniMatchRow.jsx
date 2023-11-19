@@ -54,6 +54,10 @@ function MiniMatchRow({ match }) {
     const team1Won =
         match.status !== "ended" ? null : match.scoreTeam1 > match.scoreTeam2;
     const windowWidth = useWindowWidth();
+    const showStartTime = windowWidth > 1350;
+    const showDuration = windowWidth > 768;
+    const showId = windowWidth > 650;
+
     function handleClickRow(e) {
         e.stopPropagation();
         navigate(`/matches/${match.id}`);
@@ -61,7 +65,7 @@ function MiniMatchRow({ match }) {
 
     return (
         <MiniTable.Row onClick={handleClickRow}>
-            <div>{match.nr}</div>
+            {showId && <div>{match.nr}</div>}
             <TeamContainer $won={team1Won} $team="1">
                 <PlayerName
                     to={`/user/${player1.name}/profile`}
@@ -128,7 +132,7 @@ function MiniMatchRow({ match }) {
                     </PlayerName>
                 )}
             </TeamContainer>
-            {windowWidth > 1350 && (
+            {showStartTime && (
                 <div>
                     {format(
                         new Date(match.start_time),
@@ -136,7 +140,7 @@ function MiniMatchRow({ match }) {
                     )}
                 </div>
             )}
-            {windowWidth > 768 && (
+            {showDuration && (
                 <DurationContainer>
                     {match.end_time && (
                         <span>

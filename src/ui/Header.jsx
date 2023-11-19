@@ -21,6 +21,10 @@ const StyledHeader = styled.header`
     align-items: center;
     justify-content: space-between;
     width: 100%;
+
+    ${media.tablet} {
+        justify-content: flex-end;
+    }
 `;
 
 const KickerInfoWrapper = styled.div`
@@ -31,6 +35,10 @@ const KickerInfoWrapper = styled.div`
 
     @media (max-width: 850px) {
         padding-left: 2rem;
+    }
+
+    ${media.tablet} {
+        display: none;
     }
 `;
 

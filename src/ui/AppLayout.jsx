@@ -33,6 +33,10 @@ const Main = styled.main`
     }
     scrollbar-width: none;
     -ms-overflow-style: none;
+
+    ${media.tablet} {
+        padding: 1.6rem 1rem 0rem;
+    }
 `;
 
 function AppLayout() {

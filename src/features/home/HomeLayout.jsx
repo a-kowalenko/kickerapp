@@ -19,9 +19,10 @@ const StyledHomeLayout = styled.div`
         grid-template-rows: auto auto 34rem auto;
     }
 
-    /* ${media.tablet} {
-        display: none;
-    } */
+    ${media.tablet} {
+        grid-column-gap: 1rem;
+        grid-row-gap: 1rem;
+    }
 `;
 
 function HomeLayout() {
