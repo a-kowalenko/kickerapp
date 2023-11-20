@@ -7,7 +7,7 @@ import { PiSoccerBallThin } from "react-icons/pi";
 import Stat from "./Stat";
 import { useTodayStats } from "./useTodayStats";
 import { addMilliseconds } from "date-fns";
-import Spinner from "../../ui/Spinner";
+import SpinnerMini from "../../ui/SpinnerMini";
 
 function getTeams(match) {
     const {
@@ -25,18 +25,16 @@ function getTeams(match) {
 }
 
 function TodayStats() {
-    const { matches, isLoading, count } = useTodayStats();
-
-    if (isLoading) {
-        return <Spinner />;
-    }
+    const { matches, isLoading } = useTodayStats();
 
     // 1. Today's matches
-    const todaysMatches = count;
+    const todaysMatches = matches?.filter(
+        (match) => match.status === "ended"
+    ).length;
 
     // 2. Time wasted
     const todaysTimePlayed = matches
-        .filter((match) => match.status === "ended")
+        ?.filter((match) => match.status === "ended")
         .reduce(
             (acc, cur) =>
                 acc + (new Date(cur.end_time) - new Date(cur.start_time)),
@@ -54,7 +52,7 @@ function TodayStats() {
     const timeWasted = `${!hours ? "" : hours + ":"}${minutes}:${seconds}`;
 
     // 3. Today's top and flop
-    const playerWithPoints = matches.reduce((acc, cur) => {
+    const playerWithPoints = matches?.reduce((acc, cur) => {
         const { team1, team2, mmrChangeTeam1, mmrChangeTeam2 } = getTeams(cur);
         let newState = {};
         for (const player of team1) {
@@ -86,7 +84,9 @@ function TodayStats() {
 
     const topPlayers = [];
     for (const player in playerWithPoints) {
-        topPlayers.push([player, playerWithPoints[player]]);
+        if (player && playerWithPoints[player]) {
+            topPlayers.push([player, playerWithPoints[player]]);
+        }
     }
 
     topPlayers.sort(function (a, b) {
@@ -102,21 +102,25 @@ function TodayStats() {
                 title="Today's matches"
                 icon={<PiSoccerBallThin />}
                 color="blue"
-                value={todaysMatches}
+                value={isLoading ? <SpinnerMini /> : todaysMatches}
             />
             <Stat
                 title="Today's playtime"
                 icon={<HiOutlineClock />}
                 color="yellow"
-                value={timeWasted}
+                value={isLoading ? <SpinnerMini /> : timeWasted}
             />
             <Stat
                 title="Today's top"
                 icon={<HiArrowUpRight />}
                 color="green"
                 value={
-                    `${bestPlayer.at(0)}` +
-                    (topPlayers.length > 1 ? ` (+${bestPlayer.at(1)})` : "")
+                    isLoading ? (
+                        <SpinnerMini />
+                    ) : (
+                        `${bestPlayer.at(0)}` +
+                        (topPlayers.length > 1 ? ` (+${bestPlayer.at(1)})` : "")
+                    )
                 }
             />
             <Stat
@@ -124,8 +128,12 @@ function TodayStats() {
                 icon={<HiArrowDownRight />}
                 color="red"
                 value={
-                    `${worstPlayer.at(0)}` +
-                    (topPlayers.length > 1 ? ` (${worstPlayer.at(1)})` : "")
+                    isLoading ? (
+                        <SpinnerMini />
+                    ) : (
+                        `${worstPlayer.at(0)}` +
+                        (topPlayers.length > 1 ? ` (${worstPlayer.at(1)})` : "")
+                    )
                 }
             />
         </>

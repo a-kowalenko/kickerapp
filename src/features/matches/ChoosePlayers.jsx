@@ -1,19 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { HiOutlinePlusCircle, HiPlus } from "react-icons/hi2";
-import { usePlayers } from "../../hooks/usePlayers";
-import { useCreateMatch } from "./useCreateMatch";
-import PlayerDropdown from "./PlayerDropdown";
-import Avatar from "../../ui/Avatar";
-import toast from "react-hot-toast";
-import Spinner from "../../ui/Spinner";
 import Button from "../../ui/Button";
 import SwitchButton from "../../ui/SwitchButton";
 import FormRow from "../../ui/FormRow";
-import { DEFAULT_AVATAR, START_MATCH_COUNTDOWN } from "../../utils/constants";
 import Heading from "../../ui/Heading";
 import Row from "../../ui/Row";
-import { useSound } from "../../contexts/SoundContext";
 import Dropdown from "../../ui/Dropdown";
 import ContentBox from "../../ui/ContentBox";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
@@ -113,10 +104,6 @@ function ChoosePlayers() {
         filteredForPlayer3And4,
     } = useChoosePlayers();
 
-    if (isLoading) {
-        return <Spinner />;
-    }
-
     return (
         <Container>
             <Row type="horizontal">
@@ -130,6 +117,7 @@ function ChoosePlayers() {
                         <Dropdown
                             options={filteredPlayers}
                             onSelect={(playerId) => handleSelect(playerId, 0)}
+                            isLoading={isLoading}
                         />
                     </PlayerContainer>
                     {isPlayer3Active ? (
@@ -140,6 +128,7 @@ function ChoosePlayers() {
                                 onSelect={(playerId) =>
                                     handleSelect(playerId, 2)
                                 }
+                                isLoading={isLoading}
                             />
                         </PlayerContainer>
                     ) : (
@@ -158,6 +147,7 @@ function ChoosePlayers() {
                         <Dropdown
                             options={filteredPlayers}
                             onSelect={(playerId) => handleSelect(playerId, 1)}
+                            isLoading={isLoading}
                         />
                     </PlayerContainer>
                     {isPlayer4Active ? (
@@ -168,6 +158,7 @@ function ChoosePlayers() {
                                 onSelect={(playerId) =>
                                     handleSelect(playerId, 3)
                                 }
+                                isLoading={isLoading}
                             />
                         </PlayerContainer>
                     ) : (

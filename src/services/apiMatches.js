@@ -408,6 +408,12 @@ export async function getDisgraces({ filter }) {
             .filter("start_time", "lt", end.toISOString());
     }
 
+    if (filter.currentPage) {
+        const from = (filter.currentPage - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        query = query.range(from, to);
+    }
+
     const { data, error, count } = await query.eq("status", "ended");
 
     if (error) {

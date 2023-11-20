@@ -1,7 +1,6 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 
-// TODO: Create styled components for each table component
 const StyledTable = styled.div`
     border: 1px solid var(--table-border-color);
     font-size: 1.4rem;
@@ -45,6 +44,8 @@ const StyledRow = styled(DefaultRow)`
 
 const StyledBody = styled.section`
     margin: 0.4rem 0;
+    max-height: ${(props) => props.$maxHeight || "50rem"};
+    overflow-y: auto;
 `;
 
 const Footer = styled.footer`
@@ -52,6 +53,7 @@ const Footer = styled.footer`
     justify-content: center;
     background-color: var(--table-footer-background-color);
     padding: 1.2rem;
+    z-index: 1000;
 
     &:not(:has(*)) {
         display: none;
@@ -94,10 +96,34 @@ function Row({ children, onClick }) {
 }
 
 function Body({ data, render, noDataLabel = "No data available" }) {
+    const [maxHeight, setMaxHeight] = useState("50rem");
+    const ref = useRef(null);
+
+    useEffect(() => {
+        function updateMaxHeight() {
+            if (ref.current) {
+                const distanceToTop = ref.current.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                const newMaxHeight = `${windowHeight - distanceToTop - 120}px`;
+                setMaxHeight(newMaxHeight);
+            }
+        }
+
+        window.addEventListener("resize", updateMaxHeight);
+        updateMaxHeight();
+
+        return () => window.removeEventListener("resize", updateMaxHeight);
+    }, []);
+
     if (!data?.length) {
-        return <StyledParagraph>{noDataLabel}</StyledParagraph>; // TODO: Create Empty component
+        return <StyledParagraph>{noDataLabel}</StyledParagraph>;
     }
-    return <StyledBody>{data.map(render)}</StyledBody>;
+
+    return (
+        <StyledBody ref={ref} $maxHeight={maxHeight}>
+            {data.map(render)}
+        </StyledBody>
+    );
 }
 
 Table.Header = Header;

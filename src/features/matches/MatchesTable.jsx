@@ -1,8 +1,15 @@
+import LoadingSpinner from "../../ui/LoadingSpinner";
 import Pagination from "../../ui/Pagination";
 import Table from "../../ui/Table";
 import MatchesRow from "./MatchesRow";
+import { useMatches } from "./useMatches";
 
-function MatchesTable({ matches, count }) {
+function MatchesTable({ historyMatches, historyCount }) {
+    const { matches, count, isLoadingMatches } = useMatches();
+
+    const finalMatches = historyMatches ? historyMatches : matches;
+    const finalCount = historyCount ? historyCount : count;
+
     return (
         <Table columns="0.1fr 0.6fr 0.3fr 0.6fr 0.4fr 1fr 0.5fr">
             <Table.Header>
@@ -14,13 +21,19 @@ function MatchesTable({ matches, count }) {
                 <div style={{ textAlign: "center" }}>Start Time</div>
                 <div>Duration</div>
             </Table.Header>
-            <Table.Body
-                noDataLabel="No matches available"
-                data={matches}
-                render={(match) => <MatchesRow key={match.id} match={match} />}
-            />
+            {isLoadingMatches ? (
+                <LoadingSpinner />
+            ) : (
+                <Table.Body
+                    noDataLabel="No matches available"
+                    data={finalMatches}
+                    render={(match) => (
+                        <MatchesRow key={match.id} match={match} />
+                    )}
+                />
+            )}
             <Table.Footer>
-                <Pagination numEntries={count} />
+                <Pagination numEntries={finalCount} />
             </Table.Footer>
         </Table>
     );

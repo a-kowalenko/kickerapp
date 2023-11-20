@@ -2,11 +2,11 @@ import { HiOutlineClipboardDocument } from "react-icons/hi2";
 import { useKickerInfo } from "../hooks/useKickerInfo";
 import FormRow from "../ui/FormRow";
 import Input from "../ui/Input";
-import Spinner from "../ui/Spinner";
 import styled from "styled-components";
 import ButtonIcon from "../ui/ButtonIcon";
 import toast from "react-hot-toast";
 import Heading from "../ui/Heading";
+import SpinnerMini from "../ui/SpinnerMini";
 
 const StyledSettings = styled.div`
     display: flex;
@@ -27,10 +27,6 @@ const DescriptionText = styled.p`
 function Settings() {
     const { data: kickerData, isLoading: isLoadingKickerData } =
         useKickerInfo();
-
-    if (isLoadingKickerData) {
-        return <Spinner />;
-    }
 
     function handleCopy() {
         navigator.clipboard.writeText(kickerData.access_token);
@@ -60,7 +56,14 @@ function Settings() {
                     fill={true}
                     error={true}
                 >
-                    <Input value={kickerData.access_token} readOnly={true} />
+                    {isLoadingKickerData ? (
+                        <SpinnerMini />
+                    ) : (
+                        <Input
+                            value={kickerData.access_token}
+                            readOnly={true}
+                        />
+                    )}
                 </FormRow>
             </SettingsContent>
         </StyledSettings>

@@ -22,12 +22,12 @@ const GlobalStyles = createGlobalStyle`
 
   /* This styles the scrollbar track */
   *::-webkit-scrollbar-track {
-    background: var(--secondary-background-color); /* color of the scrollbar track */
+    background: transparent; /* color of the scrollbar track */
   }
 
   /* This styles the scrollbar corner */
   *::-webkit-scrollbar-corner {
-    background: var(--secondary-background-color); /* color of the scrollbar corner */
+    background: transparent; /* color of the scrollbar corner */
   }
 
   /* For Firefox */
@@ -79,6 +79,10 @@ const GlobalStyles = createGlobalStyle`
     // Border
     --primary-border-color: #525252;
     --secondary-border-color: #0f0f0f;
+
+    // Pulse animation colors
+    --pulse-color-transparent: rgba(7, 89, 133, 0);
+    --pulse-color-slightly-transparent: rgba(7, 89, 133, 0.7);
 
     // Disabled
     --disabled-color: #4b5563;
@@ -193,6 +197,10 @@ const GlobalStyles = createGlobalStyle`
     // Border
     --primary-border-color: #000;
     --secondary-border-color: var(--color-amber-100);
+
+    // Pulse animation colors
+    --pulse-color-transparent: rgba(235, 201, 33, 0);
+    --pulse-color-slightly-transparent: 	rgba(235, 201, 33, 0.7);
 
     // Disabled
     --disabled-color: #d1d5db;

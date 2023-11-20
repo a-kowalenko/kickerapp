@@ -12,7 +12,7 @@ function User() {
     const { userId } = useParams();
     const { user, isLoading } = useUser();
 
-    if (!user) {
+    if (isLoading) {
         return <Spinner />;
     }
 
@@ -21,10 +21,6 @@ function User() {
     } = user;
 
     const ownAccount = userId === username;
-
-    if (isLoading) {
-        return <Spinner />;
-    }
 
     const tabs = [
         {

@@ -1,9 +1,6 @@
 import styled from "styled-components";
 import MatchesFilterRow from "../features/matches/MatchesFilterRow";
 import MatchesTable from "../features/matches/MatchesTable";
-import { useMatches } from "../features/matches/useMatches";
-
-import Spinner from "../ui/Spinner";
 import Heading from "../ui/Heading";
 
 const StyledMatches = styled.div`
@@ -12,19 +9,13 @@ const StyledMatches = styled.div`
 `;
 
 function Matches() {
-    const { matches, count, isLoadingMatches } = useMatches();
-
-    if (isLoadingMatches) {
-        return <Spinner />;
-    }
-
     return (
         <StyledMatches>
             <Heading as="h1" type="page" hasBackBtn={true}>
                 Matches
             </Heading>
             <MatchesFilterRow />
-            <MatchesTable matches={matches} count={count} />
+            <MatchesTable />
         </StyledMatches>
     );
 }
