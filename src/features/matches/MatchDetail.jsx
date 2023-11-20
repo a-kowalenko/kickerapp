@@ -28,10 +28,7 @@ const Row = styled.div`
 const TopRow = styled(Row)``;
 
 const MainRow = styled(Row)`
-    @media screen and (max-width: 1248px) {
-        flex-direction: column;
-        gap: 3.4rem;
-    }
+
 `;
 
 const GoalsContainer = styled.div`
@@ -148,7 +145,13 @@ const Timer = styled.label`
 
     background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-sm);
-    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4); // Leichter Schatten
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
+
+    @media (max-width: 950px) {
+        font-size: 2.8rem;
+        padding: 0.7rem 1.4rem;
+        min-width: 12rem;
+    }
 `;
 
 function MatchDetail() {
@@ -251,7 +254,7 @@ function MatchDetail() {
     return (
         <>
             <TopRow>
-                <TeamHeader>{windowWidth > 1248 ? "Team A" : "A"}</TeamHeader>
+                <TeamHeader>Team 1</TeamHeader>
                 <ScoreContainer>
                     <ScoreInput
                         value={score1}
@@ -265,7 +268,7 @@ function MatchDetail() {
                         disabled={isEnded || goals.length > 0}
                     />
                 </ScoreContainer>
-                <TeamHeader>{windowWidth > 1248 ? "Team B" : "B"}</TeamHeader>
+                <TeamHeader>Team 2</TeamHeader>
             </TopRow>
             <MainRow>
                 <TeamContainer>
