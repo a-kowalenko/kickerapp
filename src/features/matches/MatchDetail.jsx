@@ -17,7 +17,6 @@ import useWindowWidth from "../../hooks/useWindowWidth";
 import MatchDetailMobile from "./MatchDetailMobile";
 import { useGoals } from "../../hooks/useGoals";
 import ContentBox from "../../ui/ContentBox";
-import { HiArrowRight } from "react-icons/hi2";
 
 const Row = styled.div`
     display: flex;
@@ -35,22 +34,41 @@ const MainRow = styled(Row)`
     }
 `;
 
-const GoalRow = styled.div`
+const GoalsContainer = styled.div`
     display: flex;
+    flex-direction: column;
+    overflow: scroll;
+    overflow-x: hidden;
+    margin-top: 5rem;
+    height: calc(100vh - 60rem);
+`;
+
+const GoalRow = styled.div`
+    display: grid;
+    grid-template-columns: 30% 30% 30%;
+    justify-content: center;
     align-items: center;
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    padding: 0.4rem 2rem;
     gap: 0.6rem;
+    width: 100%;
 `;
 
 const GoalItem = styled(ContentBox)`
     display: flex;
     flex-direction: row;
-    width: auto;
     align-items: center;
-    justify-content: space-between;
     gap: 1.4rem;
     padding: 1rem;
+    width: auto;
+    justify-self: ${(props) => (props.$team === 1 ? "flex-end" : "flex-start")};
+`;
+
+const GoalTime = styled.div`
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    margin: 0 auto;
 `;
 
 const BottomRow = styled(Row)`
@@ -134,6 +152,7 @@ function MatchDetail() {
     const [score2, setScore2] = useState("");
     const [timer, setTimer] = useState("00:00");
     const timerIdRef = useRef(null);
+    const goalBoxRef = useRef(null);
     const windowWidth = useWindowWidth();
 
     useEffect(
@@ -166,6 +185,16 @@ function MatchDetail() {
             return () => clearInterval(timerIdRef.current);
         },
         [match]
+    );
+
+    useEffect(
+        function () {
+            if (goalBoxRef.current) {
+                const scrollHeight = goalBoxRef.current.scrollHeight;
+                goalBoxRef.current.scrollTo(0, scrollHeight);
+            }
+        },
+        [goals?.length]
     );
 
     if (isLoading || isLoadingGoals) {
@@ -272,11 +301,23 @@ function MatchDetail() {
                     )}
                 </TeamContainer>
             </MainRow>
-            <GoalRow>
+            <GoalsContainer ref={goalBoxRef}>
                 {goals.map((goal, index) => (
-                    <React.Fragment key={goal.id}>
-                        {index > 0 && <HiArrowRight />}
-                        <GoalItem>
+                    <GoalRow key={goal.id}>
+                        {goal.team === 2 && (
+                            <>
+                                <div></div>
+                                <GoalTime>
+                                    {format(
+                                        new Date(goal.created_at) -
+                                            new Date(match.start_time),
+                                        "mm:ss"
+                                    )}
+                                </GoalTime>
+                            </>
+                        )}
+
+                        <GoalItem $team={goal.team}>
                             <Avatar
                                 $size="xs"
                                 src={goal.player.avatar || DEFAULT_AVATAR}
@@ -288,9 +329,22 @@ function MatchDetail() {
                                     : "an own goal"
                             }!`}
                         </GoalItem>
-                    </React.Fragment>
+
+                        {goal.team === 1 && (
+                            <>
+                                <GoalTime>
+                                    {format(
+                                        new Date(goal.created_at) -
+                                            new Date(match.start_time),
+                                        "mm:ss"
+                                    )}
+                                </GoalTime>
+                                <div></div>
+                            </>
+                        )}
+                    </GoalRow>
                 ))}
-            </GoalRow>
+            </GoalsContainer>
             <BottomRow>
                 {isActive && (
                     <Button $size="xlarge" onClick={handleEndMatch}>
