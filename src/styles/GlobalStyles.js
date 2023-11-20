@@ -2,6 +2,40 @@ import { createGlobalStyle } from "styled-components";
 
 const GlobalStyles = createGlobalStyle`
 
+/* This styles the scrollbar track */
+*::-webkit-scrollbar {
+    width: 12px; /* width of the entire scrollbar */
+    height: 12px; /* height of the entire scrollbar */
+  }
+
+  /* This styles the scrollbar thumb */
+  *::-webkit-scrollbar-thumb {
+    background: var(--primary-button-color); /* color of the scroll thumb */
+    border-radius: 6px; /* roundness of the scroll thumb */
+    border: 3px solid var(--secondary-background-color); /* Creates padding around the scroll thumb */
+  }
+
+  /* This styles the scrollbar thumb on hover */
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-button-color-hover); /* color of the scroll thumb on hover */
+  }
+
+  /* This styles the scrollbar track */
+  *::-webkit-scrollbar-track {
+    background: var(--secondary-background-color); /* color of the scrollbar track */
+  }
+
+  /* This styles the scrollbar corner */
+  *::-webkit-scrollbar-corner {
+    background: var(--secondary-background-color); /* color of the scrollbar corner */
+  }
+
+  /* For Firefox */
+  * {
+    scrollbar-width: thin; /* "auto" or "thin" */
+    scrollbar-color: var(--primary-button-color) var(--secondary-background-color); /* thumb and track color */
+  }
+
 
 :root {
 
