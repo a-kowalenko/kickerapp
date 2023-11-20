@@ -103,9 +103,19 @@ function Body({ data, render, noDataLabel = "No data available" }) {
         function updateMaxHeight() {
             if (ref.current) {
                 const distanceToTop = ref.current.getBoundingClientRect().top;
+                const distanceToBottom =
+                    ref.current.getBoundingClientRect().bottom;
                 const windowHeight = window.innerHeight;
-                const newMaxHeight = `${windowHeight - distanceToTop - 120}px`;
+                const newMaxHeight = `${
+                    windowHeight - distanceToTop - 120 > 529
+                        ? 529
+                        : windowHeight - distanceToTop - 120
+                }px`;
                 setMaxHeight(newMaxHeight);
+                console.log("windowHeight", windowHeight);
+                console.log("distanceToTop", distanceToTop);
+                console.log("distanceToBottom", distanceToBottom);
+                console.log("newMaxHeight", newMaxHeight);
             }
         }
 
