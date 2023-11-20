@@ -1,10 +1,4 @@
-import {
-    createContext,
-    useContext,
-    useEffect,
-    useMemo,
-    useReducer,
-} from "react";
+import { createContext, useContext, useEffect, useReducer } from "react";
 import { START_MATCH_COUNTDOWN } from "../utils/constants";
 import { useCreateMatch } from "../features/matches/useCreateMatch";
 import { usePlayers } from "../hooks/usePlayers";
@@ -17,7 +11,6 @@ const initialState = {
     selectedPlayers: [null, null, null, null],
     filteredPlayers: [],
     filteredForPlayer3And4: [],
-    selectedPlayers: [null, null, null, null],
     isPlayer3Active: false,
     isPlayer4Active: false,
     isLoading: false,

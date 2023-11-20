@@ -18,7 +18,7 @@ const StyledMontylyDisgrace = styled(ContentBox)`
 `;
 
 function MonthlyDisgraces() {
-    const { disgraces, isLoadingMatches } = useMonthlyDisgraces();
+    const { disgraces, isLoading } = useMonthlyDisgraces();
     const currentMonth = format(new Date(), "LLLL", { locale: de });
 
     return (
@@ -32,7 +32,7 @@ function MonthlyDisgraces() {
                     <div>geschändet von</div>
                     <div>Am</div>
                 </MiniTable.Header>
-                {isLoadingMatches ? (
+                {isLoading ? (
                     <LoadingSpinner />
                 ) : (
                     <MiniTable.Body

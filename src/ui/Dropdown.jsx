@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HiOutlineChevronDown } from "react-icons/hi2";
 import styled, { css } from "styled-components";
 import { useOutsideClick } from "../hooks/useOutsideClick";
+import SpinnerMini from "./SpinnerMini";
 
 const variations = {
     default: css`
@@ -120,6 +121,7 @@ function Dropdown({
     onSelect,
     disabled = false,
     initSelected = null,
+    isLoading = false,
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState(initSelected);
@@ -152,14 +154,18 @@ function Dropdown({
             </Toggle>
             {!disabled && (
                 <List $isOpen={isOpen} ref={ref}>
-                    {options.map((option) => (
-                        <Element
-                            text={option.text}
-                            onSelect={() => handleSelect(option)}
-                            key={option.value}
-                            isSelected={option.value === selected?.value}
-                        />
-                    ))}
+                    {isLoading ? (
+                        <SpinnerMini />
+                    ) : (
+                        options.map((option) => (
+                            <Element
+                                text={option.text}
+                                onSelect={() => handleSelect(option)}
+                                key={option.value}
+                                isSelected={option.value === selected?.value}
+                            />
+                        ))
+                    )}
                 </List>
             )}
         </StyledDropdown>

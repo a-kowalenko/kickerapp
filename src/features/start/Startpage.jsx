@@ -19,6 +19,7 @@ import { useKicker } from "../../contexts/KickerContext";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { HiXMark } from "react-icons/hi2";
 import { media } from "../../utils/constants";
+import SpinnerMini from "../../ui/SpinnerMini";
 
 const Sidebar = styled.aside`
     background-color: var(--primary-background-color);
@@ -259,7 +260,7 @@ function Startpage() {
         }
     }, [isAuthenticated, kickers?.length, setSidebarActive]);
 
-    if (isLoading || isCreatingKicker || isJoiningKicker) {
+    if (isCreatingKicker || isJoiningKicker) {
         return <Spinner />;
     }
 
@@ -331,7 +332,7 @@ function Startpage() {
     return (
         <StyledStartpage>
             <Navbar $isAuthenticated={isAuthenticated}>
-                {isAuthenticated && (
+                {!isLoading && isAuthenticated && (
                     <BurgerMenuContainer>
                         <ButtonIcon onClick={toggleSidebar}>
                             <FaBars />
@@ -341,7 +342,7 @@ function Startpage() {
                 <Logo src={logo} alt="Logo" />
                 <ResponsiveNavButtonsContainer>
                     <DarkModeToggle />
-                    {!isAuthenticated && (
+                    {!isLoading && !isAuthenticated && (
                         <>
                             <NavButton as={NavLink} to="/register">
                                 Sign Up
@@ -351,14 +352,14 @@ function Startpage() {
                             </NavButton>
                         </>
                     )}
-                    {isAuthenticated && (
+                    {!isLoading && isAuthenticated && (
                         <NavButton as="div" onClick={logout}>
                             Logout
                         </NavButton>
                     )}
                 </ResponsiveNavButtonsContainer>
             </Navbar>
-            {isAuthenticated && (
+            {!isLoading && isAuthenticated && (
                 <Sidebar className={sidebarActive ? "active" : ""}>
                     <CloseSidebarContainer>
                         <ButtonIcon onClick={() => setSidebarActive(false)}>
@@ -366,7 +367,7 @@ function Startpage() {
                         </ButtonIcon>
                     </CloseSidebarContainer>
                     {isLoadingKickers ? (
-                        <Spinner />
+                        <SpinnerMini />
                     ) : (
                         <>
                             <KickerListTitle>Your Kickers</KickerListTitle>
