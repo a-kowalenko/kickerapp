@@ -44,7 +44,7 @@ function RecentMatches() {
                     <div style={{ textAlign: "center" }}>Score</div>
                     <div>Team 2</div>
                     {showStartTime && <div>Start Time</div>}
-                    {showDuration > 768 && <div>Duration</div>}
+                    {showDuration && <div>Duration</div>}
                 </MiniTable.Header>
                 {isLoadingMatches ? (
                     <LoadingSpinner />
