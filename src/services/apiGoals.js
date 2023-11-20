@@ -1,4 +1,5 @@
 import {
+    GENERATED_GOAL,
     GOALS,
     MATCHES,
     OWN_GOAL,
@@ -32,7 +33,14 @@ export async function getGoalsByPlayer(kicker, playerId, sortBy) {
     return { data, count };
 }
 
-async function getGoals(kicker, filter, sortBy) {
+async function getGoals(
+    kicker,
+    filter,
+    sortBy = {
+        field: "created_at",
+        direction: "asc",
+    }
+) {
     let query = supabase
         .from(GOALS)
         .select(
@@ -95,7 +103,10 @@ export async function getGoalStatisticsByPlayer(kicker, playerName) {
                 };
             }
 
-            if (cur.goal_type === STANDARD_GOAL) {
+            if (
+                cur.goal_type === STANDARD_GOAL ||
+                cur.goal_type === GENERATED_GOAL
+            ) {
                 acc[enemy.name].standardGoals += 1;
             }
             if (cur.goal_type === OWN_GOAL) {
@@ -107,4 +118,18 @@ export async function getGoalStatisticsByPlayer(kicker, playerName) {
     }, {});
 
     return playerGoalData;
+}
+
+export async function createGoal(goal) {
+    const { data, error } = await supabase
+        .from(GOALS)
+        .insert(goal)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
 }

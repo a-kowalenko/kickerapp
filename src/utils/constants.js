@@ -27,6 +27,7 @@ export const GAMEMODE_2ON1 = "2on1";
 // GOAL TYPES
 export const STANDARD_GOAL = "standard_goal";
 export const OWN_GOAL = "own_goal";
+export const GENERATED_GOAL = "generated_goal";
 
 // DATABASE CONSTANTS
 export const DEFAULT_DATABASE_SCHEMA = "kopecht";

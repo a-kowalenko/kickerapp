@@ -7,7 +7,12 @@ import { useRef } from "react";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
-import { DEFAULT_AVATAR, STANDARD_GOAL, media } from "../../utils/constants";
+import {
+    DEFAULT_AVATAR,
+    GENERATED_GOAL,
+    STANDARD_GOAL,
+    media,
+} from "../../utils/constants";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
 import Error from "../../ui/Error";
@@ -152,6 +157,12 @@ const Timer = styled.label`
     }
 `;
 
+const CenteredInfoLabel = styled.label`
+    display: flex;
+    justify-content: center;
+    align-items: center;
+`;
+
 function MatchDetail() {
     function handleScoreChange(e, setter) {
         const value = e.target.value;
@@ -184,6 +195,9 @@ function MatchDetail() {
     const timerIdRef = useRef(null);
     const goalBoxRef = useRef(null);
     const windowWidth = useWindowWidth();
+    const finalGoals = goals?.filter(
+        (goal) => goal.goal_type !== GENERATED_GOAL
+    );
 
     useEffect(
         function () {
@@ -224,7 +238,7 @@ function MatchDetail() {
                 goalBoxRef.current.scrollTo(0, scrollHeight);
             }
         },
-        [goals?.length]
+        [finalGoals?.length]
     );
 
     if (isLoading || isLoadingGoals) {
@@ -257,13 +271,13 @@ function MatchDetail() {
                     <ScoreInput
                         value={score1}
                         onChange={(e) => handleScoreChange(e, setScore1)}
-                        disabled={isEnded || goals.length > 0}
+                        disabled={isEnded || finalGoals.length > 0}
                     />
                     &mdash;{" "}
                     <ScoreInput
                         value={score2}
                         onChange={(e) => handleScoreChange(e, setScore2)}
-                        disabled={isEnded || goals.length > 0}
+                        disabled={isEnded || finalGoals.length > 0}
                     />
                 </ScoreContainer>
                 <TeamHeader>Team 2</TeamHeader>
@@ -310,7 +324,15 @@ function MatchDetail() {
                 </TeamContainer>
             </MainRow>
             <GoalsContainer ref={goalBoxRef}>
-                {goals.map((goal) => (
+                {finalGoals.length === 0 && goals.length > 0 && (
+                    <CenteredInfoLabel>
+                        <i>
+                            Only generated goals without timestamp are
+                            available.
+                        </i>
+                    </CenteredInfoLabel>
+                )}
+                {finalGoals.map((goal) => (
                     <GoalRow key={goal.id}>
                         {goal.team === 2 && (
                             <>
