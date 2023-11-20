@@ -45,7 +45,7 @@ const GoalsContainer = styled.div`
 
 const GoalRow = styled.div`
     display: grid;
-    grid-template-columns: 30% 30% 30%;
+    grid-template-columns: 30% 10% 10% 10% 30%;
     justify-content: center;
     align-items: center;
     padding: 0.4rem 2rem;
@@ -69,6 +69,13 @@ const GoalTime = styled.div`
     align-items: center;
     padding: 1rem;
     margin: 0 auto;
+`;
+
+const CurrentTeamScore = styled.div`
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
 `;
 
 const BottomRow = styled(Row)`
@@ -302,11 +309,14 @@ function MatchDetail() {
                 </TeamContainer>
             </MainRow>
             <GoalsContainer ref={goalBoxRef}>
-                {goals.map((goal, index) => (
+                {goals.map((goal) => (
                     <GoalRow key={goal.id}>
                         {goal.team === 2 && (
                             <>
                                 <div></div>
+                                <CurrentTeamScore>
+                                    {goal.scoreTeam1}
+                                </CurrentTeamScore>
                                 <GoalTime>
                                     {format(
                                         new Date(goal.created_at) -
@@ -314,6 +324,9 @@ function MatchDetail() {
                                         "mm:ss"
                                     )}
                                 </GoalTime>
+                                <CurrentTeamScore>
+                                    {goal.scoreTeam2}
+                                </CurrentTeamScore>
                             </>
                         )}
 
@@ -332,6 +345,9 @@ function MatchDetail() {
 
                         {goal.team === 1 && (
                             <>
+                                <CurrentTeamScore>
+                                    {goal.scoreTeam1}
+                                </CurrentTeamScore>
                                 <GoalTime>
                                     {format(
                                         new Date(goal.created_at) -
@@ -339,6 +355,9 @@ function MatchDetail() {
                                         "mm:ss"
                                     )}
                                 </GoalTime>
+                                <CurrentTeamScore>
+                                    {goal.scoreTeam2}
+                                </CurrentTeamScore>
                                 <div></div>
                             </>
                         )}
