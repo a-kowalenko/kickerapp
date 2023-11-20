@@ -662,6 +662,8 @@ async function updateGoal(playerId, matchId, kicker, goalType) {
         goal_type: goalType,
         amount,
         team,
+        scoreTeam1: updatedMatch.scoreTeam1,
+        scoreTeam2: updatedMatch.scoreTeam2,
     };
 
     const { data, error } = await supabase
