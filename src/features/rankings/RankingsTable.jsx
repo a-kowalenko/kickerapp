@@ -1,9 +1,9 @@
 import { useSearchParams } from "react-router-dom";
 import Pagination from "../../ui/Pagination";
-import Spinner from "../../ui/Spinner";
 import Table from "../../ui/Table";
 import RankingsRow from "./RankingsRow";
 import { useRankings } from "./useRankings";
+import LoadingSpinner from "../../ui/LoadingSpinner";
 
 function RankingsTable() {
     const { rankings, count, isLoadingRankings } = useRankings();
@@ -11,10 +11,6 @@ function RankingsTable() {
     const gamemode = searchParams.get("gamemode")
         ? searchParams.get("gamemode")
         : "1on1";
-
-    if (isLoadingRankings) {
-        return <Spinner />;
-    }
 
     return (
         <Table columns="0.5fr 1fr 1fr 1fr 1fr 1fr 1fr">
@@ -27,17 +23,21 @@ function RankingsTable() {
                 <div style={{ textAlign: "center" }}>Winrate</div>
                 <div style={{ textAlign: "center" }}>MMR</div>
             </Table.Header>
-            <Table.Body
-                noDataLabel="No rankings available"
-                data={rankings}
-                render={(player) => (
-                    <RankingsRow
-                        key={player.id}
-                        player={player}
-                        gamemode={gamemode}
-                    />
-                )}
-            />
+            {isLoadingRankings ? (
+                <LoadingSpinner />
+            ) : (
+                <Table.Body
+                    noDataLabel="No rankings available"
+                    data={rankings}
+                    render={(player) => (
+                        <RankingsRow
+                            key={player.id}
+                            player={player}
+                            gamemode={gamemode}
+                        />
+                    )}
+                />
+            )}
             <Table.Footer>
                 <Pagination numEntries={count} />
             </Table.Footer>

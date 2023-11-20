@@ -4,8 +4,6 @@ import MonthlyDisgraces from "./MonthlyDisgraces";
 import MostPlayed from "./MostPlayed";
 import TodayStats from "./TodayStats";
 import { media } from "../../utils/constants";
-import useWindowWidth from "../../hooks/useWindowWidth";
-import NewMatchButton from "./NewMatchButton";
 
 const StyledHomeLayout = styled.div`
     display: grid;
@@ -26,12 +24,6 @@ const StyledHomeLayout = styled.div`
 `;
 
 function HomeLayout() {
-    const windowWidth = useWindowWidth();
-
-    // if (windowWidth <= media.maxTablet) {
-    //     return <NewMatchButton />;
-    // }
-
     return (
         <StyledHomeLayout>
             <TodayStats />

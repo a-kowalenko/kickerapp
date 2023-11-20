@@ -1,13 +1,12 @@
 import styled from "styled-components";
 import { useMatch } from "./useMatch";
 import { useEndMatch } from "./useEndMatch";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useEffect } from "react";
 import { useRef } from "react";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import toast from "react-hot-toast";
-import Spinner from "../../ui/Spinner";
 import { DEFAULT_AVATAR, STANDARD_GOAL, media } from "../../utils/constants";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
@@ -17,6 +16,7 @@ import useWindowWidth from "../../hooks/useWindowWidth";
 import MatchDetailMobile from "./MatchDetailMobile";
 import { useGoals } from "../../hooks/useGoals";
 import ContentBox from "../../ui/ContentBox";
+import LoadingSpinner from "../../ui/LoadingSpinner";
 
 const Row = styled.div`
     display: flex;
@@ -27,9 +27,7 @@ const Row = styled.div`
 
 const TopRow = styled(Row)``;
 
-const MainRow = styled(Row)`
-
-`;
+const MainRow = styled(Row)``;
 
 const GoalsContainer = styled.div`
     display: flex;
@@ -37,7 +35,7 @@ const GoalsContainer = styled.div`
     overflow: scroll;
     overflow-x: hidden;
     margin-top: 5rem;
-    height: calc(100vh - 60rem);
+    flex-grow: 1;
 `;
 
 const GoalRow = styled.div`
@@ -155,12 +153,34 @@ const Timer = styled.label`
 `;
 
 function MatchDetail() {
+    function handleScoreChange(e, setter) {
+        const value = e.target.value;
+        if (/^\d+$/.test(value) || value === "") {
+            setter(Number(value));
+        }
+    }
+
+    function handleEndMatch() {
+        if (score1 === "" || score2 === "") {
+            toast.error("Score is missing");
+            return;
+        }
+
+        if (score1 === 0 && score2 === 0) {
+            toast.error("Atleast one team must have a score above 0");
+            return;
+        }
+
+        endMatch({ id: match.id, score1, score2 });
+        clearInterval(timerIdRef.current);
+    }
+
     const { match, isLoading, error } = useMatch();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
     const { goals, isLoadingGoals, countGoals } = useGoals();
     const [score1, setScore1] = useState("");
     const [score2, setScore2] = useState("");
-    const [timer, setTimer] = useState("00:00");
+    const [timer, setTimer] = useState(<SpinnerMini />);
     const timerIdRef = useRef(null);
     const goalBoxRef = useRef(null);
     const windowWidth = useWindowWidth();
@@ -208,7 +228,7 @@ function MatchDetail() {
     );
 
     if (isLoading || isLoadingGoals) {
-        return <Spinner />;
+        return <LoadingSpinner />;
     }
 
     if (error) {
@@ -224,28 +244,6 @@ function MatchDetail() {
             ? "Team 1"
             : "Team 2"
         : null;
-
-    function handleScoreChange(e, setter) {
-        const value = e.target.value;
-        if (/^\d+$/.test(value) || value === "") {
-            setter(Number(value));
-        }
-    }
-
-    function handleEndMatch() {
-        if (score1 === "" || score2 === "") {
-            toast.error("Score is missing");
-            return;
-        }
-
-        if (score1 === 0 && score2 === 0) {
-            toast.error("Atleast one team must have a score above 0");
-            return;
-        }
-
-        endMatch({ id: match.id, score1, score2 });
-        clearInterval(timerIdRef.current);
-    }
 
     if (windowWidth < media.maxTablet) {
         return <MatchDetailMobile match={match} timer={timer} />;

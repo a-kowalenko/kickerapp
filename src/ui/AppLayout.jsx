@@ -28,11 +28,11 @@ const Main = styled.main`
     grid-column: 2;
 
     /* Removing scrollbars for webkit, firefox, and ms, respectively */
-    &::-webkit-scrollbar {
+    /* &::-webkit-scrollbar {
         display: none;
     }
     scrollbar-width: none;
-    -ms-overflow-style: none;
+    -ms-overflow-style: none; */
 
     ${media.tablet} {
         padding: 1.6rem 0rem;

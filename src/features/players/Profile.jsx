@@ -4,9 +4,9 @@ import { DEFAULT_AVATAR } from "../../utils/constants";
 import StatsTable from "./StatsTable";
 import StatsFilterRow from "./StatsFilterRow";
 import Avatar from "../../ui/Avatar";
-import Spinner from "../../ui/Spinner";
 import { usePlayerName } from "./usePlayerName";
 import Error from "../../ui/Error";
+import SpinnerMini from "../../ui/SpinnerMini";
 
 const StyledProfile = styled.div`
     display: flex;
@@ -42,22 +42,20 @@ function Profile() {
     const { userId } = useParams();
     const { player, isLoading, error } = usePlayerName(userId);
 
-    if (isLoading) {
-        return <Spinner />;
-    }
-
     if (error) {
         return <Error message={error.message} />;
     }
 
-    const { avatar } = player;
-
     return (
         <StyledProfile>
-            <Avatar $size="huge" src={avatar || DEFAULT_AVATAR} />
+            {isLoading ? (
+                <SpinnerMini />
+            ) : (
+                <Avatar $size="huge" src={player.avatar || DEFAULT_AVATAR} />
+            )}
             <div>
                 <StatsFilterRow />
-                <StatsTable player={player} />
+                <StatsTable userId={userId} />
             </div>
         </StyledProfile>
     );

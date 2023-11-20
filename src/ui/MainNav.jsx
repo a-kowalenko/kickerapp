@@ -5,6 +5,7 @@ import {
     HiOutlineCog6Tooth,
     HiOutlineHome,
     HiOutlineListBullet,
+    HiOutlinePlay,
     HiOutlineTrash,
     HiPlus,
 } from "react-icons/hi2";
@@ -25,6 +26,7 @@ const NavList = styled.ul`
 `;
 
 const StyledNavLink = styled(NavLink)`
+    border-radius: var(--border-radius-sm);
     &:link,
     &:visited {
         display: flex;
@@ -88,18 +90,18 @@ const NewMatchListElement = styled.li`
 `;
 
 const pulseAnimation = keyframes`
-    0% {
-    box-shadow: 0 0 0 0px rgba(0, 123, 255, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0px rgba(0, 123, 255, 0);
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(7, 89, 133,  0.3);
+    background-color: rgba(7, 89, 133,  0);
+ }
+  50% { 
+    box-shadow: 0 0 20px rgba(7, 89, 133,  0.7); 
+    background-color: rgba(7, 89, 133,  0.4);
   }
 `;
 
 const ActiveMatchListElement = styled.li`
+    border-radius: var(--border-radius-sm);
     animation: ${pulseAnimation} 2s infinite;
 
     & a:active:not(:hover),
@@ -176,7 +178,7 @@ function MainNav() {
                             to={`/matches/${activeMatch.at(0).id}`}
                             title="Active Match"
                         >
-                            <HiOutlineBookOpen />
+                            <HiOutlinePlay />
                             <span>Active Match</span>
                         </StyledNavLink>
                     </ActiveMatchListElement>

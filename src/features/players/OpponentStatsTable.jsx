@@ -1,14 +1,10 @@
-import Spinner from "../../ui/Spinner";
+import LoadingSpinner from "../../ui/LoadingSpinner";
 import Table from "../../ui/Table";
 import OpponentStatsRow from "./OpponentStatsRow";
 import { useOpponentStats } from "./useOpponentStats";
 
 function OpponentStatsTable() {
     const { data, isLoading } = useOpponentStats();
-
-    if (isLoading) {
-        return <Spinner />;
-    }
 
     return (
         <Table columns="1fr 1fr 1fr 1fr 1fr 1fr 1fr">
@@ -21,13 +17,17 @@ function OpponentStatsTable() {
                 <div>Goals</div>
                 <div>Own Goals</div>
             </Table.Header>
-            <Table.Body
-                noDataLabel="No stats available"
-                data={data}
-                render={(stats) => (
-                    <OpponentStatsRow key={stats.name} stats={stats} />
-                )}
-            />
+            {isLoading ? (
+                <LoadingSpinner />
+            ) : (
+                <Table.Body
+                    noDataLabel="No stats available"
+                    data={data}
+                    render={(stats) => (
+                        <OpponentStatsRow key={stats.name} stats={stats} />
+                    )}
+                />
+            )}
         </Table>
     );
 }

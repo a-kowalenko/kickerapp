@@ -7,11 +7,10 @@ import useWindowWidth from "../hooks/useWindowWidth";
 import { media } from "../utils/constants";
 import ChoosePlayersMobile from "../features/matches/ChoosePlayersMobile";
 import { ChoosePlayerProvider } from "../contexts/ChoosePlayerContext";
-import Spinner from "../ui/Spinner";
 import Error from "../ui/Error";
 
 function CreateMatch() {
-    const { activeMatch, isLoading, error } = useActiveMatch();
+    const { activeMatch, error } = useActiveMatch();
     const navigate = useNavigate();
     const windowWidth = useWindowWidth();
 
@@ -24,10 +23,6 @@ function CreateMatch() {
         },
         [activeMatch, navigate]
     );
-
-    if (isLoading) {
-        return <Spinner />;
-    }
 
     if (error) {
         return <Error message={error.message} />;
