@@ -4,6 +4,7 @@ import {
     GAMEMODE_1ON1,
     GAMEMODE_2ON1,
     GAMEMODE_2ON2,
+    GENERATED_GOAL,
     GOALS,
     MATCHES,
     OWN_GOAL,
@@ -14,7 +15,11 @@ import {
 import { calculateMmrChange, formatTime } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
-import { getGoalStatisticsByPlayer } from "./apiGoals";
+import {
+    createGoal,
+    getGoalStatisticsByPlayer,
+    getGoalsByMatch,
+} from "./apiGoals";
 
 export async function getPlayers({ filter }) {
     const { data, error } = await supabase
@@ -367,6 +372,46 @@ export async function endMatch({ id, score1, score2, kicker }) {
         throw new Error("There was an error ending the match", error.message);
     }
 
+    // Falls Spiel ohne goal tracking, erstelle goal datensätze
+    const { count: goalsCount } = getGoalsByMatch(kicker, id);
+    if (!goalsCount) {
+        // Keine goals vorhanden, erstelle Datensätze
+        // Nur für 1on1, da nicht bekannt ist, wer die Tore geschossen hat
+        if (data.gamemode == GAMEMODE_1ON1) {
+            // TEAM 1
+            for (let i = 0; i < data.scoreTeam1; i++) {
+                const newGoal = {
+                    match_id: id,
+                    player_id: data.player1,
+                    kicker_id: kicker,
+                    goal_type: GENERATED_GOAL,
+                    amount: 1,
+                    team: 1,
+                    scoreTeam1: null,
+                    scoreTeam2: null,
+                };
+
+                createGoal(newGoal);
+            }
+
+            // TEAM 2
+            for (let i = 0; i < data.scoreTeam2; i++) {
+                const newGoal = {
+                    match_id: id,
+                    player_id: data.player2,
+                    kicker_id: kicker,
+                    goal_type: GENERATED_GOAL,
+                    amount: 1,
+                    team: 2,
+                    scoreTeam1: null,
+                    scoreTeam2: null,
+                };
+
+                createGoal(newGoal);
+            }
+        }
+    }
+
     return data;
 }
 
@@ -670,17 +715,10 @@ async function updateGoal(playerId, matchId, kicker, goalType) {
         team,
         scoreTeam1: updatedMatch.scoreTeam1,
         scoreTeam2: updatedMatch.scoreTeam2,
+        gamemode: match.gamemode,
     };
 
-    const { data, error } = await supabase
-        .from(GOALS)
-        .insert(newGoal)
-        .select()
-        .single();
-
-    if (error) {
-        throw new Error(error.message);
-    }
+    await createGoal(newGoal);
 
     return updatedMatch;
 }
