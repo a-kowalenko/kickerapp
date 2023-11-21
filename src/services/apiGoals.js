@@ -1,4 +1,7 @@
 import {
+    GAMEMODE_1ON1,
+    GAMEMODE_2ON1,
+    GAMEMODE_2ON2,
     GENERATED_GOAL,
     GOALS,
     MATCHES,
@@ -74,7 +77,9 @@ async function getGoals(
     return { data, count };
 }
 
-export async function getGoalStatisticsByPlayer(kicker, playerName) {
+export async function getGoalStatisticsByPlayer(filter, playerName) {
+    const gamemode = filter.value;
+    const kicker = filter.kicker;
     const player = await getPlayerByName({ name: playerName, kicker });
     const playerId = player.id;
 
@@ -103,14 +108,29 @@ export async function getGoalStatisticsByPlayer(kicker, playerName) {
                 };
             }
 
-            if (
-                cur.goal_type === STANDARD_GOAL ||
-                cur.goal_type === GENERATED_GOAL
-            ) {
-                acc[enemy.name].standardGoals += 1;
+            if (gamemode === GAMEMODE_1ON1 && cur.gamemode === GAMEMODE_1ON1) {
+                if (
+                    cur.goal_type === STANDARD_GOAL ||
+                    cur.goal_type === GENERATED_GOAL
+                ) {
+                    acc[enemy.name].standardGoals += 1;
+                }
+                if (cur.goal_type === OWN_GOAL) {
+                    acc[enemy.name].ownGoals += 1;
+                }
             }
-            if (cur.goal_type === OWN_GOAL) {
-                acc[enemy.name].ownGoals += 1;
+
+            if (
+                (gamemode === GAMEMODE_2ON2 || gamemode === GAMEMODE_2ON1) &&
+                (cur.gamemode === GAMEMODE_2ON2 ||
+                    cur.gamemode === GAMEMODE_2ON1)
+            ) {
+                if (cur.goal_type === STANDARD_GOAL) {
+                    acc[enemy.name].standardGoals += 1;
+                }
+                if (cur.goal_type === OWN_GOAL) {
+                    acc[enemy.name].ownGoals += 1;
+                }
             }
         }
 
