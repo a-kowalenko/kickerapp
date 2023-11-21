@@ -8,6 +8,7 @@ import Stat from "./Stat";
 import { useTodayStats } from "./useTodayStats";
 import { addMilliseconds } from "date-fns";
 import SpinnerMini from "../../ui/SpinnerMini";
+import { MATCH_ENDED } from "../../utils/constants";
 
 function getTeams(match) {
     const {
@@ -29,12 +30,12 @@ function TodayStats() {
 
     // 1. Today's matches
     const todaysMatches = matches?.filter(
-        (match) => match.status === "ended"
+        (match) => match.status === MATCH_ENDED
     ).length;
 
     // 2. Time wasted
     const todaysTimePlayed = matches
-        ?.filter((match) => match.status === "ended")
+        ?.filter((match) => match.status === MATCH_ENDED)
         .reduce(
             (acc, cur) =>
                 acc + (new Date(cur.end_time) - new Date(cur.start_time)),
