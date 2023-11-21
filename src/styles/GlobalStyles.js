@@ -142,6 +142,10 @@ const GlobalStyles = createGlobalStyle`
     --name-hover-gradient-start: #5dc3f5;
     --name-hover-gradient-end: #000ac0;
 
+    // Goals
+    --standard-goal-color: rgba(51, 255, 0, 0.2);
+    --own-goal-color: rgba(255, 0, 0, 0.4);
+
     // Statistics
     --chart-line-color: #5dc3f5;
     
@@ -259,6 +263,10 @@ const GlobalStyles = createGlobalStyle`
     --loser-name-color: #ff0000;
     --name-hover-gradient-start: #cdc55a;
     --name-hover-gradient-end: #fd7a00;
+
+    // Goals
+    --standard-goal-color: rgba(90, 201, 0, 0.2);
+    --own-goal-color: rgba(255, 0, 0, 0.4);
 
     // Statistics
     --chart-line-color: #0c00f3;
