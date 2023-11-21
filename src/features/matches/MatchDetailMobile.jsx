@@ -3,9 +3,7 @@ import Button from "../../ui/Button";
 import {
     HiArrowDownTray,
     HiArrowUturnLeft,
-    HiMinus,
     HiMinusCircle,
-    HiPlus,
     HiPlusCircle,
 } from "react-icons/hi2";
 import ButtonIcon from "../../ui/ButtonIcon";
@@ -15,6 +13,7 @@ import toast from "react-hot-toast";
 import SpinnerMini from "../../ui/SpinnerMini";
 import { useState } from "react";
 import Divider from "../../ui/Divider";
+import { MATCH_ACTIVE, MATCH_ENDED } from "../../utils/constants";
 
 const Heading = styled.h1`
     display: flex;
@@ -126,8 +125,8 @@ function MatchDetailMobile({ match, timer }) {
         isUndoingLastAction,
     } = useUpdateMatch();
 
-    const isActive = match.status === "active";
-    const isEnded = match.status === "ended";
+    const isActive = match.status === MATCH_ACTIVE;
+    const isEnded = match.status === MATCH_ENDED;
 
     const winner = isEnded
         ? match.scoreTeam1 > match.scoreTeam2

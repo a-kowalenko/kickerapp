@@ -70,6 +70,7 @@ function Sidebar() {
             setIsOpen(false);
         }
     };
+
     const sidebarRef = useOutsideClick(close, false);
 
     const toggleSidebar = (e) => {
@@ -86,7 +87,7 @@ function Sidebar() {
                 $isOpen={isOpen}
             >
                 <Logo />
-                <MainNav />
+                <MainNav close={close} />
             </StyledSidebar>
         </>
     );
