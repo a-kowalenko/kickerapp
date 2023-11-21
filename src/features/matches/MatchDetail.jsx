@@ -10,6 +10,8 @@ import toast from "react-hot-toast";
 import {
     DEFAULT_AVATAR,
     GENERATED_GOAL,
+    MATCH_ACTIVE,
+    MATCH_ENDED,
     STANDARD_GOAL,
     media,
 } from "../../utils/constants";
@@ -24,6 +26,7 @@ import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
+import { useActiveMatch } from "../../hooks/useActiveMatch";
 
 const Row = styled.div`
     display: flex;
@@ -199,6 +202,7 @@ function MatchDetail() {
 
     const [searchParams] = useSearchParams();
     const { match, isLoading, error } = useMatch();
+    const activeMatch = useActiveMatch();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
     const { goals, isLoadingGoals, countGoals } = useGoals();
     const [score1, setScore1] = useState("");
@@ -211,37 +215,39 @@ function MatchDetail() {
     const finalGoals = goals
         ?.filter((goal) => goal.goal_type !== GENERATED_GOAL)
         .sort((a, b) => (sort === "asc" ? a.id - b.id : b.id - a.id));
+    const finalMatch = activeMatch || match;
 
     useEffect(
         function () {
-            if (match) {
-                setScore1(match.scoreTeam1);
-                setScore2(match.scoreTeam2);
+            if (finalMatch) {
+                setScore1(finalMatch.scoreTeam1);
+                setScore2(finalMatch.scoreTeam2);
             }
 
-            if (match && match.end_time) {
+            if (finalMatch && finalMatch.end_time) {
                 setTimer(
                     format(
-                        new Date(match.end_time) - new Date(match.start_time),
+                        new Date(finalMatch.end_time) -
+                            new Date(finalMatch.start_time),
                         "mm:ss"
                     )
                 );
             }
 
-            if (!match || match.status !== "active") {
+            if (!finalMatch || finalMatch.status !== MATCH_ACTIVE) {
                 return;
             }
             timerIdRef.current = setInterval(() => {
                 const val =
-                    new Date() - new Date(match.start_time) < 0
+                    new Date() - new Date(finalMatch.start_time) < 0
                         ? 0
-                        : new Date() - new Date(match.start_time);
+                        : new Date() - new Date(finalMatch.start_time);
                 setTimer(format(val, "mm:ss"));
             }, 1000);
 
             return () => clearInterval(timerIdRef.current);
         },
-        [match]
+        [finalMatch]
     );
 
     useEffect(
@@ -266,17 +272,17 @@ function MatchDetail() {
         return <Error message={error.message} />;
     }
 
-    const { player1, player2, player3, player4 } = match;
-    const isActive = match.status === "active";
-    const isEnded = match.status === "ended";
+    const { player1, player2, player3, player4 } = finalMatch;
+    const isActive = finalMatch.status === MATCH_ACTIVE;
+    const isEnded = finalMatch.status === MATCH_ENDED;
     const winner = isEnded
-        ? match.scoreTeam1 > match.scoreTeam2
+        ? finalMatch.scoreTeam1 > finalMatch.scoreTeam2
             ? "Team 1"
             : "Team 2"
         : null;
 
     if (windowWidth < media.maxTablet) {
-        return <MatchDetailMobile match={match} timer={timer} />;
+        return <MatchDetailMobile match={finalMatch} timer={timer} />;
     }
 
     return (
@@ -365,7 +371,7 @@ function MatchDetail() {
                                 <GoalTime>
                                     {format(
                                         new Date(goal.created_at) -
-                                            new Date(match.start_time),
+                                            new Date(finalMatch.start_time),
                                         "mm:ss"
                                     )}
                                 </GoalTime>
@@ -396,7 +402,7 @@ function MatchDetail() {
                                 <GoalTime>
                                     {format(
                                         new Date(goal.created_at) -
-                                            new Date(match.start_time),
+                                            new Date(finalMatch.start_time),
                                         "mm:ss"
                                     )}
                                 </GoalTime>

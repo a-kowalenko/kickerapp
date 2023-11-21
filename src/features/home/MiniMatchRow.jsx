@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import PlayerName from "../../ui/PlayerName";
 import useWindowWidth from "../../hooks/useWindowWidth";
+import { MATCH_ACTIVE, MATCH_ENDED } from "../../utils/constants";
 
 const TeamContainer = styled.div`
     display: flex;
@@ -52,7 +53,9 @@ function MiniMatchRow({ match }) {
     const { player1, player2, player3, player4 } = match;
     const navigate = useNavigate();
     const team1Won =
-        match.status !== "ended" ? null : match.scoreTeam1 > match.scoreTeam2;
+        match.status !== MATCH_ENDED
+            ? null
+            : match.scoreTeam1 > match.scoreTeam2;
     const windowWidth = useWindowWidth();
     const showStartTime = windowWidth > 1350;
     const showDuration = windowWidth > 768;
@@ -151,7 +154,7 @@ function MiniMatchRow({ match }) {
                             )}
                         </span>
                     )}
-                    {match.status === "active" && <span>Is active</span>}
+                    {match.status === MATCH_ACTIVE && <span>Is active</span>}
                 </DurationContainer>
             )}
         </MiniTable.Row>

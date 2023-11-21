@@ -7,6 +7,8 @@ import {
     GENERATED_GOAL,
     GOALS,
     MATCHES,
+    MATCH_ACTIVE,
+    MATCH_ENDED,
     OWN_GOAL,
     PAGE_SIZE,
     PLAYER,
@@ -52,7 +54,7 @@ export async function createMatch({ players, kicker }) {
     const { data: activeMatches, activeMatchesError } = await supabase
         .from(MATCHES)
         .select("*")
-        .eq("status", "active")
+        .eq("status", MATCH_ACTIVE)
         .eq("kicker_id", kicker);
 
     if (activeMatchesError) {
@@ -184,11 +186,19 @@ export async function getMatches({ currentPage, filter }) {
     return { data, count };
 }
 
-export async function getActiveMatch({ kicker }) {
+export async function getActiveMatch(kicker) {
     const { data, error } = await supabase
         .from(MATCHES)
-        .select("*")
-        .eq("status", "active")
+        .select(
+            `
+                *,
+                player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+                player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+                player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+                player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
+            `
+        )
+        .eq("status", MATCH_ACTIVE)
         .eq("kicker_id", kicker);
 
     if (error) {
@@ -198,13 +208,17 @@ export async function getActiveMatch({ kicker }) {
         );
     }
 
-    return { data, error };
+    if (data.length === 0) {
+        return null;
+    }
+
+    return data[0];
 }
 
 export async function endMatch({ id, score1, score2, kicker }) {
     const match = await getMatch({ matchId: id, kicker });
 
-    if (match.status !== "active") {
+    if (match.status !== MATCH_ACTIVE) {
         throw new Error("Match has already ended");
     }
 
@@ -352,7 +366,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
     const { data, error } = await supabase
         .from(MATCHES)
         .update({
-            status: "ended",
+            status: MATCH_ENDED,
             scoreTeam1: finalScore1,
             scoreTeam2: finalScore2,
             mmrChangeTeam1: mmrChangeForTeam1,
@@ -460,7 +474,7 @@ export async function getDisgraces({ filter }) {
         query = query.range(from, to);
     }
 
-    const { data, error, count } = await query.eq("status", "ended");
+    const { data, error, count } = await query.eq("status", MATCH_ENDED);
 
     if (error) {
         throw new Error("Error while selecting the disgraces");
@@ -622,7 +636,7 @@ export async function getPlaytime({ name, kicker }) {
     const { data } = await getMatches({ filter: { name, kicker } });
 
     const playtime = data
-        .filter((match) => match.status === "ended")
+        .filter((match) => match.status === MATCH_ENDED)
         .reduce(
             (acc, cur) => {
                 const duration =

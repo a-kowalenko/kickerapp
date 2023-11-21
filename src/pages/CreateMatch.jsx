@@ -1,32 +1,27 @@
 import { useNavigate } from "react-router-dom";
 import ChoosePlayers from "../features/matches/ChoosePlayers";
-import { useActiveMatch } from "../features/matches/useActiveMatch";
-import { useEffect } from "react";
-import toast from "react-hot-toast";
 import useWindowWidth from "../hooks/useWindowWidth";
 import { media } from "../utils/constants";
 import ChoosePlayersMobile from "../features/matches/ChoosePlayersMobile";
 import { ChoosePlayerProvider } from "../contexts/ChoosePlayerContext";
-import Error from "../ui/Error";
+import { useActiveMatch } from "../hooks/useActiveMatch";
+import { useEffect } from "react";
+import toast from "react-hot-toast";
 
 function CreateMatch() {
-    const { activeMatch, error } = useActiveMatch();
+    const activeMatch = useActiveMatch();
     const navigate = useNavigate();
     const windowWidth = useWindowWidth();
 
     useEffect(
         function () {
-            if (activeMatch?.length > 0) {
+            if (activeMatch) {
                 toast.error(`There is already an active match`);
-                navigate(`/matches/${activeMatch[0].id}`);
+                navigate(`/matches/${activeMatch.id}`);
             }
         },
         [activeMatch, navigate]
     );
-
-    if (error) {
-        return <Error message={error.message} />;
-    }
 
     return (
         <ChoosePlayerProvider>

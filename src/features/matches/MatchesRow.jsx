@@ -2,7 +2,11 @@ import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
-import { DEFAULT_AVATAR } from "../../utils/constants";
+import {
+    DEFAULT_AVATAR,
+    MATCH_ACTIVE,
+    MATCH_ENDED,
+} from "../../utils/constants";
 import PlayerName from "../../ui/PlayerName";
 import { useNavigate } from "react-router-dom";
 
@@ -79,7 +83,9 @@ function MatchesRow({ match }) {
             : "2 on 2";
 
     const team1Won =
-        match.status !== "ended" ? null : match.scoreTeam1 > match.scoreTeam2;
+        match.status !== MATCH_ENDED
+            ? null
+            : match.scoreTeam1 > match.scoreTeam2;
 
     function handleClickRow(e) {
         e.stopPropagation();
@@ -190,7 +196,7 @@ function MatchesRow({ match }) {
                         )}
                     </span>
                 )}
-                {match.status === "active" && <span>IS ACTIVE</span>}
+                {match.status === MATCH_ACTIVE && <span>IS ACTIVE</span>}
             </DurationContainer>
         </Table.Row>
     );
