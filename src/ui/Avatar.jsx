@@ -7,11 +7,10 @@ const Avatar = styled.img`
     object-fit: cover;
     object-position: center;
     border-radius: 50%;
-    outline: 2px solid var(--color-grey-100);
     box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
     ${(props) => (props.$cursor === "pointer" ? "cursor: pointer;" : "")}
 
-    border: 2px solid var(--color-grey-300);
+    border: 1px solid var(--primary-border-color);
     transition: transform 0.3s;
 
     &:hover {

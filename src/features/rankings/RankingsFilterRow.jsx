@@ -9,13 +9,17 @@ const StyledFilterRow = styled.div`
 `;
 
 function RankingsFilterRow() {
-    const options = [{ value: "1on1" }, { value: "2on2" }];
+    const options = [
+        { text: "1on1", value: "1on1" },
+        { text: "2on2", value: "2on2" },
+    ];
 
     const field = "gamemode";
 
     return (
         <StyledFilterRow>
             <Filter
+                name="rankings"
                 options={options}
                 field={field}
                 icon={<PiGameControllerLight />}

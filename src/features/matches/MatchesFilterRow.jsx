@@ -10,16 +10,17 @@ const StyledFilterRow = styled.div`
 
 function MatchesFilterRow() {
     const options = [
-        { value: "all" },
-        { value: "1on1" },
-        { value: "2on2" },
-        { value: "2on1" },
+        { text: "All", value: "all" },
+        { text: "1on1", value: "1on1" },
+        { text: "2on2", value: "2on2" },
+        { text: "2on1", value: "2on1" },
     ];
     const field = "gamemode";
 
     return (
         <StyledFilterRow>
             <Filter
+                name="matches"
                 options={options}
                 field={field}
                 icon={<PiGameControllerLight />}

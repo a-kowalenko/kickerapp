@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import Filter from "../../ui/Filter";
-import { GiBattleAxe } from "react-icons/gi";
+import { HiArrowsUpDown } from "react-icons/hi2";
 
 const StyledFilterRow = styled.div`
     display: flex;
@@ -8,20 +8,23 @@ const StyledFilterRow = styled.div`
     margin: 0 0 1rem 0;
 `;
 
-function StatsFilterRow() {
-    const options = [{ text: "Season 0", value: "0" }];
-    const field = "season";
+function GoalsFilterRow() {
+    const options = [
+        { text: "Ascending", value: "asc" },
+        { text: "Descending", value: "desc" },
+    ];
+    const field = "sort";
 
     return (
         <StyledFilterRow>
             <Filter
+                name="goals"
                 options={options}
                 field={field}
-                name="stats"
-                icon={<GiBattleAxe />}
+                icon={<HiArrowsUpDown />}
             />
         </StyledFilterRow>
     );
 }
 
-export default StatsFilterRow;
+export default GoalsFilterRow;

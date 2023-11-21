@@ -3,10 +3,12 @@ import { useParams } from "react-router";
 import { getGoalsByMatch } from "../services/apiGoals";
 import { useKicker } from "../contexts/KickerContext";
 import { ACTIVE_MATCH_REFETCH_INTERVAL } from "../utils/constants";
+import { useMatch } from "../features/matches/useMatch";
 
 export function useGoals() {
     const { matchId } = useParams();
     const { currentKicker: kicker } = useKicker();
+    const { match } = useMatch();
 
     const sortBy = {
         field: "created_at",
@@ -20,15 +22,9 @@ export function useGoals() {
             if (!data) {
                 return false;
             }
-            const { data: goals } = data;
-            const matchStatus =
-                goals.length === 0 ||
-                (goals.length > 0 && goals[0].match.status === "active")
-                    ? "active"
-                    : "ended";
-            return matchStatus === "active"
-                ? ACTIVE_MATCH_REFETCH_INTERVAL
-                : false;
+            const isActive = match && match.status === "active";
+
+            return isActive ? ACTIVE_MATCH_REFETCH_INTERVAL : false;
         },
         refetchIntervalInBackground: true,
     });
