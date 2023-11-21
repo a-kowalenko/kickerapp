@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import styled from "styled-components";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { HiOutlineChevronDown } from "react-icons/hi2";
+import { useLocalStorageState } from "../hooks/useLocalStorageState";
+import { useEffect } from "react";
 
 const RotateIcon = styled(HiOutlineChevronDown)`
     transform: rotate(${(props) => (props.$isOpen ? "-90deg" : "0deg")});
@@ -58,14 +60,17 @@ const List = styled.ul`
     flex-direction: column;
     border-radius: var(--border-radius-sm);
 
-    box-shadow: 1px 1px 1px var(--primary-dropdown-border-color),
+    box-shadow:
+        1px 1px 1px var(--primary-dropdown-border-color),
         -1px -1px 1px var(--primary-dropdown-border-color);
 
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
     max-width: ${(props) => (props.$isOpen ? "100%" : "0")};
     overflow: hidden;
     display: ${(props) => (props.$isOpen ? "flex" : "hidden")};
-    transition: max-height 0.2s ease-in-out, max-width 0.2s ease-in-out;
+    transition:
+        max-height 0.2s ease-in-out,
+        max-width 0.2s ease-in-out;
 `;
 
 const Element = styled.div`
@@ -87,11 +92,23 @@ const Element = styled.div`
 
 function Filter({ options, field, name, icon }) {
     const [searchParams, setSearchParams] = useSearchParams();
-    const currentFilter = searchParams.get(field) || options[0].value;
+    const [selectedOption, setSelectedOption] = useLocalStorageState(
+        searchParams.get(field) || options[0],
+        `${name}_${field}`
+    );
+
     const [isOpen, setIsOpen] = useState(false);
 
     const close = () => setIsOpen(false);
     const ref = useOutsideClick(close, false);
+
+    useEffect(
+        function () {
+            searchParams.set(field, selectedOption.value);
+            setSearchParams(searchParams, { replace: true });
+        },
+        [selectedOption, searchParams, setSearchParams, field]
+    );
 
     function handleToggle(e) {
         e.stopPropagation();
@@ -102,7 +119,8 @@ function Filter({ options, field, name, icon }) {
 
     function handleSelect(option) {
         searchParams.set(field, option.value);
-        setSearchParams(searchParams);
+        setSearchParams(searchParams, { replace: true });
+        setSelectedOption(option);
         close();
     }
 
@@ -110,8 +128,7 @@ function Filter({ options, field, name, icon }) {
         <StyledFilter>
             <Toggle onClick={handleToggle} $isOpen={isOpen}>
                 {icon && icon}
-                {name && <span>{name}</span>}
-                <span>{currentFilter}</span>
+                <span>{selectedOption.text || selectedOption.value}</span>
                 <RotateIcon $isOpen={isOpen} />
             </Toggle>
             <List ref={ref} $isOpen={isOpen}>
@@ -119,15 +136,9 @@ function Filter({ options, field, name, icon }) {
                     <Element
                         onClick={() => handleSelect(option)}
                         key={option.value}
-                        $isSelected={currentFilter === option.value}
+                        $isSelected={selectedOption.value === option.value}
                     >
-                        {name && (
-                            <>
-                                <span>{name}</span>
-                                &nbsp;
-                            </>
-                        )}
-                        <span>{option.value}</span>
+                        <span>{option.text || option.value}</span>
                     </Element>
                 ))}
             </List>

@@ -22,6 +22,8 @@ import MatchDetailMobile from "./MatchDetailMobile";
 import { useGoals } from "../../hooks/useGoals";
 import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
+import { useSearchParams } from "react-router-dom";
+import GoalsFilterRow from "./GoalFilterRow";
 
 const Row = styled.div`
     display: flex;
@@ -39,7 +41,6 @@ const GoalsContainer = styled.div`
     flex-direction: column;
     overflow: scroll;
     overflow-x: hidden;
-    margin-top: 5rem;
     flex-grow: 1;
 `;
 
@@ -61,6 +62,16 @@ const GoalItem = styled(ContentBox)`
     padding: 1rem;
     width: auto;
     justify-self: ${(props) => (props.$team === 1 ? "flex-end" : "flex-start")};
+    ${(props) =>
+        props.$goaltype === STANDARD_GOAL
+            ? `
+                background-color: var(--standard-goal-color);
+                border: 0px solid var(--standard-goal-color);
+            `
+            : `
+                background-color:var(--own-goal-color);
+                border: 0px solid var(--own-goal-color);
+            `};
 `;
 
 const GoalTime = styled.div`
@@ -186,6 +197,7 @@ function MatchDetail() {
         clearInterval(timerIdRef.current);
     }
 
+    const [searchParams] = useSearchParams();
     const { match, isLoading, error } = useMatch();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
     const { goals, isLoadingGoals, countGoals } = useGoals();
@@ -195,9 +207,10 @@ function MatchDetail() {
     const timerIdRef = useRef(null);
     const goalBoxRef = useRef(null);
     const windowWidth = useWindowWidth();
-    const finalGoals = goals?.filter(
-        (goal) => goal.goal_type !== GENERATED_GOAL
-    );
+    const sort = searchParams.get("sort") ? searchParams.get("sort") : "asc";
+    const finalGoals = goals
+        ?.filter((goal) => goal.goal_type !== GENERATED_GOAL)
+        .sort((a, b) => (sort === "asc" ? a.id - b.id : b.id - a.id));
 
     useEffect(
         function () {
@@ -234,11 +247,15 @@ function MatchDetail() {
     useEffect(
         function () {
             if (goalBoxRef.current) {
-                const scrollHeight = goalBoxRef.current.scrollHeight;
-                goalBoxRef.current.scrollTo(0, scrollHeight);
+                if (sort === "asc") {
+                    const scrollHeight = goalBoxRef.current.scrollHeight;
+                    goalBoxRef.current.scrollTo(0, scrollHeight);
+                } else {
+                    goalBoxRef.current.scrollTo(0, 0);
+                }
             }
         },
-        [finalGoals?.length]
+        [finalGoals?.length, sort]
     );
 
     if (isLoading || isLoadingGoals) {
@@ -250,7 +267,6 @@ function MatchDetail() {
     }
 
     const { player1, player2, player3, player4 } = match;
-
     const isActive = match.status === "active";
     const isEnded = match.status === "ended";
     const winner = isEnded
@@ -328,6 +344,7 @@ function MatchDetail() {
                     <i>Match ended. Winner: {winner}</i>
                 </CenteredInfoLabel>
             )}
+            <GoalsFilterRow />
             <GoalsContainer ref={goalBoxRef}>
                 {finalGoals.length === 0 && goals.length > 0 && (
                     <CenteredInfoLabel>
@@ -358,7 +375,7 @@ function MatchDetail() {
                             </>
                         )}
 
-                        <GoalItem $team={goal.team}>
+                        <GoalItem $team={goal.team} $goaltype={goal.goal_type}>
                             <Avatar
                                 $size="xs"
                                 src={goal.player.avatar || DEFAULT_AVATAR}
