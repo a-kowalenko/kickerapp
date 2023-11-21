@@ -9,8 +9,8 @@ import {
     HiOutlineTrash,
     HiPlus,
 } from "react-icons/hi2";
-import { useContinuouslyCheckForActiveMatch } from "../hooks/useCheckActiveMatch";
 import Divider from "./Divider";
+import { useActiveMatch } from "../hooks/useActiveMatch";
 
 const StyledMainNav = styled.nav`
     display: flex;
@@ -128,32 +128,44 @@ const ActiveMatchListElement = styled.li`
     }
 `;
 
-function MainNav() {
-    const { activeMatch, isLoading } = useContinuouslyCheckForActiveMatch();
+function MainNav({ close }) {
+    const activeMatch = useActiveMatch();
 
     return (
         <StyledMainNav>
             <NavList>
                 <li>
-                    <StyledNavLink to="/home" title="Home">
+                    <StyledNavLink to="/home" title="Home" onClick={close}>
                         <HiOutlineHome />
                         <span>Home</span>
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/rankings" title="Rankings">
+                    <StyledNavLink
+                        to="/rankings"
+                        title="Rankings"
+                        onClick={close}
+                    >
                         <HiOutlineListBullet />
                         <span>Rankings</span>
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/disgraces" title="Disgraces">
+                    <StyledNavLink
+                        to="/disgraces"
+                        title="Disgraces"
+                        onClick={close}
+                    >
                         <HiOutlineTrash />
                         <span>Schande</span>
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/matches" title="Matches">
+                    <StyledNavLink
+                        to="/matches"
+                        title="Matches"
+                        onClick={close}
+                    >
                         <HiOutlineBookOpen />
                         <span>Matches</span>
                     </StyledNavLink>
@@ -165,18 +177,23 @@ function MainNav() {
                     </StyledNavLink>
                 </li> */}
                 <li>
-                    <StyledNavLink to="/settings" title="Settings">
+                    <StyledNavLink
+                        to="/settings"
+                        title="Settings"
+                        onClick={close}
+                    >
                         <HiOutlineCog6Tooth />
                         <span>Settings</span>
                     </StyledNavLink>
                 </li>
                 <Divider $variation="horizontal" />
 
-                {!isLoading && activeMatch.length > 0 ? (
+                {activeMatch ? (
                     <ActiveMatchListElement>
                         <StyledNavLink
-                            to={`/matches/${activeMatch.at(0).id}`}
+                            to={`/matches/${activeMatch.id}`}
                             title="Active Match"
+                            onClick={close}
                         >
                             <HiOutlinePlay />
                             <span>Active Match</span>
@@ -184,7 +201,11 @@ function MainNav() {
                     </ActiveMatchListElement>
                 ) : (
                     <NewMatchListElement>
-                        <StyledNavLink to="/matches/create" title="New match">
+                        <StyledNavLink
+                            to="/matches/create"
+                            title="New match"
+                            onClick={close}
+                        >
                             <HiPlus />
                             <span>New match</span>
                         </StyledNavLink>
