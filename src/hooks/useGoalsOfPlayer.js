@@ -9,7 +9,7 @@ export function useGoalsOfPlayer() {
 
     const { data, isLoading } = useQuery({
         queryKey: ["goals_of_player", name, kicker],
-        queryFn: () => getGoalStatisticsByPlayer(kicker, name),
+        queryFn: () => getGoalStatisticsByPlayer({ kicker }, name),
     });
 
     return { data, isLoading };

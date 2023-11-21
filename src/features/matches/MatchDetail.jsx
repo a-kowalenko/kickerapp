@@ -323,6 +323,11 @@ function MatchDetail() {
                     )}
                 </TeamContainer>
             </MainRow>
+            {isEnded && (
+                <CenteredInfoLabel>
+                    <i>Match ended. Winner: {winner}</i>
+                </CenteredInfoLabel>
+            )}
             <GoalsContainer ref={goalBoxRef}>
                 {finalGoals.length === 0 && goals.length > 0 && (
                     <CenteredInfoLabel>
@@ -392,11 +397,6 @@ function MatchDetail() {
                     <Button $size="xlarge" onClick={handleEndMatch}>
                         {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
                     </Button>
-                )}
-                {isEnded && (
-                    <label>
-                        <i>Match ended. Winner: {winner}</i>
-                    </label>
                 )}
             </BottomRow>
         </>

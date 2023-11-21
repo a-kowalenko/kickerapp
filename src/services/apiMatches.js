@@ -592,7 +592,7 @@ export async function getOpponentStats({ username, filter }) {
         return acc;
     }, {});
 
-    const goalData = await getGoalStatisticsByPlayer(filter.kicker, username);
+    const goalData = await getGoalStatisticsByPlayer(filter, username);
 
     const data = Object.keys(stats).map((key) => {
         return {
