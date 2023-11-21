@@ -27,7 +27,8 @@ export async function getPlayers({ filter }) {
     const { data, error } = await supabase
         .from(PLAYER)
         .select("*")
-        .eq("kicker_id", filter.kicker);
+        .eq("kicker_id", filter.kicker)
+        .order("name", { ascending: true });
 
     if (error) {
         throw new Error("Players could not be loaded");
