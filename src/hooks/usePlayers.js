@@ -1,9 +1,11 @@
 import { useQuery } from "react-query";
-import { getPlayers } from "../services/apiMatches";
 import { useKicker } from "../contexts/KickerContext";
+import { getPlayersByKicker } from "../services/apiPlayer";
+import { useUser } from "../features/authentication/useUser";
 
 export function usePlayers() {
     const { currentKicker: kicker } = useKicker();
+    const { user, isAuthenticated } = useUser();
 
     const {
         data: players,
@@ -11,8 +13,12 @@ export function usePlayers() {
         error,
     } = useQuery({
         queryKey: ["players", kicker],
-        queryFn: () => getPlayers({ filter: { kicker } }),
+        queryFn: () => getPlayersByKicker(kicker),
     });
 
+    if (user && isAuthenticated) {
+        // Put own player at the top of the list
+        players?.sort((a) => (a.user_id === user.id ? -1 : 1));
+    }
     return { players, isLoading, error };
 }
