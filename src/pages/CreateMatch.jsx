@@ -7,9 +7,10 @@ import { ChoosePlayerProvider } from "../contexts/ChoosePlayerContext";
 import { useActiveMatch } from "../hooks/useActiveMatch";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
+import { useMatchContext } from "../contexts/MatchContext";
 
 function CreateMatch() {
-    const activeMatch = useActiveMatch();
+    const { activeMatch } = useMatchContext();
     const navigate = useNavigate();
     const windowWidth = useWindowWidth();
 

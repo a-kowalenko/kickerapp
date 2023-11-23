@@ -11,6 +11,7 @@ import {
 } from "react-icons/hi2";
 import Divider from "./Divider";
 import { useActiveMatch } from "../hooks/useActiveMatch";
+import { useMatchContext } from "../contexts/MatchContext";
 
 const StyledMainNav = styled.nav`
     display: flex;
@@ -129,7 +130,8 @@ const ActiveMatchListElement = styled.li`
 `;
 
 function MainNav({ close }) {
-    const activeMatch = useActiveMatch();
+    const { activeMatch } = useMatchContext();
+    console.log("MainNav", activeMatch);
 
     return (
         <StyledMainNav>

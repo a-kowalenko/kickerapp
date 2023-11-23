@@ -24,9 +24,10 @@ import MatchDetailMobile from "./MatchDetailMobile";
 import { useGoals } from "../../hooks/useGoals";
 import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
 import { useActiveMatch } from "../../hooks/useActiveMatch";
+import { useMatchContext } from "../../contexts/MatchContext";
 
 const Row = styled.div`
     display: flex;
@@ -200,9 +201,10 @@ function MatchDetail() {
         clearInterval(timerIdRef.current);
     }
 
+    const { matchId } = useParams();
     const [searchParams] = useSearchParams();
     const { match, isLoading, error } = useMatch();
-    const activeMatch = useActiveMatch();
+    const { activeMatch } = useMatchContext();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
     const { goals, isLoadingGoals, countGoals } = useGoals();
     const [score1, setScore1] = useState("");
@@ -215,7 +217,8 @@ function MatchDetail() {
     const finalGoals = goals
         ?.filter((goal) => goal.goal_type !== GENERATED_GOAL)
         .sort((a, b) => (sort === "asc" ? a.id - b.id : b.id - a.id));
-    const finalMatch = activeMatch || match;
+    const finalMatch =
+        activeMatch && activeMatch.id === Number(matchId) ? activeMatch : match;
 
     useEffect(
         function () {
