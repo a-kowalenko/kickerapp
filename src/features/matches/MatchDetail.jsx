@@ -15,7 +15,6 @@ import {
     STANDARD_GOAL,
     media,
 } from "../../utils/constants";
-import Button from "../../ui/Button";
 import Input from "../../ui/Input";
 import Error from "../../ui/Error";
 import SpinnerMini from "../../ui/SpinnerMini";
@@ -24,9 +23,11 @@ import MatchDetailMobile from "./MatchDetailMobile";
 import { useGoals } from "../../hooks/useGoals";
 import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
-import { useActiveMatch } from "../../hooks/useActiveMatch";
+import { useMatchContext } from "../../contexts/MatchContext";
+import DelayedButton from "../../ui/DelayedButton";
+import { HiArrowDownTray } from "react-icons/hi2";
 
 const Row = styled.div`
     display: flex;
@@ -200,11 +201,12 @@ function MatchDetail() {
         clearInterval(timerIdRef.current);
     }
 
+    const { matchId } = useParams();
     const [searchParams] = useSearchParams();
     const { match, isLoading, error } = useMatch();
-    const activeMatch = useActiveMatch();
+    const { activeMatch } = useMatchContext();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
-    const { goals, isLoadingGoals, countGoals } = useGoals();
+    const { goals, isLoadingGoals } = useGoals();
     const [score1, setScore1] = useState("");
     const [score2, setScore2] = useState("");
     const [timer, setTimer] = useState(<SpinnerMini />);
@@ -215,7 +217,8 @@ function MatchDetail() {
     const finalGoals = goals
         ?.filter((goal) => goal.goal_type !== GENERATED_GOAL)
         .sort((a, b) => (sort === "asc" ? a.id - b.id : b.id - a.id));
-    const finalMatch = activeMatch || match;
+    const finalMatch =
+        activeMatch && activeMatch.id === Number(matchId) ? activeMatch : match;
 
     useEffect(
         function () {
@@ -417,9 +420,13 @@ function MatchDetail() {
             </GoalsContainer>
             <BottomRow>
                 {isActive && (
-                    <Button $size="xlarge" onClick={handleEndMatch}>
+                    <DelayedButton
+                        $size="xlarge"
+                        action={handleEndMatch}
+                        icon={<HiArrowDownTray />}
+                    >
                         {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
-                    </Button>
+                    </DelayedButton>
                 )}
             </BottomRow>
         </>

@@ -14,6 +14,7 @@ import SpinnerMini from "../../ui/SpinnerMini";
 import { useState } from "react";
 import Divider from "../../ui/Divider";
 import { MATCH_ACTIVE, MATCH_ENDED } from "../../utils/constants";
+import DelayedButton from "../../ui/DelayedButton";
 
 const Heading = styled.h1`
     display: flex;
@@ -333,7 +334,7 @@ function MatchDetailMobile({ match, timer }) {
 
             <Divider />
 
-            <SingleButtonRow>
+            {/* <SingleButtonRow>
                 <ButtonsContainer>
                     {isActive && (
                         <Button onClick={handleEndMatch} disabled={isDisabled}>
@@ -345,6 +346,24 @@ function MatchDetailMobile({ match, timer }) {
                                 </>
                             )}
                         </Button>
+                    )}
+                    {isEnded && (
+                        <label>
+                            <i>Match ended. Winner: {winner}</i>
+                        </label>
+                    )}
+                </ButtonsContainer>
+            </SingleButtonRow> */}
+
+            <SingleButtonRow>
+                <ButtonsContainer>
+                    {isActive && (
+                        <DelayedButton
+                            action={handleEndMatch}
+                            icon={<HiArrowDownTray />}
+                        >
+                            {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
+                        </DelayedButton>
                     )}
                     {isEnded && (
                         <label>
