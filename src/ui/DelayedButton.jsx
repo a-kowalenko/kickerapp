@@ -6,6 +6,10 @@ import { useState } from "react";
 const ButtonContainer = styled.div`
     position: relative;
     display: inline-block;
+
+    svg {
+        pointer-events: none;
+    }
 `;
 
 const Button = styled.button`
@@ -16,6 +20,7 @@ const Button = styled.button`
     align-items: center;
     justify-content: center;
     gap: 2.4rem;
+    user-select: none;
 
     &:hover {
         box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.7);
