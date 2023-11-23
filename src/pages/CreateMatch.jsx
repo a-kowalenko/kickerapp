@@ -7,6 +7,13 @@ import { ChoosePlayerProvider } from "../contexts/ChoosePlayerContext";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useMatchContext } from "../contexts/MatchContext";
+import styled from "styled-components";
+
+const StyledCreateMatch = styled.div`
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 2rem;
+`;
 
 function CreateMatch() {
     const { activeMatch } = useMatchContext();
@@ -25,11 +32,13 @@ function CreateMatch() {
 
     return (
         <ChoosePlayerProvider>
-            {windowWidth > media.maxTablet ? (
-                <ChoosePlayers />
-            ) : (
-                <ChoosePlayersMobile />
-            )}
+            <StyledCreateMatch>
+                {windowWidth > media.maxTablet ? (
+                    <ChoosePlayers />
+                ) : (
+                    <ChoosePlayersMobile />
+                )}
+            </StyledCreateMatch>
         </ChoosePlayerProvider>
     );
 }

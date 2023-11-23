@@ -3,6 +3,7 @@ import { HiOutlineChevronDown } from "react-icons/hi2";
 import styled, { css } from "styled-components";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import SpinnerMini from "./SpinnerMini";
+import { useEffect } from "react";
 
 const variations = {
     default: css`
@@ -49,7 +50,10 @@ const Toggle = styled.div`
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.361);
     cursor: pointer;
     gap: 2.4rem;
-    min-width: 25rem;
+    /* min-width: 25rem; */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 
     padding: 1.2rem 2.4rem;
     border-radius: var(--border-radius-sm);
@@ -127,6 +131,10 @@ function Dropdown({
     const [selected, setSelected] = useState(initSelected);
     const close = () => setIsOpen(false);
     const ref = useOutsideClick(close, false);
+
+    useEffect(() => {
+        setSelected(initSelected);
+    }, [initSelected]);
 
     function handleToggle(e) {
         e.stopPropagation();

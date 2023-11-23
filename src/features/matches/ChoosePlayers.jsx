@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { HiOutlinePlusCircle, HiPlus } from "react-icons/hi2";
+import { HiArrowsRightLeft, HiPlus } from "react-icons/hi2";
 import Button from "../../ui/Button";
 import SwitchButton from "../../ui/SwitchButton";
 import FormRow from "../../ui/FormRow";
@@ -8,6 +8,7 @@ import Row from "../../ui/Row";
 import Dropdown from "../../ui/Dropdown";
 import ContentBox from "../../ui/ContentBox";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
+import Ruleset from "./Ruleset";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -19,29 +20,8 @@ const Container = styled.div`
 
 const PlayersContainer = styled.div`
     display: flex;
-    gap: 5.4rem;
+    gap: 2.2rem;
     justify-items: space-evenly;
-`;
-
-const PlayerBox = styled.div`
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 3.2rem 4.5rem;
-    background-color: var(--color-grey-100);
-    border: 1px solid var(--color-grey-200);
-    border-radius: 10px;
-    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
-    transition: all 0.3s ease;
-    gap: 1.8rem;
-    min-width: 400px;
-    min-height: 170px;
-
-    &:hover {
-        background-color: var(--color-grey-300);
-        transform: scale(1.05);
-        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.4);
-    }
 `;
 
 const SubmitRow = styled.div`
@@ -57,14 +37,6 @@ const CheckboxContainer = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
-`;
-
-const AddIcon = styled(HiOutlinePlusCircle)`
-    font-size: 60px;
-`;
-
-const AddLabel = styled.label`
-    font-size: 28px;
 `;
 
 const TeamContainer = styled(ContentBox)`
@@ -89,6 +61,16 @@ const AddButtonContainer = styled.div`
     }
 `;
 
+const SwitchTeamsButton = styled(Button)`
+    height: fit-content;
+    padding: 1.4rem;
+    align-self: center;
+
+    & svg {
+        font-size: 2.6rem;
+    }
+`;
+
 function ChoosePlayers() {
     const {
         isLoading,
@@ -102,6 +84,8 @@ function ChoosePlayers() {
         isPlayer4Active,
         filteredPlayers,
         filteredForPlayer3And4,
+        switchTeams,
+        selectedPlayers: [player1, player2, player3, player4],
     } = useChoosePlayers();
 
     return (
@@ -115,6 +99,10 @@ function ChoosePlayers() {
                     <PlayerContainer>
                         <Heading as="h3">Player 1</Heading>
                         <Dropdown
+                            initSelected={{
+                                text: player1?.name,
+                                value: player1?.id,
+                            }}
                             options={filteredPlayers}
                             onSelect={(playerId) => handleSelect(playerId, 0)}
                             isLoading={isLoading}
@@ -124,6 +112,10 @@ function ChoosePlayers() {
                         <PlayerContainer>
                             <Heading as="h3">Player 3</Heading>
                             <Dropdown
+                                initSelected={{
+                                    text: player3?.name,
+                                    value: player3?.id,
+                                }}
                                 options={filteredForPlayer3And4}
                                 onSelect={(playerId) =>
                                     handleSelect(playerId, 2)
@@ -141,10 +133,18 @@ function ChoosePlayers() {
                     )}
                 </TeamContainer>
 
+                <SwitchTeamsButton onClick={switchTeams}>
+                    <HiArrowsRightLeft />
+                </SwitchTeamsButton>
+
                 <TeamContainer>
                     <PlayerContainer>
                         <Heading as="h3">Player 2</Heading>
                         <Dropdown
+                            initSelected={{
+                                text: player2?.name,
+                                value: player2?.id,
+                            }}
                             options={filteredPlayers}
                             onSelect={(playerId) => handleSelect(playerId, 1)}
                             isLoading={isLoading}
@@ -154,6 +154,10 @@ function ChoosePlayers() {
                         <PlayerContainer>
                             <Heading as="h3">Player 4</Heading>
                             <Dropdown
+                                initSelected={{
+                                    text: player4?.name,
+                                    value: player4?.id,
+                                }}
                                 options={filteredForPlayer3And4}
                                 onSelect={(playerId) =>
                                     handleSelect(playerId, 3)
@@ -218,6 +222,7 @@ function ChoosePlayers() {
                     </FormRow>
                 )}
             </SubmitRow>
+            <Ruleset />
         </Container>
     );
 }

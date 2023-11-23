@@ -55,7 +55,7 @@ function reducer(state, action) {
             const newSelectedPlayers = state.selectedPlayers.map(
                 (selected, i) =>
                     action.payload.index === i
-                        ? action.payload.playerId
+                        ? action.payload.player
                         : selected
             );
 
@@ -64,7 +64,7 @@ function reducer(state, action) {
                 selectedPlayers: newSelectedPlayers,
             };
 
-            if (action.payload.playerId === null) {
+            if (action.payload.player === null) {
                 newState = {
                     ...newState,
                     [`isPlayer${action.payload.index + 1}Active`]: false,
@@ -77,6 +77,18 @@ function reducer(state, action) {
                 ...state,
                 [`isPlayer${action.payload}Active`]: true,
             };
+        case "team_switch": {
+            const player3Active = state.isPlayer3Active;
+            const player4Active = state.isPlayer4Active;
+            const [player1, player2, player3, player4] = state.selectedPlayers;
+            const newPlayers = [player2, player1, player4, player3];
+            return {
+                ...state,
+                isPlayer3Active: player4Active,
+                isPlayer4Active: player3Active,
+                selectedPlayers: newPlayers,
+            };
+        }
     }
 }
 
@@ -105,7 +117,7 @@ function ChoosePlayerProvider({ children }) {
                 dispatch({ type: "loading_players" });
             } else {
                 const filteredPlayers = players
-                    .filter((player) => !selectedPlayers.includes(player.id))
+                    .filter((player) => !selectedPlayers.includes(player))
                     .map((player) => ({ text: player.name, value: player.id }));
 
                 const filteredForPlayer3And4 = [...filteredPlayers];
@@ -135,18 +147,10 @@ function ChoosePlayerProvider({ children }) {
             );
         } else if (timer === -1) {
             const finalPlayers = {
-                player1: players.find(
-                    (player) => player.id === selectedPlayers[0]
-                ),
-                player2: players.find(
-                    (player) => player.id === selectedPlayers[1]
-                ),
-                player3: players.find(
-                    (player) => player.id === selectedPlayers[2]
-                ),
-                player4: players.find(
-                    (player) => player.id === selectedPlayers[3]
-                ),
+                player1: selectedPlayers[0],
+                player2: selectedPlayers[1],
+                player3: selectedPlayers[2],
+                player4: selectedPlayers[3],
             };
             createMatch(finalPlayers);
         }
@@ -174,7 +178,14 @@ function ChoosePlayerProvider({ children }) {
     }
 
     function handleSelect(playerId, index) {
-        dispatch({ type: "player_selected", payload: { playerId, index } });
+        dispatch({
+            type: "player_selected",
+            payload: { player: getPlayerById(playerId), index },
+        });
+    }
+
+    function getPlayerById(id) {
+        return players.find((player) => player.id === id);
     }
 
     function activatePlayer(playerNumber) {
@@ -188,6 +199,10 @@ function ChoosePlayerProvider({ children }) {
         }
 
         startTimer();
+    }
+
+    function switchTeams() {
+        dispatch({ type: "team_switch" });
     }
 
     return (
@@ -204,6 +219,8 @@ function ChoosePlayerProvider({ children }) {
                 isPlayer4Active,
                 filteredPlayers,
                 filteredForPlayer3And4,
+                switchTeams,
+                selectedPlayers,
             }}
         >
             {children}
