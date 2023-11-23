@@ -21,7 +21,6 @@ export function useActiveMatch() {
     useEffect(
         function () {
             async function updateActiveMatch(payload) {
-                console.log("updateActiveMatch", payload);
                 const match = await getMatch({
                     matchId: Number(matchId) || payload.new.id,
                     kicker,
@@ -45,10 +44,8 @@ export function useActiveMatch() {
             }
 
             async function getInitMatch() {
-                console.log("getInitMatch");
                 const match = await getActiveMatch(kicker);
                 if (match) {
-                    console.log("gotInitMatch:", match);
                     setActiveMatch(match);
                     queryClient.setQueryData(
                         ["match", match.id, kicker],

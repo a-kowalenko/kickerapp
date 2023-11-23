@@ -72,8 +72,6 @@ function Header() {
 
     useEffect(() => {
         const isOpen = localStorage.getItem("isOpenLeftSidebar") === "true";
-        console.log("isOpen", isOpen);
-        console.log("isOpen", isOpen);
         if (activeMatch && isOpen && windowWidth > 1100) {
             setShowActiveMatch(true);
         } else if (activeMatch && !isOpen && windowWidth > 950) {

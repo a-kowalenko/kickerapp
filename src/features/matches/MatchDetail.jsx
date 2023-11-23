@@ -15,7 +15,6 @@ import {
     STANDARD_GOAL,
     media,
 } from "../../utils/constants";
-import Button from "../../ui/Button";
 import Input from "../../ui/Input";
 import Error from "../../ui/Error";
 import SpinnerMini from "../../ui/SpinnerMini";
@@ -27,6 +26,8 @@ import LoadingSpinner from "../../ui/LoadingSpinner";
 import { useParams, useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
 import { useMatchContext } from "../../contexts/MatchContext";
+import DelayedButton from "../../ui/DelayedButton";
+import { HiArrowDownTray } from "react-icons/hi2";
 
 const Row = styled.div`
     display: flex;
@@ -205,7 +206,7 @@ function MatchDetail() {
     const { match, isLoading, error } = useMatch();
     const { activeMatch } = useMatchContext();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
-    const { goals, isLoadingGoals, countGoals } = useGoals();
+    const { goals, isLoadingGoals } = useGoals();
     const [score1, setScore1] = useState("");
     const [score2, setScore2] = useState("");
     const [timer, setTimer] = useState(<SpinnerMini />);
@@ -419,9 +420,13 @@ function MatchDetail() {
             </GoalsContainer>
             <BottomRow>
                 {isActive && (
-                    <Button $size="xlarge" onClick={handleEndMatch}>
+                    <DelayedButton
+                        $size="xlarge"
+                        action={handleEndMatch}
+                        icon={<HiArrowDownTray />}
+                    >
                         {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
-                    </Button>
+                    </DelayedButton>
                 )}
             </BottomRow>
         </>

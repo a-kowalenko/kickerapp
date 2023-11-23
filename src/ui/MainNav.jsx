@@ -130,7 +130,6 @@ const ActiveMatchListElement = styled.li`
 
 function MainNav({ close }) {
     const { activeMatch } = useMatchContext();
-    console.log("MainNav", activeMatch);
 
     return (
         <StyledMainNav>

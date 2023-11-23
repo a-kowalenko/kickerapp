@@ -22,7 +22,6 @@ function MatchProvider({ children }) {
     useEffect(
         function () {
             async function updateActiveMatch(payload) {
-                console.log("updateActiveMatch", payload);
                 const match = await getMatch({
                     matchId: payload.new.id,
                     kicker,
@@ -46,10 +45,8 @@ function MatchProvider({ children }) {
             }
 
             async function getInitMatch() {
-                console.log("getInitMatch");
                 const match = await getActiveMatch(kicker);
                 if (match) {
-                    console.log("gotInitMatch:", match);
                     setActiveMatch(match);
                     queryClient.setQueryData(
                         ["match", match.id, kicker],
