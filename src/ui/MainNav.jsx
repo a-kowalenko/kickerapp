@@ -10,7 +10,6 @@ import {
     HiPlus,
 } from "react-icons/hi2";
 import Divider from "./Divider";
-import { useActiveMatch } from "../hooks/useActiveMatch";
 import { useMatchContext } from "../contexts/MatchContext";
 
 const StyledMainNav = styled.nav`
@@ -92,12 +91,12 @@ const NewMatchListElement = styled.li`
 
 const pulseAnimation = keyframes`
   0%, 100% { 
-    box-shadow: 0 0 5px rgba(7, 89, 133,  0.3);
-    background-color: rgba(7, 89, 133,  0);
+    box-shadow: 0 0 5px var(--pulse-color-heavily-transparent);
+    background-color: var(--pulse-color-transparent);
  }
   50% { 
-    box-shadow: 0 0 20px rgba(7, 89, 133,  0.7); 
-    background-color: rgba(7, 89, 133,  0.4);
+    box-shadow: 0 0 20px var(--pulse-color-slightly-transparent); 
+    background-color: var(--pulse-color-medium-transparent);
   }
 `;
 

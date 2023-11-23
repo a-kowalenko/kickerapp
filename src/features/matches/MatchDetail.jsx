@@ -26,7 +26,6 @@ import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { useParams, useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
-import { useActiveMatch } from "../../hooks/useActiveMatch";
 import { useMatchContext } from "../../contexts/MatchContext";
 
 const Row = styled.div`

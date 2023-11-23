@@ -3,7 +3,6 @@ import { createMatch as createMatchApi } from "../../services/apiMatches";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useKicker } from "../../contexts/KickerContext";
-import { useActiveMatch } from "../../hooks/useActiveMatch";
 import { useMatchContext } from "../../contexts/MatchContext";
 
 export function useCreateMatch() {

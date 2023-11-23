@@ -4,7 +4,6 @@ import useWindowWidth from "../hooks/useWindowWidth";
 import { media } from "../utils/constants";
 import ChoosePlayersMobile from "../features/matches/ChoosePlayersMobile";
 import { ChoosePlayerProvider } from "../contexts/ChoosePlayerContext";
-import { useActiveMatch } from "../hooks/useActiveMatch";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useMatchContext } from "../contexts/MatchContext";

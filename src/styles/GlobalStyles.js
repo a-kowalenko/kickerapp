@@ -82,6 +82,8 @@ const GlobalStyles = createGlobalStyle`
 
     // Pulse animation colors
     --pulse-color-transparent: rgba(7, 89, 133, 0);
+    --pulse-color-heavily-transparent: rgba(7, 89, 133,  0.3);
+    --pulse-color-medium-transparent: rgba(7, 89, 133,  0.4);
     --pulse-color-slightly-transparent: rgba(7, 89, 133, 0.7);
 
     // Disabled
@@ -204,7 +206,9 @@ const GlobalStyles = createGlobalStyle`
 
     // Pulse animation colors
     --pulse-color-transparent: rgba(235, 201, 33, 0);
-    --pulse-color-slightly-transparent: 	rgba(235, 201, 33, 0.7);
+    --pulse-color-heavily-transparent: rgba(235, 201, 33,  0.3);
+    --pulse-color-medium-transparent: rgba(235, 201, 33,  0.4);
+    --pulse-color-slightly-transparent: rgba(235, 201, 33, 0.7);
 
     // Disabled
     --disabled-color: #d1d5db;
