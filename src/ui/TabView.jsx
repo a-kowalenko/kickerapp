@@ -11,12 +11,19 @@ const TabHeader = styled.div`
     height: 48px;
     background-color: transparent;
     border-bottom: 1px solid var(--color-grey-100);
+    ${media.mobile} {
+        justify-content: space-between;
+    }
 `;
 
 const TabItem = styled(NavLink)`
     padding: 0.8rem 1.2rem;
     position: relative;
     color: var(--color-grey-500);
+
+    ${media.mobile} {
+        padding: 0.8rem 0.8rem;
+    }
 
     &:hover {
         background-color: var(--tertiary-background-color);

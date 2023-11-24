@@ -1,9 +1,9 @@
 import styled, { css } from "styled-components";
-import { useMoveBack } from "../hooks/useMoveBack";
 import ButtonIcon from "./ButtonIcon";
 import { HiArrowLeft } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import { media } from "../utils/constants";
+import { useMoveBackToHome } from "../hooks/useMoveBackToHome";
 
 const StyledHeading = styled.h1`
     display: flex;
@@ -55,7 +55,7 @@ function Heading({
     backDirection = null,
     children,
 }) {
-    const moveBack = useMoveBack();
+    const moveBackToHome = useMoveBackToHome();
     const navigate = useNavigate();
 
     return (
@@ -63,7 +63,9 @@ function Heading({
             {hasBackBtn && (
                 <ButtonIcon
                     onClick={
-                        backDirection ? () => navigate(backDirection) : moveBack
+                        backDirection
+                            ? () => navigate(backDirection)
+                            : moveBackToHome
                     }
                 >
                     <HiArrowLeft />

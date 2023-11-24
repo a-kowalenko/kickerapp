@@ -24,6 +24,7 @@ const Container = styled.div`
 `;
 
 const PlayersContainer = styled.div`
+    margin-top: -3rem;
     display: flex;
     gap: 2.2rem;
     justify-items: space-evenly;

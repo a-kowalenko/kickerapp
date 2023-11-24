@@ -5,6 +5,7 @@ import BurgerMenu from "./BurgerMenu";
 import { useLocalStorageState } from "../hooks/useLocalStorageState";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { isTouchDevice } from "../utils/helpers";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const StyledSidebar = styled.aside`
     display: flex;
@@ -63,7 +64,11 @@ const StyledSidebar = styled.aside`
 `;
 
 function Sidebar() {
-    const [isOpen, setIsOpen] = useLocalStorageState(true, "isOpenLeftSidebar");
+    const { isDesktop } = useWindowWidth();
+    const [isOpen, setIsOpen] = useLocalStorageState(
+        isDesktop,
+        "isOpenLeftSidebar"
+    );
 
     const close = () => {
         if (isTouchDevice()) {

@@ -64,6 +64,10 @@ const StyledBody = styled.section`
     margin: 0.4rem 0;
     max-height: ${(props) => props.$maxHeight || "50rem"};
     overflow-y: auto;
+
+    ${media.tablet} {
+        max-height: unset;
+    }
 `;
 
 const Footer = styled.footer`

@@ -7,11 +7,17 @@ import ButtonIcon from "../ui/ButtonIcon";
 import toast from "react-hot-toast";
 import Heading from "../ui/Heading";
 import SpinnerMini from "../ui/SpinnerMini";
+import { media } from "../utils/constants";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const StyledSettings = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
+
+    ${media.tablet} {
+        padding: 0 2.4rem;
+    }
 `;
 
 const SettingsContent = styled.div`
@@ -24,9 +30,20 @@ const DescriptionText = styled.p`
     color: var(--primary-text-color);
 `;
 
+const Row = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 2.4rem;
+
+    & input {
+        width: 100%;
+    }
+`;
+
 function Settings() {
     const { data: kickerData, isLoading: isLoadingKickerData } =
         useKickerInfo();
+    const { isDesktop, isTablet, isMobile } = useWindowWidth();
 
     function handleCopy() {
         navigator.clipboard.writeText(kickerData.access_token);
@@ -51,7 +68,6 @@ function Settings() {
                 </DescriptionText>
                 <FormRow
                     label={"Access Token"}
-                    element={CopyButton}
                     buttonPosition="start"
                     fill={true}
                     error={true}
@@ -59,10 +75,26 @@ function Settings() {
                     {isLoadingKickerData ? (
                         <SpinnerMini />
                     ) : (
-                        <Input
-                            value={kickerData.access_token}
-                            readOnly={true}
-                        />
+                        <>
+                            {isDesktop && (
+                                <>
+                                    <Input
+                                        value={kickerData.access_token}
+                                        readOnly={true}
+                                    />
+                                    <div>{CopyButton}</div>
+                                </>
+                            )}
+                            {(isMobile || isTablet) && (
+                                <Row>
+                                    <Input
+                                        value={kickerData.access_token}
+                                        readOnly={true}
+                                    />
+                                    {CopyButton}
+                                </Row>
+                            )}
+                        </>
                     )}
                 </FormRow>
             </SettingsContent>

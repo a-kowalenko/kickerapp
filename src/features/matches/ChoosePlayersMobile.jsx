@@ -7,8 +7,6 @@ import Button from "../../ui/Button";
 import { HiArrowsUpDown, HiPlus } from "react-icons/hi2";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
-import { useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
 import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
 
 const StyledChoosePlayersMobile = styled.div`
@@ -72,8 +70,6 @@ function ChoosePlayersMobile() {
 
     return (
         <StyledChoosePlayersMobile>
-            <Heading as="h1">Choose players</Heading>
-
             <TeamContainer>
                 <Heading as="h3">Team 1</Heading>
                 <Dropdown

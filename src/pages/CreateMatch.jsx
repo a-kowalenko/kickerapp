@@ -7,11 +7,12 @@ import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useMatchContext } from "../contexts/MatchContext";
 import styled from "styled-components";
+import Heading from "../ui/Heading";
 
 const StyledCreateMatch = styled.div`
     display: flex;
     flex-direction: column;
-    margin-bottom: 2rem;
+    margin: 2rem 0;
 `;
 
 function CreateMatch() {
@@ -31,6 +32,9 @@ function CreateMatch() {
 
     return (
         <ChoosePlayerProvider>
+            <Heading as="h1" type="page" hasBackBtn={true}>
+                Create Match
+            </Heading>
             <StyledCreateMatch>
                 {isDesktop ? <ChoosePlayers /> : <ChoosePlayersMobile />}
             </StyledCreateMatch>
