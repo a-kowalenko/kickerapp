@@ -23,11 +23,12 @@ import MatchDetailMobile from "./MatchDetailMobile";
 import { useGoals } from "../../hooks/useGoals";
 import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
 import { useMatchContext } from "../../contexts/MatchContext";
 import DelayedButton from "../../ui/DelayedButton";
-import { HiArrowDownTray } from "react-icons/hi2";
+import { HiArrowDownTray, HiArrowPath } from "react-icons/hi2";
+import Button from "../../ui/Button";
 
 const Row = styled.div`
     display: flex;
@@ -201,6 +202,7 @@ function MatchDetail() {
         clearInterval(timerIdRef.current);
     }
 
+    const navigate = useNavigate();
     const { matchId } = useParams();
     const [searchParams] = useSearchParams();
     const { match, isLoading, error } = useMatch();
@@ -266,6 +268,15 @@ function MatchDetail() {
         },
         [finalGoals?.length, sort]
     );
+
+    function createRematch() {
+        navigate({
+            pathname: "/matches/create",
+            search: `?player1=${player1.id}&player2=${player2.id}${
+                player3 ? `&player3=${player3.id}` : ""
+            }${player4 ? `&player4=${player4.id}` : ""}`,
+        });
+    }
 
     if (isLoading || isLoadingGoals) {
         return <LoadingSpinner />;
@@ -349,9 +360,17 @@ function MatchDetail() {
                 </TeamContainer>
             </MainRow>
             {isEnded && (
-                <CenteredInfoLabel>
-                    <i>Match ended. Winner: {winner}</i>
-                </CenteredInfoLabel>
+                <>
+                    <CenteredInfoLabel>
+                        <i>Match ended. Winner: {winner}</i>
+                    </CenteredInfoLabel>
+                    <BottomRow>
+                        <Button onClick={createRematch}>
+                            Rematch
+                            <HiArrowPath />
+                        </Button>
+                    </BottomRow>
+                </>
             )}
             <GoalsFilterRow />
             <GoalsContainer ref={goalBoxRef}>

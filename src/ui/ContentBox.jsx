@@ -19,6 +19,12 @@ const ContentBox = styled.div`
     @media (max-width: 555px) {
         padding: 1.6rem;
     }
+
+    ${media.tablet} {
+        border-radius: 0;
+        margin: 0;
+        padding: 0.8rem;
+    }
 `;
 
 export default ContentBox;

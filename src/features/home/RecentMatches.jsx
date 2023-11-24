@@ -23,6 +23,7 @@ function RecentMatches() {
     const showStartTime = windowWidth > 1350;
     const showDuration = windowWidth > 768;
     const showId = windowWidth > 650;
+    const isMobile = windowWidth <= media.maxMobile;
 
     const columns = showStartTime
         ? "0.1fr 0.5fr 0.5fr 0.5fr 0.8fr 0.4fr"
@@ -30,6 +31,8 @@ function RecentMatches() {
         ? "0.1fr 0.5fr 0.5fr 0.5fr 0.4fr"
         : showId
         ? "0.1fr 0.5fr 0.5fr 0.5fr"
+        : isMobile
+        ? "0.5fr 0.3fr 0.5fr"
         : "0.5fr 0.5fr 0.5fr";
 
     return (

@@ -1,5 +1,7 @@
 import styled from "styled-components";
 import { HiArrowsRightLeft, HiPlus } from "react-icons/hi2";
+import { AiOutlineUsergroupDelete } from "react-icons/ai";
+import { FaUsersSlash } from "react-icons/fa";
 import Button from "../../ui/Button";
 import SwitchButton from "../../ui/SwitchButton";
 import FormRow from "../../ui/FormRow";
@@ -9,6 +11,9 @@ import Dropdown from "../../ui/Dropdown";
 import ContentBox from "../../ui/ContentBox";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
+import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -61,7 +66,14 @@ const AddButtonContainer = styled.div`
     }
 `;
 
-const SwitchTeamsButton = styled(Button)`
+const MidButtonsContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2.4rem;
+`;
+
+const MidButton = styled(Button)`
     height: fit-content;
     padding: 1.4rem;
     align-self: center;
@@ -78,13 +90,14 @@ function ChoosePlayers() {
         isStarting,
         timer,
         cancelTimer,
-        handleSelect,
+        selectPlayer,
         activatePlayer,
         isPlayer3Active,
         isPlayer4Active,
         filteredPlayers,
         filteredForPlayer3And4,
         switchTeams,
+        clearAllPlayers,
         selectedPlayers: [player1, player2, player3, player4],
     } = useChoosePlayers();
 
@@ -104,7 +117,7 @@ function ChoosePlayers() {
                                 value: player1?.id,
                             }}
                             options={filteredPlayers}
-                            onSelect={(playerId) => handleSelect(playerId, 0)}
+                            onSelect={(playerId) => selectPlayer(playerId, 1)}
                             isLoading={isLoading}
                         />
                     </PlayerContainer>
@@ -118,7 +131,7 @@ function ChoosePlayers() {
                                 }}
                                 options={filteredForPlayer3And4}
                                 onSelect={(playerId) =>
-                                    handleSelect(playerId, 2)
+                                    selectPlayer(playerId, 3)
                                 }
                                 isLoading={isLoading}
                             />
@@ -133,9 +146,22 @@ function ChoosePlayers() {
                     )}
                 </TeamContainer>
 
-                <SwitchTeamsButton onClick={switchTeams}>
-                    <HiArrowsRightLeft />
-                </SwitchTeamsButton>
+                <MidButtonsContainer>
+                    <MidButton
+                        onClick={switchTeams}
+                        disabled={isStarting}
+                        title="Switch Teams"
+                    >
+                        <HiArrowsRightLeft />
+                    </MidButton>
+                    <MidButton
+                        onClick={clearAllPlayers}
+                        disabled={isStarting}
+                        title="Clear Players"
+                    >
+                        <ClearPlayers />
+                    </MidButton>
+                </MidButtonsContainer>
 
                 <TeamContainer>
                     <PlayerContainer>
@@ -146,7 +172,7 @@ function ChoosePlayers() {
                                 value: player2?.id,
                             }}
                             options={filteredPlayers}
-                            onSelect={(playerId) => handleSelect(playerId, 1)}
+                            onSelect={(playerId) => selectPlayer(playerId, 2)}
                             isLoading={isLoading}
                         />
                     </PlayerContainer>
@@ -160,7 +186,7 @@ function ChoosePlayers() {
                                 }}
                                 options={filteredForPlayer3And4}
                                 onSelect={(playerId) =>
-                                    handleSelect(playerId, 3)
+                                    selectPlayer(playerId, 4)
                                 }
                                 isLoading={isLoading}
                             />

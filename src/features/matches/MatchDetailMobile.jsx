@@ -2,6 +2,8 @@ import styled from "styled-components";
 import Button from "../../ui/Button";
 import {
     HiArrowDownTray,
+    HiArrowPath,
+    HiArrowPathRoundedSquare,
     HiArrowUturnLeft,
     HiMinusCircle,
     HiPlusCircle,
@@ -15,6 +17,7 @@ import { useState } from "react";
 import Divider from "../../ui/Divider";
 import { MATCH_ACTIVE, MATCH_ENDED } from "../../utils/constants";
 import DelayedButton from "../../ui/DelayedButton";
+import { useNavigate } from "react-router-dom";
 
 const Heading = styled.h1`
     display: flex;
@@ -113,6 +116,7 @@ const TimerContainer = styled.div`
 `;
 
 function MatchDetailMobile({ match, timer }) {
+    const navigate = useNavigate();
     const { player1, player2, player3, player4, id: matchId } = match;
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
     const [latestScorer, setLatestScorer] = useState(null);
@@ -163,6 +167,15 @@ function MatchDetailMobile({ match, timer }) {
         }
 
         endMatch({ id: matchId });
+    }
+
+    function createRematch() {
+        navigate({
+            pathname: "/matches/create",
+            search: `?player1=${player1.id}&player2=${player2.id}${
+                player3 ? `&player3=${player3.id}` : ""
+            }${player4 ? `&player4=${player4.id}` : ""}`,
+        });
     }
 
     return (
@@ -366,9 +379,17 @@ function MatchDetailMobile({ match, timer }) {
                         </DelayedButton>
                     )}
                     {isEnded && (
-                        <label>
-                            <i>Match ended. Winner: {winner}</i>
-                        </label>
+                        <>
+                            <label>
+                                <i>Match ended. Winner: {winner}</i>
+                            </label>
+                            <SingleButtonRow>
+                                <Button onClick={createRematch}>
+                                    Rematch
+                                    <HiArrowPath />
+                                </Button>
+                            </SingleButtonRow>
+                        </>
                     )}
                 </ButtonsContainer>
             </SingleButtonRow>

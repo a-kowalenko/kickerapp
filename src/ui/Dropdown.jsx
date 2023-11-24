@@ -134,7 +134,7 @@ function Dropdown({
 
     useEffect(() => {
         setSelected(initSelected);
-    }, [initSelected]);
+    }, [initSelected, onSelect]);
 
     function handleToggle(e) {
         e.stopPropagation();

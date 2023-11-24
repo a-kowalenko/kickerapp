@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import styled from "styled-components";
+import { media } from "../utils/constants";
 
 const PlayerName = styled(Link)`
     display: flex;
@@ -25,6 +26,12 @@ const PlayerName = styled(Link)`
     &:hover {
         background-size: 100% var(--bg-h);
         background-position-x: left;
+    }
+
+    ${media.tablet} {
+        font-size: 1.4rem;
+        font-weight: 500;
+        gap: 0.4rem;
     }
 `;
 
