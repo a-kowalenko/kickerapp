@@ -4,6 +4,7 @@ import Table from "../../ui/Table";
 import RankingsRow from "./RankingsRow";
 import { useRankings } from "./useRankings";
 import LoadingSpinner from "../../ui/LoadingSpinner";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 function RankingsTable() {
     const { rankings, count, isLoadingRankings } = useRankings();
@@ -11,9 +12,16 @@ function RankingsTable() {
     const gamemode = searchParams.get("gamemode")
         ? searchParams.get("gamemode")
         : "1on1";
+    const { isTablet, isDesktop } = useWindowWidth();
+
+    const columns = isDesktop
+        ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"
+        : isTablet
+        ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"
+        : "0.5fr 2fr 1fr 1fr 1fr 1fr 1fr";
 
     return (
-        <Table columns="0.5fr 1fr 1fr 1fr 1fr 1fr 1fr">
+        <Table columns={columns}>
             <Table.Header>
                 <div>Rank</div>
                 <div>Player</div>

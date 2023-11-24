@@ -13,7 +13,6 @@ import {
     MATCH_ACTIVE,
     MATCH_ENDED,
     STANDARD_GOAL,
-    media,
 } from "../../utils/constants";
 import Input from "../../ui/Input";
 import Error from "../../ui/Error";
@@ -214,7 +213,7 @@ function MatchDetail() {
     const [timer, setTimer] = useState(<SpinnerMini />);
     const timerIdRef = useRef(null);
     const goalBoxRef = useRef(null);
-    const windowWidth = useWindowWidth();
+    const { isMobile, isTablet } = useWindowWidth();
     const sort = searchParams.get("sort") ? searchParams.get("sort") : "asc";
     const finalGoals = goals
         ?.filter((goal) => goal.goal_type !== GENERATED_GOAL)
@@ -295,7 +294,7 @@ function MatchDetail() {
             : "Team 2"
         : null;
 
-    if (windowWidth < media.maxTablet) {
+    if (isTablet || isMobile) {
         return <MatchDetailMobile match={finalMatch} timer={timer} />;
     }
 

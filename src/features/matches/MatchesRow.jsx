@@ -6,9 +6,11 @@ import {
     DEFAULT_AVATAR,
     MATCH_ACTIVE,
     MATCH_ENDED,
+    media,
 } from "../../utils/constants";
 import PlayerName from "../../ui/PlayerName";
 import { useNavigate } from "react-router-dom";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const Rank = styled.div`
     font-size: 1.6rem;
@@ -28,6 +30,10 @@ const ScoreContainer = styled.div`
     justify-content: center;
     align-items: center;
     gap: 1.2rem;
+
+    ${media.tablet} {
+        gap: 0.6rem;
+    }
 `;
 
 const Score = styled.div`
@@ -37,6 +43,10 @@ const Score = styled.div`
     align-items: center;
     justify-content: ${(props) =>
         props.$team === "1" ? "flex-end" : "flex-start"};
+
+    ${media.tablet} {
+        min-width: 0rem;
+    }
 `;
 
 const TeamContainer = styled.div`
@@ -72,6 +82,7 @@ const DurationContainer = styled.div`
 function MatchesRow({ match }) {
     const navigate = useNavigate();
     const { player1, player2, player3, player4 } = match;
+    const { isDesktop } = useWindowWidth();
 
     const gameMode =
         !player3 && !player4
@@ -108,7 +119,12 @@ function MatchesRow({ match }) {
                             {match.mmrChangeTeam1}
                         </span>
                     )}
-                    <Avatar $size="xs" src={player1.avatar || DEFAULT_AVATAR} />
+                    {isDesktop && (
+                        <Avatar
+                            $size="xs"
+                            src={player1.avatar || DEFAULT_AVATAR}
+                        />
+                    )}
                 </PlayerName>
                 {player3 && (
                     <PlayerName
@@ -122,10 +138,12 @@ function MatchesRow({ match }) {
                                 {match.mmrChangeTeam1}
                             </span>
                         )}
-                        <Avatar
-                            $size="xs"
-                            src={player3.avatar || DEFAULT_AVATAR}
-                        />
+                        {isDesktop && (
+                            <Avatar
+                                $size="xs"
+                                src={player3.avatar || DEFAULT_AVATAR}
+                            />
+                        )}
                     </PlayerName>
                 )}
             </TeamContainer>
@@ -144,7 +162,12 @@ function MatchesRow({ match }) {
                     to={`/user/${player2.name}/profile`}
                     onClick={handleClickRow}
                 >
-                    <Avatar $size="xs" src={player2.avatar || DEFAULT_AVATAR} />
+                    {isDesktop && (
+                        <Avatar
+                            $size="xs"
+                            src={player2.avatar || DEFAULT_AVATAR}
+                        />
+                    )}
                     <span>{player2.name}</span>
                     {match.mmrChangeTeam2 && match.mmrPlayer2 && (
                         <span>
@@ -158,10 +181,12 @@ function MatchesRow({ match }) {
                         to={`/user/${player4.name}/profile`}
                         onClick={handleClickRow}
                     >
-                        <Avatar
-                            $size="xs"
-                            src={player4?.avatar || DEFAULT_AVATAR}
-                        />
+                        {isDesktop && (
+                            <Avatar
+                                $size="xs"
+                                src={player4?.avatar || DEFAULT_AVATAR}
+                            />
+                        )}
                         <span>{player4.name}</span>
                         {match.mmrChangeTeam2 && match.mmrPlayer4 && (
                             <span>
@@ -173,31 +198,37 @@ function MatchesRow({ match }) {
                 )}
             </TeamContainer>
 
-            <GameModeCeontainer>
-                <span>{gameMode}</span>
-            </GameModeCeontainer>
+            {isDesktop && (
+                <GameModeCeontainer>
+                    <span>{gameMode}</span>
+                </GameModeCeontainer>
+            )}
 
-            <StartTimeContainer>
-                <span>
-                    {format(
-                        new Date(match.start_time),
-                        "dd.MM.yyyy - HH:mm:ss"
-                    )}
-                </span>
-            </StartTimeContainer>
-
-            <DurationContainer>
-                {match.end_time && (
+            {isDesktop && (
+                <StartTimeContainer>
                     <span>
                         {format(
-                            new Date(match.end_time) -
-                                new Date(match.start_time),
-                            "mm:ss"
+                            new Date(match.start_time),
+                            "dd.MM.yyyy - HH:mm"
                         )}
                     </span>
-                )}
-                {match.status === MATCH_ACTIVE && <span>IS ACTIVE</span>}
-            </DurationContainer>
+                </StartTimeContainer>
+            )}
+
+            {isDesktop && (
+                <DurationContainer>
+                    {match.end_time && (
+                        <span>
+                            {format(
+                                new Date(match.end_time) -
+                                    new Date(match.start_time),
+                                "mm:ss"
+                            )}
+                        </span>
+                    )}
+                    {match.status === MATCH_ACTIVE && <span>IS ACTIVE</span>}
+                </DurationContainer>
+            )}
         </Table.Row>
     );
 }

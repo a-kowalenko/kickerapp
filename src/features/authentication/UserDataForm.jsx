@@ -10,12 +10,21 @@ import Input from "../../ui/Input";
 import Form from "../../ui/Form";
 import InputFile from "../../ui/InputFile";
 import Avatar from "../../ui/Avatar";
-import { DEFAULT_AVATAR } from "../../utils/constants";
+import { DEFAULT_AVATAR, media } from "../../utils/constants";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const UserFormContainer = styled.div`
     display: flex;
     justify-content: space-between;
     gap: 12rem;
+
+    ${media.tablet} {
+        gap: 2.4rem;
+    }
+`;
+
+const ChooseAvatarRow = styled.div`
+    display: flex;
 `;
 
 function UserDataForm() {
@@ -30,6 +39,7 @@ function UserDataForm() {
     const [newUsername, setNewUsername] = useState(userId);
     const [newAvatar, setNewAvatar] = useState(null);
     const [avatarSrc, setAvatarSrc] = useState(avatar);
+    const { isDesktop, isTablet, isMobile } = useWindowWidth();
 
     const { updateUser, isUpdating } = useUpdateUser();
 
@@ -70,14 +80,22 @@ function UserDataForm() {
                     />
                 </FormRow>
 
-                <FormRow label="Avatar">
+                <ChooseAvatarRow label="Avatar">
                     <InputFile
                         id="avatar"
                         type="file"
                         disabled={isUpdating}
                         onChange={handleAvatarChange}
                     />
-                </FormRow>
+                    {isMobile && (
+                        <div style={{ justifySelf: "flex-start" }}>
+                            <Avatar
+                                src={avatarSrc || DEFAULT_AVATAR}
+                                $size="large"
+                            />
+                        </div>
+                    )}
+                </ChooseAvatarRow>
 
                 <FormRow>
                     <Button
@@ -89,7 +107,12 @@ function UserDataForm() {
                     </Button>
                 </FormRow>
             </Form>
-            <Avatar src={avatarSrc || DEFAULT_AVATAR} $size="huge" />
+            {isDesktop && (
+                <Avatar src={avatarSrc || DEFAULT_AVATAR} $size="huge" />
+            )}
+            {isTablet && (
+                <Avatar src={avatarSrc || DEFAULT_AVATAR} $size="large" />
+            )}
         </UserFormContainer>
     );
 }

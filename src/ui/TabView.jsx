@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import styled from "styled-components";
+import { media } from "../utils/constants";
 
 const StyledTabView = styled.div`
     display: block;
@@ -52,6 +53,10 @@ const TabContent = styled.div`
     display: block;
     background-color: transparent;
     padding: 1rem 2.4rem;
+
+    ${media.tablet} {
+        padding: 1rem 0rem;
+    }
 `;
 
 function TabSlider() {

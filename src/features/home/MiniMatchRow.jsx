@@ -66,7 +66,7 @@ function MiniMatchRow({ match }) {
         match.status !== MATCH_ENDED
             ? null
             : match.scoreTeam1 > match.scoreTeam2;
-    const windowWidth = useWindowWidth();
+    const { windowWidth } = useWindowWidth();
     const showStartTime = windowWidth > 1350;
     const showDuration = windowWidth > 768;
     const showId = windowWidth > 650;
@@ -147,10 +147,7 @@ function MiniMatchRow({ match }) {
             </TeamContainer>
             {showStartTime && (
                 <div>
-                    {format(
-                        new Date(match.start_time),
-                        "dd.MM.yyyy - HH:mm:ss"
-                    )}
+                    {format(new Date(match.start_time), "dd.MM.yyyy - HH:mm")}
                 </div>
             )}
             {showDuration && (

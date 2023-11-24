@@ -7,7 +7,6 @@ import MiniMatchRow from "./MiniMatchRow";
 import { useRecentMatches } from "./useRecentMatches";
 import styled from "styled-components";
 import useWindowWidth from "../../hooks/useWindowWidth";
-import { media } from "../../utils/constants";
 
 const StyledRecentMatches = styled(ContentBox)`
     grid-area: 3 / 1 / 4 / 5;
@@ -19,11 +18,10 @@ const StyledRecentMatches = styled(ContentBox)`
 
 function RecentMatches() {
     const { matches, isLoadingMatches } = useRecentMatches();
-    const windowWidth = useWindowWidth();
+    const { windowWidth, isMobile } = useWindowWidth();
     const showStartTime = windowWidth > 1350;
     const showDuration = windowWidth > 768;
     const showId = windowWidth > 650;
-    const isMobile = windowWidth <= media.maxMobile;
 
     const columns = showStartTime
         ? "0.1fr 0.5fr 0.5fr 0.5fr 0.8fr 0.4fr"

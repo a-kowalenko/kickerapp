@@ -3,11 +3,13 @@ import { useMoveBack } from "../hooks/useMoveBack";
 import ButtonIcon from "./ButtonIcon";
 import { HiArrowLeft } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
+import { media } from "../utils/constants";
 
 const StyledHeading = styled.h1`
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    gap: 2.4rem;
 
     ${(props) =>
         props.as === "h1" &&
@@ -40,6 +42,10 @@ const StyledHeading = styled.h1`
     ${(props) => (props.$uppercase ? "text-transform: uppercase" : "")};
 
     line-height: 1.4;
+
+    ${media.tablet} {
+        padding: 0 2.4rem;
+    }
 `;
 
 function Heading({
@@ -54,7 +60,6 @@ function Heading({
 
     return (
         <StyledHeading as={as} type={type}>
-            {children}
             {hasBackBtn && (
                 <ButtonIcon
                     onClick={
@@ -64,6 +69,7 @@ function Heading({
                     <HiArrowLeft />
                 </ButtonIcon>
             )}
+            {children}
         </StyledHeading>
     );
 }

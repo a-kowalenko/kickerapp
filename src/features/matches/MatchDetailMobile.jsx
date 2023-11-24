@@ -3,7 +3,6 @@ import Button from "../../ui/Button";
 import {
     HiArrowDownTray,
     HiArrowPath,
-    HiArrowPathRoundedSquare,
     HiArrowUturnLeft,
     HiMinusCircle,
     HiPlusCircle,
@@ -15,9 +14,31 @@ import toast from "react-hot-toast";
 import SpinnerMini from "../../ui/SpinnerMini";
 import { useState } from "react";
 import Divider from "../../ui/Divider";
-import { MATCH_ACTIVE, MATCH_ENDED } from "../../utils/constants";
+import {
+    DEFAULT_AVATAR,
+    MATCH_ACTIVE,
+    MATCH_ENDED,
+} from "../../utils/constants";
 import DelayedButton from "../../ui/DelayedButton";
 import { useNavigate } from "react-router-dom";
+import Avatar from "../../ui/Avatar";
+
+const GameInfoContainer = styled.div`
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    text-transform: uppercase;
+`;
+const GameInfoLabel = styled.div`
+    display: flex;
+    flex-direction: column;
+`;
+const GameInfoText = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-weight: 600;
+`;
 
 const Heading = styled.h1`
     display: flex;
@@ -31,7 +52,7 @@ const StyledMatchDetailMobile = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
-    margin-bottom: 5rem;
+    margin: 2rem;
 `;
 
 const ScoreContainer = styled.div`
@@ -66,7 +87,7 @@ const Player = styled.div`
 const PlayerName = styled.span`
     display: flex;
     min-width: 8rem;
-    justify-content: center;
+    gap: 2.4rem;
 `;
 
 const ActionsContainer = styled.div`
@@ -104,15 +125,32 @@ const TeamContainer = styled.div`
 
 const Team1Container = styled(TeamContainer)`
     align-items: center;
+    position: relative;
 `;
 const Team2Container = styled(TeamContainer)`
     align-items: center;
+    position: relative;
 `;
 
 const TimerContainer = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
+`;
+
+const Watermark = styled.div`
+    position: absolute;
+    opacity: 0.05;
+    font-size: 88px;
+    width: 100%;
+    text-align: center;
+    color: var(--primary-text-color);
+    text-transform: uppercase;
+
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
 `;
 
 function MatchDetailMobile({ match, timer }) {
@@ -180,13 +218,22 @@ function MatchDetailMobile({ match, timer }) {
 
     return (
         <StyledMatchDetailMobile>
-            <Heading>
-                {match.status} match {match.gamemode}
-            </Heading>
+            <GameInfoContainer>
+                <GameInfoLabel>
+                    <span>Gamemode:</span>
+                    <span>Status:</span>
+                </GameInfoLabel>
+
+                <GameInfoText>
+                    <span>{match.gamemode}</span>
+                    <span>{match.status}</span>
+                </GameInfoText>
+            </GameInfoContainer>
             <TimerContainer>{timer}</TimerContainer>
 
             <ActionsContainer>
                 <Team1Container>
+                    <Watermark>Team 1</Watermark>
                     <Player>
                         {isActive && (
                             <ButtonIcon
@@ -202,7 +249,13 @@ function MatchDetailMobile({ match, timer }) {
                                 )}
                             </ButtonIcon>
                         )}
-                        <PlayerName>{player1.name}</PlayerName>
+                        <PlayerName>
+                            <Avatar
+                                $size="xs"
+                                src={player1.avatar || DEFAULT_AVATAR}
+                            />
+                            {player1.name}
+                        </PlayerName>
                         {isActive && (
                             <ButtonIcon
                                 $size="large"
@@ -233,7 +286,13 @@ function MatchDetailMobile({ match, timer }) {
                                     )}
                                 </ButtonIcon>
                             )}
-                            <PlayerName>{player3.name}</PlayerName>
+                            <PlayerName>
+                                <Avatar
+                                    $size="xs"
+                                    src={player3.avatar || DEFAULT_AVATAR}
+                                />
+                                {player3.name}
+                            </PlayerName>
                             {isActive && (
                                 <ButtonIcon
                                     $size="large"
@@ -259,6 +318,7 @@ function MatchDetailMobile({ match, timer }) {
                 <Score>{match.scoreTeam2}</Score>
 
                 <Team2Container>
+                    <Watermark>Team 2</Watermark>
                     <Player>
                         {isActive && (
                             <ButtonIcon
@@ -274,7 +334,13 @@ function MatchDetailMobile({ match, timer }) {
                                 )}
                             </ButtonIcon>
                         )}
-                        <PlayerName>{player2.name}</PlayerName>
+                        <PlayerName>
+                            <Avatar
+                                $size="xs"
+                                src={player2.avatar || DEFAULT_AVATAR}
+                            />
+                            {player2.name}
+                        </PlayerName>
                         {isActive && (
                             <ButtonIcon
                                 $size="large"
@@ -305,7 +371,13 @@ function MatchDetailMobile({ match, timer }) {
                                     )}
                                 </ButtonIcon>
                             )}
-                            <PlayerName>{player4.name}</PlayerName>
+                            <PlayerName>
+                                <Avatar
+                                    $size="xs"
+                                    src={player4.avatar || DEFAULT_AVATAR}
+                                />
+                                {player4.name}
+                            </PlayerName>
                             {isActive && (
                                 <ButtonIcon
                                     $size="large"

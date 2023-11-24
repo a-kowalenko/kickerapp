@@ -61,7 +61,7 @@ function Header() {
     const { kickers, isLoadingKickers } = useUserKickers();
     const { setCurrentKicker } = useKicker();
     const { activeMatch } = useMatchContext();
-    const windowWidth = useWindowWidth();
+    const { windowWidth } = useWindowWidth();
     const showLeaveKicker = windowWidth <= media.maxTablet;
     const [showActiveMatch, setShowActiveMatch] = useState(!!activeMatch);
 

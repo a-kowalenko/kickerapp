@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
+import { media } from "../utils/constants";
 
 const StyledTable = styled.div`
     border: 1px solid var(--table-border-color);
@@ -8,6 +9,11 @@ const StyledTable = styled.div`
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
+
+    ${media.tablet} {
+        border-radius: 0;
+        border: none;
+    }
 `;
 
 const DefaultRow = styled.div`
@@ -16,6 +22,10 @@ const DefaultRow = styled.div`
     column-gap: 2.4rem;
     align-items: center;
     transition: none;
+
+    ${media.tablet} {
+        column-gap: 1.2rem;
+    }
 `;
 
 const StyledHeader = styled(DefaultRow)`
@@ -25,6 +35,10 @@ const StyledHeader = styled(DefaultRow)`
     text-transform: uppercase;
     letter-spacing: 0.4px;
     color: var(--primary-text-color);
+
+    ${media.mobile} {
+        padding: 1.2rem 1rem;
+    }
 `;
 
 const StyledRow = styled(DefaultRow)`
@@ -32,11 +46,13 @@ const StyledRow = styled(DefaultRow)`
     position: relative;
     cursor: pointer;
 
+    ${media.mobile} {
+        padding: 1rem 1rem;
+    }
+
     &:hover {
         background-color: var(--table-row-color-hover);
-        box-shadow:
-            0 -2px 5px rgba(0, 0, 0, 0.1),
-            0 2px 5px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     &:not(:last-child) {
