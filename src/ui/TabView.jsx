@@ -12,7 +12,7 @@ const TabHeader = styled.div`
     background-color: transparent;
     border-bottom: 1px solid var(--color-grey-100);
     ${media.mobile} {
-        justify-content: space-between;
+        justify-content: flex-start;
     }
 `;
 
