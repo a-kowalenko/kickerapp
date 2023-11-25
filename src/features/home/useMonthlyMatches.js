@@ -10,12 +10,13 @@ export function useMonthlyMatches() {
 
     // Filtering
     const filterValue = searchParams.get("gamemode");
-    const filter = !filterValue
-        ? { field: "gamemode", value: "1on1" }
-        : { field: "gamemode", value: filterValue };
+    const filter =
+        !filterValue || filterValue === "all"
+            ? null
+            : { field: "gamemode", value: filterValue };
 
     const { data: { data } = {}, isLoading } = useQuery({
-        queryKey: ["monthly_matches", filter.value, kicker],
+        queryKey: ["monthly_matches", filter?.value, kicker],
         queryFn: () =>
             getMatches({
                 filter: { month: new Date().getMonth(), kicker, ...filter },

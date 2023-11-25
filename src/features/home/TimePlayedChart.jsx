@@ -20,7 +20,7 @@ import {
 import ContentBox from "../../ui/ContentBox";
 import styled from "styled-components";
 import { colorsLight, media } from "../../utils/constants";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Dropdown from "../../ui/Dropdown";
 import Row from "../../ui/Row";
 import Heading from "../../ui/Heading";
@@ -66,6 +66,17 @@ function TimePlayedChart() {
     const { isMobile } = useWindowWidth();
     const currentMonth = format(new Date(), "LLLL", { locale: de });
     const [searchParams, setSearchParams] = useSearchParams();
+
+    useEffect(() => {
+        if (type === "mmr") {
+            const currentGamemodeFilter = searchParams.get("gamemode");
+            if (["all", "2on1"].includes(currentGamemodeFilter)) {
+                searchParams.set("gamemode", "1on1");
+                setSearchParams(searchParams);
+            }
+        }
+    });
+
     if (isLoadingPlayers) {
         return <LoadingSpinner />;
     }
@@ -171,6 +182,19 @@ function TimePlayedChart() {
         { text: "Losses", value: "losses" },
     ];
 
+    const gamemodeOptions =
+        type === "mmr"
+            ? [
+                  { text: "1on1", value: "1on1" },
+                  { text: "2on2", value: "2on2" },
+              ]
+            : [
+                  { text: "all", value: "all" },
+                  { text: "1on1", value: "1on1" },
+                  { text: "2on2", value: "2on2" },
+                  { text: "2on1", value: "2on1" },
+              ];
+
     let sortBy = "cumulatedDuration";
     if (type === "duration") {
         sortBy = "cumulatedDuration";
@@ -196,7 +220,7 @@ function TimePlayedChart() {
             </Row>
             <FilterRow>
                 <Dropdown
-                    minWidth={isMobile ? "17rem" : "25rem"}
+                    minWidth={isMobile ? "20rem" : "25rem"}
                     options={options}
                     onSelect={(option) => setType(option)}
                     initSelected={options.find(
@@ -204,11 +228,8 @@ function TimePlayedChart() {
                     )}
                 />
                 <Dropdown
-                    options={[
-                        { text: "1on1", value: "1on1" },
-                        { text: "2on2", value: "2on2" },
-                        { text: "2on1", value: "2on1" },
-                    ]}
+                    minWidth={isMobile ? "12rem" : "14rem"}
+                    options={gamemodeOptions}
                     onSelect={(option) => handleGamemodeFilter(option)}
                     initSelected={{
                         text: searchParams.get("gamemode") || "1on1",
