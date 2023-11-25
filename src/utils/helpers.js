@@ -67,6 +67,16 @@ export function getPlayersNumberFromMatch(username, match) {
     return null;
 }
 
+export function getPlayersNumberFromMatchById(playerId, match) {
+    for (let i = 1; i <= 4; i++) {
+        if (match[`player${i}`]?.id === playerId) {
+            return i;
+        }
+    }
+
+    return null;
+}
+
 export function isPlayerInTeam(playerId, ...teamPlayers) {
     return teamPlayers.some((player) => player?.id === playerId);
 }

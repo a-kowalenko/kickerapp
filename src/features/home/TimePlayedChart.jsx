@@ -14,7 +14,7 @@ import LoadingSpinner from "../../ui/LoadingSpinner";
 import { format } from "date-fns";
 import { usePlayers } from "../../hooks/usePlayers";
 import {
-    getPlayersNumberFromMatch,
+    getPlayersNumberFromMatchById,
     hasPlayerWonMatch,
 } from "../../utils/helpers";
 import ContentBox from "../../ui/ContentBox";
@@ -117,7 +117,7 @@ function TimePlayedChart() {
             );
 
             for (const player of playersInMatch) {
-                const playerNumber = getPlayersNumberFromMatch(
+                const playerNumber = getPlayersNumberFromMatchById(
                     player.id,
                     match
                 );
