@@ -29,6 +29,8 @@ import DelayedButton from "../../ui/DelayedButton";
 import { HiArrowDownTray, HiArrowPath } from "react-icons/hi2";
 import Button from "../../ui/Button";
 
+const StyledMatchDetail = styled.div``;
+
 const Row = styled.div`
     display: flex;
     align-items: center;
@@ -38,7 +40,9 @@ const Row = styled.div`
 
 const TopRow = styled(Row)``;
 
-const MainRow = styled(Row)``;
+const MainRow = styled(Row)`
+    height: 30rem;
+`;
 
 const GoalsContainer = styled.div`
     display: flex;
@@ -46,6 +50,7 @@ const GoalsContainer = styled.div`
     overflow: scroll;
     overflow-x: hidden;
     flex-grow: 1;
+    max-height: 50rem;
 `;
 
 const GoalRow = styled.div`
@@ -299,7 +304,7 @@ function MatchDetail() {
     }
 
     return (
-        <>
+        <StyledMatchDetail>
             <TopRow>
                 <TeamHeader>Team 1</TeamHeader>
                 <ScoreContainer>
@@ -447,7 +452,7 @@ function MatchDetail() {
                     </DelayedButton>
                 )}
             </BottomRow>
-        </>
+        </StyledMatchDetail>
     );
 }
 

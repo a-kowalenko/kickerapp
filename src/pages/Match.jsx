@@ -14,7 +14,7 @@ function Match() {
     const { matchId } = useParams();
     return (
         <StyledMatch>
-            <Heading as="h1" type="page" hasBackBtn={true}>
+            <Heading as="h1" type="page" hasBackBtn={true} backDirection={-1}>
                 Match {matchId}
             </Heading>
             <MatchDetail />

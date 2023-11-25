@@ -19,6 +19,7 @@ import {
     GENERATED_GOAL,
     MATCH_ACTIVE,
     MATCH_ENDED,
+    MATCH_ENDED_BY_CRON,
     OWN_GOAL,
     STANDARD_GOAL,
 } from "../../utils/constants";
@@ -27,7 +28,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
 import { useGoals } from "../../hooks/useGoals";
 import { format } from "date-fns";
-import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 
 const GameInfoContainer = styled.div`
@@ -73,7 +73,8 @@ const Score = styled.div`
     display: flex;
     min-width: 10rem;
     font-weight: 600;
-    font-size: x-large;
+    font-size: xx-large;
+
     justify-content: center;
 `;
 
@@ -86,15 +87,17 @@ const ScoreTeam2 = styled(Score)`
 
 const Player = styled.div`
     display: flex;
-    min-width: 10rem;
+    min-width: 70%;
     align-items: center;
-    justify-content: center;
+    justify-content: ${(props) =>
+        props.$matchEnded ? "center" : "space-between"};
 `;
 
 const PlayerName = styled.span`
     display: flex;
-    min-width: 8rem;
-    gap: 2.4rem;
+    min-width: 40%;
+    justify-content: space-between;
+    align-items: center;
 `;
 
 const ActionsContainer = styled.div`
@@ -143,6 +146,8 @@ const TimerContainer = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
+    font-size: large;
+    font-weight: 500;
 `;
 
 const Watermark = styled.div`
@@ -164,6 +169,7 @@ const CenteredInfoLabel = styled.label`
     display: flex;
     justify-content: center;
     align-items: center;
+    text-align: center;
 `;
 
 const GoalsHeader = styled.div`
@@ -274,7 +280,8 @@ function MatchDetailMobile({ match, timer }) {
     } = useUpdateMatch();
 
     const isActive = match.status === MATCH_ACTIVE;
-    const isEnded = match.status === MATCH_ENDED;
+    const isEnded =
+        match.status === MATCH_ENDED || match.status === MATCH_ENDED_BY_CRON;
 
     const winner = isEnded
         ? match.scoreTeam1 > match.scoreTeam2
@@ -327,11 +334,27 @@ function MatchDetailMobile({ match, timer }) {
                 <GameInfoLabel>
                     <span>Gamemode:</span>
                     <span>Status:</span>
+                    <span>Started:</span>
+                    {isEnded && <span>Ended:</span>}
                 </GameInfoLabel>
 
                 <GameInfoText>
                     <span>{match.gamemode}</span>
                     <span>{match.status}</span>
+                    <span>
+                        {format(
+                            new Date(match.start_time),
+                            "dd.MM.yyyy - HH:mm"
+                        )}
+                    </span>
+                    {isEnded && (
+                        <span>
+                            {format(
+                                new Date(match.end_time),
+                                "dd.MM.yyyy - HH:mm"
+                            )}
+                        </span>
+                    )}
                 </GameInfoText>
             </GameInfoContainer>
             <TimerContainer>{timer}</TimerContainer>
@@ -339,7 +362,7 @@ function MatchDetailMobile({ match, timer }) {
             <ActionsContainer>
                 <Team1Container>
                     <Watermark>Team 1</Watermark>
-                    <Player>
+                    <Player $matchEnded={isEnded}>
                         {isActive && (
                             <ButtonIcon
                                 $size="large"
@@ -376,7 +399,7 @@ function MatchDetailMobile({ match, timer }) {
                         )}
                     </Player>
                     {player3 && (
-                        <Player>
+                        <Player $matchEnded={isEnded}>
                             {isActive && (
                                 <ButtonIcon
                                     $size="large"
@@ -424,7 +447,7 @@ function MatchDetailMobile({ match, timer }) {
 
                 <Team2Container>
                     <Watermark>Team 2</Watermark>
-                    <Player>
+                    <Player $matchEnded={isEnded}>
                         {isActive && (
                             <ButtonIcon
                                 $size="large"
@@ -461,7 +484,7 @@ function MatchDetailMobile({ match, timer }) {
                         )}
                     </Player>
                     {player4 && (
-                        <Player>
+                        <Player $matchEnded={isEnded}>
                             {isActive && (
                                 <ButtonIcon
                                     $size="large"
@@ -523,27 +546,6 @@ function MatchDetailMobile({ match, timer }) {
             )}
 
             <Divider />
-
-            {/* <SingleButtonRow>
-                <ButtonsContainer>
-                    {isActive && (
-                        <Button onClick={handleEndMatch} disabled={isDisabled}>
-                            {isLoadingEndMatch ? (
-                                <SpinnerMini />
-                            ) : (
-                                <>
-                                    <HiArrowDownTray /> End match
-                                </>
-                            )}
-                        </Button>
-                    )}
-                    {isEnded && (
-                        <label>
-                            <i>Match ended. Winner: {winner}</i>
-                        </label>
-                    )}
-                </ButtonsContainer>
-            </SingleButtonRow> */}
 
             <SingleButtonRow>
                 <ButtonsContainer>
@@ -686,55 +688,7 @@ function MatchDetailMobile({ match, timer }) {
                                         </GoalItemContainer>
                                     </>
                                 )}
-
-                                {/* <GoalItem
-                                $team={goal.team}
-                                $goaltype={goal.goal_type}
-                            >
-                                <Avatar
-                                    $size="xs"
-                                    src={goal.player.avatar || DEFAULT_AVATAR}
-                                    alt={`Avatar of ${goal.player.name}`}
-                                />
-                                {`${goal.player.name} scored ${
-                                    goal.goal_type === STANDARD_GOAL
-                                        ? "a goal"
-                                        : "an own goal"
-                                }!`}
-                            </GoalItem> */}
                             </>
-
-                            {/* <GoalItem $team={goal.team} $goaltype={goal.goal_type}>
-                            <Avatar
-                                $size="xs"
-                                src={goal.player.avatar || DEFAULT_AVATAR}
-                                alt={`Avatar of ${goal.player.name}`}
-                            />
-                            {`${goal.player.name} scored ${
-                                goal.goal_type === STANDARD_GOAL
-                                    ? "a goal"
-                                    : "an own goal"
-                            }!`}
-                        </GoalItem>
-
-                        {goal.team === 1 && (
-                            <>
-                                <CurrentTeamScore>
-                                    {goal.scoreTeam1}
-                                </CurrentTeamScore>
-                                <GoalTime>
-                                    {format(
-                                        new Date(goal.created_at) -
-                                            new Date(finalMatch.start_time),
-                                        "mm:ss"
-                                    )}
-                                </GoalTime>
-                                <CurrentTeamScore>
-                                    {goal.scoreTeam2}
-                                </CurrentTeamScore>
-                                <div></div>
-                            </>
-                        )} */}
                         </GoalRow>
                     ))}
                 </GoalsContainer>
