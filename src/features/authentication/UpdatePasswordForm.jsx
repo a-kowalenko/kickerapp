@@ -1,9 +1,10 @@
 import { useForm } from "react-hook-form";
+import { useUpdatePassword } from "./useUpdatePassword";
 import FormRow from "../../ui/FormRow";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
 import Form from "../../ui/Form";
-import { useUpdatePassword } from "./useUpdatePassword";
+import SpinnerMini from "../../ui/SpinnerMini";
 
 function UpdatePasswordForm() {
     const { register, handleSubmit, formState, getValues, reset } = useForm();
@@ -32,7 +33,7 @@ function UpdatePasswordForm() {
                     id="password"
                     disabled={isLoading}
                     {...register("password", {
-                        required: "This field is required",
+                        required: "A new password is required",
                         minLength: {
                             value: 8,
                             message: "Password needs a minimum of 8 characters",
@@ -49,7 +50,7 @@ function UpdatePasswordForm() {
                     id="passwordConfirm"
                     disabled={isLoading}
                     {...register("passwordConfirm", {
-                        required: "This field is required",
+                        required: "Password confirmation is required",
                         validate: (value) =>
                             getValues().password === value ||
                             "Passwords need to match",
@@ -59,7 +60,7 @@ function UpdatePasswordForm() {
 
             <FormRow>
                 <Button $size="large" $variation="primary" disabled={isLoading}>
-                    Update password
+                    {isLoading ? <SpinnerMini /> : "Update password"}
                 </Button>
             </FormRow>
         </Form>

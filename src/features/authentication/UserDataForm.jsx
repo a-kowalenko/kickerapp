@@ -14,6 +14,7 @@ import { DEFAULT_AVATAR, media } from "../../utils/constants";
 import useWindowWidth from "../../hooks/useWindowWidth";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import LoadingSpinner from "../../ui/LoadingSpinner";
+import SpinnerMini from "../../ui/SpinnerMini";
 
 const UserFormContainer = styled.div`
     display: flex;
@@ -114,7 +115,7 @@ function UserDataForm() {
                         $variation="primary"
                         disabled={isUpdating}
                     >
-                        Update
+                        {isUpdating ? <SpinnerMini /> : "Update"}
                     </Button>
                 </FormRow>
             </Form>
