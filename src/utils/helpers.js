@@ -9,10 +9,8 @@ export function calculateMmrChange(playerMmr, opponentMmr, result) {
 export function getBaseUrl() {
     if (window.location.hostname === "localhost") {
         return "http://localhost:5173";
-    } else if (window.location.hostname === "zero-hero-dev.vercel.app") {
-        return "https://zero-hero-dev.vercel.app";
     } else {
-        return "https://zero-hero.vercel.app";
+        return `https://${window.location.hostname}`;
     }
 }
 
