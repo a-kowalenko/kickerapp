@@ -394,7 +394,7 @@ function Startpage() {
                 </Sidebar>
             )}
             <Main>
-                <Title>Kickerapp</Title>
+                <Title>Welcome to KickerApp</Title>
                 <Tagline>The one and only table football manager</Tagline>
                 <ColumnsContainer>
                     <CreateKickerContainer>
