@@ -394,7 +394,7 @@ function Startpage() {
                 </Sidebar>
             )}
             <Main>
-                <Title>Welcome to zerohero</Title>
+                <Title>Kickerapp</Title>
                 <Tagline>The one and only table football manager</Tagline>
                 <ColumnsContainer>
                     <CreateKickerContainer>
