@@ -50,6 +50,7 @@ const Toggle = styled.div`
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.361);
     cursor: pointer;
     gap: 2.4rem;
+    ${(props) => (props.$minWidth ? `min-width: ${props.$minWidth};` : "")}
     /* min-width: 25rem; */
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -126,6 +127,7 @@ function Dropdown({
     disabled = false,
     initSelected = null,
     isLoading = false,
+    minWidth = null,
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState(initSelected);
@@ -156,6 +158,7 @@ function Dropdown({
                 $isOpen={isOpen}
                 onClick={handleToggle}
                 $variation={disabled ? "disabled" : "default"}
+                $minWidth={minWidth}
             >
                 {selected?.text || "Select an option"}
                 <RotateIcon $isOpen={isOpen} />

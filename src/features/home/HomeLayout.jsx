@@ -4,6 +4,7 @@ import MonthlyDisgraces from "./MonthlyDisgraces";
 import MostPlayed from "./MostPlayed";
 import TodayStats from "./TodayStats";
 import { media } from "../../utils/constants";
+import TimePlayedChart from "./TimePlayedChart";
 
 const StyledHomeLayout = styled.div`
     display: grid;
@@ -11,6 +12,7 @@ const StyledHomeLayout = styled.div`
     grid-template-rows: auto 34rem auto;
     grid-column-gap: 24px;
     grid-row-gap: 24px;
+    margin-bottom: 4rem;
 
     @media (max-width: 1350px) {
         grid-template-columns: repeat(2, 1fr);
@@ -30,6 +32,7 @@ function HomeLayout() {
             <MonthlyDisgraces />
             <MostPlayed />
             <RecentMatches />
+            <TimePlayedChart />
         </StyledHomeLayout>
     );
 }

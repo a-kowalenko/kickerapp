@@ -65,7 +65,7 @@ const TeamContainer = styled.div`
     }
 `;
 
-const GameModeCeontainer = styled.div`
+const GameModeContainer = styled.div`
     display: flex;
     justify-content: center;
 `;
@@ -199,9 +199,9 @@ function MatchesRow({ match }) {
             </TeamContainer>
 
             {isDesktop && (
-                <GameModeCeontainer>
+                <GameModeContainer>
                     <span>{gameMode}</span>
-                </GameModeCeontainer>
+                </GameModeContainer>
             )}
 
             {isDesktop && (

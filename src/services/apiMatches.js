@@ -163,6 +163,23 @@ export async function getMatches({ currentPage, filter }) {
         );
     }
 
+    if (filter?.month) {
+        const start = new Date(
+            filter.year || new Date().getFullYear(),
+            filter.month,
+            1
+        );
+        const end = new Date(
+            filter.year || new Date().getFullYear(),
+            filter.month + 1,
+            1
+        );
+
+        query = query
+            .filter("start_time", "gte", start.toISOString())
+            .filter("start_time", "lt", end.toISOString());
+    }
+
     if (filter?.today) {
         const start = new Date();
         start.setHours(0, 0, 0, 0);

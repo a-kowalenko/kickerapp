@@ -46,6 +46,8 @@ function PlayerStatistics() {
                                 type="monotone"
                                 dataKey="mmr"
                                 stroke="var(--chart-line-color)"
+                                activeDot={{ r: 4 }}
+                                strokeWidth={2}
                             />
                             <CartesianGrid
                                 stroke="var(--color-grey-300)"

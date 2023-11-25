@@ -36,3 +36,37 @@ export function isTouchDevice() {
         navigator.msMaxTouchPoints > 0
     );
 }
+
+export function hasPlayerWonMatch(playerId, match) {
+    const { player1, player2, player3, player4 } = match;
+    const isMatchParticipant =
+        playerId === player1.id ||
+        playerId === player2.id ||
+        playerId === player3?.id ||
+        playerId === player4?.id;
+
+    if (!isMatchParticipant) {
+        throw new Error("Player is not a participant of this match");
+    }
+
+    const isTeam1 = playerId === player1.id || playerId === player3?.id;
+
+    return (
+        (isTeam1 && match.scoreTeam1 > match.scoreTeam2) ||
+        (!isTeam1 && match.scoreTeam1 < match.scoreTeam2)
+    );
+}
+
+export function getPlayersNumberFromMatch(username, match) {
+    for (let i = 1; i <= 4; i++) {
+        if (match[`player${i}`]?.name === username) {
+            return i;
+        }
+    }
+
+    return null;
+}
+
+export function isPlayerInTeam(playerId, ...teamPlayers) {
+    return teamPlayers.some((player) => player?.id === playerId);
+}

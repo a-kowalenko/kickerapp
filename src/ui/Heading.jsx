@@ -46,6 +46,10 @@ const StyledHeading = styled.h1`
     ${media.tablet} {
         padding: 0 2.4rem;
     }
+
+    ${media.mobile} {
+        padding: 0 1.2rem;
+    }
 `;
 
 function Heading({
