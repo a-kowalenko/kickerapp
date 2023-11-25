@@ -219,12 +219,12 @@ function TimePlayedChart() {
             {isLoadingMatches ? (
                 <LoadingSpinner />
             ) : (
-                <ResponsiveContainer width="100%" height={350}>
+                <ResponsiveContainer width="100%" height={isMobile ? 400 : 500}>
                     <LineChart
                         width={600}
                         height={300}
                         data={data}
-                        margin={{ top: 5, right: 20, bottom: 20, left: 20 }}
+                        margin={{ top: 5, right: 5, bottom: 0, left: 10 }}
                     >
                         <CartesianGrid
                             strokeDasharray="3 3"
@@ -232,10 +232,8 @@ function TimePlayedChart() {
                         />
                         <XAxis
                             dataKey="date"
-                            label={{
-                                position: "insideBottom",
-                                dy: 20,
-                            }}
+                            dy={5}
+                            interval={"preserveStartEnd"}
                         />
                         <YAxis
                             domain={["auto", "auto"]}
@@ -276,7 +274,7 @@ function CustomizedAxisTick({ x, y, payload, type }) {
             <text
                 x={0}
                 y={0}
-                dy={16}
+                dy={0}
                 textAnchor="end"
                 fill="var(--primary-text-color)"
             >
