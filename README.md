@@ -1,8 +1,8 @@
 
-# ZeroHero: Table Football Management App
+# KickerApp: Table Football Management App
 
 ## Introduction
-ZeroHero is an innovative web application built with ReactJS and Vite, designed to track and manage table football games in office environments or among friend groups. This app simplifies game tracking, player ranking, and statistics management, making it an ideal tool for fostering friendly competition.
+KickerApp is an innovative web application built with ReactJS and Vite, designed to track and manage table football games in office environments or among friend groups. This app simplifies game tracking, player ranking, and statistics management, making it an ideal tool for fostering friendly competition.
 
 ## Key Features
 - **Player Profiles**: Customize your profile, monitor your progress, and compare rankings.
@@ -17,7 +17,7 @@ ZeroHero is an innovative web application built with ReactJS and Vite, designed 
 - **Additional Features**: We're continually adding new functionalities to enhance your experience.
 
 ## Tech Stack
-ZeroHero is crafted using a blend of modern technologies and tools for a robust and scalable application:
+KickerApp is crafted using a blend of modern technologies and tools for a robust and scalable application:
 
 - **Frontend**:
   - **ReactJS**: A powerful JavaScript library for building user interfaces.
@@ -37,11 +37,11 @@ ZeroHero is crafted using a blend of modern technologies and tools for a robust 
 ## Getting Started
 1. **Clone the Repository**
    ```
-   git clone https://github.com/a-kowalenko/zerohero.git
+   git clone https://github.com/a-kowalenko/kickerapp.git
    ```
 2. **Install Dependencies**
    ```
-   cd zerohero
+   cd kickerapp
    npm install
    ```
 3. **Run the Application**
@@ -50,11 +50,11 @@ ZeroHero is crafted using a blend of modern technologies and tools for a robust 
    ```
 
 ## Contributing
-Your contributions make ZeroHero better! Feel free to fork the repo and submit pull requests with your ideas and improvements.
+Your contributions make KickerApp better! Feel free to fork the repo and submit pull requests with your ideas and improvements.
 
 ## License
-ZeroHero is available under the MIT License. See the LICENSE file for more details.
+KickerApp is available under the MIT License. See the LICENSE file for more details.
 
 ---
 
-Dive into ZeroHero for an enhanced table football gaming experience, complete with advanced features and a user-friendly interface! 🏓✨
+Dive into KickerApp for an enhanced table football gaming experience, complete with advanced features and a user-friendly interface! 🏓✨
