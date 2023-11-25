@@ -53,7 +53,15 @@ export async function getPlayerById(id) {
 export async function createMatch({ players, kicker }) {
     const { data: activeMatches, activeMatchesError } = await supabase
         .from(MATCHES)
-        .select("*")
+        .select(
+            `
+        *,
+        player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+        player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+        player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+        player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
+    `
+        )
         .eq("status", MATCH_ACTIVE)
         .eq("kicker_id", kicker);
 
@@ -153,6 +161,23 @@ export async function getMatches({ currentPage, filter }) {
         query = query.or(
             `player1.eq.${id},player2.eq.${id},player3.eq.${id},player4.eq.${id}`
         );
+    }
+
+    if (filter?.month) {
+        const start = new Date(
+            filter.year || new Date().getFullYear(),
+            filter.month,
+            1
+        );
+        const end = new Date(
+            filter.year || new Date().getFullYear(),
+            filter.month + 1,
+            1
+        );
+
+        query = query
+            .filter("start_time", "gte", start.toISOString())
+            .filter("start_time", "lt", end.toISOString());
     }
 
     if (filter?.today) {

@@ -26,6 +26,7 @@ import UpdatePassword from "./pages/UpdatePassword";
 import { KickerProvider } from "./contexts/KickerContext";
 import Start from "./pages/Start";
 import Settings from "./pages/Settings";
+import { MatchProvider } from "./contexts/MatchContext";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -53,7 +54,9 @@ function App() {
                                 <Route
                                     element={
                                         <ProtectedRoute>
-                                            <AppLayout />
+                                            <MatchProvider>
+                                                <AppLayout />
+                                            </MatchProvider>
                                         </ProtectedRoute>
                                     }
                                 >

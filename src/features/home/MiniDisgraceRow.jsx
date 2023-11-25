@@ -2,6 +2,22 @@ import { format } from "date-fns";
 import MiniTable from "../../ui/MiniTable";
 import PlayerName from "../../ui/PlayerName";
 import { useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import { media } from "../../utils/constants";
+
+const Column = styled.div`
+    display: flex;
+    align-items: center;
+    ${media.mobile} {
+        justify-content: center;
+    }
+`;
+
+const Player = styled(Column)`
+    gap: 1rem;
+`;
+
+const Duration = styled(Column)``;
 
 function MiniDisgraceRow({ disgrace }) {
     const { player1, player2, player3, player4 } = disgrace;
@@ -19,7 +35,7 @@ function MiniDisgraceRow({ disgrace }) {
 
     return (
         <MiniTable.Row onClick={handleClickRow}>
-            <div>
+            <Player>
                 {loserTeam.map(
                     (loser) =>
                         loser && (
@@ -32,8 +48,8 @@ function MiniDisgraceRow({ disgrace }) {
                             </PlayerName>
                         )
                 )}
-            </div>
-            <div>
+            </Player>
+            <Player>
                 {winnerTeam.map(
                     (winner) =>
                         winner && (
@@ -46,8 +62,8 @@ function MiniDisgraceRow({ disgrace }) {
                             </PlayerName>
                         )
                 )}
-            </div>
-            <div>{format(new Date(disgrace.end_time), "dd.")}</div>
+            </Player>
+            <Duration>{format(new Date(disgrace.end_time), "dd.")}</Duration>
         </MiniTable.Row>
     );
 }

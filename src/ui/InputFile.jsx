@@ -2,7 +2,9 @@ import styled from "styled-components";
 
 const InputFile = styled.input.attrs({ type: "file" })`
     border-radius: var(--border-radius-sm);
-    padding: 1.2rem 2.4rem 1.2rem 0;
+    width: 100%;
+    height: 4rem;
+    position: relative;
 
     &::file-selector-button {
         cursor: pointer;

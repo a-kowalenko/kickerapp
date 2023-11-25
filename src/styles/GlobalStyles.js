@@ -75,6 +75,7 @@ const GlobalStyles = createGlobalStyle`
     // Text
     --primary-text-color: #fff;
     --secondary-text-color: var(--color-grey-800);
+    --tertiary-text-color: #4d98c9;
 
     // Border
     --primary-border-color: #525252;
@@ -82,6 +83,8 @@ const GlobalStyles = createGlobalStyle`
 
     // Pulse animation colors
     --pulse-color-transparent: rgba(7, 89, 133, 0);
+    --pulse-color-heavily-transparent: rgba(7, 89, 133,  0.3);
+    --pulse-color-medium-transparent: rgba(7, 89, 133,  0.4);
     --pulse-color-slightly-transparent: rgba(7, 89, 133, 0.7);
 
     // Disabled
@@ -138,7 +141,7 @@ const GlobalStyles = createGlobalStyle`
 
     // Names
     --winner-name-color: #13d90c;
-    --loser-name-color: #ff0000;
+    --loser-name-color: #ff7300;
     --name-hover-gradient-start: #5dc3f5;
     --name-hover-gradient-end: #000ac0;
 
@@ -197,6 +200,7 @@ const GlobalStyles = createGlobalStyle`
     // Text
     --primary-text-color: #000;
     --secondary-text-color: var(--color-grey-800);
+    --tertiary-text-color: var(--color-grey-500);
 
     // Border
     --primary-border-color: #000;
@@ -204,7 +208,9 @@ const GlobalStyles = createGlobalStyle`
 
     // Pulse animation colors
     --pulse-color-transparent: rgba(235, 201, 33, 0);
-    --pulse-color-slightly-transparent: 	rgba(235, 201, 33, 0.7);
+    --pulse-color-heavily-transparent: rgba(235, 201, 33,  0.3);
+    --pulse-color-medium-transparent: rgba(235, 201, 33,  0.4);
+    --pulse-color-slightly-transparent: rgba(235, 201, 33, 0.7);
 
     // Disabled
     --disabled-color: #d1d5db;
@@ -380,6 +386,14 @@ select {
 
 button {
   cursor: pointer;
+
+  // Disables selecting of the inner button text
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none;   /* Safari */
+  -khtml-user-select: none;    /* Konqueror HTML */
+  -moz-user-select: none;      /* Old versions of Firefox */
+  -ms-user-select: none;       /* Internet Explorer/Edge */
+  user-select: none;           /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
 }
 
 *:disabled {

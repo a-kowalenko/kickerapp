@@ -32,6 +32,10 @@ const sizes = {
         width: 3.4rem;
         height: 3.4rem;
     `,
+    medium: css`
+        width: 6rem;
+        height: 6rem;
+    `,
     large: css`
         width: 10rem;
         height: 10rem;

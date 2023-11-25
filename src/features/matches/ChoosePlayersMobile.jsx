@@ -1,12 +1,13 @@
 import styled from "styled-components";
 import Heading from "../../ui/Heading";
-import Divider from "../../ui/Divider";
 import ContentBox from "../../ui/ContentBox";
 import Dropdown from "../../ui/Dropdown";
 import SpinnerMini from "../../ui/SpinnerMini";
 import Button from "../../ui/Button";
-import { HiPlus } from "react-icons/hi2";
+import { HiArrowsUpDown, HiPlus } from "react-icons/hi2";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
+import Ruleset from "./Ruleset";
+import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
 
 const StyledChoosePlayersMobile = styled.div`
     display: flex;
@@ -27,6 +28,24 @@ const SubmitContainer = styled.div`
     }
 `;
 
+const MidButtonsContainer = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4rem;
+`;
+
+const MidButton = styled(Button)`
+    height: fit-content;
+    padding: 1.4rem;
+    align-self: center;
+    margin: -1.2rem 0;
+
+    & svg {
+        font-size: 2.6rem;
+    }
+`;
+
 function ChoosePlayersMobile() {
     const {
         isLoading,
@@ -34,12 +53,15 @@ function ChoosePlayersMobile() {
         isStarting,
         timer,
         cancelTimer,
-        handleSelect,
+        selectPlayer,
         activatePlayer,
         isPlayer3Active,
         isPlayer4Active,
         filteredPlayers,
         filteredForPlayer3And4,
+        switchTeams,
+        clearAllPlayers,
+        selectedPlayers: [player1, player2, player3, player4],
     } = useChoosePlayers();
 
     if (isLoading) {
@@ -48,18 +70,24 @@ function ChoosePlayersMobile() {
 
     return (
         <StyledChoosePlayersMobile>
-            <Heading as="h1">Choose players</Heading>
-
             <TeamContainer>
                 <Heading as="h3">Team 1</Heading>
                 <Dropdown
                     options={filteredPlayers}
-                    onSelect={(playerId) => handleSelect(playerId, 0)}
+                    onSelect={(playerId) => selectPlayer(playerId, 1)}
+                    initSelected={{
+                        text: player1?.name,
+                        value: player1?.id,
+                    }}
                 />
                 {isPlayer3Active ? (
                     <Dropdown
                         options={filteredForPlayer3And4}
-                        onSelect={(playerId) => handleSelect(playerId, 2)}
+                        onSelect={(playerId) => selectPlayer(playerId, 3)}
+                        initSelected={{
+                            text: player3?.name,
+                            value: player3?.id,
+                        }}
                     />
                 ) : (
                     <Button onClick={() => activatePlayer(3)}>
@@ -68,18 +96,38 @@ function ChoosePlayersMobile() {
                     </Button>
                 )}
             </TeamContainer>
-            <Divider />
+
+            <MidButtonsContainer>
+                <MidButton onClick={switchTeams}>
+                    <HiArrowsUpDown />
+                </MidButton>
+                <MidButton
+                    onClick={clearAllPlayers}
+                    disabled={isStarting}
+                    title="Clear Players"
+                >
+                    <ClearPlayers />
+                </MidButton>
+            </MidButtonsContainer>
 
             <TeamContainer>
                 <Heading as="h3">Team 2</Heading>
                 <Dropdown
                     options={filteredPlayers}
-                    onSelect={(playerId) => handleSelect(playerId, 1)}
+                    onSelect={(playerId) => selectPlayer(playerId, 2)}
+                    initSelected={{
+                        text: player2?.name,
+                        value: player2?.id,
+                    }}
                 />
                 {isPlayer4Active ? (
                     <Dropdown
                         options={filteredForPlayer3And4}
-                        onSelect={(playerId) => handleSelect(playerId, 3)}
+                        onSelect={(playerId) => selectPlayer(playerId, 4)}
+                        initSelected={{
+                            text: player4?.name,
+                            value: player4?.id,
+                        }}
                     />
                 ) : (
                     <Button onClick={() => activatePlayer(4)}>
@@ -101,6 +149,7 @@ function ChoosePlayersMobile() {
                     </Button>
                 )}
             </SubmitContainer>
+            <Ruleset />
         </StyledChoosePlayersMobile>
     );
 }

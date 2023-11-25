@@ -1,12 +1,6 @@
-import styled from "styled-components";
 import Filter from "../../ui/Filter";
 import { HiArrowsUpDown } from "react-icons/hi2";
-
-const StyledFilterRow = styled.div`
-    display: flex;
-    align-items: center;
-    margin: 0 0 1rem 0;
-`;
+import FilterRow from "../../ui/FilterRow";
 
 function GoalsFilterRow() {
     const options = [
@@ -16,14 +10,14 @@ function GoalsFilterRow() {
     const field = "sort";
 
     return (
-        <StyledFilterRow>
+        <FilterRow>
             <Filter
                 name="goals"
                 options={options}
                 field={field}
                 icon={<HiArrowsUpDown />}
             />
-        </StyledFilterRow>
+        </FilterRow>
     );
 }
 

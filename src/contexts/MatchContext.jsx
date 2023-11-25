@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import supabase, { databaseSchema } from "../services/supabase";
 import {
     GOALS,
@@ -7,12 +6,14 @@ import {
     MATCH_ENDED,
     MATCH_ENDED_BY_CRON,
 } from "../utils/constants";
-import { useKicker } from "../contexts/KickerContext";
-import { useQueryClient } from "react-query";
 import { getActiveMatch, getMatch } from "../services/apiMatches";
+import { useQueryClient } from "react-query";
+import { useKicker } from "./KickerContext";
 import { useParams } from "react-router-dom";
 
-export function useActiveMatch() {
+const MatchContext = createContext();
+
+function MatchProvider({ children }) {
     const { matchId } = useParams();
     const { currentKicker: kicker } = useKicker();
     const [activeMatch, setActiveMatch] = useState(null);
@@ -22,7 +23,7 @@ export function useActiveMatch() {
         function () {
             async function updateActiveMatch(payload) {
                 const match = await getMatch({
-                    matchId: Number(matchId) || payload.new.id,
+                    matchId: payload.new.id,
                     kicker,
                 });
 
@@ -54,9 +55,7 @@ export function useActiveMatch() {
                 }
             }
 
-            if (!matchId) {
-                getInitMatch();
-            }
+            getInitMatch();
 
             const channel = supabase
                 .channel("schema-db-changes")
@@ -76,5 +75,23 @@ export function useActiveMatch() {
         [kicker, queryClient, matchId]
     );
 
-    return { activeMatch, setActiveMatch };
+    return (
+        <MatchContext.Provider value={{ activeMatch, setActiveMatch }}>
+            {children}
+        </MatchContext.Provider>
+    );
 }
+
+function useMatchContext() {
+    const context = useContext(MatchContext);
+
+    if (context === undefined) {
+        throw new Error(
+            "MatchContext cannot be used outside the MatchProvider"
+        );
+    }
+
+    return context;
+}
+
+export { MatchProvider, useMatchContext };

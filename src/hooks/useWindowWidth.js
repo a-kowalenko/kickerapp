@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useState } from "react";
+import { media } from "../utils/constants";
 
 function useWindowWidth() {
     const [width, setWidth] = useState(window.innerWidth);
@@ -10,7 +11,11 @@ function useWindowWidth() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    return width;
+    const isMobile = width <= media.maxMobile;
+    const isTablet = width <= media.maxTablet && width > media.maxMobile;
+    const isDesktop = width > media.maxTablet;
+
+    return { windowWidth: width, isMobile, isTablet, isDesktop };
 }
 
 export default useWindowWidth;

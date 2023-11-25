@@ -7,7 +7,6 @@ import MiniMatchRow from "./MiniMatchRow";
 import { useRecentMatches } from "./useRecentMatches";
 import styled from "styled-components";
 import useWindowWidth from "../../hooks/useWindowWidth";
-import { media } from "../../utils/constants";
 
 const StyledRecentMatches = styled(ContentBox)`
     grid-area: 3 / 1 / 4 / 5;
@@ -19,7 +18,7 @@ const StyledRecentMatches = styled(ContentBox)`
 
 function RecentMatches() {
     const { matches, isLoadingMatches } = useRecentMatches();
-    const windowWidth = useWindowWidth();
+    const { windowWidth, isMobile } = useWindowWidth();
     const showStartTime = windowWidth > 1350;
     const showDuration = windowWidth > 768;
     const showId = windowWidth > 650;
@@ -30,6 +29,8 @@ function RecentMatches() {
         ? "0.1fr 0.5fr 0.5fr 0.5fr 0.4fr"
         : showId
         ? "0.1fr 0.5fr 0.5fr 0.5fr"
+        : isMobile
+        ? "0.5fr 0.3fr 0.5fr"
         : "0.5fr 0.5fr 0.5fr";
 
     return (
@@ -40,9 +41,13 @@ function RecentMatches() {
             <MiniTable columns={columns}>
                 <MiniTable.Header>
                     {showId && <div>Id</div>}
-                    <div style={{ textAlign: "right" }}>Team 1</div>
+                    <div style={{ textAlign: isMobile ? "center" : "right" }}>
+                        Team 1
+                    </div>
                     <div style={{ textAlign: "center" }}>Score</div>
-                    <div>Team 2</div>
+                    <div style={{ textAlign: isMobile ? "center" : "" }}>
+                        Team 2
+                    </div>
                     {showStartTime && <div>Start Time</div>}
                     {showDuration && <div>Duration</div>}
                 </MiniTable.Header>

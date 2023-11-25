@@ -60,17 +60,14 @@ const List = styled.ul`
     flex-direction: column;
     border-radius: var(--border-radius-sm);
 
-    box-shadow:
-        1px 1px 1px var(--primary-dropdown-border-color),
+    box-shadow: 1px 1px 1px var(--primary-dropdown-border-color),
         -1px -1px 1px var(--primary-dropdown-border-color);
 
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
     max-width: ${(props) => (props.$isOpen ? "100%" : "0")};
     overflow: hidden;
     display: ${(props) => (props.$isOpen ? "flex" : "hidden")};
-    transition:
-        max-height 0.2s ease-in-out,
-        max-width 0.2s ease-in-out;
+    transition: max-height 0.2s ease-in-out, max-width 0.2s ease-in-out;
 `;
 
 const Element = styled.div`
@@ -118,6 +115,10 @@ function Filter({ options, field, name, icon }) {
     }
 
     function handleSelect(option) {
+        const hasPage = !!searchParams.get("page");
+        if (hasPage) {
+            searchParams.set("page", 1);
+        }
         searchParams.set(field, option.value);
         setSearchParams(searchParams, { replace: true });
         setSelectedOption(option);

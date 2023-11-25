@@ -1,5 +1,14 @@
+import styled from "styled-components";
 import PlayerName from "../../ui/PlayerName";
 import Table from "../../ui/Table";
+import { media } from "../../utils/constants";
+
+const CenteredColumnInMobile = styled.div`
+    ${media.tablet} {
+        display: flex;
+        justify-content: center;
+    }
+`;
 
 function OpponentStatsRow({ stats }) {
     const { name, wins, losses, total, winrate, goals, ownGoals } = stats;
@@ -9,24 +18,24 @@ function OpponentStatsRow({ stats }) {
             <PlayerName to={`/user/${name}/profile`}>
                 <span>{name}</span>
             </PlayerName>
-            <div>
+            <CenteredColumnInMobile>
                 <span>{wins}</span>
-            </div>
-            <div>
+            </CenteredColumnInMobile>
+            <CenteredColumnInMobile>
                 <span>{losses}</span>
-            </div>
-            <div>
+            </CenteredColumnInMobile>
+            <CenteredColumnInMobile>
                 <span>{total}</span>
-            </div>
-            <div>
+            </CenteredColumnInMobile>
+            <CenteredColumnInMobile>
                 <span>{(winrate * 100).toFixed(1)}</span>%
-            </div>
-            <div>
+            </CenteredColumnInMobile>
+            <CenteredColumnInMobile>
                 <span>{goals}</span>
-            </div>
-            <div>
+            </CenteredColumnInMobile>
+            <CenteredColumnInMobile>
                 <span>{ownGoals}</span>
-            </div>
+            </CenteredColumnInMobile>
         </Table.Row>
     );
 }

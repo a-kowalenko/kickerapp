@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import PlayerName from "../../ui/PlayerName";
 import useWindowWidth from "../../hooks/useWindowWidth";
-import { MATCH_ACTIVE, MATCH_ENDED } from "../../utils/constants";
+import { MATCH_ACTIVE, MATCH_ENDED, media } from "../../utils/constants";
 
 const TeamContainer = styled.div`
     display: flex;
@@ -29,6 +29,10 @@ const ScoreContainer = styled.div`
     justify-content: center;
     align-items: center;
     gap: 1.2rem;
+
+    ${media.tablet} {
+        gap: 0.6rem;
+    }
 `;
 
 const Score = styled.div`
@@ -38,6 +42,12 @@ const Score = styled.div`
     align-items: center;
     justify-content: ${(props) =>
         props.$team === "1" ? "flex-end" : "flex-start"};
+
+    ${media.tablet} {
+        font-weight: 600;
+        font-size: 1.4rem;
+        min-width: 1.6rem;
+    }
 `;
 
 const DurationContainer = styled.div`
@@ -56,7 +66,7 @@ function MiniMatchRow({ match }) {
         match.status !== MATCH_ENDED
             ? null
             : match.scoreTeam1 > match.scoreTeam2;
-    const windowWidth = useWindowWidth();
+    const { windowWidth } = useWindowWidth();
     const showStartTime = windowWidth > 1350;
     const showDuration = windowWidth > 768;
     const showId = windowWidth > 650;
@@ -137,10 +147,7 @@ function MiniMatchRow({ match }) {
             </TeamContainer>
             {showStartTime && (
                 <div>
-                    {format(
-                        new Date(match.start_time),
-                        "dd.MM.yyyy - HH:mm:ss"
-                    )}
+                    {format(new Date(match.start_time), "dd.MM.yyyy - HH:mm")}
                 </div>
             )}
             {showDuration && (

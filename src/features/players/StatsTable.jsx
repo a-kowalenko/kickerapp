@@ -1,3 +1,4 @@
+import useWindowWidth from "../../hooks/useWindowWidth";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import Table from "../../ui/Table";
 import { usePlayerName } from "./usePlayerName";
@@ -5,8 +6,12 @@ import { usePlayerName } from "./usePlayerName";
 import { usePlaytime } from "./usePlaytime";
 
 function StatsTable({ userId }) {
-    const { player, isLoading: isLoadingPlayer, error } = usePlayerName(userId);
+    const { player, isLoading: isLoadingPlayer } = usePlayerName(userId);
     const { data: playtimeData, isLoading: isLoadingPlaytime } = usePlaytime();
+    const { isDesktop, isMobile } = useWindowWidth();
+    const columns = isDesktop
+        ? "1fr 1fr 1fr 1fr 1fr 1fr"
+        : "1fr 0.4fr 0.4fr 1fr 0.7fr 1fr";
 
     const isLoading = isLoadingPlaytime || isLoadingPlayer;
 
@@ -42,11 +47,11 @@ function StatsTable({ userId }) {
     }
 
     return (
-        <Table columns="1fr 1fr 1fr 1fr 1fr 1fr">
+        <Table columns={columns}>
             <Table.Header>
-                <div>Gamemode</div>
-                <div>Wins</div>
-                <div>Losses</div>
+                <div>{isMobile ? "Mode" : "Gamemode"}</div>
+                <div>{isMobile ? "W" : "Wins"}</div>
+                <div>{isMobile ? "L" : "Losses"}</div>
                 <div>Winrate</div>
                 <div>MMR</div>
                 <div>Playtime</div>

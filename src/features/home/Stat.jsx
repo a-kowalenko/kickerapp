@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import ContentBox from "../../ui/ContentBox";
 import Heading from "../../ui/Heading";
+import { media } from "../../utils/constants";
 
 const StyledStat = styled(ContentBox)`
     padding: 1.6rem;
@@ -9,6 +10,10 @@ const StyledStat = styled(ContentBox)`
     grid-template-rows: auto auto;
     column-gap: 1.6rem;
     row-gap: 0.4rem;
+
+    ${media.tablet} {
+        column-gap: 1rem;
+    }
 `;
 
 const Icon = styled.div`
@@ -25,6 +30,13 @@ const Icon = styled.div`
         height: 3.2rem;
         color: var(--color-${(props) => props.color}-700);
     }
+
+    ${media.tablet} {
+        & svg {
+            width: 2.4rem;
+            height: 2.4rem;
+        }
+    }
 `;
 
 const Title = styled(Heading)`
@@ -33,12 +45,20 @@ const Title = styled(Heading)`
     text-transform: uppercase;
     font-weight: 600;
     color: var(--color-grey-600);
+
+    ${media.tablet} {
+        font-size: 1.2rem;
+    }
 `;
 
 const Value = styled.p`
     font-weight: 600;
     font-size: 2.4rem;
     line-height: 1;
+
+    ${media.tablet} {
+        font-size: 2rem;
+    }
 `;
 
 function Stat({ icon, title, value, color }) {

@@ -26,11 +26,17 @@ export async function createPlayer({ user, kickerId }) {
     return data;
 }
 
-export async function updatePlayerByUserId({ username, avatar, userId }) {
+export async function updatePlayerByUserId({
+    username,
+    avatar,
+    userId,
+    kicker,
+}) {
     const { data, error } = await supabase
         .from(PLAYER)
         .update({ name: username, avatar })
         .eq("user_id", userId)
+        .eq("kicker_id", kicker)
         .select()
         .single();
 
@@ -60,14 +66,13 @@ export async function getPlayerByName({ name, kicker }) {
         .from(PLAYER)
         .select("*")
         .eq("kicker_id", kicker)
-        .eq("name", name)
-        .single();
+        .eq("name", name);
 
     if (error) {
         throw new Error("Player could not be loaded");
     }
 
-    return data;
+    return data[0];
 }
 
 export async function getOwnPlayer(kicker) {
@@ -77,7 +82,8 @@ export async function getOwnPlayer(kicker) {
         .from(PLAYER)
         .select("*")
         .eq("kicker_id", kicker)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .single();
 
     if (error) {
         throw new Error(error.message);

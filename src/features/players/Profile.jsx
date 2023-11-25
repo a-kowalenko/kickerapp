@@ -7,6 +7,8 @@ import Avatar from "../../ui/Avatar";
 import { usePlayerName } from "./usePlayerName";
 import Error from "../../ui/Error";
 import SpinnerMini from "../../ui/SpinnerMini";
+import useWindowWidth from "../../hooks/useWindowWidth";
+import ProfileMobile from "./ProfileMobile";
 
 const StyledProfile = styled.div`
     display: flex;
@@ -39,11 +41,16 @@ const LeftBox = styled.div`
 `;
 
 function Profile() {
+    const { isTablet, isMobile } = useWindowWidth();
     const { userId } = useParams();
     const { player, isLoading, error } = usePlayerName(userId);
 
     if (error) {
         return <Error message={error.message} />;
+    }
+
+    if (isTablet || isMobile) {
+        return <ProfileMobile />;
     }
 
     return (

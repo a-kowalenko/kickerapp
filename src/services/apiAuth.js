@@ -1,6 +1,6 @@
 import { PLAYER } from "../utils/constants";
 import { getBaseUrl } from "../utils/helpers";
-import { updatePlayerByUserId } from "./apiPlayer";
+import { getPlayerByName, updatePlayerByUserId } from "./apiPlayer";
 import supabase, { supabaseUrl } from "./supabase";
 
 export async function register({ username, email, password }) {
@@ -63,29 +63,20 @@ export async function logout() {
     }
 }
 
-export async function updateCurrentUser({ username, avatar }) {
-    const {
-        user_metadata: { username: currentUsername },
-    } = await getCurrentUser();
+export async function updateCurrentUser({ username, avatar, kicker }) {
+    const user = await getCurrentUser();
+    const { id } = user;
+    const player = await getPlayerByName({ name: username, kicker });
 
-    if (currentUsername !== username && (await existsUsername(username))) {
+    if (player && player.user_id !== id) {
         throw new Error("Username is already taken");
     }
 
-    const { data, error } = await supabase.auth.updateUser({
-        data: { username },
-    });
-
-    if (error) {
-        throw new Error(error.message);
-    }
-
     let avatarLink;
-    let updatedData = data;
 
     // If avatar is provided, handle its upload
     if (avatar) {
-        const filename = `avatars-${data.user.id}-${Math.random()}`;
+        const filename = `avatars-${user.id}-${Math.random()}`;
 
         const { error: storageError } = await supabase.storage
             .from("avatars")
@@ -96,28 +87,16 @@ export async function updateCurrentUser({ username, avatar }) {
         }
 
         avatarLink = `${supabaseUrl}/storage/v1/object/public/avatars/${filename}`;
-
-        const { data: dataAvatar, error: avatarError } =
-            await supabase.auth.updateUser({
-                data: {
-                    avatar: avatarLink,
-                },
-            });
-
-        if (avatarError) {
-            throw new Error(avatarError.message);
-        }
-
-        updatedData = dataAvatar;
     }
 
-    await updatePlayerByUserId({
+    const updatedPlayer = await updatePlayerByUserId({
         username,
         avatar: avatarLink,
-        userId: data.user.id,
+        userId: user.id,
+        kicker,
     });
 
-    return updatedData;
+    return updatedPlayer;
 }
 
 async function existsUsername(username) {

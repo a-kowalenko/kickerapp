@@ -1,12 +1,6 @@
-import styled from "styled-components";
 import Filter from "../../ui/Filter";
 import { PiGameControllerLight } from "react-icons/pi";
-
-const StyledFilterRow = styled.div`
-    display: flex;
-    align-items: center;
-    margin: 0 0 1rem 0;
-`;
+import FilterRow from "../../ui/FilterRow";
 
 function MatchesFilterRow() {
     const options = [
@@ -18,14 +12,14 @@ function MatchesFilterRow() {
     const field = "gamemode";
 
     return (
-        <StyledFilterRow>
+        <FilterRow>
             <Filter
                 name="matches"
                 options={options}
                 field={field}
                 icon={<PiGameControllerLight />}
             />
-        </StyledFilterRow>
+        </FilterRow>
     );
 }
 

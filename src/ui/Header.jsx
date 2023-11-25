@@ -12,6 +12,10 @@ import { HiArrowRightOnRectangle } from "react-icons/hi2";
 import { media } from "../utils/constants";
 import ProfileMenu from "./ProfileMenu";
 import useWindowWidth from "../hooks/useWindowWidth";
+import { useMatchContext } from "../contexts/MatchContext";
+import MiniActiveMatchInfo from "./MiniActiveMatchInfo";
+import { useEffect } from "react";
+import { useState } from "react";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -56,13 +60,26 @@ function Header() {
         useKickerInfo();
     const { kickers, isLoadingKickers } = useUserKickers();
     const { setCurrentKicker } = useKicker();
-    const windowWidth = useWindowWidth();
+    const { activeMatch } = useMatchContext();
+    const { windowWidth } = useWindowWidth();
     const showLeaveKicker = windowWidth <= media.maxTablet;
+    const [showActiveMatch, setShowActiveMatch] = useState(!!activeMatch);
 
     function handleKickerSelect(option) {
         setCurrentKicker(option);
         navigate("/home");
     }
+
+    useEffect(() => {
+        const isOpen = localStorage.getItem("isOpenLeftSidebar") === "true";
+        if (activeMatch && isOpen && windowWidth > 1100) {
+            setShowActiveMatch(true);
+        } else if (activeMatch && !isOpen && windowWidth > 950) {
+            setShowActiveMatch(true);
+        } else {
+            setShowActiveMatch(false);
+        }
+    }, [windowWidth, activeMatch]);
 
     return (
         <StyledHeader>
@@ -91,6 +108,9 @@ function Header() {
                     </>
                 )}
             </KickerInfoWrapper>
+
+            {showActiveMatch && <MiniActiveMatchInfo />}
+
             <ToggleWrapper>
                 {showLeaveKicker && (
                     <ButtonIcon

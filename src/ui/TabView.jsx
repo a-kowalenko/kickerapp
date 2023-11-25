@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import styled from "styled-components";
+import { media } from "../utils/constants";
 
 const StyledTabView = styled.div`
     display: block;
@@ -10,12 +11,19 @@ const TabHeader = styled.div`
     height: 48px;
     background-color: transparent;
     border-bottom: 1px solid var(--color-grey-100);
+    ${media.mobile} {
+        justify-content: flex-start;
+    }
 `;
 
 const TabItem = styled(NavLink)`
     padding: 0.8rem 1.2rem;
     position: relative;
     color: var(--color-grey-500);
+
+    ${media.mobile} {
+        padding: 0.8rem 0.8rem;
+    }
 
     &:hover {
         background-color: var(--tertiary-background-color);
@@ -52,6 +60,10 @@ const TabContent = styled.div`
     display: block;
     background-color: transparent;
     padding: 1rem 2.4rem;
+
+    ${media.tablet} {
+        padding: 1rem 0rem;
+    }
 `;
 
 function TabSlider() {

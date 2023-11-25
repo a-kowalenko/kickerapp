@@ -1,13 +1,15 @@
 import styled, { css } from "styled-components";
-import { useMoveBack } from "../hooks/useMoveBack";
 import ButtonIcon from "./ButtonIcon";
 import { HiArrowLeft } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
+import { media } from "../utils/constants";
+import { useMoveBackToHome } from "../hooks/useMoveBackToHome";
 
 const StyledHeading = styled.h1`
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    gap: 2.4rem;
 
     ${(props) =>
         props.as === "h1" &&
@@ -40,6 +42,14 @@ const StyledHeading = styled.h1`
     ${(props) => (props.$uppercase ? "text-transform: uppercase" : "")};
 
     line-height: 1.4;
+
+    ${media.tablet} {
+        padding: 0 2.4rem;
+    }
+
+    ${media.mobile} {
+        padding: 0 1.2rem;
+    }
 `;
 
 function Heading({
@@ -49,21 +59,23 @@ function Heading({
     backDirection = null,
     children,
 }) {
-    const moveBack = useMoveBack();
+    const moveBackToHome = useMoveBackToHome();
     const navigate = useNavigate();
 
     return (
         <StyledHeading as={as} type={type}>
-            {children}
             {hasBackBtn && (
                 <ButtonIcon
                     onClick={
-                        backDirection ? () => navigate(backDirection) : moveBack
+                        backDirection
+                            ? () => navigate(backDirection)
+                            : moveBackToHome
                     }
                 >
                     <HiArrowLeft />
                 </ButtonIcon>
             )}
+            {children}
         </StyledHeading>
     );
 }

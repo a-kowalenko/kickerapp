@@ -26,6 +26,7 @@ export const GAMEMODE_2ON1 = "2on1";
 export const MATCH_ACTIVE = "active";
 export const MATCH_ENDED = "ended";
 export const MATCH_ENDED_BY_CRON = "ended_by_cron";
+export const END_MATCH_PRESS_DELAY = 1000 * 1;
 
 // GOAL TYPES
 export const STANDARD_GOAL = "standard_goal";
@@ -38,3 +39,26 @@ export const MATCHES = "matches";
 export const PLAYER = "player";
 export const KICKER = "kicker";
 export const GOALS = "goals";
+
+// COLORS
+export const colorsLight = [
+    "#84cc16",
+    "#ef4444",
+    "#3b82f6",
+    "#eab308",
+    "#22c55e",
+    "#f97316",
+    "#14b8a6",
+    "#a855f7",
+];
+
+export const colorsDark = [
+    "#b91c1c",
+    "#c2410c",
+    "#a16207",
+    "#4d7c0f",
+    "#15803d",
+    "#0f766e",
+    "#1d4ed8",
+    "#7e22ce",
+];

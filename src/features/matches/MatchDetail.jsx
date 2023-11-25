@@ -13,9 +13,7 @@ import {
     MATCH_ACTIVE,
     MATCH_ENDED,
     STANDARD_GOAL,
-    media,
 } from "../../utils/constants";
-import Button from "../../ui/Button";
 import Input from "../../ui/Input";
 import Error from "../../ui/Error";
 import SpinnerMini from "../../ui/SpinnerMini";
@@ -24,9 +22,14 @@ import MatchDetailMobile from "./MatchDetailMobile";
 import { useGoals } from "../../hooks/useGoals";
 import ContentBox from "../../ui/ContentBox";
 import LoadingSpinner from "../../ui/LoadingSpinner";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
-import { useActiveMatch } from "../../hooks/useActiveMatch";
+import { useMatchContext } from "../../contexts/MatchContext";
+import DelayedButton from "../../ui/DelayedButton";
+import { HiArrowDownTray, HiArrowPath } from "react-icons/hi2";
+import Button from "../../ui/Button";
+
+const StyledMatchDetail = styled.div``;
 
 const Row = styled.div`
     display: flex;
@@ -37,7 +40,9 @@ const Row = styled.div`
 
 const TopRow = styled(Row)``;
 
-const MainRow = styled(Row)``;
+const MainRow = styled(Row)`
+    height: 30rem;
+`;
 
 const GoalsContainer = styled.div`
     display: flex;
@@ -45,6 +50,7 @@ const GoalsContainer = styled.div`
     overflow: scroll;
     overflow-x: hidden;
     flex-grow: 1;
+    max-height: 50rem;
 `;
 
 const GoalRow = styled.div`
@@ -200,22 +206,25 @@ function MatchDetail() {
         clearInterval(timerIdRef.current);
     }
 
+    const navigate = useNavigate();
+    const { matchId } = useParams();
     const [searchParams] = useSearchParams();
     const { match, isLoading, error } = useMatch();
-    const activeMatch = useActiveMatch();
+    const { activeMatch } = useMatchContext();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
-    const { goals, isLoadingGoals, countGoals } = useGoals();
+    const { goals, isLoadingGoals } = useGoals();
     const [score1, setScore1] = useState("");
     const [score2, setScore2] = useState("");
     const [timer, setTimer] = useState(<SpinnerMini />);
     const timerIdRef = useRef(null);
     const goalBoxRef = useRef(null);
-    const windowWidth = useWindowWidth();
+    const { isMobile, isTablet } = useWindowWidth();
     const sort = searchParams.get("sort") ? searchParams.get("sort") : "asc";
     const finalGoals = goals
         ?.filter((goal) => goal.goal_type !== GENERATED_GOAL)
         .sort((a, b) => (sort === "asc" ? a.id - b.id : b.id - a.id));
-    const finalMatch = activeMatch || match;
+    const finalMatch =
+        activeMatch && activeMatch.id === Number(matchId) ? activeMatch : match;
 
     useEffect(
         function () {
@@ -264,6 +273,15 @@ function MatchDetail() {
         [finalGoals?.length, sort]
     );
 
+    function createRematch() {
+        navigate({
+            pathname: "/matches/create",
+            search: `?player1=${player1.id}&player2=${player2.id}${
+                player3 ? `&player3=${player3.id}` : ""
+            }${player4 ? `&player4=${player4.id}` : ""}`,
+        });
+    }
+
     if (isLoading || isLoadingGoals) {
         return <LoadingSpinner />;
     }
@@ -281,12 +299,12 @@ function MatchDetail() {
             : "Team 2"
         : null;
 
-    if (windowWidth < media.maxTablet) {
+    if (isTablet || isMobile) {
         return <MatchDetailMobile match={finalMatch} timer={timer} />;
     }
 
     return (
-        <>
+        <StyledMatchDetail>
             <TopRow>
                 <TeamHeader>Team 1</TeamHeader>
                 <ScoreContainer>
@@ -346,9 +364,17 @@ function MatchDetail() {
                 </TeamContainer>
             </MainRow>
             {isEnded && (
-                <CenteredInfoLabel>
-                    <i>Match ended. Winner: {winner}</i>
-                </CenteredInfoLabel>
+                <>
+                    <CenteredInfoLabel>
+                        <i>Match ended. Winner: {winner}</i>
+                    </CenteredInfoLabel>
+                    <BottomRow>
+                        <Button onClick={createRematch}>
+                            <HiArrowPath />
+                            Rematch
+                        </Button>
+                    </BottomRow>
+                </>
             )}
             <GoalsFilterRow />
             <GoalsContainer ref={goalBoxRef}>
@@ -417,12 +443,16 @@ function MatchDetail() {
             </GoalsContainer>
             <BottomRow>
                 {isActive && (
-                    <Button $size="xlarge" onClick={handleEndMatch}>
+                    <DelayedButton
+                        $size="xlarge"
+                        action={handleEndMatch}
+                        icon={<HiArrowDownTray />}
+                    >
                         {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
-                    </Button>
+                    </DelayedButton>
                 )}
             </BottomRow>
-        </>
+        </StyledMatchDetail>
     );
 }
 

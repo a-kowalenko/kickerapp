@@ -4,6 +4,7 @@ import Table from "../../ui/Table";
 import RankingsRow from "./RankingsRow";
 import { useRankings } from "./useRankings";
 import LoadingSpinner from "../../ui/LoadingSpinner";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 function RankingsTable() {
     const { rankings, count, isLoadingRankings } = useRankings();
@@ -11,15 +12,28 @@ function RankingsTable() {
     const gamemode = searchParams.get("gamemode")
         ? searchParams.get("gamemode")
         : "1on1";
+    const { isTablet, isDesktop, isMobile } = useWindowWidth();
+
+    const columns = isDesktop
+        ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"
+        : isTablet
+        ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"
+        : "0.5fr 1.6fr 0.4fr 0.4fr 0.4fr 1fr 0.8fr";
 
     return (
-        <Table columns="0.5fr 1fr 1fr 1fr 1fr 1fr 1fr">
+        <Table columns={columns}>
             <Table.Header>
                 <div>Rank</div>
                 <div>Player</div>
-                <div style={{ textAlign: "center" }}>Wins</div>
-                <div style={{ textAlign: "center" }}>Losses</div>
-                <div style={{ textAlign: "center" }}>Total</div>
+                <div style={{ textAlign: "center" }}>
+                    {isMobile ? "W" : "Wins"}
+                </div>
+                <div style={{ textAlign: "center" }}>
+                    {isMobile ? "L" : "Losses"}
+                </div>
+                <div style={{ textAlign: "center" }}>
+                    {isMobile ? "T" : "Total"}
+                </div>
                 <div style={{ textAlign: "center" }}>Winrate</div>
                 <div style={{ textAlign: "center" }}>MMR</div>
             </Table.Header>

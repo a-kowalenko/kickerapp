@@ -1,5 +1,4 @@
 import { useParams } from "react-router-dom";
-import { useUser } from "../features/authentication/useUser";
 import Profile from "../features/players/Profile";
 import Heading from "../ui/Heading";
 import TabView from "../ui/TabView";
@@ -7,18 +6,17 @@ import Spinner from "../ui/Spinner";
 import ProfileSettings from "../features/players/ProfileSettings";
 import ProfileMatches from "../features/players/ProfileMatches";
 import PlayerStatistics from "../features/players/PlayerStatistics";
+import { useOwnPlayer } from "../hooks/useOwnPlayer";
 
 function User() {
     const { userId } = useParams();
-    const { user, isLoading } = useUser();
+    const { data: player, isLoading } = useOwnPlayer();
 
     if (isLoading) {
         return <Spinner />;
     }
 
-    const {
-        user_metadata: { username },
-    } = user;
+    const username = player.name;
 
     const ownAccount = userId === username;
 

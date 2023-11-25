@@ -8,6 +8,7 @@ import MiniDisgraceRow from "./MiniDisgraceRow";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { useMonthlyDisgraces } from "./useMonthlyDisgraces";
 import styled from "styled-components";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const StyledMontylyDisgrace = styled(ContentBox)`
     grid-area: 2 / 1 / 3 / 3;
@@ -21,6 +22,8 @@ function MonthlyDisgraces() {
     const { disgraces, isLoading } = useMonthlyDisgraces();
     const currentMonth = format(new Date(), "LLLL", { locale: de });
 
+    const { isMobile } = useWindowWidth();
+
     return (
         <StyledMontylyDisgrace>
             <Row type="horizontal">
@@ -28,9 +31,15 @@ function MonthlyDisgraces() {
             </Row>
             <MiniTable columns="0.6fr 1fr 0.3fr">
                 <MiniTable.Header>
-                    <div>Player</div>
-                    <div>geschändet von</div>
-                    <div>Am</div>
+                    <div style={{ textAlign: isMobile ? "center" : "" }}>
+                        Player
+                    </div>
+                    <div style={{ textAlign: isMobile ? "center" : "" }}>
+                        geschändet von
+                    </div>
+                    <div style={{ textAlign: isMobile ? "center" : "" }}>
+                        Am
+                    </div>
                 </MiniTable.Header>
                 {isLoading ? (
                     <LoadingSpinner />

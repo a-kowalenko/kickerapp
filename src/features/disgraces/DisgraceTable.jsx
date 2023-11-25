@@ -1,3 +1,4 @@
+import useWindowWidth from "../../hooks/useWindowWidth";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import Pagination from "../../ui/Pagination";
 import Table from "../../ui/Table";
@@ -7,8 +8,16 @@ import { useDisgraces } from "./useDisgraces";
 function DisgraceTable() {
     const { disgraces, isLoading, count } = useDisgraces();
 
+    const { isTablet, isDesktop } = useWindowWidth();
+
+    const columns = isDesktop
+        ? "0.5fr 1fr 1fr"
+        : isTablet
+        ? "1fr 1fr 1fr"
+        : "1fr 1fr 1fr";
+
     return (
-        <Table columns="0.5fr 1fr 1fr">
+        <Table columns={columns}>
             <Table.Header>
                 <div>Player</div>
                 <div>Geschändet von</div>
