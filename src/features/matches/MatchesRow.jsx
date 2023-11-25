@@ -16,6 +16,12 @@ const Rank = styled.div`
     font-size: 1.6rem;
     font-weight: 600;
     color: var(--color-grey-600);
+
+    ${media.mobile} {
+        font-weight: 600;
+        font-size: 1.4rem;
+        min-width: 1.6rem;
+    }
 `;
 
 const Stat = styled.div`
@@ -45,7 +51,9 @@ const Score = styled.div`
         props.$team === "1" ? "flex-end" : "flex-start"};
 
     ${media.tablet} {
-        min-width: 0rem;
+        font-weight: 600;
+        font-size: 1.4rem;
+        min-width: 1.6rem;
     }
 `;
 

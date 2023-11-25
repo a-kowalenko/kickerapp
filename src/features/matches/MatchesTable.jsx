@@ -15,12 +15,12 @@ function MatchesTable({ historyMatches, historyCount }) {
 
     const columns = isDesktop
         ? "0.1fr 1fr 0.4fr 1fr 0.5fr 0.5fr 0.3fr"
-        : "0.1fr 1fr 0.5fr 1fr";
+        : "0.1fr 1.8fr 0.8fr 1.8fr";
 
     return (
         <Table columns={columns}>
             <Table.Header>
-                <div>Id</div>
+                <div>Nr</div>
                 <div style={{ textAlign: isMobile ? "center" : "right" }}>
                     Team 1
                 </div>

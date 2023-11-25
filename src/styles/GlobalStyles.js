@@ -141,7 +141,7 @@ const GlobalStyles = createGlobalStyle`
 
     // Names
     --winner-name-color: #13d90c;
-    --loser-name-color: #ff0000;
+    --loser-name-color: #ff7300;
     --name-hover-gradient-start: #5dc3f5;
     --name-hover-gradient-end: #000ac0;
 
