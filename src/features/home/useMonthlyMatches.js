@@ -11,8 +11,10 @@ export function useMonthlyMatches() {
     // Filtering
     const filterValue = searchParams.get("gamemode");
     const filter =
-        !filterValue || filterValue === "all"
+        filterValue === "all"
             ? null
+            : !filterValue
+            ? { field: "gamemode", value: "1on1" }
             : { field: "gamemode", value: filterValue };
 
     const { data: { data } = {}, isLoading } = useQuery({
@@ -24,6 +26,18 @@ export function useMonthlyMatches() {
     });
 
     // PREFETCH THE NOT SELECTED GAMEMODES
+    if (filterValue !== "all") {
+        queryClient.prefetchQuery({
+            queryKey: ["monthly_matches", null, kicker],
+            queryFn: () =>
+                getMatches({
+                    filter: {
+                        month: new Date().getMonth(),
+                        kicker,
+                    },
+                }),
+        });
+    }
     if (filterValue !== "1on1") {
         queryClient.prefetchQuery({
             queryKey: ["monthly_matches", "1on1", kicker],

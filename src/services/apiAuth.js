@@ -116,6 +116,8 @@ export async function recover({ email }) {
     const baseUrl = getBaseUrl();
     const redirectUrl = `${baseUrl}/update-password`;
 
+    console.log("baseUrl", baseUrl);
+
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
     });
@@ -123,6 +125,8 @@ export async function recover({ email }) {
     if (error) {
         throw new Error(error.message);
     }
+
+    console.log("data", data);
 
     return data;
 }

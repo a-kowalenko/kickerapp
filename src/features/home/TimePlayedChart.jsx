@@ -75,7 +75,7 @@ function TimePlayedChart() {
                 setSearchParams(searchParams);
             }
         }
-    });
+    }, [type, searchParams, setSearchParams]);
 
     if (isLoadingPlayers) {
         return <LoadingSpinner />;
