@@ -1,5 +1,4 @@
 import styled from "styled-components";
-import { useUser } from "../features/authentication/useUser";
 import Avatar from "./Avatar";
 import { useState } from "react";
 import {
@@ -10,6 +9,8 @@ import { useLogout } from "../features/authentication/useLogout";
 import { useNavigate } from "react-router-dom";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { DEFAULT_AVATAR } from "../utils/constants";
+import { useOwnPlayer } from "../hooks/useOwnPlayer";
+import SpinnerMini from "./SpinnerMini";
 
 const StyledProfileMenu = styled.div`
     position: relative;
@@ -69,11 +70,7 @@ function ProfileMenu() {
     const navigate = useNavigate();
     const dropdownRef = useOutsideClick(close);
 
-    const {
-        user: {
-            user_metadata: { username, avatar },
-        },
-    } = useUser();
+    const { data: player, isLoading: isLoadingPlayer } = useOwnPlayer();
 
     function handleToggle() {
         setIsOpen((open) => !open);
@@ -82,13 +79,20 @@ function ProfileMenu() {
     function goToProfile(e) {
         e.stopPropagation();
         close();
-        navigate(`/user/${username}/profile`);
+        navigate(`/user/${player.name}/profile`);
     }
 
     function handleLogout() {
         close();
         logout();
     }
+
+    if (isLoadingPlayer) {
+        return <SpinnerMini />;
+    }
+
+    const username = player.name;
+    const avatar = player.avatar;
 
     return (
         <div ref={dropdownRef}>

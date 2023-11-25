@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useUser } from "./useUser";
 import FormRow from "../../ui/FormRow";
 import { useUpdateUser } from "./useUpdateUser";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
@@ -12,6 +12,8 @@ import InputFile from "../../ui/InputFile";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR, media } from "../../utils/constants";
 import useWindowWidth from "../../hooks/useWindowWidth";
+import { useOwnPlayer } from "../../hooks/useOwnPlayer";
+import LoadingSpinner from "../../ui/LoadingSpinner";
 
 const UserFormContainer = styled.div`
     display: flex;
@@ -30,18 +32,23 @@ const ChooseAvatarRow = styled.div`
 function UserDataForm() {
     const { userId } = useParams();
     const {
-        user: {
-            email,
-            user_metadata: { avatar },
-        },
+        user: { email },
     } = useUser();
+
+    const { data: player, isLoading } = useOwnPlayer();
 
     const [newUsername, setNewUsername] = useState(userId);
     const [newAvatar, setNewAvatar] = useState(null);
-    const [avatarSrc, setAvatarSrc] = useState(avatar);
+    const [avatarSrc, setAvatarSrc] = useState("");
     const { isDesktop, isTablet, isMobile } = useWindowWidth();
 
     const { updateUser, isUpdating } = useUpdateUser();
+
+    const avatar = player?.avatar;
+
+    useEffect(() => {
+        setAvatarSrc(avatar);
+    }, [avatar]);
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -63,6 +70,10 @@ function UserDataForm() {
         }
 
         setNewAvatar(e.target.files[0]);
+    }
+
+    if (isLoading) {
+        return <LoadingSpinner />;
     }
 
     return (

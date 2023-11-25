@@ -86,7 +86,7 @@ function TimePlayedChart() {
 
         const playersObject = {};
         for (const player of players) {
-            playersObject[player.name] = {
+            playersObject[player.id] = {
                 duration: 0,
                 matchesPlayed: 0,
                 wins: 0,
@@ -118,11 +118,11 @@ function TimePlayedChart() {
 
             for (const player of playersInMatch) {
                 const playerNumber = getPlayersNumberFromMatch(
-                    player.name,
+                    player.id,
                     match
                 );
                 const team = playerNumber === 1 || playerNumber === 3 ? 1 : 2;
-                const curPlayerData = data[dayOfMatch - 1][player.name];
+                const curPlayerData = data[dayOfMatch - 1][player.id];
                 curPlayerData.duration += durationPlayed;
                 curPlayerData.matchesPlayed += 1;
                 curPlayerData.wins += hasPlayerWonMatch(player.id, match)
@@ -141,30 +141,29 @@ function TimePlayedChart() {
         for (let i = 1; i < data.length; i++) {
             const yesterdaysData = data[i - 1];
             for (const player of players) {
-                if (data[i][player.name].mmr === null) {
-                    data[i][player.name].mmr = yesterdaysData[player.name].mmr;
+                if (data[i][player.id].mmr === null) {
+                    data[i][player.id].mmr = yesterdaysData[player.id].mmr;
                 }
                 if (data[i].date.getDate() <= date.getDate()) {
-                    data[i][player.name].duration +=
-                        yesterdaysData[player.name].duration;
-                    data[i][player.name].matchesPlayed +=
-                        yesterdaysData[player.name].matchesPlayed;
-                    data[i][player.name].wins +=
-                        yesterdaysData[player.name].wins;
-                    data[i][player.name].losses +=
-                        yesterdaysData[player.name].losses;
-                    player.cumulatedDuration = data[i][player.name].duration;
+                    data[i][player.id].duration +=
+                        yesterdaysData[player.id].duration;
+                    data[i][player.id].matchesPlayed +=
+                        yesterdaysData[player.id].matchesPlayed;
+                    data[i][player.id].wins += yesterdaysData[player.id].wins;
+                    data[i][player.id].losses +=
+                        yesterdaysData[player.id].losses;
+                    player.cumulatedDuration = data[i][player.id].duration;
                     player.cumulatedMatchesPlayed =
-                        data[i][player.name].matchesPlayed;
-                    player.cumulatedWins = data[i][player.name].wins;
-                    player.cumulatedLosses = data[i][player.name].losses;
-                    player.cumulatedMmr = data[i][player.name].mmr;
+                        data[i][player.id].matchesPlayed;
+                    player.cumulatedWins = data[i][player.id].wins;
+                    player.cumulatedLosses = data[i][player.id].losses;
+                    player.cumulatedMmr = data[i][player.id].mmr;
                 } else {
-                    data[i][player.name].duration = null;
-                    data[i][player.name].matchesPlayed = null;
-                    data[i][player.name].wins = null;
-                    data[i][player.name].losses = null;
-                    data[i][player.name].mmr = null;
+                    data[i][player.id].duration = null;
+                    data[i][player.id].matchesPlayed = null;
+                    data[i][player.id].wins = null;
+                    data[i][player.id].losses = null;
+                    data[i][player.id].mmr = null;
                 }
             }
         }
@@ -268,8 +267,8 @@ function TimePlayedChart() {
                                 <Line
                                     type="monotone"
                                     name={player.name}
-                                    dataKey={`${player.name}.${type}`}
-                                    key={player.name}
+                                    dataKey={`${player.id}.${type}`}
+                                    key={player.id}
                                     stroke={colorsLight[i % players.length]}
                                     activeDot={{ r: 4 }}
                                     strokeWidth={2}

@@ -370,8 +370,8 @@ function MatchDetail() {
                     </CenteredInfoLabel>
                     <BottomRow>
                         <Button onClick={createRematch}>
-                            Rematch
                             <HiArrowPath />
+                            Rematch
                         </Button>
                     </BottomRow>
                 </>

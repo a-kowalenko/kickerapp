@@ -606,8 +606,8 @@ function MatchDetailMobile({ match, timer }) {
                             </label>
                             <SingleButtonRow>
                                 <Button onClick={createRematch}>
-                                    Rematch
                                     <HiArrowPath />
+                                    Rematch
                                 </Button>
                             </SingleButtonRow>
                         </>
