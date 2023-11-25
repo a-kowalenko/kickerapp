@@ -95,9 +95,19 @@ const Player = styled.div`
 
 const PlayerName = styled.span`
     display: flex;
-    min-width: 40%;
+    min-width: 55%;
     justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    font-size: 2.8rem;
+    gap: 1rem;
+
+    color: ${(props) =>
+        props.$winner === null
+            ? "var(--primary-text-color)"
+            : props.$winner === true
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
 `;
 
 const ActionsContainer = styled.div`
@@ -377,7 +387,15 @@ function MatchDetailMobile({ match, timer }) {
                                 )}
                             </ButtonIcon>
                         )}
-                        <PlayerName>
+                        <PlayerName
+                            $winner={
+                                !isEnded
+                                    ? null
+                                    : winner === "Team 1"
+                                    ? true
+                                    : false
+                            }
+                        >
                             <Avatar
                                 $size="xs"
                                 src={player1.avatar || DEFAULT_AVATAR}
@@ -414,7 +432,15 @@ function MatchDetailMobile({ match, timer }) {
                                     )}
                                 </ButtonIcon>
                             )}
-                            <PlayerName>
+                            <PlayerName
+                                $winner={
+                                    !isEnded
+                                        ? null
+                                        : winner === "Team 1"
+                                        ? true
+                                        : false
+                                }
+                            >
                                 <Avatar
                                     $size="xs"
                                     src={player3.avatar || DEFAULT_AVATAR}
@@ -462,7 +488,15 @@ function MatchDetailMobile({ match, timer }) {
                                 )}
                             </ButtonIcon>
                         )}
-                        <PlayerName>
+                        <PlayerName
+                            $winner={
+                                !isEnded
+                                    ? null
+                                    : winner === "Team 2"
+                                    ? true
+                                    : false
+                            }
+                        >
                             <Avatar
                                 $size="xs"
                                 src={player2.avatar || DEFAULT_AVATAR}
@@ -499,7 +533,15 @@ function MatchDetailMobile({ match, timer }) {
                                     )}
                                 </ButtonIcon>
                             )}
-                            <PlayerName>
+                            <PlayerName
+                                $winner={
+                                    !isEnded
+                                        ? null
+                                        : winner === "Team 2"
+                                        ? true
+                                        : false
+                                }
+                            >
                                 <Avatar
                                     $size="xs"
                                     src={player4.avatar || DEFAULT_AVATAR}
