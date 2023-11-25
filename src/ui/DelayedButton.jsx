@@ -192,7 +192,6 @@ function DelayedButton({ action, children, icon, ...props }) {
                 onTouchEnd={handleMouseUp}
                 {...props}
             >
-                {children}
                 {percentageComplete > 0 ? (
                     <Svg viewBox="-1 -1 34 34" $size={props.$size}>
                         <CircleBackground cx="16" cy="16" r="15.9155" />
@@ -206,6 +205,7 @@ function DelayedButton({ action, children, icon, ...props }) {
                 ) : (
                     icon
                 )}
+                {children}
             </Button>
         </ButtonContainer>
     );
