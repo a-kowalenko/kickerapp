@@ -7,11 +7,7 @@ export function useAudio(audioPath) {
 
     useEffect(
         function () {
-            if (!isSound) {
-                audio.volume = 0;
-            } else {
-                audio.volume = 1;
-            }
+            audio.muted = !isSound;
         },
         [isSound, audio]
     );
