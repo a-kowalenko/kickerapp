@@ -2,6 +2,7 @@ import styled from "styled-components";
 import Heading from "./Heading";
 import { Link } from "react-router-dom";
 import { FaGithub, FaXTwitter, FaInstagram, FaPatreon } from "react-icons/fa6";
+import { SiBuymeacoffee } from "react-icons/si";
 import { media } from "../utils/constants";
 
 const StyledFooter = styled.footer`
@@ -229,7 +230,7 @@ function Footer() {
                                 to="https://github.com/a-kowalenko/kickerapp"
                                 target={"_blank"}
                             >
-                                <FaGithub />
+                                <FaGithub title="Fork me on Github" />
                             </Link>
                         </SocialElement>
                         <SocialElement>
@@ -237,7 +238,7 @@ function Footer() {
                                 to="https://www.instagram.com/andreaskowalenko/"
                                 target={"_blank"}
                             >
-                                <FaInstagram />
+                                <FaInstagram title="Follow me on Instagram" />
                             </Link>
                         </SocialElement>
                         <SocialElement>
@@ -245,7 +246,7 @@ function Footer() {
                                 to="https://twitter.com/andy_kowalenko"
                                 target={"_blank"}
                             >
-                                <FaXTwitter />
+                                <FaXTwitter title="Follow me on X" />
                             </Link>
                         </SocialElement>
                         <SocialElement>
@@ -253,7 +254,15 @@ function Footer() {
                                 to="https://www.patreon.com/andreaskowalenko"
                                 target={"_blank"}
                             >
-                                <FaPatreon />
+                                <FaPatreon title="Become a patreon" />
+                            </Link>
+                        </SocialElement>
+                        <SocialElement>
+                            <Link
+                                to="https://www.buymeacoffee.com/kowalenko"
+                                target={"_blank"}
+                            >
+                                <SiBuymeacoffee title="Buy me a coffee" />
                             </Link>
                         </SocialElement>
                     </SocialsList>
