@@ -210,6 +210,10 @@ function TimePlayedChart() {
         sortBy = "cumulatedLosses";
     }
 
+    function handleTypeFilter(option) {
+        setType(option);
+    }
+
     function handleGamemodeFilter(option) {
         searchParams.set("gamemode", option);
         setSearchParams(searchParams);
@@ -224,7 +228,7 @@ function TimePlayedChart() {
                 <Dropdown
                     minWidth={isMobile ? "20rem" : "25rem"}
                     options={options}
-                    onSelect={(option) => setType(option)}
+                    onSelect={(option) => handleTypeFilter(option)}
                     initSelected={options.find(
                         (option) => option.value === type
                     )}

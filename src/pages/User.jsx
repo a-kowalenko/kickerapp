@@ -7,10 +7,12 @@ import ProfileSettings from "../features/players/ProfileSettings";
 import ProfileMatches from "../features/players/ProfileMatches";
 import PlayerStatistics from "../features/players/PlayerStatistics";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
+import { usePrefetchProfileData } from "../features/players/usePrefetchProfileData";
 
 function User() {
     const { userId } = useParams();
     const { data: player, isLoading } = useOwnPlayer();
+    usePrefetchProfileData();
 
     if (isLoading) {
         return <Spinner />;
