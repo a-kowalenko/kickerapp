@@ -36,7 +36,7 @@ const StyledTimePlayedChart = styled(ContentBox)`
 `;
 
 const TooltipEntry = styled.p`
-    color: ${(props) => colorsLight[props.$index % props.$length]};
+    color: ${(props) => props.$color};
 `;
 
 const FilterRow = styled.div`
@@ -81,17 +81,20 @@ function TimePlayedChart() {
         return <LoadingSpinner />;
     }
 
+    const playersObject = {};
     if (!isLoadingMatches) {
         matches.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
-        const playersObject = {};
-        for (const player of players) {
+        for (const [i, player] of players
+            .sort((a, b) => a.id - b.id)
+            .entries()) {
             playersObject[player.id] = {
+                playername: player.name,
                 duration: 0,
                 matchesPlayed: 0,
                 wins: 0,
                 losses: 0,
                 mmr: null,
+                color: colorsLight[i % players.length],
             };
         }
 
@@ -259,17 +262,24 @@ function TimePlayedChart() {
                             domain={["auto", "auto"]}
                             tick={<CustomizedAxisTick type={type} />}
                         />
-                        <Tooltip content={<CustomTooltip type={type} />} />
+                        <Tooltip
+                            content={
+                                <CustomTooltip
+                                    type={type}
+                                    playersObject={playersObject}
+                                />
+                            }
+                        />
                         <Legend formatter={renderLegendText} />
                         {players
                             .sort((a, b) => b[sortBy] - a[sortBy])
-                            .map((player, i) => (
+                            .map((player) => (
                                 <Line
                                     type="monotone"
                                     name={player.name}
                                     dataKey={`${player.id}.${type}`}
                                     key={player.id}
-                                    stroke={colorsLight[i % players.length]}
+                                    stroke={playersObject[player.id].color}
                                     activeDot={{ r: 4 }}
                                     strokeWidth={2}
                                 />
@@ -306,7 +316,7 @@ function CustomizedAxisTick({ x, y, payload, type }) {
     );
 }
 
-function CustomTooltip({ active, payload, label, type }) {
+function CustomTooltip({ active, payload, label, type, playersObject }) {
     if (active && payload && payload.length) {
         return (
             <div
@@ -323,6 +333,9 @@ function CustomTooltip({ active, payload, label, type }) {
                     .map((entry, index) => (
                         <TooltipEntry
                             key={index}
+                            $color={
+                                playersObject[entry.dataKey.split(".")[0]].color
+                            }
                             $index={index}
                             $length={payload.length}
                         >{`${entry.name}: ${
