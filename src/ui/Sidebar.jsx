@@ -12,7 +12,7 @@ const StyledSidebar = styled.aside`
     flex-direction: column;
     padding: 1.2rem 2.4rem;
     background-color: var(--primary-background-color);
-    grid-row: 1 / -1;
+    grid-row: 1 / -2;
     border-right: 1px solid var(--secondary-border-color);
     transition: width 0.2s ease-out; // Hinzufügen von Transitions
     width: 24rem;
@@ -60,6 +60,7 @@ const StyledSidebar = styled.aside`
         width: 25rem;
         z-index: 100;
         transition: left 0.3s ease-in-out;
+        margin-top: 66px;
     }
 `;
 

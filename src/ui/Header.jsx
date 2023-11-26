@@ -31,6 +31,15 @@ const StyledHeader = styled.header`
         justify-content: flex-end;
         padding: 1.6rem 2.4rem;
     }
+
+    @media (max-width: 850px) {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        height: 66px;
+    }
 `;
 
 const KickerInfoWrapper = styled.div`

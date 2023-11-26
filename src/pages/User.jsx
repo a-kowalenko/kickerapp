@@ -50,7 +50,13 @@ function User() {
 
     return (
         <>
-            <Heading as="h1" hasBackBtn={true} backDirection="/home" $uppercase>
+            <Heading
+                as="h1"
+                hasBackBtn={true}
+                type="page"
+                backDirection="/home"
+                $uppercase
+            >
                 Profile of {userId}
             </Heading>
 

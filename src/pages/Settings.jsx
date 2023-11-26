@@ -58,7 +58,9 @@ function Settings() {
 
     return (
         <StyledSettings>
-            <Heading as="h1">Settings</Heading>
+            <Heading as="h1" type="page" hasBackBtn={true}>
+                Settings
+            </Heading>
             <SettingsContent>
                 <DescriptionText>
                     Use this access token to allow other players to join your

@@ -15,7 +15,6 @@ const LoadingBackground = styled.div`
 `;
 
 function ProtectedRoute({ children }) {
-    console.log("RENDER ProtectedRoute");
     const { user, isLoading: isUserLoading, isAuthenticated } = useUser();
     const { currentKicker } = useKicker();
     const navigate = useNavigate();
@@ -30,7 +29,6 @@ function ProtectedRoute({ children }) {
         retry: 0,
         enabled: isAuthenticated && !!currentKicker,
         onSuccess: (isMember) => {
-            console.log("ProtectedRoute success", isMember);
             if (!isMember) {
                 toast.error(
                     "Unauthorized access attempt: User cannot enter this kicker."
@@ -39,7 +37,6 @@ function ProtectedRoute({ children }) {
             }
         },
         onError: () => {
-            console.log("ProtectedRoute error");
             toast.error(
                 "Unauthorized access attempt: User cannot enter this kicker."
             );
@@ -49,12 +46,8 @@ function ProtectedRoute({ children }) {
 
     useEffect(
         function () {
-            console.log("ProtectedRoute effect");
             if (!isUserLoading && !isVerifyingMembership) {
                 if (isError || !isAuthenticated || !currentKicker) {
-                    console.log("isError", isError);
-                    console.log("!isAuthenticated", !isAuthenticated);
-                    console.log("!currentKicker", !currentKicker);
                     navigate("/");
                 }
             }

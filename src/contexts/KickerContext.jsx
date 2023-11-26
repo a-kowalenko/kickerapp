@@ -31,24 +31,14 @@ function KickerProvider({ children }) {
         interval,
         callback
     ) {
-        console.log(
-            "tryToJoinKickerAfterLogin",
-            kickerId,
-            maxAttempts,
-            interval
-        );
         let curAttempt = 0;
 
         function tryExecutingFunction() {
             if (curAttempt < maxAttempts) {
-                console.log("curAttempt:", curAttempt);
                 setCurrentKicker(kickerId);
                 curAttempt++;
 
-                console.log("isAuthenticated", isAuthenticatedRef.current);
-                console.log("currentKicker", currentKickerRef.current);
                 if (!isAuthenticatedRef.current || !currentKickerRef.current) {
-                    console.log("RETRY LOGIN");
                     setTimeout(tryExecutingFunction, interval);
                 } else {
                     callback();
