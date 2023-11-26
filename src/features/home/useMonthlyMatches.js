@@ -25,6 +25,18 @@ export function useMonthlyMatches() {
     });
 
     // PREFETCH THE NOT SELECTED GAMEMODES
+    if (filterValue !== "all") {
+        queryClient.prefetchQuery({
+            queryKey: ["monthly_matches", null, kicker],
+            queryFn: () =>
+                getMatches({
+                    filter: {
+                        month: new Date().getMonth(),
+                        kicker,
+                    },
+                }),
+        });
+    }
     if (filterValue !== "1on1" && filterValue) {
         queryClient.prefetchQuery({
             queryKey: ["monthly_matches", "1on1", kicker],
