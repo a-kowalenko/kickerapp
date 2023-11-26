@@ -35,8 +35,23 @@ const StyledTimePlayedChart = styled(ContentBox)`
     }
 `;
 
-const TooltipEntry = styled.p`
+const TooltipEntry = styled.div`
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
     color: ${(props) => props.$color};
+`;
+
+const TooltipText = styled.div``;
+
+const TooltipValue = styled.div`
+    text-align: right;
+    white-space: pre-wrap;
+`;
+const TooltipDurationValue = styled.div`
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
 `;
 
 const FilterRow = styled.div`
@@ -299,7 +314,12 @@ function formatDuration(milliseconds) {
     const totalMinutes = Math.floor(milliseconds / 60000);
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    return `${hours}h ${minutes}m`;
+    return (
+        <TooltipDurationValue>
+            <span>{hours}h</span>
+            <span>{minutes}m</span>
+        </TooltipDurationValue>
+    );
 }
 
 function CustomizedAxisTick({ x, y, payload, type }) {
@@ -320,8 +340,19 @@ function CustomizedAxisTick({ x, y, payload, type }) {
     );
 }
 
-function CustomTooltip({ active, payload, label, type, playersObject }) {
+function CustomTooltip({ active, payload, label, type }) {
     if (active && payload && payload.length) {
+        const finalPayload = [];
+        for (const player of Object.values(payload[0].payload)) {
+            if (player.playername) {
+                finalPayload.push({
+                    name: player.playername,
+                    value: player[type],
+                    color: player.color,
+                });
+            }
+        }
+
         return (
             <div
                 className="custom-tooltip"
@@ -332,21 +363,22 @@ function CustomTooltip({ active, payload, label, type, playersObject }) {
                 }}
             >
                 <p className="label">{`Date: ${label}`}</p>
-                {payload
+                {finalPayload
                     .sort((a, b) => b.value - a.value)
                     .map((entry, index) => (
                         <TooltipEntry
                             key={index}
-                            $color={
-                                playersObject[entry.dataKey.split(".")[0]].color
-                            }
+                            $color={entry.color}
                             $index={index}
-                            $length={payload.length}
-                        >{`${entry.name}: ${
-                            type === "duration"
-                                ? formatDuration(entry.value)
-                                : entry.value
-                        }`}</TooltipEntry>
+                            $length={finalPayload.length}
+                        >
+                            <TooltipText>{entry.name}:</TooltipText>
+                            <TooltipValue>
+                                {type === "duration"
+                                    ? formatDuration(entry.value)
+                                    : entry.value}
+                            </TooltipValue>
+                        </TooltipEntry>
                     ))}
             </div>
         );
