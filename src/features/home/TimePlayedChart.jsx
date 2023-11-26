@@ -212,17 +212,11 @@ function TimePlayedChart() {
 
     function handleTypeFilter(option) {
         setType(option);
-        document
-            .querySelectorAll(".recharts-tooltip-wrapper")
-            .forEach((tooltip) => (tooltip.style.display = "none"));
     }
 
     function handleGamemodeFilter(option) {
         searchParams.set("gamemode", option);
         setSearchParams(searchParams);
-        document
-            .querySelectorAll(".recharts-tooltip-wrapper")
-            .forEach((tooltip) => (tooltip.style.display = "none"));
     }
 
     return (
