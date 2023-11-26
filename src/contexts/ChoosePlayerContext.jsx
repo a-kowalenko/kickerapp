@@ -275,7 +275,7 @@ function ChoosePlayerProvider({ children }) {
         } else {
             searchParams.set(`player${playerNumber}`, playerId);
         }
-        setSearchParams(searchParams);
+        setSearchParams(searchParams, { replace: true });
     }
 
     function switchTeams() {
@@ -304,7 +304,7 @@ function ChoosePlayerProvider({ children }) {
         } else {
             searchParams.delete("player3");
         }
-        setSearchParams(searchParams);
+        setSearchParams(searchParams, { replace: true });
     }
 
     function clearAllPlayers() {
@@ -313,7 +313,7 @@ function ChoosePlayerProvider({ children }) {
         searchParams.delete("player2");
         searchParams.delete("player3");
         searchParams.delete("player4");
-        setSearchParams(searchParams);
+        setSearchParams(searchParams, { replace: true });
     }
 
     return (

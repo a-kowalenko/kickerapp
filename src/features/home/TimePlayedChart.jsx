@@ -87,7 +87,7 @@ function TimePlayedChart() {
             const currentGamemodeFilter = searchParams.get("gamemode");
             if (["all", "2on1"].includes(currentGamemodeFilter)) {
                 searchParams.set("gamemode", "1on1");
-                setSearchParams(searchParams);
+                setSearchParams(searchParams, { replace: true });
             }
         }
     }, [type, searchParams, setSearchParams]);
@@ -231,7 +231,7 @@ function TimePlayedChart() {
 
     function handleGamemodeFilter(option) {
         searchParams.set("gamemode", option);
-        setSearchParams(searchParams);
+        setSearchParams(searchParams, { replace: true });
     }
 
     return (
