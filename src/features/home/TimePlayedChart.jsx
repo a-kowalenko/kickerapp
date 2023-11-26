@@ -210,9 +210,19 @@ function TimePlayedChart() {
         sortBy = "cumulatedLosses";
     }
 
+    function handleTypeFilter(option) {
+        setType(option);
+        document
+            .querySelectorAll(".recharts-tooltip-wrapper")
+            .forEach((tooltip) => (tooltip.style.display = "none"));
+    }
+
     function handleGamemodeFilter(option) {
         searchParams.set("gamemode", option);
         setSearchParams(searchParams);
+        document
+            .querySelectorAll(".recharts-tooltip-wrapper")
+            .forEach((tooltip) => (tooltip.style.display = "none"));
     }
 
     return (
@@ -224,7 +234,7 @@ function TimePlayedChart() {
                 <Dropdown
                     minWidth={isMobile ? "20rem" : "25rem"}
                     options={options}
-                    onSelect={(option) => setType(option)}
+                    onSelect={(option) => handleTypeFilter(option)}
                     initSelected={options.find(
                         (option) => option.value === type
                     )}
