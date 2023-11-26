@@ -9,6 +9,15 @@ const BurgerMenuContainer = styled.div`
     top: 1.6rem;
     gap: 1rem;
     z-index: 1000;
+
+    @media (max-width: 850px) {
+        display: flex;
+        position: fixed;
+        left: 1.5rem;
+        top: 1.6rem;
+        gap: 1rem;
+        z-index: 1000;
+    }
 `;
 
 function BurgerMenu({ onClick }) {

@@ -2,17 +2,17 @@ import { Outlet } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import styled from "styled-components";
-import RightSidebar from "./RightSidebar";
 import { media } from "../utils/constants";
+import Footer from "./Footer";
 
 const StyledAppLayout = styled.div`
     @media (min-width: 850px) {
         display: grid;
         grid-template-columns: auto 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto 1fr auto;
     }
 
-    height: 100dvh;
+    min-height: 100dvh;
     background-color: var(--secondary-background-color);
 
     ${media.tablet} {
@@ -23,9 +23,10 @@ const StyledAppLayout = styled.div`
 const Main = styled.main`
     background-color: var(--secondary-background-color);
     padding: 3.2rem 4.8rem 0rem;
-    overflow: auto;
+    /* overflow: auto; */
 
     grid-column: 2;
+    min-height: 100dvh;
 
     /* Removing scrollbars for webkit, firefox, and ms, respectively */
     /* &::-webkit-scrollbar {
@@ -33,6 +34,10 @@ const Main = styled.main`
     }
     scrollbar-width: none;
     -ms-overflow-style: none; */
+
+    @media (max-width: 850px) {
+        margin-top: 66px;
+    }
 
     ${media.tablet} {
         padding: 1.6rem 0rem;
@@ -47,7 +52,7 @@ function AppLayout() {
             <Main>
                 <Outlet />
             </Main>
-            {/* <RightSidebar /> */}
+            <Footer />
         </StyledAppLayout>
     );
 }

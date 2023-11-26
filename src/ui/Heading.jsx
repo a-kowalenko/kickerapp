@@ -44,11 +44,11 @@ const StyledHeading = styled.h1`
     line-height: 1.4;
 
     ${media.tablet} {
-        padding: 0 2.4rem;
+        ${(props) => (props.type === "page" ? "padding: 0 2.4rem;" : "")}
     }
 
     ${media.mobile} {
-        padding: 0 1.2rem;
+        ${(props) => (props.type === "page" ? "padding: 0 1.2rem;" : "")}
     }
 `;
 

@@ -74,8 +74,9 @@ const GlobalStyles = createGlobalStyle`
 
     // Text
     --primary-text-color: #fff;
-    --secondary-text-color: var(--color-grey-800);
+    --secondary-text-color: #888;
     --tertiary-text-color: #4d98c9;
+
 
     // Border
     --primary-border-color: #525252;
@@ -199,7 +200,7 @@ const GlobalStyles = createGlobalStyle`
 
     // Text
     --primary-text-color: #000;
-    --secondary-text-color: var(--color-grey-800);
+    --secondary-text-color: #666666;
     --tertiary-text-color: var(--color-grey-500);
 
     // Border
