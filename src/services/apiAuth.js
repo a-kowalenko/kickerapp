@@ -1,5 +1,6 @@
 import { PLAYER } from "../utils/constants";
 import { getBaseUrl } from "../utils/helpers";
+import { getUserKickers } from "./apiKicker";
 import { getPlayerByName, updatePlayerByUserId } from "./apiPlayer";
 import supabase, { supabaseUrl } from "./supabase";
 
@@ -36,7 +37,9 @@ export async function login({ email, password }) {
         throw new Error(error.message);
     }
 
-    return data;
+    const kickers = await getUserKickers();
+
+    return { ...data, kickers };
 }
 
 export async function getCurrentUser() {

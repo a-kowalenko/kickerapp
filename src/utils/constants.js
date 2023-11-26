@@ -33,6 +33,10 @@ export const STANDARD_GOAL = "standard_goal";
 export const OWN_GOAL = "own_goal";
 export const GENERATED_GOAL = "generated_goal";
 
+// LOGIN CONSTANTS
+export const ENTER_KICKER_RETRY_ATTEMPTS = 2;
+export const ENTER_KICKER_RETRY_INTERVAL = 333;
+
 // DATABASE CONSTANTS
 export const DEFAULT_DATABASE_SCHEMA = "kopecht";
 export const MATCHES = "matches";
