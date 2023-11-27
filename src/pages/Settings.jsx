@@ -14,16 +14,16 @@ const StyledSettings = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
-
-    ${media.tablet} {
-        padding: 0 2.4rem;
-    }
 `;
 
 const SettingsContent = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1rem;
+
+    ${media.tablet} {
+        padding: 0 2.4rem;
+    }
 `;
 
 const DescriptionText = styled.p`

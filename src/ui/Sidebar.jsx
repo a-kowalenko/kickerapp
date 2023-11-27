@@ -17,6 +17,7 @@ const StyledSidebar = styled.aside`
     transition: width 0.2s ease-out; // Hinzufügen von Transitions
     width: 24rem;
     overflow: auto;
+    overflow-x: hidden;
 
     @media (max-width: 850px) {
         &.active {

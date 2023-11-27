@@ -322,6 +322,13 @@ function formatDuration(milliseconds) {
     );
 }
 
+function formatDurationToText(milliseconds) {
+    const totalMinutes = Math.floor(milliseconds / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
+}
+
 function CustomizedAxisTick({ x, y, payload, type }) {
     return (
         <g transform={`translate(${x},${y})`}>
@@ -333,7 +340,7 @@ function CustomizedAxisTick({ x, y, payload, type }) {
                 fill="var(--primary-text-color)"
             >
                 {type === "duration"
-                    ? formatDuration(payload.value)
+                    ? formatDurationToText(payload.value)
                     : payload.value}
             </text>
         </g>
