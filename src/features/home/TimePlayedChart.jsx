@@ -19,7 +19,7 @@ import {
 } from "../../utils/helpers";
 import ContentBox from "../../ui/ContentBox";
 import styled from "styled-components";
-import { colorsLight, media } from "../../utils/constants";
+import { MATCH_ACTIVE, colorsLight, media } from "../../utils/constants";
 import { useEffect, useState } from "react";
 import Dropdown from "../../ui/Dropdown";
 import Row from "../../ui/Row";
@@ -98,7 +98,12 @@ function TimePlayedChart() {
 
     const playersObject = {};
     if (!isLoadingMatches) {
-        matches.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const finalMatches = matches.filter(
+            (match) => match.status !== MATCH_ACTIVE
+        );
+        finalMatches.sort(
+            (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        );
         for (const [i, player] of players
             .sort((a, b) => a.id - b.id)
             .entries()) {
@@ -125,7 +130,7 @@ function TimePlayedChart() {
                 ...deepCopy,
             });
         }
-        for (const match of matches) {
+        for (const match of finalMatches) {
             const dayOfMatch = new Date(match.created_at).getDate();
             const durationPlayed =
                 new Date(match.end_time) - new Date(match.start_time);
