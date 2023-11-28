@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useState,
+} from "react";
 import supabase, { databaseSchema } from "../services/supabase";
 import {
     GOALS,
@@ -18,6 +24,32 @@ function MatchProvider({ children }) {
     const { currentKicker: kicker } = useKicker();
     const [activeMatch, setActiveMatch] = useState(null);
     const queryClient = useQueryClient();
+
+    const getInitMatch = useCallback(
+        async function getInitMatch() {
+            const match = await getActiveMatch(kicker);
+            if (match) {
+                setActiveMatch(match);
+                queryClient.setQueryData(["match", match.id, kicker], match);
+            }
+        },
+        [kicker, queryClient]
+    );
+
+    // Try to get the current active match on window refocus
+    // This should help to retrieve the current data after losing the websocket connection
+    // For example if a mobile device was locked or the browser was put into the background
+    useEffect(() => {
+        const handleFocus = () => {
+            getInitMatch();
+        };
+
+        window.addEventListener("focus", handleFocus);
+
+        return () => {
+            window.removeEventListener("focus", handleFocus);
+        };
+    }, [getInitMatch]);
 
     useEffect(
         function () {
@@ -44,17 +76,6 @@ function MatchProvider({ children }) {
                 queryClient.invalidateQueries(["mostPlayed", kicker]);
             }
 
-            async function getInitMatch() {
-                const match = await getActiveMatch(kicker);
-                if (match) {
-                    setActiveMatch(match);
-                    queryClient.setQueryData(
-                        ["match", match.id, kicker],
-                        match
-                    );
-                }
-            }
-
             getInitMatch();
 
             const channel = supabase
@@ -72,7 +93,7 @@ function MatchProvider({ children }) {
 
             return () => supabase.removeChannel(channel);
         },
-        [kicker, queryClient, matchId]
+        [kicker, queryClient, matchId, getInitMatch]
     );
 
     return (
