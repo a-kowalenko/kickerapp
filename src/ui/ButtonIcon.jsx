@@ -49,6 +49,14 @@ const sizes = {
         width: 3.6rem;
         height: 3.6rem;
     `,
+    xlarge: css`
+        width: 4.8rem;
+        height: 4.8rem;
+    `,
+    xxlarge: css`
+        width: 6rem;
+        height: 6rem;
+    `,
 };
 
 export default ButtonIcon;
