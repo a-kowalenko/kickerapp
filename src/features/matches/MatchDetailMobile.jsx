@@ -7,7 +7,6 @@ import {
     HiMinusCircle,
     HiPlusCircle,
 } from "react-icons/hi2";
-import ButtonIcon from "../../ui/ButtonIcon";
 import { useUpdateMatch } from "./useUpdateMatch";
 import { useEndMatch } from "./useEndMatch";
 import toast from "react-hot-toast";
@@ -29,6 +28,7 @@ import Avatar from "../../ui/Avatar";
 import { useGoals } from "../../hooks/useGoals";
 import { format } from "date-fns";
 import LoadingSpinner from "../../ui/LoadingSpinner";
+import ScoreButton from "./ScoreButton";
 
 const GameInfoContainer = styled.div`
     display: flex;
@@ -87,7 +87,7 @@ const ScoreTeam2 = styled(Score)`
 
 const Player = styled.div`
     display: flex;
-    min-width: 70%;
+    min-width: 90%;
     align-items: center;
     justify-content: ${(props) =>
         props.$matchEnded ? "center" : "space-between"};
@@ -96,10 +96,10 @@ const Player = styled.div`
 const PlayerName = styled.span`
     display: flex;
     min-width: 55%;
-    justify-content: space-between;
     justify-content: flex-start;
     align-items: center;
     font-size: 2.8rem;
+    padding: 0 1rem;
     gap: 1rem;
 
     color: ${(props) =>
@@ -108,6 +108,11 @@ const PlayerName = styled.span`
             : props.$winner === true
             ? "var(--winner-name-color)"
             : "var(--loser-name-color)"};
+
+    & div {
+        width: 100%;
+        text-align: center;
+    }
 `;
 
 const ActionsContainer = styled.div`
@@ -374,8 +379,7 @@ function MatchDetailMobile({ match, timer }) {
                     <Watermark>Team 1</Watermark>
                     <Player $matchEnded={isEnded}>
                         {isActive && (
-                            <ButtonIcon
-                                $size="large"
+                            <ScoreButton
                                 onClick={() => handleOwnGoal(player1)}
                                 disabled={isDisabled}
                             >
@@ -385,7 +389,7 @@ function MatchDetailMobile({ match, timer }) {
                                 ) : (
                                     <HiMinusCircle />
                                 )}
-                            </ButtonIcon>
+                            </ScoreButton>
                         )}
                         <PlayerName
                             $winner={
@@ -400,11 +404,10 @@ function MatchDetailMobile({ match, timer }) {
                                 $size="xs"
                                 src={player1.avatar || DEFAULT_AVATAR}
                             />
-                            {player1.name}
+                            <div>{player1.name}</div>
                         </PlayerName>
                         {isActive && (
-                            <ButtonIcon
-                                $size="large"
+                            <ScoreButton
                                 onClick={() => handleGoal(player1)}
                                 disabled={isDisabled}
                             >
@@ -413,14 +416,13 @@ function MatchDetailMobile({ match, timer }) {
                                 ) : (
                                     <HiPlusCircle />
                                 )}
-                            </ButtonIcon>
+                            </ScoreButton>
                         )}
                     </Player>
                     {player3 && (
                         <Player $matchEnded={isEnded}>
                             {isActive && (
-                                <ButtonIcon
-                                    $size="large"
+                                <ScoreButton
                                     onClick={() => handleOwnGoal(player3)}
                                     disabled={isDisabled}
                                 >
@@ -430,7 +432,7 @@ function MatchDetailMobile({ match, timer }) {
                                     ) : (
                                         <HiMinusCircle />
                                     )}
-                                </ButtonIcon>
+                                </ScoreButton>
                             )}
                             <PlayerName
                                 $winner={
@@ -445,11 +447,10 @@ function MatchDetailMobile({ match, timer }) {
                                     $size="xs"
                                     src={player3.avatar || DEFAULT_AVATAR}
                                 />
-                                {player3.name}
+                                <div>{player3.name}</div>
                             </PlayerName>
                             {isActive && (
-                                <ButtonIcon
-                                    $size="large"
+                                <ScoreButton
                                     onClick={() => handleGoal(player3)}
                                     disabled={isDisabled}
                                 >
@@ -459,7 +460,7 @@ function MatchDetailMobile({ match, timer }) {
                                     ) : (
                                         <HiPlusCircle />
                                     )}
-                                </ButtonIcon>
+                                </ScoreButton>
                             )}
                         </Player>
                     )}
@@ -475,8 +476,7 @@ function MatchDetailMobile({ match, timer }) {
                     <Watermark>Team 2</Watermark>
                     <Player $matchEnded={isEnded}>
                         {isActive && (
-                            <ButtonIcon
-                                $size="large"
+                            <ScoreButton
                                 onClick={() => handleOwnGoal(player2)}
                                 disabled={isDisabled}
                             >
@@ -486,7 +486,7 @@ function MatchDetailMobile({ match, timer }) {
                                 ) : (
                                     <HiMinusCircle />
                                 )}
-                            </ButtonIcon>
+                            </ScoreButton>
                         )}
                         <PlayerName
                             $winner={
@@ -501,11 +501,10 @@ function MatchDetailMobile({ match, timer }) {
                                 $size="xs"
                                 src={player2.avatar || DEFAULT_AVATAR}
                             />
-                            {player2.name}
+                            <div>{player2.name}</div>
                         </PlayerName>
                         {isActive && (
-                            <ButtonIcon
-                                $size="large"
+                            <ScoreButton
                                 onClick={() => handleGoal(player2)}
                                 disabled={isDisabled}
                             >
@@ -514,14 +513,13 @@ function MatchDetailMobile({ match, timer }) {
                                 ) : (
                                     <HiPlusCircle />
                                 )}
-                            </ButtonIcon>
+                            </ScoreButton>
                         )}
                     </Player>
                     {player4 && (
                         <Player $matchEnded={isEnded}>
                             {isActive && (
-                                <ButtonIcon
-                                    $size="large"
+                                <ScoreButton
                                     onClick={() => handleOwnGoal(player4)}
                                     disabled={isDisabled}
                                 >
@@ -531,7 +529,7 @@ function MatchDetailMobile({ match, timer }) {
                                     ) : (
                                         <HiMinusCircle />
                                     )}
-                                </ButtonIcon>
+                                </ScoreButton>
                             )}
                             <PlayerName
                                 $winner={
@@ -546,11 +544,10 @@ function MatchDetailMobile({ match, timer }) {
                                     $size="xs"
                                     src={player4.avatar || DEFAULT_AVATAR}
                                 />
-                                {player4.name}
+                                <div>{player4.name}</div>
                             </PlayerName>
                             {isActive && (
-                                <ButtonIcon
-                                    $size="large"
+                                <ScoreButton
                                     onClick={() => handleGoal(player4)}
                                     disabled={isDisabled}
                                 >
@@ -560,7 +557,7 @@ function MatchDetailMobile({ match, timer }) {
                                     ) : (
                                         <HiPlusCircle />
                                     )}
-                                </ButtonIcon>
+                                </ScoreButton>
                             )}
                         </Player>
                     )}
