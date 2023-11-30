@@ -27,6 +27,7 @@ import { KickerProvider } from "./contexts/KickerContext";
 import Start from "./pages/Start";
 import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
+import Testwiese from "./pages/Testwiese";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -104,6 +105,10 @@ function App() {
                                     <Route
                                         path="tournament/:tourId"
                                         element={<Tournament />}
+                                    />
+                                    <Route
+                                        path="testwiese"
+                                        element={<Testwiese />}
                                     />
                                 </Route>
                                 <Route path="*" element={<PageNotFound />} />

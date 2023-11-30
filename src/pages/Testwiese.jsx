@@ -39,11 +39,7 @@ function Testwiese() {
     return (
         <>
             <FormRow label={"access token"}>
-                <Input
-                    placeholder="Default disabled"
-                    disabled
-                    value={kickerData.access_token}
-                />
+                <Input placeholder="Default disabled" disabled />
             </FormRow>
             <FormRow>
                 <Input placeholder="Default" />
