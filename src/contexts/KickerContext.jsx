@@ -28,7 +28,8 @@ function KickerProvider({ children }) {
     }, [currentKicker]);
 
     function handleKickerSelect(kicker) {
-        queryClient.invalidateQueries();
+        queryClient.invalidateQueries(["matches"]);
+        queryClient.invalidateQueries(["match"]);
         setCurrentKicker(kicker);
     }
 
