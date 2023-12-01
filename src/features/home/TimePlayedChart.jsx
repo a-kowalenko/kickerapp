@@ -8,7 +8,7 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
-import { de } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { useMonthlyMatches } from "./useMonthlyMatches";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { format } from "date-fns";
@@ -79,7 +79,7 @@ function TimePlayedChart() {
     const { players, isLoading: isLoadingPlayers } = usePlayers();
     const data = [];
     const { isMobile } = useWindowWidth();
-    const currentMonth = format(new Date(), "LLLL", { locale: de });
+    const currentMonth = format(new Date(), "LLLL", { locale: enUS });
     const [searchParams, setSearchParams] = useSearchParams();
 
     useEffect(() => {

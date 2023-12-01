@@ -3,7 +3,7 @@ import ContentBox from "../../ui/ContentBox";
 import Heading from "../../ui/Heading";
 import MiniTable from "../../ui/MiniTable";
 import Row from "../../ui/Row";
-import { de } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import MiniDisgraceRow from "./MiniDisgraceRow";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { useMonthlyDisgraces } from "./useMonthlyDisgraces";
@@ -20,7 +20,7 @@ const StyledMontylyDisgrace = styled(ContentBox)`
 
 function MonthlyDisgraces() {
     const { disgraces, isLoading } = useMonthlyDisgraces();
-    const currentMonth = format(new Date(), "LLLL", { locale: de });
+    const currentMonth = format(new Date(), "LLLL", { locale: enUS });
 
     const { isMobile } = useWindowWidth();
 

@@ -413,7 +413,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
     }
 
     // Falls Spiel ohne goal tracking, erstelle goal datensätze
-    const { count: goalsCount } = getGoalsByMatch(kicker, id);
+    const { count: goalsCount } = await getGoalsByMatch(kicker, id);
     if (!goalsCount) {
         // Keine goals vorhanden, erstelle Datensätze
         // Nur für 1on1, da nicht bekannt ist, wer die Tore geschossen hat
@@ -429,6 +429,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
                     team: 1,
                     scoreTeam1: null,
                     scoreTeam2: null,
+                    gamemode: data.gamemode,
                 };
 
                 createGoal(newGoal);
@@ -445,6 +446,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
                     team: 2,
                     scoreTeam1: null,
                     scoreTeam2: null,
+                    gamemode: data.gamemode,
                 };
 
                 createGoal(newGoal);

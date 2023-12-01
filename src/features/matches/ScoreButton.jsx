@@ -1,8 +1,8 @@
 import ButtonIcon from "../../ui/ButtonIcon";
 
-function ScoreButton({ onClick, isDisabled, children }) {
+function ScoreButton({ onClick, disabled, children }) {
     return (
-        <ButtonIcon $size="xlarge" onClick={onClick} disabled={isDisabled}>
+        <ButtonIcon $size="xlarge" onClick={onClick} disabled={disabled}>
             {children}
         </ButtonIcon>
     );
