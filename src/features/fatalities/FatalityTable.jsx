@@ -2,11 +2,11 @@ import useWindowWidth from "../../hooks/useWindowWidth";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import Pagination from "../../ui/Pagination";
 import Table from "../../ui/Table";
-import DisgraceRow from "./DisgraceRow";
-import { useDisgraces } from "./useDisgraces";
+import FatalityRow from "./FatalityRow";
+import { useFatalities } from "./useFatalities";
 
-function DisgraceTable() {
-    const { disgraces, isLoading, count } = useDisgraces();
+function FatalityTable() {
+    const { fatalities, isLoading, count } = useFatalities();
 
     const { isTablet, isDesktop } = useWindowWidth();
 
@@ -19,19 +19,19 @@ function DisgraceTable() {
     return (
         <Table columns={columns}>
             <Table.Header>
-                <div>Player</div>
-                <div>Geschändet von</div>
-                <div>Datum</div>
+                <div>Victim</div>
+                <div>Finisher</div>
+                <div>Date</div>
             </Table.Header>
 
             {isLoading ? (
                 <LoadingSpinner />
             ) : (
                 <Table.Body
-                    noDataLabel="Bisher noch niemand geschändet"
-                    data={disgraces}
-                    render={(disgrace) => (
-                        <DisgraceRow disgrace={disgrace} key={disgrace.id} />
+                    noDataLabel="No fatalities available"
+                    data={fatalities}
+                    render={(fatality) => (
+                        <FatalityRow fatality={fatality} key={fatality.id} />
                     )}
                 />
             )}
@@ -42,4 +42,4 @@ function DisgraceTable() {
     );
 }
 
-export default DisgraceTable;
+export default FatalityTable;

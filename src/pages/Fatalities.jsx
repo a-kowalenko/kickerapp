@@ -1,23 +1,23 @@
 import styled from "styled-components";
-import DisgraceTable from "../features/disgraces/DisgraceTable";
+import FatalityTable from "../features/fatalities/FatalityTable";
 import Heading from "../ui/Heading";
 import MatchesFilterRow from "../features/matches/MatchesFilterRow";
 
-const StyledDisgrace = styled.div`
+const StyledFatality = styled.div`
     display: flex;
     flex-direction: column;
 `;
 
-function Disgrace() {
+function Fatality() {
     return (
-        <StyledDisgrace>
+        <StyledFatality>
             <Heading as="h1" type="page" hasBackBtn={true}>
-                Disgraces
+                Fatalities
             </Heading>
             <MatchesFilterRow />
-            <DisgraceTable />
-        </StyledDisgrace>
+            <FatalityTable />
+        </StyledFatality>
     );
 }
 
-export default Disgrace;
+export default Fatality;

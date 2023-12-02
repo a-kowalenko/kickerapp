@@ -12,10 +12,10 @@ const Stat = styled.div`
     font-weight: 500;
 `;
 
-function DisgraceRow({ disgrace }) {
+function FatalityRow({ fatality }) {
     const navigate = useNavigate();
-    const { player1, player2, player3, player4 } = disgrace;
-    const isTeam1Winner = disgrace.scoreTeam1 !== 0;
+    const { player1, player2, player3, player4 } = fatality;
+    const isTeam1Winner = fatality.scoreTeam1 !== 0;
     const team1 = [player1, player3];
     const team2 = [player2, player4];
     const winnerTeam = isTeam1Winner ? team1 : team2;
@@ -23,7 +23,7 @@ function DisgraceRow({ disgrace }) {
 
     function handleClickRow(e) {
         e.stopPropagation();
-        navigate(`/matches/${disgrace.id}`);
+        navigate(`/matches/${fatality.id}`);
     }
 
     return (
@@ -67,10 +67,10 @@ function DisgraceRow({ disgrace }) {
             </div>
 
             <Stat>
-                <span>{format(new Date(disgrace.end_time), "dd.MM.yyyy")}</span>
+                <span>{format(new Date(fatality.end_time), "dd.MM.yyyy")}</span>
             </Stat>
         </Table.Row>
     );
 }
 
-export default DisgraceRow;
+export default FatalityRow;

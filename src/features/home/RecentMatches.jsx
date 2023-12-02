@@ -40,7 +40,7 @@ function RecentMatches() {
             </Row>
             <MiniTable columns={columns}>
                 <MiniTable.Header>
-                    {showId && <div>Id</div>}
+                    {showId && <div>Nr</div>}
                     <div style={{ textAlign: isMobile ? "center" : "right" }}>
                         Team 1
                     </div>

@@ -4,14 +4,17 @@ import Table from "../../ui/Table";
 import { usePlayerName } from "./usePlayerName";
 
 import { usePlaytime } from "./usePlaytime";
+import { formatTimeInHoursAndMinutes } from "../../utils/helpers";
 
 function StatsTable({ userId }) {
     const { player, isLoading: isLoadingPlayer } = usePlayerName(userId);
     const { data: playtimeData, isLoading: isLoadingPlaytime } = usePlaytime();
-    const { isDesktop, isMobile } = useWindowWidth();
+    const { isDesktop, isTablet, isMobile } = useWindowWidth();
     const columns = isDesktop
-        ? "1fr 1fr 1fr 1fr 1fr 1fr"
-        : "1fr 0.4fr 0.4fr 1fr 0.7fr 1fr";
+        ? "1fr 1fr 1fr 1fr 1fr 1fr 1fr"
+        : isTablet
+        ? "1.3fr 0.7fr 0.7fr 0.7fr 1fr 0.7fr 1fr"
+        : "0.8fr 0.4fr 0.4fr 0.4fr 0.6fr 0.7fr 1fr";
 
     const isLoading = isLoadingPlaytime || isLoadingPlayer;
 
@@ -25,6 +28,7 @@ function StatsTable({ userId }) {
             gamemode: "1on1",
             wins,
             losses,
+            total: wins + losses,
             mmr,
             playtime: playtimeSolo,
         };
@@ -32,6 +36,7 @@ function StatsTable({ userId }) {
             gamemode: "2on2",
             wins: wins2on2,
             losses: losses2on2,
+            total: wins2on2 + losses2on2,
             mmr: mmr2on2,
             playtime: playtimeDuo,
         };
@@ -39,6 +44,7 @@ function StatsTable({ userId }) {
             gamemode: "Overall",
             wins: wins + wins2on2,
             losses: losses + losses2on2,
+            total: wins + wins2on2 + losses + losses2on2,
             mmr: null,
             playtime: playtimeOverall,
         };
@@ -52,7 +58,8 @@ function StatsTable({ userId }) {
                 <div>{isMobile ? "Mode" : "Gamemode"}</div>
                 <div>{isMobile ? "W" : "Wins"}</div>
                 <div>{isMobile ? "L" : "Losses"}</div>
-                <div>Winrate</div>
+                <div>{isMobile ? "T" : "Total"}</div>
+                <div>{isMobile ? "Win%" : "Winrate"}</div>
                 <div>MMR</div>
                 <div>Playtime</div>
             </Table.Header>
@@ -72,7 +79,7 @@ function StatsTable({ userId }) {
 }
 
 function StatsRow({ stats }) {
-    const { gamemode, wins, losses, mmr, playtime } = stats;
+    const { gamemode, wins, losses, total, mmr, playtime } = stats;
     const winrate = wins > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : 0;
 
     return (
@@ -87,13 +94,16 @@ function StatsRow({ stats }) {
                 <span>{losses}</span>
             </div>
             <div>
+                <span>{total}</span>
+            </div>
+            <div>
                 <span>{winrate}</span>%
             </div>
             <div>
                 <span>{mmr}</span>
             </div>
             <div>
-                <span>{playtime}</span>
+                <span>{formatTimeInHoursAndMinutes(playtime)}</span>
             </div>
         </Table.Row>
     );

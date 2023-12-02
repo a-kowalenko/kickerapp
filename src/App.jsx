@@ -16,7 +16,7 @@ import Rankings from "./pages/Rankings";
 import GlobalStyles from "./styles/GlobalStyles";
 import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
-import Disgraces from "./pages/Disgraces";
+import Fatalities from "./pages/Fatalities";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
 import Players from "./pages/Players";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
@@ -71,8 +71,8 @@ function App() {
                                         element={<Rankings />}
                                     />
                                     <Route
-                                        path="disgraces"
-                                        element={<Disgraces />}
+                                        path="fatalities"
+                                        element={<Fatalities />}
                                     />
                                     <Route
                                         path="user/:userId/*"

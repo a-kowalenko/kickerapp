@@ -4,7 +4,7 @@ export const START_MATCH_COUNTDOWN = 10;
 export const DEFAULT_AVATAR = "/default-user.jpg";
 export const ACTIVE_MATCH_REFETCH_INTERVAL = 1000 * 1;
 export const CHECK_FOR_ACTIVE_MATCH_INTERVAL = 1000 * 3;
-export const DISGRACE_FAKTOR = 2;
+export const FATALITY_FAKTOR = 2;
 
 // MEDIA QUERIES
 export const MAX_MOBILE_WIDTH = 480;

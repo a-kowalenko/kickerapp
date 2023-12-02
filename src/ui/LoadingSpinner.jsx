@@ -12,8 +12,11 @@ const LoadingSpinner = styled.div`
     width: 6.4rem;
     aspect-ratio: 1;
     border-radius: 50%;
-    background:
-        radial-gradient(farthest-side, var(--color-brand-600) 94%, #0000)
+    background: radial-gradient(
+                farthest-side,
+                var(--color-brand-600) 94%,
+                #0000
+            )
             top/10px 10px no-repeat,
         conic-gradient(#0000 30%, var(--color-brand-600));
     -webkit-mask: radial-gradient(

@@ -39,7 +39,7 @@ export function useActiveMatch() {
                 queryClient.invalidateQueries([GOALS, `match_${match.id}`]);
                 queryClient.invalidateQueries([MATCHES, 1, kicker]);
                 queryClient.invalidateQueries(["todayStats", kicker]);
-                queryClient.invalidateQueries(["monthlyDisgraces", kicker]);
+                queryClient.invalidateQueries(["monthlyFatalities", kicker]);
                 queryClient.invalidateQueries(["mostPlayed", kicker]);
             }
 

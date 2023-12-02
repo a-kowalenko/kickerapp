@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import RecentMatches from "./RecentMatches";
-import MonthlyDisgraces from "./MonthlyDisgraces";
+import MonthlyFatalities from "./MonthlyFatalities";
 import MostPlayed from "./MostPlayed";
 import TodayStats from "./TodayStats";
 import { media } from "../../utils/constants";
@@ -29,7 +29,7 @@ function HomeLayout() {
     return (
         <StyledHomeLayout>
             <TodayStats />
-            <MonthlyDisgraces />
+            <MonthlyFatalities />
             <MostPlayed />
             <RecentMatches />
             <TimePlayedChart />

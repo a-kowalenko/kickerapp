@@ -19,6 +19,7 @@ import {
     GAMEMODE_1ON1,
     GAMEMODE_2ON1,
     GAMEMODE_2ON2,
+    MATCH_ACTIVE,
     colorsLight,
     media,
 } from "../../utils/constants";
@@ -64,9 +65,12 @@ const FilterRow = styled.div`
     align-items: center;
     gap: 2.4rem;
 
+    flex-wrap: wrap;
+
     ${media.mobile} {
-        gap: 0.4rem;
-        justify-content: space-evenly;
+        padding: 0 1rem;
+        gap: 1rem;
+        justify-content: space-between;
 
         & div div {
             padding: 1rem;
@@ -91,6 +95,7 @@ function TimePlayedChart() {
     const currentMonthText = format(new Date(), "LLLL", { locale: enUS });
     const { history, isLoadingHistory } = usePlayerHistory({
         month,
+        year,
     });
     const { matches, isLoading: isLoadingMatches } = useTodayStats();
 
@@ -98,7 +103,7 @@ function TimePlayedChart() {
 
     let data = [];
 
-    if (!isLoadingMatches && !isLoadingHistory) {
+    if (!isLoadingMatches && !isLoadingHistory && !isLoadingPlayers) {
         let todaysDataObject = {};
         for (const player of players) {
             todaysDataObject[player.name] = {
@@ -121,45 +126,49 @@ function TimePlayedChart() {
             };
         }
 
-        todaysDataObject = matches?.reduce((acc, cur) => {
-            const mode = cur.gamemode;
-            const { player1, player2, player3, player4 } = cur;
-            const playersList = [player1, player2, player3, player4].filter(
-                (p) => p !== null
-            );
+        todaysDataObject = matches
+            ?.filter((m) => m.status !== MATCH_ACTIVE)
+            .reduce((acc, cur) => {
+                const mode = cur.gamemode;
+                const { player1, player2, player3, player4 } = cur;
+                const playersList = [player1, player2, player3, player4].filter(
+                    (p) => p !== null
+                );
 
-            for (const player of playersList) {
-                if (mode === GAMEMODE_1ON1) {
-                    if (hasPlayerWonMatch(player.id, cur)) {
-                        acc[player.name].wins += 1;
-                    } else {
-                        acc[player.name].losses += 1;
+                for (const player of playersList) {
+                    if (mode === GAMEMODE_1ON1) {
+                        if (hasPlayerWonMatch(player.id, cur)) {
+                            acc[player.name].wins += 1;
+                        } else {
+                            acc[player.name].losses += 1;
+                        }
+                        acc[player.name].duration +=
+                            (new Date(cur.end_time) -
+                                new Date(cur.start_time)) /
+                            1000;
                     }
-                    acc[player.name].duration +=
-                        new Date(cur.end_time) - new Date(cur.start_time);
-                }
-                if (mode === GAMEMODE_2ON2) {
-                    if (hasPlayerWonMatch(player.id, cur)) {
-                        acc[player.name].wins2on2 += 1;
-                    } else {
-                        acc[player.name].losses2on2 += 1;
+                    if (mode === GAMEMODE_2ON2) {
+                        if (hasPlayerWonMatch(player.id, cur)) {
+                            acc[player.name].wins2on2 += 1;
+                        } else {
+                            acc[player.name].losses2on2 += 1;
+                        }
+                        acc[player.name].duration2on2 +=
+                            new Date(cur.end_time) - new Date(cur.start_time);
                     }
-                    acc[player.name].duration2on2 +=
-                        new Date(cur.end_time) - new Date(cur.start_time);
-                }
-                if (mode === GAMEMODE_2ON1) {
-                    if (hasPlayerWonMatch(player.id, cur)) {
-                        acc[player.name].wins2on1 += 1;
-                    } else {
-                        acc[player.name].losses2on1 += 1;
+                    if (mode === GAMEMODE_2ON1) {
+                        if (hasPlayerWonMatch(player.id, cur)) {
+                            acc[player.name].wins2on1 += 1;
+                        } else {
+                            acc[player.name].losses2on1 += 1;
+                        }
+                        acc[player.name].duration2on1 +=
+                            new Date(cur.end_time) - new Date(cur.start_time);
                     }
-                    acc[player.name].duration2on1 +=
-                        new Date(cur.end_time) - new Date(cur.start_time);
                 }
-            }
 
-            return acc;
-        }, todaysDataObject);
+                return acc;
+            }, todaysDataObject);
 
         const todaysDataArray = Object.values(todaysDataObject);
 
@@ -367,7 +376,7 @@ function TimePlayedChart() {
                     }}
                 />
                 <Dropdown
-                    minWidth={isMobile ? "12rem" : "20rem"}
+                    minWidth={isMobile ? "20rem" : "25rem"}
                     options={monthOptions}
                     onSelect={(option) => setMonth(option)}
                     initSelected={{
@@ -378,7 +387,7 @@ function TimePlayedChart() {
                     }}
                 />
                 <Dropdown
-                    minWidth={isMobile ? "12rem" : "20rem"}
+                    minWidth={isMobile ? "12rem" : "14rem"}
                     options={yearOptions}
                     onSelect={(option) => setYear(option)}
                     initSelected={{
@@ -485,10 +494,11 @@ function CustomTooltip({ active, payload, label, type }) {
     if (active && payload && payload.length) {
         const finalPayload = [];
         for (const player of Object.values(payload)) {
+            const actualPayload = player.payload[player.name];
             if (player.name) {
                 finalPayload.push({
                     name: player.name,
-                    value: player.value,
+                    value: actualPayload[type],
                     color: player.color,
                 });
             }
