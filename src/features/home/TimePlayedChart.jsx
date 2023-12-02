@@ -3,6 +3,7 @@ import {
     Legend,
     Line,
     LineChart,
+    ReferenceLine,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -32,6 +33,7 @@ import { usePlayerHistory } from "./usePlayerHistory";
 import SpinnerMini from "../../ui/SpinnerMini";
 import { useTodayStats } from "./useTodayStats";
 import SwitchButton from "../../ui/SwitchButton";
+import Divider from "../../ui/Divider";
 
 const StyledTimePlayedChart = styled(ContentBox)`
     grid-area: 4 / 1 / 7 / 5;
@@ -83,8 +85,9 @@ const FilterRow = styled.div`
 `;
 
 function TimePlayedChart() {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
     const [month, setMonth] = useState(currentMonth);
     const [year, setYear] = useState(currentYear);
     const [type, setType] = useState("duration");
@@ -92,7 +95,7 @@ function TimePlayedChart() {
     const [gamemode, setGamemode] = useState("all");
     const { players, isLoading: isLoadingPlayers } = usePlayers();
     const { isMobile } = useWindowWidth();
-    const currentMonthText = format(new Date(), "LLLL", { locale: enUS });
+    const currentMonthText = format(today, "LLLL", { locale: enUS });
     const { history, isLoadingHistory } = usePlayerHistory({
         month,
         year,
@@ -106,7 +109,7 @@ function TimePlayedChart() {
     if (!isLoadingMatches && !isLoadingHistory && !isLoadingPlayers) {
         let todaysDataObject = {};
         for (const player of players) {
-            todaysDataObject[player.name] = {
+            todaysDataObject[player.id] = {
                 player_name: player.name,
                 player_id: player.id,
                 user_id: player.user_id,
@@ -122,7 +125,7 @@ function TimePlayedChart() {
                 duration: 0,
                 duration2on2: 0,
                 duration2on1: 0,
-                created_at: new Date().toISOString(),
+                created_at: today.toISOString(),
             };
         }
 
@@ -138,31 +141,31 @@ function TimePlayedChart() {
                 for (const player of playersList) {
                     if (mode === GAMEMODE_1ON1) {
                         if (hasPlayerWonMatch(player.id, cur)) {
-                            acc[player.name].wins += 1;
+                            acc[player.id].wins += 1;
                         } else {
-                            acc[player.name].losses += 1;
+                            acc[player.id].losses += 1;
                         }
-                        acc[player.name].duration +=
+                        acc[player.id].duration +=
                             (new Date(cur.end_time) -
                                 new Date(cur.start_time)) /
                             1000;
                     }
                     if (mode === GAMEMODE_2ON2) {
                         if (hasPlayerWonMatch(player.id, cur)) {
-                            acc[player.name].wins2on2 += 1;
+                            acc[player.id].wins2on2 += 1;
                         } else {
-                            acc[player.name].losses2on2 += 1;
+                            acc[player.id].losses2on2 += 1;
                         }
                         acc[player.name].duration2on2 +=
                             new Date(cur.end_time) - new Date(cur.start_time);
                     }
                     if (mode === GAMEMODE_2ON1) {
                         if (hasPlayerWonMatch(player.id, cur)) {
-                            acc[player.name].wins2on1 += 1;
+                            acc[player.id].wins2on1 += 1;
                         } else {
-                            acc[player.name].losses2on1 += 1;
+                            acc[player.id].losses2on1 += 1;
                         }
-                        acc[player.name].duration2on1 +=
+                        acc[player.id].duration2on1 +=
                             new Date(cur.end_time) - new Date(cur.start_time);
                     }
                 }
@@ -197,54 +200,53 @@ function TimePlayedChart() {
                 return [
                     {
                         date,
-                        [cur.player_name]: newCur,
+                        [cur.player_id]: newCur,
                     },
                 ];
             }
 
             if (date === acc[currentIndex].date) {
-                acc[currentIndex][cur.player_name] = newCur;
+                acc[currentIndex][cur.player_id] = newCur;
             } else {
                 acc = [
                     ...acc,
                     {
                         date,
-                        [cur.player_name]: newCur,
+                        [cur.player_id]: newCur,
                     },
                 ];
             }
 
             if (isCumulated && acc.length > 1) {
                 newCur.matchesPlayedall +=
-                    acc[acc.length - 2][newCur.player_name].matchesPlayedall;
+                    acc[acc.length - 2][newCur.player_id].matchesPlayedall;
                 newCur.matchesPlayed +=
-                    acc[acc.length - 2][newCur.player_name].matchesPlayed;
+                    acc[acc.length - 2][newCur.player_id].matchesPlayed;
                 newCur.matchesPlayed2on2 +=
-                    acc[acc.length - 2][newCur.player_name].matchesPlayed2on2;
+                    acc[acc.length - 2][newCur.player_id].matchesPlayed2on2;
                 newCur.matchesPlayed2on1 +=
-                    acc[acc.length - 2][newCur.player_name].matchesPlayed2on1;
-                newCur.winsall +=
-                    acc[acc.length - 2][newCur.player_name].winsall;
+                    acc[acc.length - 2][newCur.player_id].matchesPlayed2on1;
+                newCur.winsall += acc[acc.length - 2][newCur.player_id].winsall;
                 newCur.lossesall +=
-                    acc[acc.length - 2][newCur.player_name].lossesall;
+                    acc[acc.length - 2][newCur.player_id].lossesall;
                 newCur.durationall +=
-                    acc[acc.length - 2][newCur.player_name].durationall;
+                    acc[acc.length - 2][newCur.player_id].durationall;
                 newCur.duration +=
-                    acc[acc.length - 2][newCur.player_name].duration;
+                    acc[acc.length - 2][newCur.player_id].duration;
                 newCur.duration2on2 +=
-                    acc[acc.length - 2][newCur.player_name].duration2on2;
+                    acc[acc.length - 2][newCur.player_id].duration2on2;
                 newCur.duration2on1 +=
-                    acc[acc.length - 2][newCur.player_name].duration2on1;
-                newCur.wins += acc[acc.length - 2][newCur.player_name].wins;
+                    acc[acc.length - 2][newCur.player_id].duration2on1;
+                newCur.wins += acc[acc.length - 2][newCur.player_id].wins;
                 newCur.wins2on2 +=
-                    acc[acc.length - 2][newCur.player_name].wins2on2;
+                    acc[acc.length - 2][newCur.player_id].wins2on2;
                 newCur.wins2on1 +=
-                    acc[acc.length - 2][newCur.player_name].wins2on1;
-                newCur.losses += acc[acc.length - 2][newCur.player_name].losses;
+                    acc[acc.length - 2][newCur.player_id].wins2on1;
+                newCur.losses += acc[acc.length - 2][newCur.player_id].losses;
                 newCur.losses2on2 +=
-                    acc[acc.length - 2][newCur.player_name].losses2on2;
+                    acc[acc.length - 2][newCur.player_id].losses2on2;
                 newCur.losses2on1 +=
-                    acc[acc.length - 2][newCur.player_name].losses2on1;
+                    acc[acc.length - 2][newCur.player_id].losses2on1;
             }
 
             return acc;
@@ -273,6 +275,7 @@ function TimePlayedChart() {
 
     for (const [i, player] of players.sort((a, b) => a.id - b.id).entries()) {
         playersObject[player.id] = {
+            player_id: player.id,
             color: colorsLight[i % players.length],
         };
     }
@@ -314,19 +317,6 @@ function TimePlayedChart() {
             }),
             value: i,
         });
-    }
-
-    let sortBy = "cumulatedDuration";
-    if (type === "duration") {
-        sortBy = "cumulatedDuration";
-    } else if (type === "matchesPlayed") {
-        sortBy = "cumulatedMatchesPlayed";
-    } else if (type === "mmr") {
-        sortBy = "cumulatedMmr";
-    } else if (type === "wins") {
-        sortBy = "cumulatedWins";
-    } else if (type === "losses") {
-        sortBy = "cumulatedLosses";
     }
 
     function handleTypeFilter(option) {
@@ -425,6 +415,15 @@ function TimePlayedChart() {
                         domain={["auto", "auto"]}
                         tick={<CustomizedAxisTick type={finalType} />}
                     />
+                    {month === today.getMonth() && (
+                        <ReferenceLine
+                            x={today.getDate() - 1}
+                            stroke={`var(--primary-button-color)`}
+                            strokeWidth={3}
+                            label="Today"
+                            strokeDasharray="3 3"
+                        />
+                    )}
                     <Tooltip
                         content={
                             <CustomTooltip
@@ -433,20 +432,20 @@ function TimePlayedChart() {
                             />
                         }
                     />
+
                     <Legend formatter={renderLegendText} />
-                    {players
-                        .sort((a, b) => b[sortBy] - a[sortBy])
-                        .map((player) => (
-                            <Line
-                                type="monotone"
-                                name={player.name}
-                                dataKey={`${player.name}.${finalType}`}
-                                key={player.name}
-                                stroke={playersObject[player.id].color}
-                                activeDot={{ r: 4 }}
-                                strokeWidth={2}
-                            />
-                        ))}
+                    {players.map((player) => (
+                        <Line
+                            type="monotone"
+                            name={player.name}
+                            dataKey={`${player.id}.${finalType}`}
+                            key={player.name}
+                            stroke={playersObject[player.id].color}
+                            playerId={player.id}
+                            activeDot={{ r: 4 }}
+                            strokeWidth={2}
+                        />
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
         </StyledTimePlayedChart>
@@ -494,7 +493,8 @@ function CustomTooltip({ active, payload, label, type }) {
     if (active && payload && payload.length) {
         const finalPayload = [];
         for (const player of Object.values(payload)) {
-            const actualPayload = player.payload[player.name];
+            const player_id = player.dataKey.split(".")[0];
+            const actualPayload = player.payload[player_id];
             if (player.name) {
                 finalPayload.push({
                     name: player.name,
@@ -513,7 +513,11 @@ function CustomTooltip({ active, payload, label, type }) {
                     border: "1px solid var(--primary-text-color)",
                 }}
             >
-                <p className="label">{`Date: ${label}`}</p>
+                <TooltipEntry>
+                    <TooltipText>Date:</TooltipText>
+                    <TooltipValue>{label}</TooltipValue>
+                </TooltipEntry>
+                <Divider />
                 {finalPayload
                     .sort((a, b) => b.value - a.value)
                     .map((entry, index) => (
