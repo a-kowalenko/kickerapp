@@ -27,6 +27,10 @@ export function formatTime(milliseconds) {
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
+export function daysInMonth(month, year) {
+    return new Date(year, month, 0).getDate();
+}
+
 export function isTouchDevice() {
     return (
         "ontouchstart" in window ||
