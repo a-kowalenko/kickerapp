@@ -34,6 +34,7 @@ import SpinnerMini from "../../ui/SpinnerMini";
 import { useTodayStats } from "./useTodayStats";
 import SwitchButton from "../../ui/SwitchButton";
 import Divider from "../../ui/Divider";
+import { useKickerInfo } from "../../hooks/useKickerInfo";
 
 const StyledTimePlayedChart = styled(ContentBox)`
     grid-area: 4 / 1 / 7 / 5;
@@ -88,236 +89,54 @@ function TimePlayedChart() {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
+    const currentMonthText = format(today, "LLLL", { locale: enUS });
+
     const [month, setMonth] = useState(currentMonth);
     const [year, setYear] = useState(currentYear);
     const [type, setType] = useState("duration");
     const [isCumulated, setIsCumulated] = useState(true);
     const [gamemode, setGamemode] = useState("all");
-    const { players, isLoading: isLoadingPlayers } = usePlayers();
+
     const { isMobile } = useWindowWidth();
-    const currentMonthText = format(today, "LLLL", { locale: enUS });
+    const { data: kickerInfo, isLoading: isLoadingKickerInfo } =
+        useKickerInfo();
+    const { players, isLoading: isLoadingPlayers } = usePlayers();
+    const { matches, isLoading: isLoadingMatches } = useTodayStats();
     const { history, isLoadingHistory } = usePlayerHistory({
         month,
         year,
     });
-    const { matches, isLoading: isLoadingMatches } = useTodayStats();
 
-    const maxDays = daysInMonth(month + 1, new Date().getFullYear());
+    const isLoadingSomething =
+        isLoadingKickerInfo ||
+        isLoadingPlayers ||
+        isLoadingMatches ||
+        isLoadingHistory;
+    const finalType = gamemode === GAMEMODE_1ON1 ? type : type + gamemode;
 
     let data = [];
 
     if (!isLoadingMatches && !isLoadingHistory && !isLoadingPlayers) {
-        let todaysDataObject = {};
-        for (const player of players) {
-            todaysDataObject[player.id] = {
-                player_name: player.name,
-                player_id: player.id,
-                user_id: player.user_id,
-                kicker_id: player.kicker_id,
-                mmr: player.mmr,
-                mmr2on2: player.mmr2on2,
-                wins: 0,
-                wins2on2: 0,
-                wins2on1: 0,
-                losses: 0,
-                losses2on2: 0,
-                losses2on1: 0,
-                duration: 0,
-                duration2on2: 0,
-                duration2on1: 0,
-                created_at: today.toISOString(),
-            };
-        }
-
-        todaysDataObject = matches
-            ?.filter((m) => m.status !== MATCH_ACTIVE)
-            .reduce((acc, cur) => {
-                const mode = cur.gamemode;
-                const { player1, player2, player3, player4 } = cur;
-                const playersList = [player1, player2, player3, player4].filter(
-                    (p) => p !== null
-                );
-
-                for (const player of playersList) {
-                    if (mode === GAMEMODE_1ON1) {
-                        if (hasPlayerWonMatch(player.id, cur)) {
-                            acc[player.id].wins += 1;
-                        } else {
-                            acc[player.id].losses += 1;
-                        }
-                        acc[player.id].duration +=
-                            (new Date(cur.end_time) -
-                                new Date(cur.start_time)) /
-                            1000;
-                    }
-                    if (mode === GAMEMODE_2ON2) {
-                        if (hasPlayerWonMatch(player.id, cur)) {
-                            acc[player.id].wins2on2 += 1;
-                        } else {
-                            acc[player.id].losses2on2 += 1;
-                        }
-                        acc[player.name].duration2on2 +=
-                            new Date(cur.end_time) - new Date(cur.start_time);
-                    }
-                    if (mode === GAMEMODE_2ON1) {
-                        if (hasPlayerWonMatch(player.id, cur)) {
-                            acc[player.id].wins2on1 += 1;
-                        } else {
-                            acc[player.id].losses2on1 += 1;
-                        }
-                        acc[player.id].duration2on1 +=
-                            new Date(cur.end_time) - new Date(cur.start_time);
-                    }
-                }
-
-                return acc;
-            }, todaysDataObject);
-
-        const todaysDataArray = Object.values(todaysDataObject);
-
-        data = [...history, ...todaysDataArray]?.reduce((acc, cur) => {
-            const currentIndex = acc.length - 1;
-            const date = format(new Date(cur.created_at), "dd.MM.yyyy");
-
-            const newCur = {
-                ...cur,
-                matchesPlayedall:
-                    cur.wins +
-                    cur.losses +
-                    cur.wins2on2 +
-                    cur.losses2on2 +
-                    cur.wins2on1 +
-                    cur.losses2on1,
-                matchesPlayed: cur.wins + cur.losses,
-                matchesPlayed2on2: cur.wins2on2 + cur.losses2on2,
-                matchesPlayed2on1: cur.wins2on1 + cur.losses2on1,
-                winsall: cur.wins + cur.wins2on2 + cur.wins2on1,
-                lossesall: cur.losses + cur.losses2on2 + cur.losses2on1,
-                durationall: cur.duration + cur.duration2on2 + cur.duration2on1,
-            };
-
-            if (acc.length === 0) {
-                return [
-                    {
-                        date,
-                        [cur.player_id]: newCur,
-                    },
-                ];
-            }
-
-            if (date === acc[currentIndex].date) {
-                acc[currentIndex][cur.player_id] = newCur;
-            } else {
-                acc = [
-                    ...acc,
-                    {
-                        date,
-                        [cur.player_id]: newCur,
-                    },
-                ];
-            }
-
-            if (isCumulated && acc.length > 1) {
-                newCur.matchesPlayedall +=
-                    acc[acc.length - 2][newCur.player_id].matchesPlayedall;
-                newCur.matchesPlayed +=
-                    acc[acc.length - 2][newCur.player_id].matchesPlayed;
-                newCur.matchesPlayed2on2 +=
-                    acc[acc.length - 2][newCur.player_id].matchesPlayed2on2;
-                newCur.matchesPlayed2on1 +=
-                    acc[acc.length - 2][newCur.player_id].matchesPlayed2on1;
-                newCur.winsall += acc[acc.length - 2][newCur.player_id].winsall;
-                newCur.lossesall +=
-                    acc[acc.length - 2][newCur.player_id].lossesall;
-                newCur.durationall +=
-                    acc[acc.length - 2][newCur.player_id].durationall;
-                newCur.duration +=
-                    acc[acc.length - 2][newCur.player_id].duration;
-                newCur.duration2on2 +=
-                    acc[acc.length - 2][newCur.player_id].duration2on2;
-                newCur.duration2on1 +=
-                    acc[acc.length - 2][newCur.player_id].duration2on1;
-                newCur.wins += acc[acc.length - 2][newCur.player_id].wins;
-                newCur.wins2on2 +=
-                    acc[acc.length - 2][newCur.player_id].wins2on2;
-                newCur.wins2on1 +=
-                    acc[acc.length - 2][newCur.player_id].wins2on1;
-                newCur.losses += acc[acc.length - 2][newCur.player_id].losses;
-                newCur.losses2on2 +=
-                    acc[acc.length - 2][newCur.player_id].losses2on2;
-                newCur.losses2on1 +=
-                    acc[acc.length - 2][newCur.player_id].losses2on1;
-            }
-
-            return acc;
-        }, []);
-    }
-
-    const finalData = [];
-
-    for (let i = 1; i <= maxDays; i++) {
-        const dataset = data?.find(
-            (item) =>
-                item.date === format(new Date(2023, month, i), "dd.MM.yyyy")
+        data = calculateHistoryData(
+            players,
+            today,
+            matches,
+            data,
+            history,
+            isCumulated
         );
-        if (dataset) {
-            finalData.push(dataset);
-        } else {
-            finalData.push({});
-        }
     }
-
-    if (isLoadingPlayers) {
-        return <LoadingSpinner />;
-    }
-
-    const playersObject = {};
-
-    for (const [i, player] of players.sort((a, b) => a.id - b.id).entries()) {
-        playersObject[player.id] = {
-            player_id: player.id,
-            color: colorsLight[i % players.length],
-        };
-    }
-
-    const options = [
-        { text: "Duration", value: "duration" },
-        { text: "MMR", value: "mmr" },
-        { text: "Matches played", value: "matchesPlayed" },
-        { text: "Wins", value: "wins" },
-        { text: "Losses", value: "losses" },
-    ];
-
-    const gamemodeOptions =
-        type === "mmr"
-            ? [
-                  { text: GAMEMODE_1ON1, value: GAMEMODE_1ON1 },
-                  { text: GAMEMODE_2ON2, value: GAMEMODE_2ON2 },
-              ]
-            : [
-                  { text: "all", value: "all" },
-                  { text: GAMEMODE_1ON1, value: GAMEMODE_1ON1 },
-                  { text: GAMEMODE_2ON2, value: GAMEMODE_2ON2 },
-                  { text: GAMEMODE_2ON1, value: GAMEMODE_2ON1 },
-              ];
-
-    const monthOptions = [];
-    for (let i = currentMonth; i >= 0; i--) {
-        monthOptions.push({
-            text: format(new Date().setMonth(i), "LLLL", { locale: enUS }),
-            value: i,
-        });
-    }
-
-    const yearOptions = [];
-    for (let i = currentYear; i >= 2023; i--) {
-        yearOptions.push({
-            text: format(new Date().setFullYear(year), "yyyy", {
-                locale: enUS,
-            }),
-            value: i,
-        });
-    }
+    const finalData = transformToMonthlyData(month, year, data);
+    const playersObject = createPlayersObject(isLoadingPlayers, players);
+    const { options, gamemodeOptions, monthOptions, yearOptions } =
+        createDropdownOptionLists(
+            type,
+            isLoadingKickerInfo,
+            kickerInfo,
+            year,
+            currentMonth,
+            currentYear
+        );
 
     function handleTypeFilter(option) {
         setType(option);
@@ -331,13 +150,6 @@ function TimePlayedChart() {
 
     function handleGamemodeFilter(option) {
         setGamemode(option);
-    }
-
-    let finalType;
-    if (gamemode === GAMEMODE_1ON1) {
-        finalType = type;
-    } else {
-        finalType = type + gamemode;
     }
 
     return (
@@ -392,7 +204,7 @@ function TimePlayedChart() {
                     value={isCumulated}
                     onChange={() => setIsCumulated((c) => !c)}
                 />
-                {isLoadingHistory ? <SpinnerMini /> : null}
+                {isLoadingSomething ? <SpinnerMini /> : null}
             </FilterRow>
 
             <ResponsiveContainer width="100%" height={isMobile ? 400 : 500}>
@@ -415,7 +227,7 @@ function TimePlayedChart() {
                         domain={["auto", "auto"]}
                         tick={<CustomizedAxisTick type={finalType} />}
                     />
-                    {month === today.getMonth() && (
+                    {month === currentMonth && year === currentYear && (
                         <ReferenceLine
                             x={today.getDate() - 1}
                             stroke={`var(--primary-button-color)`}
@@ -434,22 +246,266 @@ function TimePlayedChart() {
                     />
 
                     <Legend formatter={renderLegendText} />
-                    {players.map((player) => (
-                        <Line
-                            type="monotone"
-                            name={player.name}
-                            dataKey={`${player.id}.${finalType}`}
-                            key={player.name}
-                            stroke={playersObject[player.id].color}
-                            playerId={player.id}
-                            activeDot={{ r: 4 }}
-                            strokeWidth={2}
-                        />
-                    ))}
+                    {isLoadingPlayers ? (
+                        <LoadingSpinner />
+                    ) : (
+                        players.map((player) => (
+                            <Line
+                                type="monotone"
+                                name={player.name}
+                                dataKey={`${player.id}.${finalType}`}
+                                key={player.name}
+                                stroke={playersObject[player.id].color}
+                                playerId={player.id}
+                                activeDot={{ r: 4 }}
+                                strokeWidth={2}
+                            />
+                        ))
+                    )}
                 </LineChart>
             </ResponsiveContainer>
         </StyledTimePlayedChart>
     );
+}
+
+function createPlayersObject(isLoadingPlayers, players) {
+    const playersObject = {};
+
+    if (!isLoadingPlayers) {
+        for (const [i, player] of players
+            .sort((a, b) => a.id - b.id)
+            .entries()) {
+            playersObject[player.id] = {
+                player_id: player.id,
+                color: colorsLight[i % players.length],
+            };
+        }
+    }
+    return playersObject;
+}
+
+function createDropdownOptionLists(
+    type,
+    isLoadingKickerInfo,
+    kickerInfo,
+    year,
+    currentMonth,
+    currentYear
+) {
+    const options = [
+        { text: "Duration", value: "duration" },
+        { text: "MMR", value: "mmr" },
+        { text: "Matches played", value: "matchesPlayed" },
+        { text: "Wins", value: "wins" },
+        { text: "Losses", value: "losses" },
+    ];
+
+    const gamemodeOptions =
+        type === "mmr"
+            ? [
+                  { text: GAMEMODE_1ON1, value: GAMEMODE_1ON1 },
+                  { text: GAMEMODE_2ON2, value: GAMEMODE_2ON2 },
+              ]
+            : [
+                  { text: "all", value: "all" },
+                  { text: GAMEMODE_1ON1, value: GAMEMODE_1ON1 },
+                  { text: GAMEMODE_2ON2, value: GAMEMODE_2ON2 },
+                  { text: GAMEMODE_2ON1, value: GAMEMODE_2ON1 },
+              ];
+
+    const monthOptions = [];
+    const yearOptions = [];
+
+    if (!isLoadingKickerInfo) {
+        const kickerCreationDate = new Date(kickerInfo.created_at);
+        const kickerCreationMonth = kickerCreationDate.getMonth();
+        const kickerCreationYear = kickerCreationDate.getFullYear();
+        const minMonth = kickerCreationYear === year ? kickerCreationMonth : 0;
+
+        for (let i = currentMonth; i >= minMonth; i--) {
+            monthOptions.push({
+                text: format(new Date().setMonth(i), "LLLL", { locale: enUS }),
+                value: i,
+            });
+        }
+
+        for (let i = currentYear; i >= kickerCreationYear; i--) {
+            yearOptions.push({
+                text: format(new Date().setFullYear(i), "yyyy", {
+                    locale: enUS,
+                }),
+                value: i,
+            });
+        }
+    }
+    return { options, gamemodeOptions, monthOptions, yearOptions };
+}
+
+function transformToMonthlyData(month, year, data) {
+    const finalData = [];
+    const maxDays = daysInMonth(month + 1, year);
+    for (let i = 1; i <= maxDays; i++) {
+        const dataset = data?.find(
+            (item) =>
+                item.date === format(new Date(2023, month, i), "dd.MM.yyyy")
+        );
+        if (dataset) {
+            finalData.push(dataset);
+        } else {
+            finalData.push({});
+        }
+    }
+    return finalData;
+}
+
+function calculateHistoryData(
+    players,
+    today,
+    matches,
+    data,
+    history,
+    isCumulated
+) {
+    let todaysDataObject = {};
+    for (const player of players) {
+        todaysDataObject[player.id] = {
+            player_name: player.name,
+            player_id: player.id,
+            user_id: player.user_id,
+            kicker_id: player.kicker_id,
+            mmr: player.mmr,
+            mmr2on2: player.mmr2on2,
+            wins: 0,
+            wins2on2: 0,
+            wins2on1: 0,
+            losses: 0,
+            losses2on2: 0,
+            losses2on1: 0,
+            duration: 0,
+            duration2on2: 0,
+            duration2on1: 0,
+            created_at: today.toISOString(),
+        };
+    }
+
+    todaysDataObject = matches
+        ?.filter((m) => m.status !== MATCH_ACTIVE)
+        .reduce((acc, cur) => {
+            const mode = cur.gamemode;
+            const { player1, player2, player3, player4 } = cur;
+            const playersList = [player1, player2, player3, player4].filter(
+                (p) => p !== null
+            );
+
+            for (const player of playersList) {
+                if (mode === GAMEMODE_1ON1) {
+                    if (hasPlayerWonMatch(player.id, cur)) {
+                        acc[player.id].wins += 1;
+                    } else {
+                        acc[player.id].losses += 1;
+                    }
+                    acc[player.id].duration +=
+                        (new Date(cur.end_time) - new Date(cur.start_time)) /
+                        1000;
+                }
+                if (mode === GAMEMODE_2ON2) {
+                    if (hasPlayerWonMatch(player.id, cur)) {
+                        acc[player.id].wins2on2 += 1;
+                    } else {
+                        acc[player.id].losses2on2 += 1;
+                    }
+                    acc[player.name].duration2on2 +=
+                        new Date(cur.end_time) - new Date(cur.start_time);
+                }
+                if (mode === GAMEMODE_2ON1) {
+                    if (hasPlayerWonMatch(player.id, cur)) {
+                        acc[player.id].wins2on1 += 1;
+                    } else {
+                        acc[player.id].losses2on1 += 1;
+                    }
+                    acc[player.id].duration2on1 +=
+                        new Date(cur.end_time) - new Date(cur.start_time);
+                }
+            }
+
+            return acc;
+        }, todaysDataObject);
+
+    const todaysDataArray = Object.values(todaysDataObject);
+
+    data = [...history, ...todaysDataArray]?.reduce((acc, cur) => {
+        const currentIndex = acc.length - 1;
+        const date = format(new Date(cur.created_at), "dd.MM.yyyy");
+
+        const newCur = {
+            ...cur,
+            matchesPlayedall:
+                cur.wins +
+                cur.losses +
+                cur.wins2on2 +
+                cur.losses2on2 +
+                cur.wins2on1 +
+                cur.losses2on1,
+            matchesPlayed: cur.wins + cur.losses,
+            matchesPlayed2on2: cur.wins2on2 + cur.losses2on2,
+            matchesPlayed2on1: cur.wins2on1 + cur.losses2on1,
+            winsall: cur.wins + cur.wins2on2 + cur.wins2on1,
+            lossesall: cur.losses + cur.losses2on2 + cur.losses2on1,
+            durationall: cur.duration + cur.duration2on2 + cur.duration2on1,
+        };
+
+        if (acc.length === 0) {
+            return [
+                {
+                    date,
+                    [cur.player_id]: newCur,
+                },
+            ];
+        }
+
+        if (date === acc[currentIndex].date) {
+            acc[currentIndex][cur.player_id] = newCur;
+        } else {
+            acc = [
+                ...acc,
+                {
+                    date,
+                    [cur.player_id]: newCur,
+                },
+            ];
+        }
+
+        if (isCumulated && acc.length > 1) {
+            newCur.matchesPlayedall +=
+                acc[acc.length - 2][newCur.player_id].matchesPlayedall;
+            newCur.matchesPlayed +=
+                acc[acc.length - 2][newCur.player_id].matchesPlayed;
+            newCur.matchesPlayed2on2 +=
+                acc[acc.length - 2][newCur.player_id].matchesPlayed2on2;
+            newCur.matchesPlayed2on1 +=
+                acc[acc.length - 2][newCur.player_id].matchesPlayed2on1;
+            newCur.winsall += acc[acc.length - 2][newCur.player_id].winsall;
+            newCur.lossesall += acc[acc.length - 2][newCur.player_id].lossesall;
+            newCur.durationall +=
+                acc[acc.length - 2][newCur.player_id].durationall;
+            newCur.duration += acc[acc.length - 2][newCur.player_id].duration;
+            newCur.duration2on2 +=
+                acc[acc.length - 2][newCur.player_id].duration2on2;
+            newCur.duration2on1 +=
+                acc[acc.length - 2][newCur.player_id].duration2on1;
+            newCur.wins += acc[acc.length - 2][newCur.player_id].wins;
+            newCur.wins2on2 += acc[acc.length - 2][newCur.player_id].wins2on2;
+            newCur.wins2on1 += acc[acc.length - 2][newCur.player_id].wins2on1;
+            newCur.losses += acc[acc.length - 2][newCur.player_id].losses;
+            newCur.losses2on2 +=
+                acc[acc.length - 2][newCur.player_id].losses2on2;
+            newCur.losses2on1 +=
+                acc[acc.length - 2][newCur.player_id].losses2on1;
+        }
+
+        return acc;
+    }, []);
+    return data;
 }
 
 function formatDuration(seconds) {
