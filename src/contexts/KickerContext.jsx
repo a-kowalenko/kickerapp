@@ -2,11 +2,13 @@ import { useContext, useEffect, useRef } from "react";
 import { createContext } from "react";
 import { useLocalStorageState } from "../hooks/useLocalStorageState";
 import { useUser } from "../features/authentication/useUser";
+import { useQueryClient } from "react-query";
 
 const KickerContext = createContext();
 
 function KickerProvider({ children }) {
     const { isAuthenticated } = useUser();
+    const queryClient = useQueryClient();
     const [currentKicker, setCurrentKicker] = useLocalStorageState(
         null,
         "currentKicker"
@@ -24,6 +26,12 @@ function KickerProvider({ children }) {
             localStorage.setItem("currentKicker", currentKicker);
         }
     }, [currentKicker]);
+
+    function handleKickerSelect(kicker) {
+        queryClient.invalidateQueries(["matches"]);
+        queryClient.invalidateQueries(["match"]);
+        setCurrentKicker(kicker);
+    }
 
     function tryToJoinKickerAfterLogin(
         kickerId,
@@ -53,7 +61,7 @@ function KickerProvider({ children }) {
         <KickerContext.Provider
             value={{
                 currentKicker,
-                setCurrentKicker,
+                setCurrentKicker: handleKickerSelect,
                 tryToJoinKickerAfterLogin,
             }}
         >

@@ -152,12 +152,12 @@ function MainNav({ close }) {
                 </li>
                 <li>
                     <StyledNavLink
-                        to="/disgraces"
-                        title="Disgraces"
+                        to="/fatalities"
+                        title="Fatalities"
                         onClick={close}
                     >
                         <HiOutlineTrash />
-                        <span>Schande</span>
+                        <span>Fatalities</span>
                     </StyledNavLink>
                 </li>
                 <li>

@@ -19,9 +19,9 @@ const Player = styled(Column)`
 
 const Duration = styled(Column)``;
 
-function MiniDisgraceRow({ disgrace }) {
-    const { player1, player2, player3, player4 } = disgrace;
-    const isTeam1Winner = disgrace.scoreTeam1 !== 0;
+function MiniFatalityRow({ fatality }) {
+    const { player1, player2, player3, player4 } = fatality;
+    const isTeam1Winner = fatality.scoreTeam1 !== 0;
     const team1 = [player1, player3];
     const team2 = [player2, player4];
     const winnerTeam = isTeam1Winner ? team1 : team2;
@@ -30,7 +30,7 @@ function MiniDisgraceRow({ disgrace }) {
 
     function handleClickRow(e) {
         e.stopPropagation();
-        navigate(`/matches/${disgrace.id}`);
+        navigate(`/matches/${fatality.id}`);
     }
 
     return (
@@ -63,9 +63,9 @@ function MiniDisgraceRow({ disgrace }) {
                         )
                 )}
             </Player>
-            <Duration>{format(new Date(disgrace.end_time), "dd.")}</Duration>
+            <Duration>{format(new Date(fatality.end_time), "dd.")}</Duration>
         </MiniTable.Row>
     );
 }
 
-export default MiniDisgraceRow;
+export default MiniFatalityRow;

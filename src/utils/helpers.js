@@ -27,6 +27,22 @@ export function formatTime(milliseconds) {
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
+export function formatTimeInHoursAndMinutes(milliseconds) {
+    let seconds = Math.floor(milliseconds / 1000);
+    let minutes = Math.floor(seconds / 60);
+    let hours = Math.floor(minutes / 60);
+
+    minutes = minutes % 60;
+
+    const pad = (num) => num.toString().padStart(2, "0");
+
+    return `${pad(hours)}h ${pad(minutes)}m`;
+}
+
+export function daysInMonth(month, year) {
+    return new Date(year, month, 0).getDate();
+}
+
 export function isTouchDevice() {
     return (
         "ontouchstart" in window ||

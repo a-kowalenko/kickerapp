@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient } from "react-query";
-import { getDisgraces } from "../../services/apiMatches";
+import { getFatalities } from "../../services/apiMatches";
 import { useSearchParams } from "react-router-dom";
 import { useKicker } from "../../contexts/KickerContext";
 import { PAGE_SIZE } from "../../utils/constants";
 
-export function useDisgraces() {
+export function useFatalities() {
     const [searchParams] = useSearchParams();
     const { currentKicker: kicker } = useKicker();
     const queryClient = useQueryClient();
@@ -22,13 +22,13 @@ export function useDisgraces() {
         : 1;
 
     const {
-        data: { data: disgraces, count } = {},
+        data: { data: fatalities, count } = {},
         isLoading,
         error,
     } = useQuery({
         queryKey: ["digraces", filter, currentPage, kicker],
         queryFn: () =>
-            getDisgraces({ filter: { ...filter, kicker, currentPage } }),
+            getFatalities({ filter: { ...filter, kicker, currentPage } }),
     });
 
     // Prefetch next page
@@ -38,7 +38,7 @@ export function useDisgraces() {
         queryClient.prefetchQuery({
             queryKey: ["digraces", filter, currentPage + 1, kicker],
             queryFn: () =>
-                getDisgraces({
+                getFatalities({
                     filter: { ...filter, kicker, currentPage: currentPage + 1 },
                 }),
         });
@@ -48,11 +48,11 @@ export function useDisgraces() {
         queryClient.prefetchQuery({
             queryKey: ["digraces", filter, currentPage - 1, kicker],
             queryFn: () =>
-                getDisgraces({
+                getFatalities({
                     filter: { ...filter, kicker, currentPage: currentPage - 1 },
                 }),
         });
     }
 
-    return { disgraces, count, isLoading, error };
+    return { fatalities, count, isLoading, error };
 }

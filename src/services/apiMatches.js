@@ -1,6 +1,6 @@
 import { addDays, format, parseISO } from "date-fns";
 import {
-    DISGRACE_FAKTOR,
+    FATALITY_FAKTOR,
     GAMEMODE_1ON1,
     GAMEMODE_2ON1,
     GAMEMODE_2ON2,
@@ -14,7 +14,7 @@ import {
     PLAYER,
     STANDARD_GOAL,
 } from "../utils/constants";
-import { calculateMmrChange, formatTime } from "../utils/helpers";
+import { calculateMmrChange } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
 import supabase from "./supabase";
 import {
@@ -261,7 +261,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
     }
 
     const team1Wins = finalScore1 > finalScore2;
-    const isDisgrace = finalScore1 === 0 || finalScore2 === 0;
+    const isFatality = finalScore1 === 0 || finalScore2 === 0;
 
     let mmrChangeForTeam1;
     let mmrChangeForTeam2;
@@ -273,8 +273,8 @@ export async function endMatch({ id, score1, score2, kicker }) {
             team1Wins ? 1 : 0
         );
 
-        if (isDisgrace) {
-            mmrChangeForTeam1 = mmrChangeForTeam1 * DISGRACE_FAKTOR;
+        if (isFatality) {
+            mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
         }
 
         mmrChangeForTeam2 = -mmrChangeForTeam1;
@@ -319,8 +319,8 @@ export async function endMatch({ id, score1, score2, kicker }) {
             team1Wins ? 1 : 0
         );
 
-        if (isDisgrace) {
-            mmrChangeForTeam1 = mmrChangeForTeam1 * DISGRACE_FAKTOR;
+        if (isFatality) {
+            mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
         }
 
         mmrChangeForTeam2 = -mmrChangeForTeam1;
@@ -413,7 +413,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
     }
 
     // Falls Spiel ohne goal tracking, erstelle goal datensätze
-    const { count: goalsCount } = getGoalsByMatch(kicker, id);
+    const { count: goalsCount } = await getGoalsByMatch(kicker, id);
     if (!goalsCount) {
         // Keine goals vorhanden, erstelle Datensätze
         // Nur für 1on1, da nicht bekannt ist, wer die Tore geschossen hat
@@ -429,6 +429,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
                     team: 1,
                     scoreTeam1: null,
                     scoreTeam2: null,
+                    gamemode: data.gamemode,
                 };
 
                 createGoal(newGoal);
@@ -445,6 +446,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
                     team: 2,
                     scoreTeam1: null,
                     scoreTeam2: null,
+                    gamemode: data.gamemode,
                 };
 
                 createGoal(newGoal);
@@ -455,7 +457,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
     return data;
 }
 
-export async function getDisgraces({ filter }) {
+export async function getFatalities({ filter }) {
     let query = supabase
         .from(MATCHES)
         .select(
@@ -502,7 +504,7 @@ export async function getDisgraces({ filter }) {
     const { data, error, count } = await query.eq("status", MATCH_ENDED);
 
     if (error) {
-        throw new Error("Error while selecting the disgraces");
+        throw new Error("Error while selecting the fatalities");
     }
 
     return { data, error, count };
@@ -678,9 +680,9 @@ export async function getPlaytime({ name, kicker }) {
             { solo: 0, duo: 0 }
         );
 
-    const playtimeSolo = formatTime(playtime.solo);
-    const playtimeDuo = formatTime(playtime.duo);
-    const playtimeOverall = formatTime(playtime.solo + playtime.duo);
+    const playtimeSolo = playtime.solo;
+    const playtimeDuo = playtime.duo;
+    const playtimeOverall = playtime.solo + playtime.duo;
 
     return { playtimeSolo, playtimeDuo, playtimeOverall };
 }

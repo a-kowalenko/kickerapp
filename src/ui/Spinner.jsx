@@ -64,7 +64,10 @@ const StyledSpinner = styled.div`
 const SpinnerContainer = styled.div`
     position: absolute;
     top: 40%;
-    left: 50%;
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
     width: 64px;
     height: 64px;
 `;

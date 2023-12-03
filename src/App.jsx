@@ -16,7 +16,7 @@ import Rankings from "./pages/Rankings";
 import GlobalStyles from "./styles/GlobalStyles";
 import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
-import Disgraces from "./pages/Disgraces";
+import Fatalities from "./pages/Fatalities";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
 import Players from "./pages/Players";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
@@ -27,6 +27,7 @@ import { KickerProvider } from "./contexts/KickerContext";
 import Start from "./pages/Start";
 import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
+import Testwiese from "./pages/Testwiese";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -70,8 +71,8 @@ function App() {
                                         element={<Rankings />}
                                     />
                                     <Route
-                                        path="disgraces"
-                                        element={<Disgraces />}
+                                        path="fatalities"
+                                        element={<Fatalities />}
                                     />
                                     <Route
                                         path="user/:userId/*"
@@ -104,6 +105,10 @@ function App() {
                                     <Route
                                         path="tournament/:tourId"
                                         element={<Tournament />}
+                                    />
+                                    <Route
+                                        path="testwiese"
+                                        element={<Testwiese />}
                                     />
                                 </Route>
                                 <Route path="*" element={<PageNotFound />} />

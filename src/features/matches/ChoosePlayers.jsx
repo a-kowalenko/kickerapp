@@ -1,9 +1,6 @@
 import styled from "styled-components";
 import { HiArrowsRightLeft, HiPlus } from "react-icons/hi2";
-import { AiOutlineUsergroupDelete } from "react-icons/ai";
-import { FaUsersSlash } from "react-icons/fa";
 import Button from "../../ui/Button";
-import SwitchButton from "../../ui/SwitchButton";
 import FormRow from "../../ui/FormRow";
 import Heading from "../../ui/Heading";
 import Row from "../../ui/Row";
@@ -11,8 +8,6 @@ import Dropdown from "../../ui/Dropdown";
 import ContentBox from "../../ui/ContentBox";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
-import { useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
 import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
 
 const Container = styled.div`
@@ -204,7 +199,7 @@ function ChoosePlayers() {
             </PlayersContainer>
             <SubmitRow>
                 <CheckboxContainer>
-                    <div>
+                    {/* <div>
                         <SwitchButton
                             label="Random teams (noch nicht implementiert)"
                             id="random-teams"
@@ -219,7 +214,7 @@ function ChoosePlayers() {
                             type="checkbox"
                             disabled={true}
                         />
-                    </div>
+                    </div> */}
                 </CheckboxContainer>
                 {!isStarting && (
                     <FormRow>
