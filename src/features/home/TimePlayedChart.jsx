@@ -396,6 +396,8 @@ function calculateHistoryData(
             const playersList = [player1, player2, player3, player4].filter(
                 (p) => p !== null
             );
+            const duration =
+                (new Date(cur.end_time) - new Date(cur.start_time)) / 1000;
 
             for (const player of playersList) {
                 if (mode === GAMEMODE_1ON1) {
@@ -404,9 +406,7 @@ function calculateHistoryData(
                     } else {
                         acc[player.id].losses += 1;
                     }
-                    acc[player.id].duration +=
-                        (new Date(cur.end_time) - new Date(cur.start_time)) /
-                        1000;
+                    acc[player.id].duration += duration;
                 }
                 if (mode === GAMEMODE_2ON2) {
                     if (hasPlayerWonMatch(player.id, cur)) {
@@ -414,8 +414,7 @@ function calculateHistoryData(
                     } else {
                         acc[player.id].losses2on2 += 1;
                     }
-                    acc[player.name].duration2on2 +=
-                        new Date(cur.end_time) - new Date(cur.start_time);
+                    acc[player.id].duration2on2 += duration;
                 }
                 if (mode === GAMEMODE_2ON1) {
                     if (hasPlayerWonMatch(player.id, cur)) {
@@ -423,8 +422,7 @@ function calculateHistoryData(
                     } else {
                         acc[player.id].losses2on1 += 1;
                     }
-                    acc[player.id].duration2on1 +=
-                        new Date(cur.end_time) - new Date(cur.start_time);
+                    acc[player.id].duration2on1 += duration;
                 }
             }
 
