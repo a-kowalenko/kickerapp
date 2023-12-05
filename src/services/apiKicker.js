@@ -30,7 +30,7 @@ export async function createKicker({ name }) {
     // 4. Set player as admin of the kicker
     const { data: updateData, error: updateError } = await supabase
         .from(KICKER)
-        .update({ admin: player.id })
+        .update({ admin: user.id })
         .eq("id", kickerId)
         .select()
         .single();
@@ -143,4 +143,11 @@ export async function getKickerInfo(kickerId) {
     }
 
     return data;
+}
+
+export async function currentUserIsKickerAdmin(kicker) {
+    const kickerInfo = await getKickerInfo(kicker);
+    const user = await getCurrentUser();
+
+    return kickerInfo.admin === user.id;
 }

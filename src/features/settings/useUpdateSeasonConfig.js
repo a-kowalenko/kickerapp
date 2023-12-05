@@ -7,14 +7,16 @@ export function useUpdateSeasonConfig() {
     const { currentKicker: kicker } = useKicker();
     const { mutate: updateSeasonConfig, isLoading: isUpdatingSeasonConfig } =
         useMutation({
-            mutationFn: ({ frequency, season_mode }) =>
+            mutationFn: ({ frequency, season_mode, auto_renew }) =>
                 updateSeasonConfigApi({
                     frequency,
                     season_mode,
+                    auto_renew,
                     kicker,
                 }),
             onSuccess: () => {
                 queryClient.invalidateQueries(["kicker-info", kicker]);
+                queryClient.invalidateQueries(["current_season", kicker]);
             },
         });
 

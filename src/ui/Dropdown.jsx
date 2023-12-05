@@ -160,23 +160,23 @@ function Dropdown({
                 $variation={disabled ? "disabled" : "default"}
                 $minWidth={minWidth}
             >
-                {selected?.text || "Select an option"}
+                {isLoading ? (
+                    <SpinnerMini />
+                ) : (
+                    <>{selected?.text || "Select an option"}</>
+                )}
                 <RotateIcon $isOpen={isOpen} />
             </Toggle>
             {!disabled && (
                 <List $isOpen={isOpen} ref={ref}>
-                    {isLoading ? (
-                        <SpinnerMini />
-                    ) : (
-                        options.map((option) => (
-                            <Element
-                                text={option.text}
-                                onSelect={() => handleSelect(option)}
-                                key={option.value}
-                                isSelected={option.value === selected?.value}
-                            />
-                        ))
-                    )}
+                    {options.map((option) => (
+                        <Element
+                            text={option.text}
+                            onSelect={() => handleSelect(option)}
+                            key={option.value}
+                            isSelected={option.value === selected?.value}
+                        />
+                    ))}
                 </List>
             )}
         </StyledDropdown>

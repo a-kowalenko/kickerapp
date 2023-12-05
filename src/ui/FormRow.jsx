@@ -13,7 +13,7 @@ const StyledFormRow = styled.div`
         ${(props) => (props.$fill ? "" : "display: flex")};
         justify-content: ${(props) =>
             props.$buttonPosition === "end" ? "flex-end" : "flex-start"};
-        gap: 1.2rem;
+        gap: 2.4rem;
         width: inherit;
     }
 
