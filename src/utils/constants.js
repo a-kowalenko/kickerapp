@@ -43,6 +43,8 @@ export const MATCHES = "matches";
 export const PLAYER = "player";
 export const KICKER = "kicker";
 export const GOALS = "goals";
+export const SEASON = "season";
+export const PLAYER_HISTORY = "player_history";
 
 // COLORS
 export const colorsLight = [

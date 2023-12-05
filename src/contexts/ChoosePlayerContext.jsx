@@ -18,6 +18,7 @@ const initialState = {
     isLoading: false,
     isStarting: false,
     timer: START_MATCH_COUNTDOWN,
+    isSeasonMatch: true,
 };
 
 function reducer(state, action) {
@@ -111,6 +112,11 @@ function reducer(state, action) {
                 isPlayer3Active: false,
                 isPlayer4Active: false,
             };
+        case "switch_season_match":
+            return {
+                ...state,
+                isSeasonMatch: action.payload,
+            };
     }
 }
 
@@ -125,6 +131,7 @@ function ChoosePlayerProvider({ children }) {
             isStarting,
             filteredPlayers,
             filteredForPlayer3And4,
+            isSeasonMatch,
         },
         dispatch,
     ] = useReducer(reducer, initialState);
@@ -181,7 +188,7 @@ function ChoosePlayerProvider({ children }) {
                 player3: selectedPlayers[2],
                 player4: selectedPlayers[3],
             };
-            createMatch(finalPlayers);
+            createMatch(finalPlayers, isSeasonMatch);
         }
 
         return () => {
@@ -316,6 +323,10 @@ function ChoosePlayerProvider({ children }) {
         setSearchParams(searchParams, { replace: true });
     }
 
+    function switchSeasonMatch(isRanked) {
+        dispatch({ type: "switch_season_match", payload: isRanked });
+    }
+
     return (
         <ChoosePlayerContext.Provider
             value={{
@@ -333,6 +344,8 @@ function ChoosePlayerProvider({ children }) {
                 switchTeams,
                 selectedPlayers,
                 clearAllPlayers,
+                switchSeasonMatch,
+                isSeasonMatch,
             }}
         >
             {children}

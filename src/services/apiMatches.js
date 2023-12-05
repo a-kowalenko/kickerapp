@@ -22,6 +22,7 @@ import {
     getGoalStatisticsByPlayer,
     getGoalsByMatch,
 } from "./apiGoals";
+import { getCurrentSeason } from "./apiSeason";
 
 export async function getPlayers({ filter }) {
     const { data, error } = await supabase
@@ -50,7 +51,7 @@ export async function getPlayerById(id) {
     return data;
 }
 
-export async function createMatch({ players, kicker }) {
+export async function createMatch({ players, kicker, isSeasonMatch }) {
     const { data: activeMatches, activeMatchesError } = await supabase
         .from(MATCHES)
         .select(
@@ -84,6 +85,14 @@ export async function createMatch({ players, kicker }) {
             ? GAMEMODE_2ON2
             : GAMEMODE_2ON1;
 
+    let season = null;
+    if (isSeasonMatch) {
+        const currentSeason = await getCurrentSeason(kicker);
+        if (currentSeason && currentSeason.status === "active") {
+            season = currentSeason.id;
+        }
+    }
+
     const { data, error } = await supabase
         .from(MATCHES)
         .insert([
@@ -95,6 +104,7 @@ export async function createMatch({ players, kicker }) {
                 gamemode: gameMode,
                 start_time: new Date(),
                 kicker_id: kicker,
+                season_id: season,
             },
         ])
         .select()

@@ -1,8 +1,9 @@
+import { PLAYER_HISTORY } from "../utils/constants";
 import supabase from "./supabase";
 
 export async function getPlayerHistory(kicker, filter) {
     let query = supabase
-        .from("player_history")
+        .from(PLAYER_HISTORY)
         .select("*")
         .eq("kicker_id", kicker);
 

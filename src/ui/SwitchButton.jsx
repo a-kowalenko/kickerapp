@@ -64,24 +64,39 @@ const SwitchIndicator = styled.span`
     transition: left 0.2s;
 `;
 
-function SwitchButton({ label, value, onChange, disabled = false }) {
+function SwitchButton({
+    label,
+    value,
+    onChange,
+    disabled = false,
+    ownState = false,
+}) {
     const [isToggled, setIsToggled] = useState(value);
 
     function handleToggle() {
         if (disabled) {
             return;
         }
-        setIsToggled((prev) => {
-            onChange?.(!prev);
-            return !prev;
-        });
+        if (ownState) {
+            onChange?.(!value);
+        } else {
+            setIsToggled((prev) => {
+                onChange?.(!prev);
+                return !prev;
+            });
+        }
     }
 
     return (
         <StyledSwitchButton $disabled={disabled}>
-            <SwitchContainer $isToggled={isToggled} onClick={handleToggle}>
+            <SwitchContainer
+                $isToggled={ownState ? value : isToggled}
+                onClick={handleToggle}
+            >
                 <SwitchLabel />
-                <SwitchIndicator $isToggled={isToggled}></SwitchIndicator>
+                <SwitchIndicator
+                    $isToggled={ownState ? value : isToggled}
+                ></SwitchIndicator>
             </SwitchContainer>
             <label onClick={handleToggle}>{label}</label>
         </StyledSwitchButton>

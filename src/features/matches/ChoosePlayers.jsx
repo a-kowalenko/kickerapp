@@ -9,6 +9,7 @@ import ContentBox from "../../ui/ContentBox";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
 import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
+import SwitchButton from "../../ui/SwitchButton";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -95,7 +96,11 @@ function ChoosePlayers() {
         switchTeams,
         clearAllPlayers,
         selectedPlayers: [player1, player2, player3, player4],
+        switchSeasonMatch,
+        isSeasonMatch,
     } = useChoosePlayers();
+    console.log("ChoosePlayers RENDER");
+    console.log("isSeasonMatch", isSeasonMatch);
 
     return (
         <Container>
@@ -199,6 +204,14 @@ function ChoosePlayers() {
             </PlayersContainer>
             <SubmitRow>
                 <CheckboxContainer>
+                    <SwitchButton
+                        label="Ranked Match"
+                        id="is_ranked"
+                        onChange={switchSeasonMatch}
+                        value={isSeasonMatch}
+                        disabled={isStarting}
+                        ownState={true}
+                    />
                     {/* <div>
                         <SwitchButton
                             label="Random teams (noch nicht implementiert)"

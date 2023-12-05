@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import AppLayout from "./ui/AppLayout";
@@ -92,6 +92,12 @@ function App() {
                                     />
                                     <Route
                                         path="settings"
+                                        element={
+                                            <Navigate replace to="general" />
+                                        }
+                                    />
+                                    <Route
+                                        path="settings/*"
                                         element={<Settings />}
                                     />
                                     <Route

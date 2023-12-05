@@ -12,7 +12,8 @@ export function useCreateMatch() {
     const { setActiveMatch } = useMatchContext();
 
     const { mutate: createMatch, isLoading } = useMutation({
-        mutationFn: (players) => createMatchApi({ players, kicker }),
+        mutationFn: (players, isSeasonMatch) =>
+            createMatchApi({ players, kicker, isSeasonMatch }),
         onSuccess: (data) => {
             toast.success(`Match ${data.id} started`);
             setActiveMatch(data);
