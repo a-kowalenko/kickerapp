@@ -191,7 +191,13 @@ function TimePlayedChart() {
                 <Dropdown
                     minWidth={isMobile ? "12rem" : "14rem"}
                     options={yearOptions}
-                    onSelect={(option) => setYear(option)}
+                    onSelect={(option) => {
+                        setYear(option);
+                        const newYear = option;
+                        const newMonth =
+                            newYear === currentYear ? currentMonth : 11;
+                        setMonth(newMonth);
+                    }}
                     initSelected={{
                         text: format(new Date().setFullYear(year), "yyyy", {
                             locale: enUS,
@@ -321,6 +327,9 @@ function createDropdownOptionLists(
         const kickerCreationMonth = kickerCreationDate.getMonth();
         const kickerCreationYear = kickerCreationDate.getFullYear();
         const minMonth = kickerCreationYear === year ? kickerCreationMonth : 0;
+        if (kickerCreationYear === year && new Date().getFullYear() !== year) {
+            currentMonth = 11;
+        }
 
         for (let i = currentMonth; i >= minMonth; i--) {
             monthOptions.push({
@@ -347,7 +356,7 @@ function transformToMonthlyData(month, year, data) {
     for (let i = 1; i <= maxDays; i++) {
         const dataset = data?.find(
             (item) =>
-                item.date === format(new Date(2023, month, i), "dd.MM.yyyy")
+                item.date === format(new Date(year, month, i), "dd.MM.yyyy")
         );
         if (dataset) {
             finalData.push(dataset);
@@ -474,31 +483,39 @@ function calculateHistoryData(
         }
 
         if (isCumulated && acc.length > 1) {
-            newCur.matchesPlayedall +=
-                acc[acc.length - 2][newCur.player_id].matchesPlayedall;
-            newCur.matchesPlayed +=
-                acc[acc.length - 2][newCur.player_id].matchesPlayed;
-            newCur.matchesPlayed2on2 +=
-                acc[acc.length - 2][newCur.player_id].matchesPlayed2on2;
-            newCur.matchesPlayed2on1 +=
-                acc[acc.length - 2][newCur.player_id].matchesPlayed2on1;
-            newCur.winsall += acc[acc.length - 2][newCur.player_id].winsall;
-            newCur.lossesall += acc[acc.length - 2][newCur.player_id].lossesall;
-            newCur.durationall +=
-                acc[acc.length - 2][newCur.player_id].durationall;
-            newCur.duration += acc[acc.length - 2][newCur.player_id].duration;
-            newCur.duration2on2 +=
-                acc[acc.length - 2][newCur.player_id].duration2on2;
-            newCur.duration2on1 +=
-                acc[acc.length - 2][newCur.player_id].duration2on1;
-            newCur.wins += acc[acc.length - 2][newCur.player_id].wins;
-            newCur.wins2on2 += acc[acc.length - 2][newCur.player_id].wins2on2;
-            newCur.wins2on1 += acc[acc.length - 2][newCur.player_id].wins2on1;
-            newCur.losses += acc[acc.length - 2][newCur.player_id].losses;
-            newCur.losses2on2 +=
-                acc[acc.length - 2][newCur.player_id].losses2on2;
-            newCur.losses2on1 +=
-                acc[acc.length - 2][newCur.player_id].losses2on1;
+            if (acc[acc.length - 2][newCur.player_id] === undefined) {
+                // TODO: ignore for now (quick fix?)
+            } else {
+                newCur.matchesPlayedall +=
+                    acc[acc.length - 2][newCur.player_id].matchesPlayedall;
+                newCur.matchesPlayed +=
+                    acc[acc.length - 2][newCur.player_id].matchesPlayed;
+                newCur.matchesPlayed2on2 +=
+                    acc[acc.length - 2][newCur.player_id].matchesPlayed2on2;
+                newCur.matchesPlayed2on1 +=
+                    acc[acc.length - 2][newCur.player_id].matchesPlayed2on1;
+                newCur.winsall += acc[acc.length - 2][newCur.player_id].winsall;
+                newCur.lossesall +=
+                    acc[acc.length - 2][newCur.player_id].lossesall;
+                newCur.durationall +=
+                    acc[acc.length - 2][newCur.player_id].durationall;
+                newCur.duration +=
+                    acc[acc.length - 2][newCur.player_id].duration;
+                newCur.duration2on2 +=
+                    acc[acc.length - 2][newCur.player_id].duration2on2;
+                newCur.duration2on1 +=
+                    acc[acc.length - 2][newCur.player_id].duration2on1;
+                newCur.wins += acc[acc.length - 2][newCur.player_id].wins;
+                newCur.wins2on2 +=
+                    acc[acc.length - 2][newCur.player_id].wins2on2;
+                newCur.wins2on1 +=
+                    acc[acc.length - 2][newCur.player_id].wins2on1;
+                newCur.losses += acc[acc.length - 2][newCur.player_id].losses;
+                newCur.losses2on2 +=
+                    acc[acc.length - 2][newCur.player_id].losses2on2;
+                newCur.losses2on1 +=
+                    acc[acc.length - 2][newCur.player_id].losses2on1;
+            }
         }
 
         return acc;
