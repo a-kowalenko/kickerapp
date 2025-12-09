@@ -5,8 +5,6 @@ import MostPlayed from "./MostPlayed";
 import TodayStats from "./TodayStats";
 import { media } from "../../utils/constants";
 import TimePlayedChart from "./TimePlayedChart";
-import SeasonFilter from "../seasons/SeasonFilter";
-import FilterRow from "../../ui/FilterRow";
 
 const StyledHomeLayout = styled.div`
     display: flex;
@@ -36,9 +34,6 @@ const StatsGrid = styled.div`
 function HomeLayout() {
     return (
         <StyledHomeLayout>
-            <FilterRow>
-                <SeasonFilter name="home" defaultToCurrent={true} />
-            </FilterRow>
             <StatsGrid>
                 <TodayStats />
                 <MonthlyFatalities />

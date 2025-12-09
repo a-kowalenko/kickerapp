@@ -1,15 +1,13 @@
 import { useQuery } from "react-query";
 import { getMostPlayed } from "../../services/apiPlayer";
 import { useKicker } from "../../contexts/KickerContext";
-import { useSearchParams } from "react-router-dom";
+import { useSelectedSeason } from "../seasons/useSelectedSeason";
 import { SEASON_ALL_TIME, SEASON_OFF_SEASON } from "../../utils/constants";
 
 export function useMostPlayed() {
     const { currentKicker: kicker } = useKicker();
-    const [searchParams] = useSearchParams();
+    const { seasonValue, isLoading: isLoadingSeason } = useSelectedSeason();
 
-    // Season filter from URL
-    const seasonValue = searchParams.get("season");
     const seasonId =
         seasonValue &&
         seasonValue !== SEASON_ALL_TIME &&
@@ -20,7 +18,8 @@ export function useMostPlayed() {
     const { data, isLoading } = useQuery({
         queryKey: ["mostPlayed", kicker, seasonValue],
         queryFn: () => getMostPlayed({ filter: { kicker, seasonId } }),
+        enabled: !isLoadingSeason,
     });
 
-    return { mostPlayed: data, isLoading };
+    return { mostPlayed: data, isLoading: isLoading || isLoadingSeason };
 }

@@ -97,7 +97,7 @@ function MatchProvider({ children }) {
     useEffect(() => {
         function handleVisibilityChange() {
             if (document.visibilityState === "visible") {
-                if (!channel?.state !== "joined") {
+                if (channel?.state !== "joined") {
                     getInitMatch();
                     subscribeToChannel();
                 }

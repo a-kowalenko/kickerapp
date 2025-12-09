@@ -1,7 +1,5 @@
 import { useQuery } from "react-query";
-import { useSearchParams } from "react-router-dom";
 import { useKicker } from "../../contexts/KickerContext";
-import { useCurrentSeason } from "../seasons/useCurrentSeason";
 import { usePlayerName } from "./usePlayerName";
 import {
     SEASON_ALL_TIME,
@@ -9,6 +7,7 @@ import {
     SEASON_RANKINGS,
 } from "../../utils/constants";
 import supabase from "../../services/supabase";
+import { useSelectedSeason } from "../seasons/useSelectedSeason";
 
 async function getPlayerSeasonStats({ playerId, seasonId }) {
     if (!playerId || !seasonId) return null;
@@ -28,16 +27,9 @@ async function getPlayerSeasonStats({ playerId, seasonId }) {
 }
 
 export function usePlayerSeasonStats(userId) {
-    const [searchParams] = useSearchParams();
     const { currentKicker: kicker } = useKicker();
-    const { currentSeason, isLoading: isLoadingCurrentSeason } =
-        useCurrentSeason();
+    const { seasonValue, isLoading: isLoadingSeason } = useSelectedSeason();
     const { player, isLoading: isLoadingPlayer } = usePlayerName(userId);
-
-    // Season filter - default to current season
-    const seasonParam = searchParams.get("season");
-    const seasonValue =
-        seasonParam || (currentSeason ? String(currentSeason.id) : null);
 
     // Determine if we should fetch season-specific stats or use all-time from player
     const isAllTime = seasonValue === SEASON_ALL_TIME;
@@ -56,13 +48,13 @@ export function usePlayerSeasonStats(userId) {
                 playerId: player?.id,
                 seasonId: seasonValue,
             }),
-        enabled: shouldFetchSeasonStats && !isLoadingPlayer,
+        enabled: shouldFetchSeasonStats && !isLoadingPlayer && !isLoadingSeason,
     });
 
     // Return appropriate stats based on filter
     const isLoading =
         isLoadingPlayer ||
-        isLoadingCurrentSeason ||
+        isLoadingSeason ||
         (shouldFetchSeasonStats && isLoadingSeasonStats);
 
     // If all-time or off-season, use player stats

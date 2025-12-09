@@ -1,7 +1,6 @@
 import Filter from "../../ui/Filter";
 import { PiGameControllerLight } from "react-icons/pi";
 import FilterRow from "../../ui/FilterRow";
-import SeasonFilter from "../seasons/SeasonFilter";
 
 function MatchesFilterRow() {
     const options = [
@@ -14,7 +13,6 @@ function MatchesFilterRow() {
 
     return (
         <FilterRow>
-            <SeasonFilter name="matches" defaultToCurrent={true} />
             <Filter
                 name="matches"
                 options={options}
