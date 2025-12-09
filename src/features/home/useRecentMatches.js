@@ -1,27 +1,17 @@
 import { useQuery } from "react-query";
 import { getMatches } from "../../services/apiMatches";
-import {
-    MATCHES,
-    SEASON_ALL_TIME,
-    SEASON_OFF_SEASON,
-} from "../../utils/constants";
+import { MATCHES } from "../../utils/constants";
 import { useKicker } from "../../contexts/KickerContext";
-import { useSearchParams } from "react-router-dom";
+import { useSelectedSeason } from "../seasons/useSelectedSeason";
 
 export function useRecentMatches() {
     const { currentKicker: kicker } = useKicker();
-    const [searchParams] = useSearchParams();
+    const {
+        seasonValue,
+        seasonFilter,
+        isLoading: isLoadingSeason,
+    } = useSelectedSeason();
     const firstPage = 1;
-
-    // Season filter from URL
-    const seasonValue = searchParams.get("season");
-    const seasonFilter =
-        seasonValue && seasonValue !== SEASON_ALL_TIME
-            ? {
-                  seasonId:
-                      seasonValue === SEASON_OFF_SEASON ? null : seasonValue,
-              }
-            : null;
 
     const {
         data: { data: matches } = {},
@@ -34,7 +24,11 @@ export function useRecentMatches() {
                 currentPage: firstPage,
                 filter: { kicker, ...seasonFilter },
             }),
+        enabled: !isLoadingSeason,
     });
 
-    return { matches, isLoadingMatches };
+    return {
+        matches,
+        isLoadingMatches: isLoadingMatches || isLoadingSeason,
+    };
 }
