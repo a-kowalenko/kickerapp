@@ -236,7 +236,8 @@ export async function createMatch({ players, kicker }) {
         throw new Error("There was an error creating the match", error.message);
     }
 
-    return data;
+    // Fetch the full match with populated player objects
+    return await getMatch({ matchId: data.id, kicker });
 }
 
 export async function getMatch({ matchId, kicker }) {
