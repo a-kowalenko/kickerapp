@@ -1,6 +1,7 @@
 import Filter from "../../ui/Filter";
 import { PiGameControllerLight } from "react-icons/pi";
 import FilterRow from "../../ui/FilterRow";
+import SeasonFilter from "../seasons/SeasonFilter";
 
 function RankingsFilterRow() {
     const options = [
@@ -12,6 +13,7 @@ function RankingsFilterRow() {
 
     return (
         <FilterRow>
+            <SeasonFilter name="rankings" defaultToCurrent={true} />
             <Filter
                 name="rankings"
                 options={options}

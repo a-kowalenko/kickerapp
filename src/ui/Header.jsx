@@ -16,6 +16,7 @@ import { useMatchContext } from "../contexts/MatchContext";
 import MiniActiveMatchInfo from "./MiniActiveMatchInfo";
 import { useEffect } from "react";
 import { useState } from "react";
+import SeasonBadge from "../features/seasons/SeasonBadge";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -108,6 +109,7 @@ function Header() {
                                 value: kickerData.id,
                             }}
                         />
+                        <SeasonBadge />
                         <ButtonIcon
                             onClick={() => navigate("/")}
                             title="Exit kicker"

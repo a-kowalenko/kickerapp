@@ -12,6 +12,7 @@ import {
     OWN_GOAL,
     PAGE_SIZE,
     PLAYER,
+    SEASON_RANKINGS,
     STANDARD_GOAL,
 } from "../utils/constants";
 import { calculateMmrChange } from "../utils/helpers";
@@ -22,6 +23,123 @@ import {
     getGoalStatisticsByPlayer,
     getGoalsByMatch,
 } from "./apiGoals";
+
+// Helper function to update season rankings after a match ends
+async function updateSeasonRankings({
+    match,
+    gameMode,
+    team1Wins,
+    mmrChangeForTeam1,
+    mmrChangeForTeam2,
+    seasonRankingsMap,
+}) {
+    const { player1, player2, player3, player4 } = match;
+
+    // Use the passed seasonRankingsMap
+    const rankingsMap = seasonRankingsMap;
+
+    if (gameMode === GAMEMODE_1ON1) {
+        // Update player 1
+        const p1Ranking = rankingsMap[player1.id];
+        if (p1Ranking) {
+            await supabase
+                .from(SEASON_RANKINGS)
+                .update({
+                    wins: team1Wins ? p1Ranking.wins + 1 : p1Ranking.wins,
+                    losses: team1Wins ? p1Ranking.losses : p1Ranking.losses + 1,
+                    mmr: p1Ranking.mmr + mmrChangeForTeam1,
+                })
+                .eq("id", p1Ranking.id);
+        }
+
+        // Update player 2
+        const p2Ranking = rankingsMap[player2.id];
+        if (p2Ranking) {
+            await supabase
+                .from(SEASON_RANKINGS)
+                .update({
+                    wins: team1Wins ? p2Ranking.wins : p2Ranking.wins + 1,
+                    losses: team1Wins ? p2Ranking.losses + 1 : p2Ranking.losses,
+                    mmr: p2Ranking.mmr + mmrChangeForTeam2,
+                })
+                .eq("id", p2Ranking.id);
+        }
+    }
+
+    if (gameMode === GAMEMODE_2ON2) {
+        // Update player 1
+        const p1Ranking = rankingsMap[player1.id];
+        if (p1Ranking) {
+            await supabase
+                .from(SEASON_RANKINGS)
+                .update({
+                    wins2on2: team1Wins
+                        ? p1Ranking.wins2on2 + 1
+                        : p1Ranking.wins2on2,
+                    losses2on2: team1Wins
+                        ? p1Ranking.losses2on2
+                        : p1Ranking.losses2on2 + 1,
+                    mmr2on2: p1Ranking.mmr2on2 + mmrChangeForTeam1,
+                })
+                .eq("id", p1Ranking.id);
+        }
+
+        // Update player 2
+        const p2Ranking = rankingsMap[player2.id];
+        if (p2Ranking) {
+            await supabase
+                .from(SEASON_RANKINGS)
+                .update({
+                    wins2on2: team1Wins
+                        ? p2Ranking.wins2on2
+                        : p2Ranking.wins2on2 + 1,
+                    losses2on2: team1Wins
+                        ? p2Ranking.losses2on2 + 1
+                        : p2Ranking.losses2on2,
+                    mmr2on2: p2Ranking.mmr2on2 + mmrChangeForTeam2,
+                })
+                .eq("id", p2Ranking.id);
+        }
+
+        // Update player 3 if exists
+        if (player3) {
+            const p3Ranking = rankingsMap[player3.id];
+            if (p3Ranking) {
+                await supabase
+                    .from(SEASON_RANKINGS)
+                    .update({
+                        wins2on2: team1Wins
+                            ? p3Ranking.wins2on2 + 1
+                            : p3Ranking.wins2on2,
+                        losses2on2: team1Wins
+                            ? p3Ranking.losses2on2
+                            : p3Ranking.losses2on2 + 1,
+                        mmr2on2: p3Ranking.mmr2on2 + mmrChangeForTeam1,
+                    })
+                    .eq("id", p3Ranking.id);
+            }
+        }
+
+        // Update player 4 if exists
+        if (player4) {
+            const p4Ranking = rankingsMap[player4.id];
+            if (p4Ranking) {
+                await supabase
+                    .from(SEASON_RANKINGS)
+                    .update({
+                        wins2on2: team1Wins
+                            ? p4Ranking.wins2on2
+                            : p4Ranking.wins2on2 + 1,
+                        losses2on2: team1Wins
+                            ? p4Ranking.losses2on2 + 1
+                            : p4Ranking.losses2on2,
+                        mmr2on2: p4Ranking.mmr2on2 + mmrChangeForTeam2,
+                    })
+                    .eq("id", p4Ranking.id);
+            }
+        }
+    }
+}
 
 export async function getPlayers({ filter }) {
     const { data, error } = await supabase
@@ -76,13 +194,26 @@ export async function createMatch({ players, kicker }) {
         throw new Error("There already is an active match");
     }
 
+    // Get current season from kicker
+    const { data: kickerData, error: kickerError } = await supabase
+        .from("kicker")
+        .select("current_season_id")
+        .eq("id", kicker)
+        .single();
+
+    if (kickerError) {
+        throw new Error("Error fetching kicker data", kickerError.message);
+    }
+
+    const currentSeasonId = kickerData?.current_season_id || null;
+
     const { player1, player2, player3, player4 } = players;
     const gameMode =
         !player3 && !player4
             ? GAMEMODE_1ON1
             : player3 && player4
-            ? GAMEMODE_2ON2
-            : GAMEMODE_2ON1;
+              ? GAMEMODE_2ON2
+              : GAMEMODE_2ON1;
 
     const { data, error } = await supabase
         .from(MATCHES)
@@ -95,6 +226,7 @@ export async function createMatch({ players, kicker }) {
                 gamemode: gameMode,
                 start_time: new Date(),
                 kicker_id: kicker,
+                season_id: currentSeasonId,
             },
         ])
         .select()
@@ -150,6 +282,17 @@ export async function getMatches({ currentPage, filter }) {
 
     if (filter?.field) {
         query = query[filter.method || "eq"](filter.field, filter.value);
+    }
+
+    // Season filter
+    if (filter?.seasonId !== undefined) {
+        if (filter.seasonId === null) {
+            // Off-season: matches without a season
+            query = query.is("season_id", null);
+        } else {
+            // Specific season
+            query = query.eq("season_id", filter.seasonId);
+        }
     }
 
     if (filter?.name) {
@@ -247,8 +390,15 @@ export async function endMatch({ id, score1, score2, kicker }) {
         throw new Error("Match has already ended");
     }
 
-    const { player1, player2, player3, player4, scoreTeam1, scoreTeam2 } =
-        match;
+    const {
+        player1,
+        player2,
+        player3,
+        player4,
+        scoreTeam1,
+        scoreTeam2,
+        season_id,
+    } = match;
     const gameMode = !player3 && !player4 ? GAMEMODE_1ON1 : GAMEMODE_2ON2;
 
     const finalScore1 = score1 ? score1 : scoreTeam1;
@@ -263,22 +413,92 @@ export async function endMatch({ id, score1, score2, kicker }) {
     const team1Wins = finalScore1 > finalScore2;
     const isFatality = finalScore1 === 0 || finalScore2 === 0;
 
-    let mmrChangeForTeam1;
-    let mmrChangeForTeam2;
+    let mmrChangeForTeam1 = 0;
+    let mmrChangeForTeam2 = 0;
+    let seasonRankingsMap = {};
 
-    if (gameMode === GAMEMODE_1ON1) {
-        mmrChangeForTeam1 = calculateMmrChange(
-            player1.mmr,
-            player2.mmr,
-            team1Wins ? 1 : 0
-        );
+    // Get season rankings for MMR calculation (only if match has a season)
+    if (season_id) {
+        const playerIds = [player1.id, player2.id];
+        if (player3) playerIds.push(player3.id);
+        if (player4) playerIds.push(player4.id);
 
-        if (isFatality) {
-            mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
+        const { data: currentRankings, error: rankingsError } = await supabase
+            .from(SEASON_RANKINGS)
+            .select("*")
+            .eq("season_id", season_id)
+            .in("player_id", playerIds);
+
+        if (rankingsError) {
+            throw new Error(
+                "Error fetching season rankings: " + rankingsError.message
+            );
         }
 
-        mmrChangeForTeam2 = -mmrChangeForTeam1;
+        // Create a map for easy lookup
+        currentRankings?.forEach((r) => {
+            seasonRankingsMap[r.player_id] = r;
+        });
 
+        // Calculate MMR change based on season rankings
+        if (gameMode === GAMEMODE_1ON1) {
+            const p1SeasonMmr = seasonRankingsMap[player1.id]?.mmr || 1000;
+            const p2SeasonMmr = seasonRankingsMap[player2.id]?.mmr || 1000;
+
+            mmrChangeForTeam1 = calculateMmrChange(
+                p1SeasonMmr,
+                p2SeasonMmr,
+                team1Wins ? 1 : 0
+            );
+
+            if (isFatality) {
+                mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
+            }
+
+            mmrChangeForTeam2 = -mmrChangeForTeam1;
+        }
+
+        // 2on2, 1on2, 2on1
+        if (gameMode === GAMEMODE_2ON2) {
+            const p1SeasonMmr = seasonRankingsMap[player1.id]?.mmr2on2 || 1000;
+            const p2SeasonMmr = seasonRankingsMap[player2.id]?.mmr2on2 || 1000;
+            const p3SeasonMmr = player3
+                ? seasonRankingsMap[player3.id]?.mmr2on2 || 1000
+                : null;
+            const p4SeasonMmr = player4
+                ? seasonRankingsMap[player4.id]?.mmr2on2 || 1000
+                : null;
+
+            mmrChangeForTeam1 = calculateMmrChange(
+                p3SeasonMmr
+                    ? Math.round((p1SeasonMmr + p3SeasonMmr) / 2)
+                    : p1SeasonMmr,
+                p4SeasonMmr
+                    ? Math.round((p2SeasonMmr + p4SeasonMmr) / 2)
+                    : p2SeasonMmr,
+                team1Wins ? 1 : 0
+            );
+
+            if (isFatality) {
+                mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
+            }
+
+            mmrChangeForTeam2 = -mmrChangeForTeam1;
+        }
+
+        // Update season_rankings with MMR changes
+        await updateSeasonRankings({
+            match,
+            gameMode,
+            team1Wins,
+            mmrChangeForTeam1,
+            mmrChangeForTeam2,
+            seasonRankingsMap,
+        });
+    }
+
+    // Update player table with wins/losses only (no MMR changes)
+    if (gameMode === GAMEMODE_1ON1) {
         const newPlayer1Wins = team1Wins ? player1.wins + 1 : player1.wins;
         const newPlayer1Losses = team1Wins
             ? player1.losses
@@ -293,7 +513,6 @@ export async function endMatch({ id, score1, score2, kicker }) {
             .update({
                 wins: newPlayer1Wins,
                 losses: newPlayer1Losses,
-                mmr: player1.mmr + mmrChangeForTeam1,
             })
             .eq("id", player1.id);
         await supabase
@@ -301,30 +520,11 @@ export async function endMatch({ id, score1, score2, kicker }) {
             .update({
                 wins: newPlayer2Wins,
                 losses: newPlayer2Losses,
-                mmr: player2.mmr + mmrChangeForTeam2,
             })
             .eq("id", player2.id);
     }
 
-    // 2on2, 1on2, 2on1
     if (gameMode === GAMEMODE_2ON2) {
-        // if it's a 1on2, check which team is the single player and assign his own mmr2on2
-        mmrChangeForTeam1 = calculateMmrChange(
-            player3
-                ? Math.round((player1.mmr2on2 + player3.mmr2on2) / 2)
-                : player1.mmr2on2,
-            player4
-                ? Math.round((player2.mmr2on2 + player4.mmr2on2) / 2)
-                : player2.mmr2on2,
-            team1Wins ? 1 : 0
-        );
-
-        if (isFatality) {
-            mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
-        }
-
-        mmrChangeForTeam2 = -mmrChangeForTeam1;
-
         const newPlayer1Wins = team1Wins
             ? player1.wins2on2 + 1
             : player1.wins2on2;
@@ -355,7 +555,6 @@ export async function endMatch({ id, score1, score2, kicker }) {
             .update({
                 wins2on2: newPlayer1Wins,
                 losses2on2: newPlayer1Losses,
-                mmr2on2: player1.mmr2on2 + mmrChangeForTeam1,
             })
             .eq("id", player1.id);
         await supabase
@@ -363,7 +562,6 @@ export async function endMatch({ id, score1, score2, kicker }) {
             .update({
                 wins2on2: newPlayer2Wins,
                 losses2on2: newPlayer2Losses,
-                mmr2on2: player2.mmr2on2 + mmrChangeForTeam2,
             })
             .eq("id", player2.id);
         if (player3) {
@@ -372,7 +570,6 @@ export async function endMatch({ id, score1, score2, kicker }) {
                 .update({
                     wins2on2: newPlayer3Wins,
                     losses2on2: newPlayer3Losses,
-                    mmr2on2: player3.mmr2on2 + mmrChangeForTeam1,
                 })
                 .eq("id", player3.id);
         }
@@ -382,11 +579,30 @@ export async function endMatch({ id, score1, score2, kicker }) {
                 .update({
                     wins2on2: newPlayer4Wins,
                     losses2on2: newPlayer4Losses,
-                    mmr2on2: player4.mmr2on2 + mmrChangeForTeam2,
                 })
                 .eq("id", player4.id);
         }
     }
+
+    // Get MMR values for match record from season_rankings (or null if off-season)
+    const mmrPlayer1 = season_id
+        ? gameMode === GAMEMODE_1ON1
+            ? seasonRankingsMap[player1.id]?.mmr
+            : seasonRankingsMap[player1.id]?.mmr2on2
+        : null;
+    const mmrPlayer2 = season_id
+        ? gameMode === GAMEMODE_1ON1
+            ? seasonRankingsMap[player2.id]?.mmr
+            : seasonRankingsMap[player2.id]?.mmr2on2
+        : null;
+    const mmrPlayer3 =
+        season_id && gameMode === GAMEMODE_2ON2 && player3
+            ? seasonRankingsMap[player3.id]?.mmr2on2
+            : null;
+    const mmrPlayer4 =
+        season_id && gameMode === GAMEMODE_2ON2 && player4
+            ? seasonRankingsMap[player4.id]?.mmr2on2
+            : null;
 
     const { data, error } = await supabase
         .from(MATCHES)
@@ -394,14 +610,12 @@ export async function endMatch({ id, score1, score2, kicker }) {
             status: MATCH_ENDED,
             scoreTeam1: finalScore1,
             scoreTeam2: finalScore2,
-            mmrChangeTeam1: mmrChangeForTeam1,
-            mmrChangeTeam2: mmrChangeForTeam2,
-            mmrPlayer1:
-                gameMode === GAMEMODE_1ON1 ? player1.mmr : player1.mmr2on2,
-            mmrPlayer2:
-                gameMode === GAMEMODE_1ON1 ? player2.mmr : player2.mmr2on2,
-            mmrPlayer3: gameMode === GAMEMODE_2ON2 ? player3?.mmr2on2 : null,
-            mmrPlayer4: gameMode === GAMEMODE_2ON2 ? player4?.mmr2on2 : null,
+            mmrChangeTeam1: season_id ? mmrChangeForTeam1 : null,
+            mmrChangeTeam2: season_id ? mmrChangeForTeam2 : null,
+            mmrPlayer1,
+            mmrPlayer2,
+            mmrPlayer3,
+            mmrPlayer4,
             end_time: new Date(),
         })
         .eq("id", id)
@@ -478,6 +692,17 @@ export async function getFatalities({ filter }) {
         query = query[filter.method || "eq"](filter.field, filter.value);
     }
 
+    // Season filter
+    if (filter?.seasonId !== undefined) {
+        if (filter.seasonId === null) {
+            // Off-season: matches without a season
+            query = query.is("season_id", null);
+        } else {
+            // Specific season
+            query = query.eq("season_id", filter.seasonId);
+        }
+    }
+
     if (filter?.month) {
         const start = new Date(
             filter.year || new Date().getFullYear(),
@@ -523,6 +748,37 @@ export async function getMmrHistory({ filter }) {
         name: filter.name,
         kicker: filter.kicker,
     });
+
+    // Get season's MMR for the player
+    // If seasonId is specified in filter, use that; otherwise use current active season
+    let currentSeasonMmr = null;
+    let targetSeasonId = filter.seasonId;
+
+    if (!targetSeasonId) {
+        // Get current active season from kicker
+        const { data: kickerData } = await supabase
+            .from("kicker")
+            .select("current_season_id")
+            .eq("id", filter.kicker)
+            .single();
+        targetSeasonId = kickerData?.current_season_id;
+    }
+
+    if (targetSeasonId) {
+        const { data: seasonRanking } = await supabase
+            .from(SEASON_RANKINGS)
+            .select("*")
+            .eq("season_id", targetSeasonId)
+            .eq("player_id", player.id)
+            .single();
+
+        if (seasonRanking) {
+            currentSeasonMmr =
+                filter.value === GAMEMODE_1ON1
+                    ? seasonRanking.mmr
+                    : seasonRanking.mmr2on2;
+        }
+    }
 
     data.sort((a, b) => b.end_time - a.end_time);
 
@@ -589,10 +845,14 @@ export async function getMmrHistory({ filter }) {
     });
 
     const result = completeList.filter((item) => item.mmr !== null);
-    result.push({
-        date: format(new Date(), "dd.MM.yyyy"),
-        mmr: filter.value === GAMEMODE_1ON1 ? player.mmr : player.mmr2on2,
-    });
+
+    // Use current season MMR if available, otherwise null (no MMR during off-season)
+    if (currentSeasonMmr !== null) {
+        result.push({
+            date: format(new Date(), "dd.MM.yyyy"),
+            mmr: currentSeasonMmr,
+        });
+    }
 
     return { data: result, count };
 }
@@ -659,8 +919,8 @@ export async function getOpponentStats({ username, filter }) {
     return data;
 }
 
-export async function getPlaytime({ name, kicker }) {
-    const { data } = await getMatches({ filter: { name, kicker } });
+export async function getPlaytime({ name, kicker, seasonId }) {
+    const { data } = await getMatches({ filter: { name, kicker, seasonId } });
 
     const playtime = data
         .filter((match) => match.status === MATCH_ENDED)

@@ -5,14 +5,22 @@ import MostPlayed from "./MostPlayed";
 import TodayStats from "./TodayStats";
 import { media } from "../../utils/constants";
 import TimePlayedChart from "./TimePlayedChart";
+import SeasonFilter from "../seasons/SeasonFilter";
+import FilterRow from "../../ui/FilterRow";
 
 const StyledHomeLayout = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 2.4rem;
+    margin-bottom: 4rem;
+`;
+
+const StatsGrid = styled.div`
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: auto 34rem auto;
     grid-column-gap: 24px;
     grid-row-gap: 24px;
-    margin-bottom: 4rem;
 
     @media (max-width: 1350px) {
         grid-template-columns: repeat(2, 1fr);
@@ -28,11 +36,16 @@ const StyledHomeLayout = styled.div`
 function HomeLayout() {
     return (
         <StyledHomeLayout>
-            <TodayStats />
-            <MonthlyFatalities />
-            <MostPlayed />
-            <RecentMatches />
-            <TimePlayedChart />
+            <FilterRow>
+                <SeasonFilter name="home" defaultToCurrent={true} />
+            </FilterRow>
+            <StatsGrid>
+                <TodayStats />
+                <MonthlyFatalities />
+                <MostPlayed />
+                <RecentMatches />
+                <TimePlayedChart />
+            </StatsGrid>
         </StyledHomeLayout>
     );
 }
