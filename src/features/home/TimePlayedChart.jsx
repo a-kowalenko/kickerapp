@@ -235,7 +235,7 @@ function TimePlayedChart() {
                     />
                     {month === currentMonth && year === currentYear && (
                         <ReferenceLine
-                            x={today.getDate() - 1}
+                            x={today.getDate()}
                             stroke={`var(--primary-button-color)`}
                             strokeWidth={3}
                             label="Today"
@@ -327,11 +327,11 @@ function createDropdownOptionLists(
         const kickerCreationMonth = kickerCreationDate.getMonth();
         const kickerCreationYear = kickerCreationDate.getFullYear();
         const minMonth = kickerCreationYear === year ? kickerCreationMonth : 0;
-        if (kickerCreationYear === year && new Date().getFullYear() !== year) {
-            currentMonth = 11;
-        }
 
-        for (let i = currentMonth; i >= minMonth; i--) {
+        // Fix: For past years, show all months (0-11), for current year show up to current month
+        const maxMonth = year < currentYear ? 11 : currentMonth;
+
+        for (let i = maxMonth; i >= minMonth; i--) {
             monthOptions.push({
                 text: format(new Date().setMonth(i), "LLLL", { locale: enUS }),
                 value: i,

@@ -6,7 +6,18 @@ export async function getPlayerHistory(kicker, filter) {
         .select("*")
         .eq("kicker_id", kicker);
 
-    if (filter?.month) {
+    // Season filter
+    if (filter?.seasonId !== undefined) {
+        if (filter.seasonId === null) {
+            // Off-season: records without a season
+            query = query.is("season_id", null);
+        } else {
+            query = query.eq("season_id", filter.seasonId);
+        }
+    }
+    // If seasonValue is SEASON_ALL_TIME or not provided, no season filter is applied
+
+    if (filter?.month !== undefined && filter.month !== null) {
         const start = new Date(
             filter.year || new Date().getFullYear(),
             filter.month,
