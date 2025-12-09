@@ -111,7 +111,10 @@ function Header() {
                         />
                         <SeasonBadge />
                         <ButtonIcon
-                            onClick={() => navigate("/")}
+                            onClick={() => {
+                                setCurrentKicker(null);
+                                navigate("/");
+                            }}
                             title="Exit kicker"
                         >
                             <HiArrowRightOnRectangle />
@@ -125,7 +128,10 @@ function Header() {
             <ToggleWrapper>
                 {showLeaveKicker && (
                     <ButtonIcon
-                        onClick={() => navigate("/")}
+                        onClick={() => {
+                            setCurrentKicker(null);
+                            navigate("/");
+                        }}
                         title="Exit kicker"
                     >
                         <HiArrowRightOnRectangle />
