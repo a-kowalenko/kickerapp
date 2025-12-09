@@ -1,4 +1,5 @@
 import styled, { css } from "styled-components";
+import { media } from "../utils/constants";
 
 const Input = styled.input`
     border-radius: var(--border-radius-sm);
@@ -7,6 +8,12 @@ const Input = styled.input`
     padding: 1.2rem 2.4rem;
     outline: none;
     transition: none;
+    width: 100%;
+
+    ${media.mobile} {
+        padding: 1rem 1.2rem;
+        font-size: 1.4rem;
+    }
 
     &:disabled {
         background-color: var(--disabled-color);
