@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { enUS } from "date-fns/locale";
 import LoadingSpinner from "../../ui/LoadingSpinner";
-import { format } from "date-fns";
+import { format, getDayOfYear } from "date-fns";
 import { usePlayers } from "../../hooks/usePlayers";
 import { daysInMonth, hasPlayerWonMatch } from "../../utils/helpers";
 import ContentBox from "../../ui/ContentBox";
@@ -181,12 +181,20 @@ function TimePlayedChart() {
                     minWidth={isMobile ? "20rem" : "25rem"}
                     options={monthOptions}
                     onSelect={(option) => setMonth(option)}
-                    initSelected={{
-                        text: format(new Date().setMonth(month), "LLLL", {
-                            locale: enUS,
-                        }),
-                        value: month,
-                    }}
+                    initSelected={
+                        month === -1
+                            ? { text: "Entire Year", value: -1 }
+                            : {
+                                  text: format(
+                                      new Date().setMonth(month),
+                                      "LLLL",
+                                      {
+                                          locale: enUS,
+                                      }
+                                  ),
+                                  value: month,
+                              }
+                    }
                 />
                 <Dropdown
                     minWidth={isMobile ? "12rem" : "14rem"}
@@ -233,15 +241,20 @@ function TimePlayedChart() {
                         domain={["auto", "auto"]}
                         tick={<CustomizedAxisTick type={finalType} />}
                     />
-                    {month === currentMonth && year === currentYear && (
-                        <ReferenceLine
-                            x={today.getDate()}
-                            stroke={`var(--primary-button-color)`}
-                            strokeWidth={3}
-                            label="Today"
-                            strokeDasharray="3 3"
-                        />
-                    )}
+                    {year === currentYear &&
+                        (month === currentMonth || month === -1) && (
+                            <ReferenceLine
+                                x={
+                                    month === -1
+                                        ? getDayOfYear(today)
+                                        : today.getDate()
+                                }
+                                stroke={`var(--primary-button-color)`}
+                                strokeWidth={3}
+                                label="Today"
+                                strokeDasharray="3 3"
+                            />
+                        )}
                     <Tooltip
                         content={
                             <CustomTooltip
@@ -331,6 +344,12 @@ function createDropdownOptionLists(
         // Fix: For past years, show all months (0-11), for current year show up to current month
         const maxMonth = year < currentYear ? 11 : currentMonth;
 
+        // Add "Entire Year" option at the top
+        monthOptions.push({
+            text: "Entire Year",
+            value: -1,
+        });
+
         for (let i = maxMonth; i >= minMonth; i--) {
             monthOptions.push({
                 text: format(new Date().setMonth(i), "LLLL", { locale: enUS }),
@@ -352,6 +371,28 @@ function createDropdownOptionLists(
 
 function transformToMonthlyData(month, year, data) {
     const finalData = [];
+
+    // Handle "Entire Year" option (month === -1)
+    if (month === -1) {
+        // For entire year, iterate through all months and days
+        for (let m = 0; m < 12; m++) {
+            const maxDays = daysInMonth(m + 1, year);
+            for (let i = 1; i <= maxDays; i++) {
+                const dataset = data?.find(
+                    (item) =>
+                        item.date === format(new Date(year, m, i), "dd.MM.yyyy")
+                );
+                if (dataset) {
+                    finalData.push(dataset);
+                } else {
+                    finalData.push({});
+                }
+            }
+        }
+        return finalData;
+    }
+
+    // Normal single month handling
     const maxDays = daysInMonth(month + 1, year);
     for (let i = 1; i <= maxDays; i++) {
         const dataset = data?.find(
