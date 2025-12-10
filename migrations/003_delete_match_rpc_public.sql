@@ -38,6 +38,21 @@ DECLARE
     v_player_mmr_map JSONB;
     v_player_mmr2on2_map JSONB;
     v_player_id_str TEXT;
+    -- Variables for player_history recreation
+    v_current_date DATE;
+    v_player_record RECORD;
+    v_winCount INT;
+    v_lossCount INT;
+    v_win2on2Count INT;
+    v_loss2on2Count INT;
+    v_win2on1Count INT;
+    v_loss2on1Count INT;
+    v_totalDuration INT;
+    v_totalDuration2on2 INT;
+    v_totalDuration2on1 INT;
+    v_end_of_day_mmr INT;
+    v_end_of_day_mmr2on2 INT;
+    v_history_season_id BIGINT;
 BEGIN
     -- 1. Validate kicker exists and user is admin
     SELECT * INTO v_kicker FROM public.kicker WHERE id = p_kicker_id;
@@ -182,9 +197,10 @@ BEGIN
         END IF;
     END IF;
 
-    -- 6. Delete player_history entries for affected players from match date onward
+    -- 6. Delete player_history entries for ALL players of this kicker from match date onward
+    -- We need to recreate history for all players to maintain consistency
     DELETE FROM public.player_history 
-    WHERE player_id = ANY(v_affected_player_ids) 
+    WHERE kicker_id = p_kicker_id 
     AND DATE(created_at) >= v_match_date;
 
     -- 7. Delete the match
@@ -356,12 +372,206 @@ BEGIN
             SET mmr2on2 = v_p4_mmr_before + v_mmr_change_team2
             WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player4;
         END IF;
+    END LOOP;
 
-        -- Also delete player_history for this subsequent match's affected players from its date
-        DELETE FROM public.player_history 
-        WHERE player_id IN (v_subsequent_match.player1, v_subsequent_match.player2, 
-                           COALESCE(v_subsequent_match.player3, -1), COALESCE(v_subsequent_match.player4, -1))
-        AND DATE(created_at) >= DATE(v_subsequent_match.start_time);
+    -- 9. Recreate player_history entries for all players of this kicker from match_date to today
+
+    -- For each day from match_date to today
+    v_current_date := v_match_date;
+    WHILE v_current_date <= CURRENT_DATE LOOP
+        -- For each player of this kicker (not just affected ones, to maintain complete history)
+        FOR v_player_record IN
+            SELECT p.*
+            FROM public.player p
+            WHERE p.kicker_id = p_kicker_id
+        LOOP
+            -- Get season_id that was active on v_current_date for this kicker
+            SELECT s.id INTO v_history_season_id
+            FROM public.seasons s
+            WHERE s.kicker_id = p_kicker_id
+            AND s.start_date::date <= v_current_date
+            AND (s.end_date IS NULL OR s.end_date::date >= v_current_date)
+            ORDER BY s.start_date DESC
+            LIMIT 1;
+            
+            -- If no season found, skip this entry (shouldn't happen normally)
+            IF v_history_season_id IS NULL THEN
+                CONTINUE;
+            END IF;
+
+            -- Calculate wins and losses for 1on1 on this day
+            SELECT COUNT(*) INTO v_winCount
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '1on1'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND ((player1 = v_player_record.id AND "scoreTeam1" > "scoreTeam2") OR
+                 (player2 = v_player_record.id AND "scoreTeam1" < "scoreTeam2"));
+
+            SELECT COUNT(*) INTO v_lossCount
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '1on1'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND ((player1 = v_player_record.id AND "scoreTeam1" < "scoreTeam2") OR
+                 (player2 = v_player_record.id AND "scoreTeam1" > "scoreTeam2"));
+
+            -- Calculate wins2on2 and losses2on2 for 2on2 on this day
+            -- FIXED: Include player3 and player4 in team membership check
+            SELECT COUNT(*) INTO v_win2on2Count
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '2on2'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND (((player1 = v_player_record.id OR player3 = v_player_record.id) AND "scoreTeam1" > "scoreTeam2") OR
+                 ((player2 = v_player_record.id OR player4 = v_player_record.id) AND "scoreTeam1" < "scoreTeam2"));
+
+            SELECT COUNT(*) INTO v_loss2on2Count
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '2on2'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND (((player1 = v_player_record.id OR player3 = v_player_record.id) AND "scoreTeam1" < "scoreTeam2") OR
+                 ((player2 = v_player_record.id OR player4 = v_player_record.id) AND "scoreTeam1" > "scoreTeam2"));
+
+            -- Calculate wins2on1 and losses2on1 for 2on1 on this day
+            -- FIXED: Include player3 and player4 in team membership check
+            SELECT COUNT(*) INTO v_win2on1Count
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '2on1'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND (((player1 = v_player_record.id OR player3 = v_player_record.id) AND "scoreTeam1" > "scoreTeam2") OR
+                 ((player2 = v_player_record.id OR player4 = v_player_record.id) AND "scoreTeam1" < "scoreTeam2"));
+
+            SELECT COUNT(*) INTO v_loss2on1Count
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '2on1'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND (((player1 = v_player_record.id OR player3 = v_player_record.id) AND "scoreTeam1" < "scoreTeam2") OR
+                 ((player2 = v_player_record.id OR player4 = v_player_record.id) AND "scoreTeam1" > "scoreTeam2"));
+
+            -- Calculate total play time for 1on1 on this day
+            SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_time - start_time))), 0) INTO v_totalDuration
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '1on1'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND (player1 = v_player_record.id OR player2 = v_player_record.id);
+
+            -- Calculate total play time for 2on2 on this day
+            SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_time - start_time))), 0) INTO v_totalDuration2on2
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '2on2'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND (player1 = v_player_record.id OR player2 = v_player_record.id OR player3 = v_player_record.id OR player4 = v_player_record.id);
+
+            -- Calculate total play time for 2on1 on this day
+            SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_time - start_time))), 0) INTO v_totalDuration2on1
+            FROM public.matches
+            WHERE DATE(created_at) = v_current_date
+            AND gamemode = '2on1'
+            AND kicker_id = v_player_record.kicker_id
+            AND status = 'ended'
+            AND (player1 = v_player_record.id OR player2 = v_player_record.id OR player3 = v_player_record.id OR player4 = v_player_record.id);
+
+            -- Get end-of-day MMR (last match MMR change on this day, or current if today)
+            IF v_current_date = CURRENT_DATE THEN
+                -- For today, use current season_rankings MMR
+                SELECT COALESCE(sr.mmr, 1000), COALESCE(sr.mmr2on2, 1000)
+                INTO v_end_of_day_mmr, v_end_of_day_mmr2on2
+                FROM public.season_rankings sr
+                WHERE sr.season_id = v_history_season_id AND sr.player_id = v_player_record.id;
+                
+                v_end_of_day_mmr := COALESCE(v_end_of_day_mmr, 1000);
+                v_end_of_day_mmr2on2 := COALESCE(v_end_of_day_mmr2on2, 1000);
+            ELSE
+                -- For past days, calculate end-of-day MMR from matches
+                -- Find the last 1on1 match of this day for this player
+                SELECT 
+                    CASE 
+                        WHEN m.player1 = v_player_record.id THEN COALESCE(m."mmrPlayer1", 1000) + COALESCE(m."mmrChangeTeam1", 0)
+                        WHEN m.player2 = v_player_record.id THEN COALESCE(m."mmrPlayer2", 1000) + COALESCE(m."mmrChangeTeam2", 0)
+                    END
+                INTO v_end_of_day_mmr
+                FROM public.matches m
+                WHERE DATE(m.created_at) = v_current_date
+                AND m.gamemode = '1on1'
+                AND m.kicker_id = v_player_record.kicker_id
+                AND m.status = 'ended'
+                AND (m.player1 = v_player_record.id OR m.player2 = v_player_record.id)
+                ORDER BY m.start_time DESC
+                LIMIT 1;
+
+                -- If no 1on1 match that day, get from previous history or default
+                IF v_end_of_day_mmr IS NULL THEN
+                    SELECT ph.mmr INTO v_end_of_day_mmr
+                    FROM public.player_history ph
+                    WHERE ph.player_id = v_player_record.id
+                    AND DATE(ph.created_at) < v_current_date
+                    ORDER BY ph.created_at DESC
+                    LIMIT 1;
+                    
+                    v_end_of_day_mmr := COALESCE(v_end_of_day_mmr, 1000);
+                END IF;
+
+                -- Find the last 2on2 match of this day for this player
+                SELECT 
+                    CASE 
+                        WHEN m.player1 = v_player_record.id THEN COALESCE(m."mmrPlayer1", 1000) + COALESCE(m."mmrChangeTeam1", 0)
+                        WHEN m.player2 = v_player_record.id THEN COALESCE(m."mmrPlayer2", 1000) + COALESCE(m."mmrChangeTeam2", 0)
+                        WHEN m.player3 = v_player_record.id THEN COALESCE(m."mmrPlayer3", 1000) + COALESCE(m."mmrChangeTeam1", 0)
+                        WHEN m.player4 = v_player_record.id THEN COALESCE(m."mmrPlayer4", 1000) + COALESCE(m."mmrChangeTeam2", 0)
+                    END
+                INTO v_end_of_day_mmr2on2
+                FROM public.matches m
+                WHERE DATE(m.created_at) = v_current_date
+                AND m.gamemode = '2on2'
+                AND m.kicker_id = v_player_record.kicker_id
+                AND m.status = 'ended'
+                AND (m.player1 = v_player_record.id OR m.player2 = v_player_record.id OR m.player3 = v_player_record.id OR m.player4 = v_player_record.id)
+                ORDER BY m.start_time DESC
+                LIMIT 1;
+
+                -- If no 2on2 match that day, get from previous history or default
+                IF v_end_of_day_mmr2on2 IS NULL THEN
+                    SELECT ph.mmr2on2 INTO v_end_of_day_mmr2on2
+                    FROM public.player_history ph
+                    WHERE ph.player_id = v_player_record.id
+                    AND DATE(ph.created_at) < v_current_date
+                    ORDER BY ph.created_at DESC
+                    LIMIT 1;
+                    
+                    v_end_of_day_mmr2on2 := COALESCE(v_end_of_day_mmr2on2, 1000);
+                END IF;
+            END IF;
+
+            -- Insert player_history entry for this day
+            INSERT INTO public.player_history (
+                created_at, player_name, player_id, user_id, kicker_id,
+                mmr, mmr2on2, wins, losses, wins2on2, losses2on2, 
+                wins2on1, losses2on1, duration, duration2on2, duration2on1, season_id
+            )
+            VALUES (
+                v_current_date + INTERVAL '23 hours 59 minutes 59 seconds',
+                v_player_record.name, v_player_record.id, v_player_record.user_id, v_player_record.kicker_id,
+                v_end_of_day_mmr, v_end_of_day_mmr2on2, v_winCount, v_lossCount, 
+                v_win2on2Count, v_loss2on2Count, v_win2on1Count, v_loss2on1Count,
+                v_totalDuration, v_totalDuration2on2, v_totalDuration2on1, v_history_season_id
+            );
+        END LOOP;
+
+        v_current_date := v_current_date + INTERVAL '1 day';
     END LOOP;
 
     RETURN jsonb_build_object('success', true, 'message', 'Match deleted successfully');
