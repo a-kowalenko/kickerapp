@@ -246,8 +246,8 @@ function TimePlayedChart() {
                             <ReferenceLine
                                 x={
                                     month === -1
-                                        ? getDayOfYear(today)
-                                        : today.getDate()
+                                        ? getDayOfYear(today) - 1
+                                        : today.getDate() - 1
                                 }
                                 stroke={`var(--primary-button-color)`}
                                 strokeWidth={3}
