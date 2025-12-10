@@ -12,7 +12,7 @@ export function useEndMatch() {
             endMatchApi({ id, score1, score2, kicker }),
         onSuccess: (data) => {
             toast.success(`Match ${data.id} finished`);
-            queryClient.invalidateQueries(["match"], data.id);
+            queryClient.invalidateQueries(["match", data.id, kicker]);
         },
         onError: (err) => toast.error(err.message),
     });

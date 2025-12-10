@@ -6,7 +6,7 @@ import {
     HiOutlineUserCircle,
 } from "react-icons/hi2";
 import { useLogout } from "../features/authentication/useLogout";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { DEFAULT_AVATAR } from "../utils/constants";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
@@ -68,6 +68,7 @@ function ProfileMenu() {
     const close = () => setIsOpen(false);
     const { logout, isLoading } = useLogout();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const dropdownRef = useOutsideClick(close);
 
     const { data: player, isLoading: isLoadingPlayer } = useOwnPlayer();
@@ -79,7 +80,10 @@ function ProfileMenu() {
     function goToProfile(e) {
         e.stopPropagation();
         close();
-        navigate(`/user/${player.name}/profile`);
+        // Preserve season param when navigating to profile
+        const seasonParam = searchParams.get("season");
+        const queryString = seasonParam ? `?season=${seasonParam}` : "";
+        navigate(`/user/${player.name}/profile${queryString}`);
     }
 
     function handleLogout() {

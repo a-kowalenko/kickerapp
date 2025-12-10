@@ -49,9 +49,11 @@ export async function updatePlayerByUserId({
 
 export async function getMostPlayed({ filter }) {
     const kickerId = filter.kicker;
+    const seasonId = filter.seasonId || null;
 
     const { data, error } = await supabase.rpc("get_player_matches_count", {
         kicker_id: kickerId,
+        p_season_id: seasonId,
     });
 
     if (error) {

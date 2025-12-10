@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { useMatch } from "./useMatch";
 import { useEndMatch } from "./useEndMatch";
+import { useDeleteMatch } from "./useDeleteMatch";
 import { useState } from "react";
 import { useEffect } from "react";
 import { useRef } from "react";
@@ -26,8 +27,10 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import GoalsFilterRow from "./GoalFilterRow";
 import { useMatchContext } from "../../contexts/MatchContext";
 import DelayedButton from "../../ui/DelayedButton";
-import { HiArrowDownTray, HiArrowPath } from "react-icons/hi2";
+import { HiArrowDownTray, HiArrowPath, HiTrash } from "react-icons/hi2";
 import Button from "../../ui/Button";
+import { useKickerInfo } from "../../hooks/useKickerInfo";
+import { useUser } from "../authentication/useUser";
 
 const StyledMatchDetail = styled.div``;
 
@@ -100,6 +103,31 @@ const CurrentTeamScore = styled.div`
 
 const BottomRow = styled(Row)`
     justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+`;
+
+const DeleteConfirmContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.6rem;
+    background-color: var(--secondary-background-color);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-red-700);
+`;
+
+const WarningText = styled.p`
+    color: var(--color-red-700);
+    font-size: 1.4rem;
+    text-align: center;
+    max-width: 40rem;
+`;
+
+const ButtonRow = styled.div`
+    display: flex;
+    gap: 1.2rem;
 `;
 
 const TeamHeader = styled.h1`
@@ -212,9 +240,13 @@ function MatchDetail() {
     const { match, isLoading, error } = useMatch();
     const { activeMatch } = useMatchContext();
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
+    const { deleteMatch, isDeleting } = useDeleteMatch();
     const { goals, isLoadingGoals } = useGoals();
+    const { data: kickerData } = useKickerInfo();
+    const { user } = useUser();
     const [score1, setScore1] = useState("");
     const [score2, setScore2] = useState("");
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [timer, setTimer] = useState(<SpinnerMini />);
     const timerIdRef = useRef(null);
     const goalBoxRef = useRef(null);
@@ -293,11 +325,16 @@ function MatchDetail() {
     const { player1, player2, player3, player4 } = finalMatch;
     const isActive = finalMatch.status === MATCH_ACTIVE;
     const isEnded = finalMatch.status === MATCH_ENDED;
+    const isAdmin = kickerData?.admin === user?.id;
     const winner = isEnded
         ? finalMatch.scoreTeam1 > finalMatch.scoreTeam2
             ? "Team 1"
             : "Team 2"
         : null;
+
+    function handleDeleteMatch() {
+        deleteMatch({ matchId: finalMatch.id });
+    }
 
     if (isTablet || isMobile) {
         return <MatchDetailMobile match={finalMatch} timer={timer} />;
@@ -373,7 +410,47 @@ function MatchDetail() {
                             <HiArrowPath />
                             Rematch
                         </Button>
+                        {isAdmin && !showDeleteConfirm && (
+                            <Button
+                                $variation="danger"
+                                onClick={() => setShowDeleteConfirm(true)}
+                                disabled={isDeleting}
+                            >
+                                <HiTrash />
+                                Delete Match
+                            </Button>
+                        )}
                     </BottomRow>
+                    {isAdmin && showDeleteConfirm && (
+                        <DeleteConfirmContainer>
+                            <WarningText>
+                                Are you sure you want to delete this match? This
+                                will remove all associated goals, reverse MMR
+                                changes, and recalculate all subsequent matches.
+                                This action cannot be undone.
+                            </WarningText>
+                            <ButtonRow>
+                                <Button
+                                    $variation="secondary"
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    disabled={isDeleting}
+                                >
+                                    Cancel
+                                </Button>
+                                <DelayedButton
+                                    $variation="danger"
+                                    action={handleDeleteMatch}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? (
+                                        <SpinnerMini />
+                                    ) : (
+                                        "Confirm Delete"
+                                    )}
+                                </DelayedButton>
+                            </ButtonRow>
+                        </DeleteConfirmContainer>
+                    )}
                 </>
             )}
             <GoalsFilterRow />

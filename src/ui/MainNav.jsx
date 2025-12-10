@@ -11,6 +11,8 @@ import {
 } from "react-icons/hi2";
 import Divider from "./Divider";
 import { useMatchContext } from "../contexts/MatchContext";
+import SeasonBadge from "../features/seasons/SeasonBadge";
+import { media } from "../utils/constants";
 
 const StyledMainNav = styled.nav`
     display: flex;
@@ -23,6 +25,16 @@ const NavList = styled.ul`
     display: flex;
     flex-direction: column;
     gap: 0.8rem;
+`;
+
+const SeasonBadgeContainer = styled.div`
+    display: none;
+    padding: 1.2rem 0;
+    justify-content: center;
+
+    ${media.tablet} {
+        display: flex;
+    }
 `;
 
 const StyledNavLink = styled(NavLink)`
@@ -212,7 +224,11 @@ function MainNav({ close }) {
                     </NewMatchListElement>
                 )}
             </NavList>
-            <NavList></NavList>
+            <NavList>
+                <SeasonBadgeContainer>
+                    <SeasonBadge openUpwards={true} />
+                </SeasonBadgeContainer>
+            </NavList>
         </StyledMainNav>
     );
 }

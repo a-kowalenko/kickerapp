@@ -210,7 +210,11 @@ function Startpage() {
     );
     const toggleSidebar = () => setSidebarActive(!sidebarActive);
 
-    const { setCurrentKicker, isLoading: isHandlingKicker } = useKicker();
+    const {
+        currentKicker,
+        setCurrentKicker,
+        isLoading: isHandlingKicker,
+    } = useKicker();
 
     const { isDarkMode } = useDarkMode();
     const logo = isDarkMode
@@ -237,11 +241,14 @@ function Startpage() {
 
     const { kickers, isLoadingKickers } = useUserKickers();
 
+    // Redirect to last visited kicker if user is authenticated and has a saved kicker
     useEffect(
         function () {
-            setCurrentKicker(null);
+            if (!isLoading && isAuthenticated && currentKicker) {
+                navigate("/home");
+            }
         },
-        [setCurrentKicker]
+        [isLoading, isAuthenticated, currentKicker, navigate]
     );
 
     useEffect(() => {
