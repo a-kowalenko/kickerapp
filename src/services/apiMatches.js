@@ -1111,6 +1111,27 @@ export async function undoLastAction(matchId, kicker) {
     return updatedMatch;
 }
 
+export async function deleteMatch({ matchId, kicker, userId }) {
+    const { data, error } = await supabase.rpc(
+        "delete_match_with_recalculation",
+        {
+            p_match_id: matchId,
+            p_kicker_id: kicker,
+            p_user_id: userId,
+        }
+    );
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    if (!data.success) {
+        throw new Error(data.error || "Failed to delete match");
+    }
+
+    return data;
+}
+
 function isPlayerInTeam(playerId, ...teamPlayers) {
     return teamPlayers.some((player) => player?.id === playerId);
 }
