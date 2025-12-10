@@ -6,9 +6,11 @@ import {
     HiArrowUturnLeft,
     HiMinusCircle,
     HiPlusCircle,
+    HiTrash,
 } from "react-icons/hi2";
 import { useUpdateMatch } from "./useUpdateMatch";
 import { useEndMatch } from "./useEndMatch";
+import { useDeleteMatch } from "./useDeleteMatch";
 import toast from "react-hot-toast";
 import SpinnerMini from "../../ui/SpinnerMini";
 import { useEffect, useRef, useState } from "react";
@@ -29,6 +31,8 @@ import { useGoals } from "../../hooks/useGoals";
 import { format } from "date-fns";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import ScoreButton from "./ScoreButton";
+import { useKickerInfo } from "../../hooks/useKickerInfo";
+import { useUser } from "../authentication/useUser";
 
 const GameInfoContainer = styled.div`
     display: flex;
@@ -106,8 +110,8 @@ const PlayerName = styled.span`
         props.$winner === null
             ? "var(--primary-text-color)"
             : props.$winner === true
-            ? "var(--winner-name-color)"
-            : "var(--loser-name-color)"};
+              ? "var(--winner-name-color)"
+              : "var(--loser-name-color)"};
 
     & div {
         width: 100%;
@@ -138,6 +142,7 @@ const SingleButtonRow = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 1.2rem;
 `;
 
 const TeamContainer = styled.div`
@@ -258,12 +263,38 @@ const GoalType = styled.span`
     justify-content: center;
 `;
 
+const DeleteConfirmContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.6rem;
+    background-color: var(--secondary-background-color);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-red-700);
+`;
+
+const WarningText = styled.p`
+    color: var(--color-red-700);
+    font-size: 1.4rem;
+    text-align: center;
+`;
+
+const ButtonRow = styled.div`
+    display: flex;
+    gap: 1.2rem;
+`;
+
 function MatchDetailMobile({ match, timer }) {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { player1, player2, player3, player4, id: matchId } = match;
     const { endMatch, isLoading: isLoadingEndMatch } = useEndMatch();
+    const { deleteMatch, isDeleting } = useDeleteMatch();
+    const { data: kickerData } = useKickerInfo();
+    const { user } = useUser();
     const [latestScorer, setLatestScorer] = useState(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const { goals, isLoadingGoals } = useGoals();
     const goalBoxRef = useRef(null);
     const sort = searchParams.get("sort") ? searchParams.get("sort") : "desc";
@@ -343,6 +374,12 @@ function MatchDetailMobile({ match, timer }) {
         });
     }
 
+    function handleDeleteMatch() {
+        deleteMatch({ matchId: match.id });
+    }
+
+    const isAdmin = kickerData?.admin === user?.id;
+
     return (
         <StyledMatchDetailMobile>
             <GameInfoContainer>
@@ -396,8 +433,8 @@ function MatchDetailMobile({ match, timer }) {
                                 !isEnded
                                     ? null
                                     : winner === "Team 1"
-                                    ? true
-                                    : false
+                                      ? true
+                                      : false
                             }
                         >
                             <Avatar
@@ -439,8 +476,8 @@ function MatchDetailMobile({ match, timer }) {
                                     !isEnded
                                         ? null
                                         : winner === "Team 1"
-                                        ? true
-                                        : false
+                                          ? true
+                                          : false
                                 }
                             >
                                 <Avatar
@@ -493,8 +530,8 @@ function MatchDetailMobile({ match, timer }) {
                                 !isEnded
                                     ? null
                                     : winner === "Team 2"
-                                    ? true
-                                    : false
+                                      ? true
+                                      : false
                             }
                         >
                             <Avatar
@@ -536,8 +573,8 @@ function MatchDetailMobile({ match, timer }) {
                                     !isEnded
                                         ? null
                                         : winner === "Team 2"
-                                        ? true
-                                        : false
+                                          ? true
+                                          : false
                                 }
                             >
                                 <Avatar
@@ -606,7 +643,52 @@ function MatchDetailMobile({ match, timer }) {
                                     <HiArrowPath />
                                     Rematch
                                 </Button>
+                                {isAdmin && !showDeleteConfirm && (
+                                    <Button
+                                        $variation="danger"
+                                        onClick={() =>
+                                            setShowDeleteConfirm(true)
+                                        }
+                                        disabled={isDeleting}
+                                    >
+                                        <HiTrash />
+                                        Delete
+                                    </Button>
+                                )}
                             </SingleButtonRow>
+                            {isAdmin && showDeleteConfirm && (
+                                <DeleteConfirmContainer>
+                                    <WarningText>
+                                        Are you sure you want to delete this
+                                        match? This will remove all associated
+                                        goals, reverse MMR changes, and
+                                        recalculate all subsequent matches. This
+                                        action cannot be undone.
+                                    </WarningText>
+                                    <ButtonRow>
+                                        <Button
+                                            $variation="secondary"
+                                            onClick={() =>
+                                                setShowDeleteConfirm(false)
+                                            }
+                                            disabled={isDeleting}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <DelayedButton
+                                            $variation="danger"
+                                            action={handleDeleteMatch}
+                                            disabled={isDeleting}
+                                        >
+                                            {isDeleting ? (
+                                                <SpinnerMini />
+                                            ) : (
+                                                "Confirm Delete"
+                                            )}
+                                        </DelayedButton>
+                                    </ButtonRow>
+                                </DeleteConfirmContainer>
+                            )}
                         </>
                     )}
                 </ButtonsContainer>

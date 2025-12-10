@@ -104,7 +104,7 @@ function RankingsTable() {
                     {rankedPlayers.length === 0 &&
                         unrankedPlayers.length === 0 && (
                             <Table.Body
-                                noDataLabel="No rankings available"
+                                noDataLabel=""
                                 data={[]}
                                 render={() => null}
                             />
