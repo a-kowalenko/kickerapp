@@ -62,6 +62,393 @@ $$;
 ALTER FUNCTION "public"."assign_match_number"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."create_season_ranking_for_new_player"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    current_season BIGINT;
+BEGIN
+    SELECT current_season_id INTO current_season
+    FROM public.kicker
+    WHERE id = NEW.kicker_id;
+
+    IF current_season IS NOT NULL THEN
+        INSERT INTO public.season_rankings (player_id, season_id, wins, losses, mmr, wins2on2, losses2on2, mmr2on2)
+        VALUES (NEW.id, current_season, 0, 0, 1000, 0, 0, 1000)
+        ON CONFLICT (player_id, season_id) DO NOTHING;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_season_ranking_for_new_player"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_match_with_recalculation"("p_match_id" bigint, "p_kicker_id" bigint, "p_user_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_match RECORD;
+    v_kicker RECORD;
+    v_subsequent_match RECORD;
+    v_team1_wins BOOLEAN;
+    v_is_fatality BOOLEAN;
+    v_gamemode TEXT;
+    v_mmr_change_team1 INT;
+    v_mmr_change_team2 INT;
+    v_old_mmr_change_team1 INT;
+    v_old_mmr_change_team2 INT;
+    v_p1_mmr_before INT;
+    v_p2_mmr_before INT;
+    v_p3_mmr_before INT;
+    v_p4_mmr_before INT;
+    v_team1_avg_mmr INT;
+    v_team2_avg_mmr INT;
+    v_expected_outcome FLOAT;
+    v_result INT;
+    v_affected_player_ids BIGINT[];
+    v_match_date DATE;
+    v_season_id BIGINT;
+    -- Tracking variables for running MMR state per player (using temp table would be cleaner but this works)
+    v_player_mmr_map JSONB;
+    v_player_mmr2on2_map JSONB;
+    v_player_id_str TEXT;
+BEGIN
+    -- 1. Validate kicker exists and user is admin
+    SELECT * INTO v_kicker FROM public.kicker WHERE id = p_kicker_id;
+    
+    IF v_kicker IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Kicker not found');
+    END IF;
+    
+    IF v_kicker.admin IS NULL OR v_kicker.admin != p_user_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Only admins can delete matches');
+    END IF;
+
+    -- 2. Fetch and validate the match
+    SELECT m.*
+    INTO v_match
+    FROM public.matches m
+    WHERE m.id = p_match_id AND m.kicker_id = p_kicker_id;
+
+    IF v_match IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Match not found');
+    END IF;
+
+    IF v_match.status != 'ended' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Can only delete completed matches');
+    END IF;
+
+    -- Store match details for reversal
+    v_team1_wins := v_match."scoreTeam1" > v_match."scoreTeam2";
+    v_gamemode := v_match.gamemode;
+    v_match_date := DATE(v_match.start_time);
+    v_season_id := v_match.season_id;
+
+    -- Build array of affected player IDs
+    v_affected_player_ids := ARRAY[v_match.player1, v_match.player2];
+    IF v_match.player3 IS NOT NULL THEN
+        v_affected_player_ids := array_append(v_affected_player_ids, v_match.player3);
+    END IF;
+    IF v_match.player4 IS NOT NULL THEN
+        v_affected_player_ids := array_append(v_affected_player_ids, v_match.player4);
+    END IF;
+
+    -- 3. Delete goals for this match
+    DELETE FROM public.goals WHERE match_id = p_match_id;
+
+    -- 4. Reverse player table stats (wins/losses only, no MMR in player table)
+    IF v_gamemode = '1on1' THEN
+        IF v_team1_wins THEN
+            UPDATE public.player SET wins = wins - 1 WHERE id = v_match.player1;
+            UPDATE public.player SET losses = losses - 1 WHERE id = v_match.player2;
+        ELSE
+            UPDATE public.player SET losses = losses - 1 WHERE id = v_match.player1;
+            UPDATE public.player SET wins = wins - 1 WHERE id = v_match.player2;
+        END IF;
+    ELSIF v_gamemode = '2on2' THEN
+        IF v_team1_wins THEN
+            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player1;
+            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player3;
+            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player2;
+            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player4;
+        ELSE
+            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player1;
+            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player3;
+            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player2;
+            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player4;
+        END IF;
+    END IF;
+
+    -- 5. Initialize player MMR tracking maps with MMR values BEFORE the deleted match
+    -- The deleted match stores mmrPlayer1/2/3/4 which is the MMR before that match was played
+    v_player_mmr_map := '{}'::JSONB;
+    v_player_mmr2on2_map := '{}'::JSONB;
+    
+    IF v_season_id IS NOT NULL THEN
+        -- Use mmrPlayer values from the deleted match (these are the MMR values BEFORE the match)
+        IF v_gamemode = '1on1' THEN
+            v_player_mmr_map := jsonb_build_object(
+                v_match.player1::TEXT, COALESCE(v_match."mmrPlayer1", 1000),
+                v_match.player2::TEXT, COALESCE(v_match."mmrPlayer2", 1000)
+            );
+        ELSIF v_gamemode = '2on2' THEN
+            v_player_mmr2on2_map := jsonb_build_object(
+                v_match.player1::TEXT, COALESCE(v_match."mmrPlayer1", 1000),
+                v_match.player2::TEXT, COALESCE(v_match."mmrPlayer2", 1000),
+                v_match.player3::TEXT, COALESCE(v_match."mmrPlayer3", 1000),
+                v_match.player4::TEXT, COALESCE(v_match."mmrPlayer4", 1000)
+            );
+        END IF;
+        
+        -- Update season_rankings to the state BEFORE the deleted match
+        IF v_gamemode = '1on1' THEN
+            IF v_team1_wins THEN
+                UPDATE public.season_rankings 
+                SET wins = wins - 1, mmr = COALESCE(v_match."mmrPlayer1", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player1;
+                
+                UPDATE public.season_rankings 
+                SET losses = losses - 1, mmr = COALESCE(v_match."mmrPlayer2", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player2;
+            ELSE
+                UPDATE public.season_rankings 
+                SET losses = losses - 1, mmr = COALESCE(v_match."mmrPlayer1", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player1;
+                
+                UPDATE public.season_rankings 
+                SET wins = wins - 1, mmr = COALESCE(v_match."mmrPlayer2", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player2;
+            END IF;
+        ELSIF v_gamemode = '2on2' THEN
+            IF v_team1_wins THEN
+                UPDATE public.season_rankings 
+                SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer1", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player1;
+                
+                UPDATE public.season_rankings 
+                SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer3", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player3;
+                
+                UPDATE public.season_rankings 
+                SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer2", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player2;
+                
+                UPDATE public.season_rankings 
+                SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer4", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player4;
+            ELSE
+                UPDATE public.season_rankings 
+                SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer1", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player1;
+                
+                UPDATE public.season_rankings 
+                SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer3", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player3;
+                
+                UPDATE public.season_rankings 
+                SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer2", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player2;
+                
+                UPDATE public.season_rankings 
+                SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer4", 1000)
+                WHERE season_id = v_season_id AND player_id = v_match.player4;
+            END IF;
+        END IF;
+    END IF;
+
+    -- 6. Delete player_history entries for affected players from match date onward
+    DELETE FROM public.player_history 
+    WHERE player_id = ANY(v_affected_player_ids) 
+    AND DATE(created_at) >= v_match_date;
+
+    -- 7. Delete the match
+    DELETE FROM public.matches WHERE id = p_match_id;
+
+    -- 8. Recalculate MMR for all subsequent matches
+    -- We track each player's running MMR in v_player_mmr_map/v_player_mmr2on2_map
+    -- Starting from the MMR before the deleted match, we recalculate each subsequent match
+    FOR v_subsequent_match IN
+        SELECT m.*
+        FROM public.matches m
+        WHERE m.kicker_id = p_kicker_id 
+        AND m.start_time > v_match.start_time
+        AND m.status = 'ended'
+        ORDER BY m.start_time ASC
+    LOOP
+        -- Skip matches without season (off-season matches don't have MMR)
+        IF v_subsequent_match.season_id IS NULL THEN
+            CONTINUE;
+        END IF;
+
+        v_team1_wins := v_subsequent_match."scoreTeam1" > v_subsequent_match."scoreTeam2";
+        v_is_fatality := v_subsequent_match."scoreTeam1" = 0 OR v_subsequent_match."scoreTeam2" = 0;
+        v_result := CASE WHEN v_team1_wins THEN 1 ELSE 0 END;
+        
+        -- Store old MMR changes for comparison
+        v_old_mmr_change_team1 := COALESCE(v_subsequent_match."mmrChangeTeam1", 0);
+        v_old_mmr_change_team2 := COALESCE(v_subsequent_match."mmrChangeTeam2", 0);
+
+        IF v_subsequent_match.gamemode = '1on1' THEN
+            -- Get current running MMR for players (or fetch from season_rankings if not in map)
+            v_player_id_str := v_subsequent_match.player1::TEXT;
+            IF v_player_mmr_map ? v_player_id_str THEN
+                v_p1_mmr_before := (v_player_mmr_map ->> v_player_id_str)::INT;
+            ELSE
+                SELECT COALESCE(mmr, 1000) INTO v_p1_mmr_before
+                FROM public.season_rankings 
+                WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
+                v_p1_mmr_before := COALESCE(v_p1_mmr_before, 1000);
+            END IF;
+            
+            v_player_id_str := v_subsequent_match.player2::TEXT;
+            IF v_player_mmr_map ? v_player_id_str THEN
+                v_p2_mmr_before := (v_player_mmr_map ->> v_player_id_str)::INT;
+            ELSE
+                SELECT COALESCE(mmr, 1000) INTO v_p2_mmr_before
+                FROM public.season_rankings 
+                WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
+                v_p2_mmr_before := COALESCE(v_p2_mmr_before, 1000);
+            END IF;
+
+            -- Calculate expected outcome and MMR change
+            v_expected_outcome := 1.0 / (1.0 + POWER(10, (v_p2_mmr_before - v_p1_mmr_before) / 400.0));
+            v_mmr_change_team1 := ROUND(32 * (v_result - v_expected_outcome));
+            
+            IF v_is_fatality THEN
+                v_mmr_change_team1 := v_mmr_change_team1 * 2;
+            END IF;
+            
+            v_mmr_change_team2 := -v_mmr_change_team1;
+
+            -- Update match record with new MMR values
+            UPDATE public.matches 
+            SET "mmrChangeTeam1" = v_mmr_change_team1,
+                "mmrChangeTeam2" = v_mmr_change_team2,
+                "mmrPlayer1" = v_p1_mmr_before,
+                "mmrPlayer2" = v_p2_mmr_before
+            WHERE id = v_subsequent_match.id;
+
+            -- Update running MMR for next iteration
+            v_player_mmr_map := jsonb_set(v_player_mmr_map, ARRAY[v_subsequent_match.player1::TEXT], to_jsonb(v_p1_mmr_before + v_mmr_change_team1));
+            v_player_mmr_map := jsonb_set(v_player_mmr_map, ARRAY[v_subsequent_match.player2::TEXT], to_jsonb(v_p2_mmr_before + v_mmr_change_team2));
+
+            -- Update season_rankings with final MMR after this match
+            UPDATE public.season_rankings 
+            SET mmr = v_p1_mmr_before + v_mmr_change_team1
+            WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
+
+            UPDATE public.season_rankings 
+            SET mmr = v_p2_mmr_before + v_mmr_change_team2
+            WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
+
+        ELSIF v_subsequent_match.gamemode = '2on2' THEN
+            -- Get current running MMR for players (2on2)
+            v_player_id_str := v_subsequent_match.player1::TEXT;
+            IF v_player_mmr2on2_map ? v_player_id_str THEN
+                v_p1_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
+            ELSE
+                SELECT COALESCE(mmr2on2, 1000) INTO v_p1_mmr_before
+                FROM public.season_rankings 
+                WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
+                v_p1_mmr_before := COALESCE(v_p1_mmr_before, 1000);
+            END IF;
+            
+            v_player_id_str := v_subsequent_match.player2::TEXT;
+            IF v_player_mmr2on2_map ? v_player_id_str THEN
+                v_p2_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
+            ELSE
+                SELECT COALESCE(mmr2on2, 1000) INTO v_p2_mmr_before
+                FROM public.season_rankings 
+                WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
+                v_p2_mmr_before := COALESCE(v_p2_mmr_before, 1000);
+            END IF;
+            
+            v_player_id_str := v_subsequent_match.player3::TEXT;
+            IF v_player_mmr2on2_map ? v_player_id_str THEN
+                v_p3_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
+            ELSE
+                SELECT COALESCE(mmr2on2, 1000) INTO v_p3_mmr_before
+                FROM public.season_rankings 
+                WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player3;
+                v_p3_mmr_before := COALESCE(v_p3_mmr_before, 1000);
+            END IF;
+            
+            v_player_id_str := v_subsequent_match.player4::TEXT;
+            IF v_player_mmr2on2_map ? v_player_id_str THEN
+                v_p4_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
+            ELSE
+                SELECT COALESCE(mmr2on2, 1000) INTO v_p4_mmr_before
+                FROM public.season_rankings 
+                WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player4;
+                v_p4_mmr_before := COALESCE(v_p4_mmr_before, 1000);
+            END IF;
+
+            -- Calculate team averages
+            v_team1_avg_mmr := ROUND((v_p1_mmr_before + v_p3_mmr_before) / 2.0);
+            v_team2_avg_mmr := ROUND((v_p2_mmr_before + v_p4_mmr_before) / 2.0);
+
+            -- Calculate expected outcome and MMR change
+            v_expected_outcome := 1.0 / (1.0 + POWER(10, (v_team2_avg_mmr - v_team1_avg_mmr) / 400.0));
+            v_mmr_change_team1 := ROUND(32 * (v_result - v_expected_outcome));
+            
+            IF v_is_fatality THEN
+                v_mmr_change_team1 := v_mmr_change_team1 * 2;
+            END IF;
+            
+            v_mmr_change_team2 := -v_mmr_change_team1;
+
+            -- Update match record with new MMR values
+            UPDATE public.matches 
+            SET "mmrChangeTeam1" = v_mmr_change_team1,
+                "mmrChangeTeam2" = v_mmr_change_team2,
+                "mmrPlayer1" = v_p1_mmr_before,
+                "mmrPlayer2" = v_p2_mmr_before,
+                "mmrPlayer3" = v_p3_mmr_before,
+                "mmrPlayer4" = v_p4_mmr_before
+            WHERE id = v_subsequent_match.id;
+
+            -- Update running MMR for next iteration
+            v_player_mmr2on2_map := jsonb_set(v_player_mmr2on2_map, ARRAY[v_subsequent_match.player1::TEXT], to_jsonb(v_p1_mmr_before + v_mmr_change_team1));
+            v_player_mmr2on2_map := jsonb_set(v_player_mmr2on2_map, ARRAY[v_subsequent_match.player2::TEXT], to_jsonb(v_p2_mmr_before + v_mmr_change_team2));
+            v_player_mmr2on2_map := jsonb_set(v_player_mmr2on2_map, ARRAY[v_subsequent_match.player3::TEXT], to_jsonb(v_p3_mmr_before + v_mmr_change_team1));
+            v_player_mmr2on2_map := jsonb_set(v_player_mmr2on2_map, ARRAY[v_subsequent_match.player4::TEXT], to_jsonb(v_p4_mmr_before + v_mmr_change_team2));
+
+            -- Update season_rankings with final MMR after this match
+            UPDATE public.season_rankings 
+            SET mmr2on2 = v_p1_mmr_before + v_mmr_change_team1
+            WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
+
+            UPDATE public.season_rankings 
+            SET mmr2on2 = v_p3_mmr_before + v_mmr_change_team1
+            WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player3;
+
+            UPDATE public.season_rankings 
+            SET mmr2on2 = v_p2_mmr_before + v_mmr_change_team2
+            WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
+
+            UPDATE public.season_rankings 
+            SET mmr2on2 = v_p4_mmr_before + v_mmr_change_team2
+            WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player4;
+        END IF;
+
+        -- Also delete player_history for this subsequent match's affected players from its date
+        DELETE FROM public.player_history 
+        WHERE player_id IN (v_subsequent_match.player1, v_subsequent_match.player2, 
+                           COALESCE(v_subsequent_match.player3, -1), COALESCE(v_subsequent_match.player4, -1))
+        AND DATE(created_at) >= DATE(v_subsequent_match.start_time);
+    END LOOP;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Match deleted successfully');
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_match_with_recalculation"("p_match_id" bigint, "p_kicker_id" bigint, "p_user_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."duplicate_schema_tables"() RETURNS "void"
     LANGUAGE "plpgsql"
     AS $$
@@ -215,6 +602,24 @@ $$;
 ALTER PROCEDURE "public"."fillgoalsfrommatches"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_next_season_number"("p_kicker_id" bigint) RETURNS integer
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    next_num INT;
+BEGIN
+    SELECT COALESCE(MAX(season_number), -1) + 1 INTO next_num
+    FROM public.seasons
+    WHERE kicker_id = p_kicker_id;
+
+    RETURN next_num;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_next_season_number"("p_kicker_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_player_match_count"("matchestable" "regclass", "playertable" "regclass") RETURNS TABLE("id" integer, "name" "text", "match_count" integer)
     LANGUAGE "plpgsql"
     AS $_$
@@ -326,6 +731,54 @@ $_$;
 ALTER FUNCTION "public"."get_player_matches_count"("kicker_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_player_matches_count"("kicker_id" bigint, "p_season_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("id" bigint, "name" "text", "match_count" bigint)
+    LANGUAGE "plpgsql"
+    AS $_$
+BEGIN
+    RETURN QUERY
+    SELECT p.id, p.name, COALESCE(SUM(subquery.cnt)::bigint, 0)
+    FROM public.player p
+    LEFT JOIN (
+        SELECT m.player1 AS id, COUNT(*) AS cnt
+        FROM public.matches m
+        WHERE m.kicker_id = $1 
+          AND m.status != 'active'
+          AND (p_season_id IS NULL OR m.season_id = p_season_id)
+        GROUP BY m.player1
+        UNION ALL
+        SELECT m.player2 AS id, COUNT(*) AS cnt
+        FROM public.matches m
+        WHERE m.kicker_id = $1 
+          AND m.status != 'active'
+          AND (p_season_id IS NULL OR m.season_id = p_season_id)
+        GROUP BY m.player2
+        UNION ALL
+        SELECT m.player3 AS id, COUNT(*) AS cnt
+        FROM public.matches m
+        WHERE m.player3 IS NOT NULL
+          AND m.kicker_id = $1 
+          AND m.status != 'active'
+          AND (p_season_id IS NULL OR m.season_id = p_season_id)
+        GROUP BY m.player3
+        UNION ALL
+        SELECT m.player4 AS id, COUNT(*) AS cnt
+        FROM public.matches m
+        WHERE m.player4 IS NOT NULL
+          AND m.kicker_id = $1 
+          AND m.status != 'active'
+          AND (p_season_id IS NULL OR m.season_id = p_season_id)
+        GROUP BY m.player4
+    ) subquery ON p.id = subquery.id
+    WHERE p.kicker_id = $1
+    GROUP BY p.id, p.name
+    ORDER BY match_count DESC;
+END;
+$_$;
+
+
+ALTER FUNCTION "public"."get_player_matches_count"("kicker_id" bigint, "p_season_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_players_by_kicker"("kicker_id_param" integer) RETURNS SETOF "public"."player"
     LANGUAGE "plpgsql" STABLE
     AS $$
@@ -340,6 +793,35 @@ $$;
 
 
 ALTER FUNCTION "public"."get_players_by_kicker"("kicker_id_param" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_season_rankings"("p_kicker_id" bigint, "p_season_id" bigint) RETURNS TABLE("id" bigint, "player_id" bigint, "name" "text", "avatar" "text", "wins" bigint, "losses" bigint, "mmr" bigint, "wins2on2" bigint, "losses2on2" bigint, "mmr2on2" bigint, "user_id" "uuid", "kicker_id" bigint)
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        sr.id,
+        p.id,
+        p.name,
+        p.avatar,
+        sr.wins,
+        sr.losses,
+        sr.mmr,
+        sr.wins2on2,
+        sr.losses2on2,
+        sr.mmr2on2,
+        p.user_id,
+        p.kicker_id
+    FROM public.season_rankings sr
+    JOIN public.player p ON sr.player_id = p.id
+    WHERE p.kicker_id = p_kicker_id
+      AND sr.season_id = p_season_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_season_rankings"("p_kicker_id" bigint, "p_season_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."increment_nr"() RETURNS "trigger"
@@ -363,6 +845,7 @@ CREATE OR REPLACE FUNCTION "public"."update_player_history"() RETURNS "void"
     AS $$
 DECLARE
     currentPlayer RECORD;
+    seasonId BIGINT;
     winCount INT;
     lossCount INT;
     win2on2Count INT;
@@ -373,77 +856,93 @@ DECLARE
     totalDuration2on2 INT;
     totalDuration2on1 INT;
 BEGIN
-    -- Iteriere über alle Spieler in der player-Tabelle
+    -- Iterate over all players in the player table
     FOR currentPlayer IN
-        SELECT * FROM player
+        SELECT * FROM public.player
     LOOP
-        -- Berechne wins und losses für 1on1 am aktuellen Tag
+        -- Get current season for this player's kicker
+        SELECT current_season_id INTO seasonId
+        FROM public.kicker
+        WHERE id = currentPlayer.kicker_id;
+
+        -- Calculate wins and losses for 1on1 on the current day
         SELECT COUNT(*) INTO winCount
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '1on1'
         AND ((player1 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2"));
 
         SELECT COUNT(*) INTO lossCount
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '1on1'
         AND ((player1 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2"));
 
-        -- Berechne wins2on2 und losses2on2 für 2on2 am aktuellen Tag
+        -- Calculate wins2on2 and losses2on2 for 2on2 on the current day
         SELECT COUNT(*) INTO win2on2Count
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '2on2'
         AND ((player1 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2"));
 
         SELECT COUNT(*) INTO loss2on2Count
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '2on2'
         AND ((player1 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2"));
 
-        -- Berechne wins2on1 und losses2on1 für 2on1 am aktuellen Tag
+        -- Calculate wins2on1 and losses2on1 for 2on1 on the current day
         SELECT COUNT(*) INTO win2on1Count
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '2on1'
         AND ((player1 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2"));
 
         SELECT COUNT(*) INTO loss2on1Count
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '2on1'
         AND ((player1 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2"));
 
-        -- Berechne die gesamte Spielzeit für 1on1, 2on2, 2on1 am aktuellen Tag
+        -- Calculate total play time for 1on1, 2on2, 2on1 on the current day
         SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))) INTO totalDuration
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '1on1'
         AND (player1 = currentPlayer.id OR player2 = currentPlayer.id);
 
         SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))) INTO totalDuration2on2
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '2on2'
         AND (player1 = currentPlayer.id OR player2 = currentPlayer.id OR player3 = currentPlayer.id OR player4 = currentPlayer.id);
 
         SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))) INTO totalDuration2on1
-        FROM matches
+        FROM public.matches
         WHERE DATE(created_at) = CURRENT_DATE
         AND gamemode = '2on1'
         AND (player1 = currentPlayer.id OR player2 = currentPlayer.id OR player3 = currentPlayer.id OR player4 = currentPlayer.id);
 
-        -- Fügen Sie die berechneten Werte in player_history ein
-        INSERT INTO player_history (player_name, player_id, user_id, mmr, mmr2on2, wins, losses, wins2on2, losses2on2, wins2on1, losses2on1, duration, duration2on2, duration2on1, kicker_id)
-        VALUES (currentPlayer.name, currentPlayer.id, currentPlayer.user_id, currentPlayer.mmr, currentPlayer.mmr2on2, winCount, lossCount, win2on2Count, loss2on2Count, win2on1Count, loss2on1Count, COALESCE(totalDuration, 0), COALESCE(totalDuration2on2, 0), COALESCE(totalDuration2on1, 0), currentPlayer.kicker_id);
+        -- Insert the calculated values into player_history with season_id
+        INSERT INTO public.player_history (
+            player_name, player_id, user_id, mmr, mmr2on2, 
+            wins, losses, wins2on2, losses2on2, wins2on1, losses2on1, 
+            duration, duration2on2, duration2on1, kicker_id, season_id
+        )
+        VALUES (
+            currentPlayer.name, currentPlayer.id, currentPlayer.user_id, 
+            currentPlayer.mmr, currentPlayer.mmr2on2, 
+            winCount, lossCount, win2on2Count, loss2on2Count, 
+            win2on1Count, loss2on1Count, 
+            COALESCE(totalDuration, 0), COALESCE(totalDuration2on2, 0), 
+            COALESCE(totalDuration2on1, 0), currentPlayer.kicker_id, seasonId
+        );
     END LOOP;
 END;
 $$;
@@ -546,7 +1045,8 @@ CREATE TABLE IF NOT EXISTS "public"."kicker" (
     "access_token" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "avatar" "text",
     "season_config" "jsonb" DEFAULT '{"frequency": "quarterly", "season_mode": false}'::"jsonb" NOT NULL,
-    "admin" "uuid"
+    "admin" "uuid",
+    "current_season_id" bigint
 );
 
 
@@ -620,7 +1120,8 @@ CREATE TABLE IF NOT EXISTS "public"."player_history" (
     "losses2on1" bigint NOT NULL,
     "duration" bigint DEFAULT '0'::bigint NOT NULL,
     "duration2on2" bigint DEFAULT '0'::bigint NOT NULL,
-    "duration2on1" bigint DEFAULT '0'::bigint NOT NULL
+    "duration2on1" bigint DEFAULT '0'::bigint NOT NULL,
+    "season_id" bigint
 );
 
 
@@ -640,6 +1141,60 @@ ALTER TABLE "public"."player_history" ALTER COLUMN "id" ADD GENERATED BY DEFAULT
 
 ALTER TABLE "public"."player" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
     SEQUENCE NAME "public"."player_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."season_rankings" (
+    "id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "player_id" bigint NOT NULL,
+    "season_id" bigint NOT NULL,
+    "wins" bigint DEFAULT 0 NOT NULL,
+    "losses" bigint DEFAULT 0 NOT NULL,
+    "mmr" bigint DEFAULT 1000 NOT NULL,
+    "wins2on2" bigint DEFAULT 0 NOT NULL,
+    "losses2on2" bigint DEFAULT 0 NOT NULL,
+    "mmr2on2" bigint DEFAULT 1000 NOT NULL
+);
+
+
+ALTER TABLE "public"."season_rankings" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."season_rankings" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."season_rankings_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."seasons" (
+    "id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "kicker_id" bigint NOT NULL,
+    "season_number" integer NOT NULL,
+    "name" "text",
+    "start_date" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "end_date" timestamp with time zone,
+    "is_active" boolean DEFAULT true NOT NULL
+);
+
+
+ALTER TABLE "public"."seasons" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."seasons" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."seasons_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -674,6 +1229,50 @@ ALTER TABLE ONLY "public"."player"
 
 
 
+ALTER TABLE ONLY "public"."season_rankings"
+    ADD CONSTRAINT "season_rankings_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."season_rankings"
+    ADD CONSTRAINT "season_rankings_player_id_season_id_key" UNIQUE ("player_id", "season_id");
+
+
+
+ALTER TABLE ONLY "public"."seasons"
+    ADD CONSTRAINT "seasons_kicker_id_season_number_key" UNIQUE ("kicker_id", "season_number");
+
+
+
+ALTER TABLE ONLY "public"."seasons"
+    ADD CONSTRAINT "seasons_pkey" PRIMARY KEY ("id");
+
+
+
+CREATE INDEX "idx_player_history_season_id" ON "public"."player_history" USING "btree" ("season_id");
+
+
+
+CREATE INDEX "idx_season_rankings_player_id" ON "public"."season_rankings" USING "btree" ("player_id");
+
+
+
+CREATE INDEX "idx_season_rankings_season_id" ON "public"."season_rankings" USING "btree" ("season_id");
+
+
+
+CREATE INDEX "idx_seasons_is_active" ON "public"."seasons" USING "btree" ("is_active");
+
+
+
+CREATE INDEX "idx_seasons_kicker_id" ON "public"."seasons" USING "btree" ("kicker_id");
+
+
+
+CREATE OR REPLACE TRIGGER "after_player_insert_create_season_ranking" AFTER INSERT ON "public"."player" FOR EACH ROW EXECUTE FUNCTION "public"."create_season_ranking_for_new_player"();
+
+
+
 CREATE OR REPLACE TRIGGER "before_match_insert" BEFORE INSERT ON "public"."matches" FOR EACH ROW EXECUTE FUNCTION "public"."assign_match_number"();
 
 
@@ -695,6 +1294,11 @@ ALTER TABLE ONLY "public"."goals"
 
 ALTER TABLE ONLY "public"."kicker"
     ADD CONSTRAINT "kicker_admin_fkey" FOREIGN KEY ("admin") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."kicker"
+    ADD CONSTRAINT "kicker_current_season_id_fkey" FOREIGN KEY ("current_season_id") REFERENCES "public"."seasons"("id");
 
 
 
@@ -734,6 +1338,11 @@ ALTER TABLE ONLY "public"."player_history"
 
 
 ALTER TABLE ONLY "public"."player_history"
+    ADD CONSTRAINT "player_history_season_id_fkey" FOREIGN KEY ("season_id") REFERENCES "public"."seasons"("id");
+
+
+
+ALTER TABLE ONLY "public"."player_history"
     ADD CONSTRAINT "player_history_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id");
 
 
@@ -748,7 +1357,42 @@ ALTER TABLE ONLY "public"."player"
 
 
 
+ALTER TABLE ONLY "public"."season_rankings"
+    ADD CONSTRAINT "season_rankings_player_id_fkey" FOREIGN KEY ("player_id") REFERENCES "public"."player"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."season_rankings"
+    ADD CONSTRAINT "season_rankings_season_id_fkey" FOREIGN KEY ("season_id") REFERENCES "public"."seasons"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."seasons"
+    ADD CONSTRAINT "seasons_kicker_id_fkey" FOREIGN KEY ("kicker_id") REFERENCES "public"."kicker"("id") ON DELETE CASCADE;
+
+
+
+CREATE POLICY "Admins can insert seasons" ON "public"."seasons" FOR INSERT WITH CHECK (true);
+
+
+
+CREATE POLICY "Admins can update seasons" ON "public"."seasons" FOR UPDATE USING (true);
+
+
+
 CREATE POLICY "Enable read access for all users" ON "public"."player" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "System can manage season_rankings" ON "public"."season_rankings" USING (true);
+
+
+
+CREATE POLICY "Users can view season_rankings" ON "public"."season_rankings" FOR SELECT USING (true);
+
+
+
+CREATE POLICY "Users can view seasons for their kickers" ON "public"."seasons" FOR SELECT USING (true);
 
 
 
@@ -791,6 +1435,12 @@ ALTER TABLE "public"."matches" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."player" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."season_rankings" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."seasons" ENABLE ROW LEVEL SECURITY;
+
+
 CREATE POLICY "update_control_on_goals" ON "public"."goals" FOR UPDATE USING ((EXISTS ( SELECT 1
    FROM "public"."player"
   WHERE (("player"."kicker_id" = "goals"."kicker_id") AND ("player"."user_id" = "auth"."uid"())))));
@@ -822,6 +1472,18 @@ GRANT ALL ON FUNCTION "public"."assign_match_number"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."create_season_ranking_for_new_player"() TO "anon";
+GRANT ALL ON FUNCTION "public"."create_season_ranking_for_new_player"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_season_ranking_for_new_player"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."delete_match_with_recalculation"("p_match_id" bigint, "p_kicker_id" bigint, "p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_match_with_recalculation"("p_match_id" bigint, "p_kicker_id" bigint, "p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_match_with_recalculation"("p_match_id" bigint, "p_kicker_id" bigint, "p_user_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."duplicate_schema_tables"() TO "anon";
 GRANT ALL ON FUNCTION "public"."duplicate_schema_tables"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."duplicate_schema_tables"() TO "service_role";
@@ -831,6 +1493,12 @@ GRANT ALL ON FUNCTION "public"."duplicate_schema_tables"() TO "service_role";
 GRANT ALL ON PROCEDURE "public"."fillgoalsfrommatches"() TO "anon";
 GRANT ALL ON PROCEDURE "public"."fillgoalsfrommatches"() TO "authenticated";
 GRANT ALL ON PROCEDURE "public"."fillgoalsfrommatches"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_next_season_number"("p_kicker_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_next_season_number"("p_kicker_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_next_season_number"("p_kicker_id" bigint) TO "service_role";
 
 
 
@@ -858,9 +1526,21 @@ GRANT ALL ON FUNCTION "public"."get_player_matches_count"("kicker_id" bigint) TO
 
 
 
+GRANT ALL ON FUNCTION "public"."get_player_matches_count"("kicker_id" bigint, "p_season_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_player_matches_count"("kicker_id" bigint, "p_season_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_player_matches_count"("kicker_id" bigint, "p_season_id" bigint) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_players_by_kicker"("kicker_id_param" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_players_by_kicker"("kicker_id_param" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_players_by_kicker"("kicker_id_param" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_season_rankings"("p_kicker_id" bigint, "p_season_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_season_rankings"("p_kicker_id" bigint, "p_season_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_season_rankings"("p_kicker_id" bigint, "p_season_id" bigint) TO "service_role";
 
 
 
@@ -939,6 +1619,30 @@ GRANT ALL ON SEQUENCE "public"."player_history_id_seq" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."player_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."player_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."player_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."season_rankings" TO "anon";
+GRANT ALL ON TABLE "public"."season_rankings" TO "authenticated";
+GRANT ALL ON TABLE "public"."season_rankings" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."season_rankings_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."season_rankings_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."season_rankings_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."seasons" TO "anon";
+GRANT ALL ON TABLE "public"."seasons" TO "authenticated";
+GRANT ALL ON TABLE "public"."seasons" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."seasons_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."seasons_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."seasons_id_seq" TO "service_role";
 
 
 
