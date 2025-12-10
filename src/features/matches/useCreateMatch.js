@@ -19,7 +19,7 @@ export function useCreateMatch() {
             queryClient.setQueryData(["match", data.id, kicker], data);
             navigate(`/matches/${data.id}`);
         },
-        onError: (err) => toast.error(err),
+        onError: (err) => toast.error(err.message),
     });
 
     return { createMatch, isLoading };

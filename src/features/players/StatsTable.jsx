@@ -1,28 +1,31 @@
 import useWindowWidth from "../../hooks/useWindowWidth";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import Table from "../../ui/Table";
-import { usePlayerName } from "./usePlayerName";
-
+import { usePlayerSeasonStats } from "./usePlayerSeasonStats";
 import { usePlaytime } from "./usePlaytime";
 import { formatTimeInHoursAndMinutes } from "../../utils/helpers";
 
 function StatsTable({ userId }) {
-    const { player, isLoading: isLoadingPlayer } = usePlayerName(userId);
+    const { stats, isLoading: isLoadingStats } = usePlayerSeasonStats(userId);
     const { data: playtimeData, isLoading: isLoadingPlaytime } = usePlaytime();
     const { isDesktop, isTablet, isMobile } = useWindowWidth();
     const columns = isDesktop
         ? "1fr 1fr 1fr 1fr 1fr 1fr 1fr"
         : isTablet
-        ? "1.3fr 0.7fr 0.7fr 0.7fr 1fr 0.7fr 1fr"
-        : "0.8fr 0.4fr 0.4fr 0.4fr 0.6fr 0.7fr 1fr";
+          ? "1.3fr 0.7fr 0.7fr 0.7fr 1fr 0.7fr 1fr"
+          : "0.8fr 0.4fr 0.4fr 0.4fr 0.6fr 0.7fr 1fr";
 
-    const isLoading = isLoadingPlaytime || isLoadingPlayer;
+    const isLoading = isLoadingPlaytime || isLoadingStats;
 
     let data;
 
-    if (!isLoading) {
-        const { wins, losses, mmr, wins2on2, losses2on2, mmr2on2 } = player;
-        const { playtimeSolo, playtimeDuo, playtimeOverall } = playtimeData;
+    if (!isLoading && stats) {
+        const { wins, losses, mmr, wins2on2, losses2on2, mmr2on2 } = stats;
+        const { playtimeSolo, playtimeDuo, playtimeOverall } = playtimeData || {
+            playtimeSolo: 0,
+            playtimeDuo: 0,
+            playtimeOverall: 0,
+        };
 
         const stats1on1 = {
             gamemode: "1on1",

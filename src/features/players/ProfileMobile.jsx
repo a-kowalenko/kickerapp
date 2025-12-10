@@ -2,7 +2,6 @@ import { useParams } from "react-router-dom";
 import styled from "styled-components";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import StatsTable from "./StatsTable";
-import StatsFilterRow from "./StatsFilterRow";
 import Avatar from "../../ui/Avatar";
 import { usePlayerName } from "./usePlayerName";
 import Error from "../../ui/Error";
@@ -82,7 +81,6 @@ function ProfileMobile() {
                 </PlayerInfo>
             )}
             <div>
-                <StatsFilterRow />
                 <StatsTable userId={userId} />
             </div>
         </StyledProfile>

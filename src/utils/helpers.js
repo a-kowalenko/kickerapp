@@ -94,3 +94,36 @@ export function getPlayersNumberFromMatchById(playerId, match) {
 export function isPlayerInTeam(playerId, ...teamPlayers) {
     return teamPlayers.some((player) => player?.id === playerId);
 }
+
+// Username validation: letters (including umlauts), numbers, underscores and hyphens allowed
+export function validateUsername(username) {
+    if (!username || username.trim() === "") {
+        return { valid: false, error: "Username is required" };
+    }
+
+    if (username.length < 3) {
+        return {
+            valid: false,
+            error: "Username must be at least 3 characters",
+        };
+    }
+
+    if (username.length > 20) {
+        return {
+            valid: false,
+            error: "Username must be at most 20 characters",
+        };
+    }
+
+    // Only allow letters (including unicode letters like umlauts), numbers, underscores and hyphens
+    // \p{L} matches any kind of letter from any language
+    const validUsernameRegex = /^[\p{L}0-9_-]+$/u;
+    if (!validUsernameRegex.test(username)) {
+        return {
+            valid: false,
+            error: "Username can only contain letters, numbers, underscores and hyphens",
+        };
+    }
+
+    return { valid: true, error: null };
+}

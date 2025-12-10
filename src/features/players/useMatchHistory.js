@@ -3,19 +3,27 @@ import { getMatches } from "../../services/apiMatches";
 import { useParams, useSearchParams } from "react-router-dom";
 import { PAGE_SIZE } from "../../utils/constants";
 import { useKicker } from "../../contexts/KickerContext";
+import { useSelectedSeason } from "../seasons/useSelectedSeason";
 
 export function useMatchHistory() {
     const { userId: name } = useParams();
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
     const { currentKicker: kicker } = useKicker();
+    const {
+        seasonValue,
+        seasonFilter,
+        isLoading: isLoadingSeason,
+    } = useSelectedSeason();
 
-    // FILTERING
+    // GAMEMODE FILTERING
     const filterValue = searchParams.get("gamemode");
-    const filter =
+    const gamemodeFilter =
         !filterValue || filterValue === "all"
             ? null
             : { field: "gamemode", value: filterValue };
+
+    const filter = { ...gamemodeFilter, ...seasonFilter };
 
     // PAGINATION
     const currentPage = searchParams.get("page")
@@ -27,17 +35,31 @@ export function useMatchHistory() {
         isLoading: isLoadingMatches,
         error,
     } = useQuery({
-        queryKey: ["matchHistory", name, filter, currentPage, kicker],
+        queryKey: [
+            "matchHistory",
+            name,
+            filter,
+            currentPage,
+            kicker,
+            seasonValue,
+        ],
         queryFn: () =>
             getMatches({ filter: { name, ...filter, kicker }, currentPage }),
-        enabled: !!name,
+        enabled: !!name && !isLoadingSeason,
     });
 
     const pageCount = Math.ceil(count / PAGE_SIZE);
 
     if (currentPage < pageCount) {
         queryClient.prefetchQuery({
-            queryKey: ["matchHistory", name, filter, currentPage + 1, kicker],
+            queryKey: [
+                "matchHistory",
+                name,
+                filter,
+                currentPage + 1,
+                kicker,
+                seasonValue,
+            ],
             queryFn: () =>
                 getMatches({
                     filter: { name, ...filter, kicker },
@@ -48,7 +70,14 @@ export function useMatchHistory() {
 
     if (currentPage > 1) {
         queryClient.prefetchQuery({
-            queryKey: ["matchHistory", name, filter, currentPage - 1, kicker],
+            queryKey: [
+                "matchHistory",
+                name,
+                filter,
+                currentPage - 1,
+                kicker,
+                seasonValue,
+            ],
             queryFn: () =>
                 getMatches({
                     filter: { name, ...filter, kicker },

@@ -6,6 +6,7 @@ import Button from "../../ui/Button";
 import styled from "styled-components";
 import StyledLink from "../../ui/StyledLink";
 import SpinnerMini from "../../ui/SpinnerMini";
+import { validateUsername } from "../../utils/helpers";
 
 const RegisterContainer = styled.div`
     padding: 1.2rem 2.4rem;
@@ -40,6 +41,20 @@ function RegisterForm() {
                         disabled={isLoading}
                         {...formRegister("username", {
                             required: "The username is required",
+                            minLength: {
+                                value: 3,
+                                message:
+                                    "Username must be at least 3 characters",
+                            },
+                            maxLength: {
+                                value: 20,
+                                message:
+                                    "Username must be at most 20 characters",
+                            },
+                            validate: (value) => {
+                                const result = validateUsername(value);
+                                return result.valid || result.error;
+                            },
                         })}
                     />
                 </FormRow>

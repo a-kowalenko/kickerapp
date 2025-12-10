@@ -91,7 +91,7 @@ function App() {
                                         element={<Players />}
                                     />
                                     <Route
-                                        path="settings"
+                                        path="settings/*"
                                         element={<Settings />}
                                     />
                                     <Route

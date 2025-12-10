@@ -43,6 +43,12 @@ export const MATCHES = "matches";
 export const PLAYER = "player";
 export const KICKER = "kicker";
 export const GOALS = "goals";
+export const SEASONS = "seasons";
+export const SEASON_RANKINGS = "season_rankings";
+
+// SEASON FILTER VALUES
+export const SEASON_ALL_TIME = "all-time";
+export const SEASON_OFF_SEASON = "off-season";
 
 // COLORS
 export const colorsLight = [

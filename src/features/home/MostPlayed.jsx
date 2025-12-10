@@ -51,6 +51,10 @@ const StyledMostPlayed = styled(ContentBox)`
 function MostPlayed() {
     const { mostPlayed, isLoading } = useMostPlayed();
 
+    // Filter out players with 0 matches
+    const filteredData =
+        mostPlayed?.filter((entry) => entry.match_count > 0) || [];
+
     return (
         <StyledMostPlayed>
             <Row type="horizontal">
@@ -60,26 +64,28 @@ function MostPlayed() {
                 <LoadingSpinner />
             ) : (
                 <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
+                    <PieChart
+                        margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                    >
                         <Pie
-                            data={mostPlayed}
+                            data={filteredData}
                             nameKey="name"
                             dataKey="match_count"
-                            innerRadius={70}
-                            outerRadius={100}
-                            cx="40%"
+                            innerRadius={60}
+                            outerRadius={88}
+                            cx="35%"
                             cy="50%"
                             paddingAngle={3}
                             label
                             labelLine
                         >
-                            {mostPlayed.map((entry, index) => (
+                            {filteredData.map((entry, index) => (
                                 <Cell
                                     fill={
-                                        colorsLight[index % mostPlayed.length]
+                                        colorsLight[index % filteredData.length]
                                     }
                                     stroke={
-                                        colorsLight[index % mostPlayed.length]
+                                        colorsLight[index % filteredData.length]
                                     }
                                     key={entry.name}
                                 />
