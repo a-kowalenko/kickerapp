@@ -1,6 +1,8 @@
 import { PLAYER, SEASON_ALL_TIME, SEASON_OFF_SEASON } from "../utils/constants";
 import supabase from "./supabase";
 
+const MIN_GAMES_FOR_RANKED = 10;
+
 export async function getRankings({ filter }) {
     const { kicker, field, seasonId } = filter;
 
@@ -23,29 +25,52 @@ export async function getRankings({ filter }) {
             throw new Error("Error while selecting the season rankings");
         }
 
-        // Filter: only players with at least 1 match in this season (for the selected gamemode)
         const sortField = field === "mmr2on2" ? "mmr2on2" : "mmr";
         const winsField = field === "mmr2on2" ? "wins2on2" : "wins";
         const lossesField = field === "mmr2on2" ? "losses2on2" : "losses";
 
-        const filteredData = (data || []).filter((player) => {
+        // Separate ranked and unranked players
+        const rankedPlayers = (data || []).filter((player) => {
             const totalGames =
                 (player[winsField] || 0) + (player[lossesField] || 0);
-            return totalGames > 0;
+            return totalGames >= MIN_GAMES_FOR_RANKED;
         });
 
-        // Sort by the appropriate field
-        const sortedData = [...filteredData].sort(
+        const unrankedPlayers = (data || []).filter((player) => {
+            const totalGames =
+                (player[winsField] || 0) + (player[lossesField] || 0);
+            return totalGames > 0 && totalGames < MIN_GAMES_FOR_RANKED;
+        });
+
+        // Sort ranked players by MMR
+        const sortedRanked = [...rankedPlayers].sort(
             (a, b) => b[sortField] - a[sortField]
         );
 
-        const rankedData = sortedData.map((player, index) => ({
+        // Sort unranked players by MMR
+        const sortedUnranked = [...unrankedPlayers].sort(
+            (a, b) => b[sortField] - a[sortField]
+        );
+
+        // Add rank numbers and unranked flag
+        const rankedData = sortedRanked.map((player, index) => ({
             ...player,
-            id: player.player_id, // Use player_id as id for consistency
+            id: player.player_id,
             rank: index + 1,
+            isUnranked: false,
         }));
 
-        return { data: rankedData, error: null, count: rankedData.length };
+        const unrankedData = sortedUnranked.map((player) => ({
+            ...player,
+            id: player.player_id,
+            rank: null,
+            isUnranked: true,
+        }));
+
+        // Combine: ranked first, then unranked
+        const allData = [...rankedData, ...unrankedData];
+
+        return { data: allData, error: null, count: allData.length };
     }
 
     // Default: All-time rankings from player table
@@ -54,29 +79,56 @@ export async function getRankings({ filter }) {
         .select("*", { count: "exact" })
         .eq("kicker_id", kicker);
 
-    // Filter: only players with at least 1 match (for the selected gamemode)
-    if (field === "mmr2on2") {
-        query = query.or("wins2on2.gt.0,losses2on2.gt.0");
-    } else {
-        query = query.or("wins.gt.0,losses.gt.0");
-    }
-
-    if (field) {
-        query = query.order(field, { ascending: false });
-    }
-
-    const { data, error, count } = await query;
+    const { data, error } = await query;
 
     if (error) {
         throw new Error("Error while selecting the rankings");
     }
 
-    const rankedData = data.map((player, index) => ({
+    const winsField = field === "mmr2on2" ? "wins2on2" : "wins";
+    const lossesField = field === "mmr2on2" ? "losses2on2" : "losses";
+    const sortField = field === "mmr2on2" ? "mmr2on2" : "mmr";
+
+    // Separate ranked and unranked players
+    const rankedPlayers = data.filter((player) => {
+        const totalGames =
+            (player[winsField] || 0) + (player[lossesField] || 0);
+        return totalGames >= MIN_GAMES_FOR_RANKED;
+    });
+
+    const unrankedPlayers = data.filter((player) => {
+        const totalGames =
+            (player[winsField] || 0) + (player[lossesField] || 0);
+        return totalGames > 0 && totalGames < MIN_GAMES_FOR_RANKED;
+    });
+
+    // Sort ranked players by MMR
+    const sortedRanked = [...rankedPlayers].sort(
+        (a, b) => b[sortField] - a[sortField]
+    );
+
+    // Sort unranked players by MMR
+    const sortedUnranked = [...unrankedPlayers].sort(
+        (a, b) => b[sortField] - a[sortField]
+    );
+
+    // Add rank numbers and unranked flag
+    const rankedData = sortedRanked.map((player, index) => ({
         ...player,
         rank: index + 1,
+        isUnranked: false,
     }));
 
-    return { data: rankedData, error, count };
+    const unrankedData = sortedUnranked.map((player) => ({
+        ...player,
+        rank: null,
+        isUnranked: true,
+    }));
+
+    // Combine: ranked first, then unranked
+    const allData = [...rankedData, ...unrankedData];
+
+    return { data: allData, error: null, count: allData.length };
 }
 
 export async function getRankByPlayerName(kicker, playerName, seasonId = null) {
@@ -98,20 +150,45 @@ export async function getRankByPlayerName(kicker, playerName, seasonId = null) {
             throw new Error(error.message);
         }
 
-        const sortedBy1on1MMR = [...(data || [])].sort((a, b) => b.mmr - a.mmr);
-        const sortedBy2on2MMR = [...(data || [])].sort(
+        // Filter players with minimum games for 1on1
+        const qualified1on1 = (data || []).filter(
+            (p) => (p.wins || 0) + (p.losses || 0) >= MIN_GAMES_FOR_RANKED
+        );
+        const sortedBy1on1MMR = [...qualified1on1].sort(
+            (a, b) => b.mmr - a.mmr
+        );
+
+        // Filter players with minimum games for 2on2
+        const qualified2on2 = (data || []).filter(
+            (p) =>
+                (p.wins2on2 || 0) + (p.losses2on2 || 0) >= MIN_GAMES_FOR_RANKED
+        );
+        const sortedBy2on2MMR = [...qualified2on2].sort(
             (a, b) => b.mmr2on2 - a.mmr2on2
         );
 
-        for (let i = 0; i < sortedBy1on1MMR.length; i++) {
-            if (sortedBy1on1MMR[i].name === playerName) {
-                rank1on1 = i + 1;
+        // Find player's rank in 1on1 (only if they have enough games)
+        const playerData = (data || []).find((p) => p.name === playerName);
+        if (playerData) {
+            const games1on1 = (playerData.wins || 0) + (playerData.losses || 0);
+            if (games1on1 >= MIN_GAMES_FOR_RANKED) {
+                for (let i = 0; i < sortedBy1on1MMR.length; i++) {
+                    if (sortedBy1on1MMR[i].name === playerName) {
+                        rank1on1 = i + 1;
+                        break;
+                    }
+                }
             }
-        }
 
-        for (let i = 0; i < sortedBy2on2MMR.length; i++) {
-            if (sortedBy2on2MMR[i].name === playerName) {
-                rank2on2 = i + 1;
+            const games2on2 =
+                (playerData.wins2on2 || 0) + (playerData.losses2on2 || 0);
+            if (games2on2 >= MIN_GAMES_FOR_RANKED) {
+                for (let i = 0; i < sortedBy2on2MMR.length; i++) {
+                    if (sortedBy2on2MMR[i].name === playerName) {
+                        rank2on2 = i + 1;
+                        break;
+                    }
+                }
             }
         }
 
@@ -128,18 +205,42 @@ export async function getRankByPlayerName(kicker, playerName, seasonId = null) {
         throw new Error(error.message);
     }
 
-    const sortedBy1on1MMR = [...data].sort((a, b) => b.mmr - a.mmr);
-    const sortedBy2on2MMR = [...data].sort((a, b) => b.mmr2on2 - a.mmr2on2);
+    // Filter players with minimum games for 1on1
+    const qualified1on1 = data.filter(
+        (p) => (p.wins || 0) + (p.losses || 0) >= MIN_GAMES_FOR_RANKED
+    );
+    const sortedBy1on1MMR = [...qualified1on1].sort((a, b) => b.mmr - a.mmr);
 
-    for (let i = 0; i < sortedBy1on1MMR.length; i++) {
-        if (sortedBy1on1MMR[i].name === playerName) {
-            rank1on1 = i + 1;
+    // Filter players with minimum games for 2on2
+    const qualified2on2 = data.filter(
+        (p) => (p.wins2on2 || 0) + (p.losses2on2 || 0) >= MIN_GAMES_FOR_RANKED
+    );
+    const sortedBy2on2MMR = [...qualified2on2].sort(
+        (a, b) => b.mmr2on2 - a.mmr2on2
+    );
+
+    // Find player's rank in 1on1 (only if they have enough games)
+    const playerData = data.find((p) => p.name === playerName);
+    if (playerData) {
+        const games1on1 = (playerData.wins || 0) + (playerData.losses || 0);
+        if (games1on1 >= MIN_GAMES_FOR_RANKED) {
+            for (let i = 0; i < sortedBy1on1MMR.length; i++) {
+                if (sortedBy1on1MMR[i].name === playerName) {
+                    rank1on1 = i + 1;
+                    break;
+                }
+            }
         }
-    }
 
-    for (let i = 0; i < sortedBy2on2MMR.length; i++) {
-        if (sortedBy2on2MMR[i].name === playerName) {
-            rank2on2 = i + 1;
+        const games2on2 =
+            (playerData.wins2on2 || 0) + (playerData.losses2on2 || 0);
+        if (games2on2 >= MIN_GAMES_FOR_RANKED) {
+            for (let i = 0; i < sortedBy2on2MMR.length; i++) {
+                if (sortedBy2on2MMR[i].name === playerName) {
+                    rank2on2 = i + 1;
+                    break;
+                }
+            }
         }
     }
 
