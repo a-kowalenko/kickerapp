@@ -4,6 +4,8 @@ import Sidebar from "./Sidebar";
 import styled from "styled-components";
 import { media } from "../utils/constants";
 import Footer from "./Footer";
+import NewSeasonModal from "./NewSeasonModal";
+import { useNewSeasonAnnouncement } from "../features/seasons/useNewSeasonAnnouncement";
 
 const StyledAppLayout = styled.div`
     @media (min-width: 850px) {
@@ -45,8 +47,17 @@ const Main = styled.main`
 `;
 
 function AppLayout() {
+    const { showAnnouncement, seasonName, acknowledgeNewSeason } =
+        useNewSeasonAnnouncement();
+
     return (
         <StyledAppLayout>
+            {showAnnouncement && (
+                <NewSeasonModal
+                    seasonName={seasonName}
+                    onClose={acknowledgeNewSeason}
+                />
+            )}
             <Header />
             <Sidebar />
             <Main>
