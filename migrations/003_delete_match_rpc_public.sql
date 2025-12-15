@@ -1,4 +1,4 @@
--- Migration: Create delete_match_with_recalculation RPC function for public schema (PRODUCTION)
+﻿-- Migration: Create delete_match_with_recalculation RPC function for public schema (PRODUCTION)
 -- This function atomically deletes a match and recalculates all subsequent matches' MMR
 -- Admin-only operation
 
@@ -6,7 +6,7 @@
 -- K_FACTOR = 32
 -- FATALITY_FAKTOR = 2
 
-CREATE OR REPLACE FUNCTION public.delete_match_with_recalculation(
+CREATE OR REPLACE FUNCTION delete_match_with_recalculation(
     p_match_id BIGINT,
     p_kicker_id BIGINT,
     p_user_id UUID
@@ -55,7 +55,7 @@ DECLARE
     v_history_season_id BIGINT;
 BEGIN
     -- 1. Validate kicker exists and user is admin
-    SELECT * INTO v_kicker FROM public.kicker WHERE id = p_kicker_id;
+    SELECT * INTO v_kicker FROM kicker WHERE id = p_kicker_id;
     
     IF v_kicker IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Kicker not found');
@@ -68,7 +68,7 @@ BEGIN
     -- 2. Fetch and validate the match
     SELECT m.*
     INTO v_match
-    FROM public.matches m
+    FROM matches m
     WHERE m.id = p_match_id AND m.kicker_id = p_kicker_id;
 
     IF v_match IS NULL THEN
@@ -95,28 +95,28 @@ BEGIN
     END IF;
 
     -- 3. Delete goals for this match
-    DELETE FROM public.goals WHERE match_id = p_match_id;
+    DELETE FROM goals WHERE match_id = p_match_id;
 
     -- 4. Reverse player table stats (wins/losses only, no MMR in player table)
     IF v_gamemode = '1on1' THEN
         IF v_team1_wins THEN
-            UPDATE public.player SET wins = wins - 1 WHERE id = v_match.player1;
-            UPDATE public.player SET losses = losses - 1 WHERE id = v_match.player2;
+            UPDATE player SET wins = wins - 1 WHERE id = v_match.player1;
+            UPDATE player SET losses = losses - 1 WHERE id = v_match.player2;
         ELSE
-            UPDATE public.player SET losses = losses - 1 WHERE id = v_match.player1;
-            UPDATE public.player SET wins = wins - 1 WHERE id = v_match.player2;
+            UPDATE player SET losses = losses - 1 WHERE id = v_match.player1;
+            UPDATE player SET wins = wins - 1 WHERE id = v_match.player2;
         END IF;
     ELSIF v_gamemode = '2on2' THEN
         IF v_team1_wins THEN
-            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player1;
-            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player3;
-            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player2;
-            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player4;
+            UPDATE player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player1;
+            UPDATE player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player3;
+            UPDATE player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player2;
+            UPDATE player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player4;
         ELSE
-            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player1;
-            UPDATE public.player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player3;
-            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player2;
-            UPDATE public.player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player4;
+            UPDATE player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player1;
+            UPDATE player SET losses2on2 = losses2on2 - 1 WHERE id = v_match.player3;
+            UPDATE player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player2;
+            UPDATE player SET wins2on2 = wins2on2 - 1 WHERE id = v_match.player4;
         END IF;
     END IF;
 
@@ -144,53 +144,53 @@ BEGIN
         -- Update season_rankings to the state BEFORE the deleted match
         IF v_gamemode = '1on1' THEN
             IF v_team1_wins THEN
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET wins = wins - 1, mmr = COALESCE(v_match."mmrPlayer1", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player1;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET losses = losses - 1, mmr = COALESCE(v_match."mmrPlayer2", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player2;
             ELSE
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET losses = losses - 1, mmr = COALESCE(v_match."mmrPlayer1", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player1;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET wins = wins - 1, mmr = COALESCE(v_match."mmrPlayer2", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player2;
             END IF;
         ELSIF v_gamemode = '2on2' THEN
             IF v_team1_wins THEN
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer1", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player1;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer3", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player3;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer2", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player2;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer4", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player4;
             ELSE
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer1", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player1;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET losses2on2 = losses2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer3", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player3;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer2", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player2;
                 
-                UPDATE public.season_rankings 
+                UPDATE season_rankings 
                 SET wins2on2 = wins2on2 - 1, mmr2on2 = COALESCE(v_match."mmrPlayer4", 1000)
                 WHERE season_id = v_season_id AND player_id = v_match.player4;
             END IF;
@@ -199,19 +199,19 @@ BEGIN
 
     -- 6. Delete player_history entries for ALL players of this kicker from match date onward
     -- We need to recreate history for all players to maintain consistency
-    DELETE FROM public.player_history 
+    DELETE FROM player_history 
     WHERE kicker_id = p_kicker_id 
     AND DATE(created_at) >= v_match_date;
 
     -- 7. Delete the match
-    DELETE FROM public.matches WHERE id = p_match_id;
+    DELETE FROM matches WHERE id = p_match_id;
 
     -- 8. Recalculate MMR for all subsequent matches
     -- We track each player's running MMR in v_player_mmr_map/v_player_mmr2on2_map
     -- Starting from the MMR before the deleted match, we recalculate each subsequent match
     FOR v_subsequent_match IN
         SELECT m.*
-        FROM public.matches m
+        FROM matches m
         WHERE m.kicker_id = p_kicker_id 
         AND m.start_time > v_match.start_time
         AND m.status = 'ended'
@@ -237,7 +237,7 @@ BEGIN
                 v_p1_mmr_before := (v_player_mmr_map ->> v_player_id_str)::INT;
             ELSE
                 SELECT COALESCE(mmr, 1000) INTO v_p1_mmr_before
-                FROM public.season_rankings 
+                FROM season_rankings 
                 WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
                 v_p1_mmr_before := COALESCE(v_p1_mmr_before, 1000);
             END IF;
@@ -247,7 +247,7 @@ BEGIN
                 v_p2_mmr_before := (v_player_mmr_map ->> v_player_id_str)::INT;
             ELSE
                 SELECT COALESCE(mmr, 1000) INTO v_p2_mmr_before
-                FROM public.season_rankings 
+                FROM season_rankings 
                 WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
                 v_p2_mmr_before := COALESCE(v_p2_mmr_before, 1000);
             END IF;
@@ -263,7 +263,7 @@ BEGIN
             v_mmr_change_team2 := -v_mmr_change_team1;
 
             -- Update match record with new MMR values
-            UPDATE public.matches 
+            UPDATE matches 
             SET "mmrChangeTeam1" = v_mmr_change_team1,
                 "mmrChangeTeam2" = v_mmr_change_team2,
                 "mmrPlayer1" = v_p1_mmr_before,
@@ -275,11 +275,11 @@ BEGIN
             v_player_mmr_map := jsonb_set(v_player_mmr_map, ARRAY[v_subsequent_match.player2::TEXT], to_jsonb(v_p2_mmr_before + v_mmr_change_team2));
 
             -- Update season_rankings with final MMR after this match
-            UPDATE public.season_rankings 
+            UPDATE season_rankings 
             SET mmr = v_p1_mmr_before + v_mmr_change_team1
             WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
 
-            UPDATE public.season_rankings 
+            UPDATE season_rankings 
             SET mmr = v_p2_mmr_before + v_mmr_change_team2
             WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
 
@@ -290,7 +290,7 @@ BEGIN
                 v_p1_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
             ELSE
                 SELECT COALESCE(mmr2on2, 1000) INTO v_p1_mmr_before
-                FROM public.season_rankings 
+                FROM season_rankings 
                 WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
                 v_p1_mmr_before := COALESCE(v_p1_mmr_before, 1000);
             END IF;
@@ -300,7 +300,7 @@ BEGIN
                 v_p2_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
             ELSE
                 SELECT COALESCE(mmr2on2, 1000) INTO v_p2_mmr_before
-                FROM public.season_rankings 
+                FROM season_rankings 
                 WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
                 v_p2_mmr_before := COALESCE(v_p2_mmr_before, 1000);
             END IF;
@@ -310,7 +310,7 @@ BEGIN
                 v_p3_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
             ELSE
                 SELECT COALESCE(mmr2on2, 1000) INTO v_p3_mmr_before
-                FROM public.season_rankings 
+                FROM season_rankings 
                 WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player3;
                 v_p3_mmr_before := COALESCE(v_p3_mmr_before, 1000);
             END IF;
@@ -320,7 +320,7 @@ BEGIN
                 v_p4_mmr_before := (v_player_mmr2on2_map ->> v_player_id_str)::INT;
             ELSE
                 SELECT COALESCE(mmr2on2, 1000) INTO v_p4_mmr_before
-                FROM public.season_rankings 
+                FROM season_rankings 
                 WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player4;
                 v_p4_mmr_before := COALESCE(v_p4_mmr_before, 1000);
             END IF;
@@ -340,7 +340,7 @@ BEGIN
             v_mmr_change_team2 := -v_mmr_change_team1;
 
             -- Update match record with new MMR values
-            UPDATE public.matches 
+            UPDATE matches 
             SET "mmrChangeTeam1" = v_mmr_change_team1,
                 "mmrChangeTeam2" = v_mmr_change_team2,
                 "mmrPlayer1" = v_p1_mmr_before,
@@ -356,19 +356,19 @@ BEGIN
             v_player_mmr2on2_map := jsonb_set(v_player_mmr2on2_map, ARRAY[v_subsequent_match.player4::TEXT], to_jsonb(v_p4_mmr_before + v_mmr_change_team2));
 
             -- Update season_rankings with final MMR after this match
-            UPDATE public.season_rankings 
+            UPDATE season_rankings 
             SET mmr2on2 = v_p1_mmr_before + v_mmr_change_team1
             WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player1;
 
-            UPDATE public.season_rankings 
+            UPDATE season_rankings 
             SET mmr2on2 = v_p3_mmr_before + v_mmr_change_team1
             WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player3;
 
-            UPDATE public.season_rankings 
+            UPDATE season_rankings 
             SET mmr2on2 = v_p2_mmr_before + v_mmr_change_team2
             WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player2;
 
-            UPDATE public.season_rankings 
+            UPDATE season_rankings 
             SET mmr2on2 = v_p4_mmr_before + v_mmr_change_team2
             WHERE season_id = v_subsequent_match.season_id AND player_id = v_subsequent_match.player4;
         END IF;
@@ -382,12 +382,12 @@ BEGIN
         -- For each player of this kicker (not just affected ones, to maintain complete history)
         FOR v_player_record IN
             SELECT p.*
-            FROM public.player p
+            FROM player p
             WHERE p.kicker_id = p_kicker_id
         LOOP
             -- Get season_id that was active on v_current_date for this kicker
             SELECT s.id INTO v_history_season_id
-            FROM public.seasons s
+            FROM seasons s
             WHERE s.kicker_id = p_kicker_id
             AND s.start_date::date <= v_current_date
             AND (s.end_date IS NULL OR s.end_date::date >= v_current_date)
@@ -401,7 +401,7 @@ BEGIN
 
             -- Calculate wins and losses for 1on1 on this day
             SELECT COUNT(*) INTO v_winCount
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '1on1'
             AND kicker_id = v_player_record.kicker_id
@@ -410,7 +410,7 @@ BEGIN
                  (player2 = v_player_record.id AND "scoreTeam1" < "scoreTeam2"));
 
             SELECT COUNT(*) INTO v_lossCount
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '1on1'
             AND kicker_id = v_player_record.kicker_id
@@ -421,7 +421,7 @@ BEGIN
             -- Calculate wins2on2 and losses2on2 for 2on2 on this day
             -- FIXED: Include player3 and player4 in team membership check
             SELECT COUNT(*) INTO v_win2on2Count
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '2on2'
             AND kicker_id = v_player_record.kicker_id
@@ -430,7 +430,7 @@ BEGIN
                  ((player2 = v_player_record.id OR player4 = v_player_record.id) AND "scoreTeam1" < "scoreTeam2"));
 
             SELECT COUNT(*) INTO v_loss2on2Count
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '2on2'
             AND kicker_id = v_player_record.kicker_id
@@ -441,7 +441,7 @@ BEGIN
             -- Calculate wins2on1 and losses2on1 for 2on1 on this day
             -- FIXED: Include player3 and player4 in team membership check
             SELECT COUNT(*) INTO v_win2on1Count
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '2on1'
             AND kicker_id = v_player_record.kicker_id
@@ -450,7 +450,7 @@ BEGIN
                  ((player2 = v_player_record.id OR player4 = v_player_record.id) AND "scoreTeam1" < "scoreTeam2"));
 
             SELECT COUNT(*) INTO v_loss2on1Count
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '2on1'
             AND kicker_id = v_player_record.kicker_id
@@ -460,7 +460,7 @@ BEGIN
 
             -- Calculate total play time for 1on1 on this day
             SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_time - start_time))), 0) INTO v_totalDuration
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '1on1'
             AND kicker_id = v_player_record.kicker_id
@@ -469,7 +469,7 @@ BEGIN
 
             -- Calculate total play time for 2on2 on this day
             SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_time - start_time))), 0) INTO v_totalDuration2on2
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '2on2'
             AND kicker_id = v_player_record.kicker_id
@@ -478,7 +478,7 @@ BEGIN
 
             -- Calculate total play time for 2on1 on this day
             SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_time - start_time))), 0) INTO v_totalDuration2on1
-            FROM public.matches
+            FROM matches
             WHERE DATE(created_at) = v_current_date
             AND gamemode = '2on1'
             AND kicker_id = v_player_record.kicker_id
@@ -490,7 +490,7 @@ BEGIN
                 -- For today, use current season_rankings MMR
                 SELECT COALESCE(sr.mmr, 1000), COALESCE(sr.mmr2on2, 1000)
                 INTO v_end_of_day_mmr, v_end_of_day_mmr2on2
-                FROM public.season_rankings sr
+                FROM season_rankings sr
                 WHERE sr.season_id = v_history_season_id AND sr.player_id = v_player_record.id;
                 
                 v_end_of_day_mmr := COALESCE(v_end_of_day_mmr, 1000);
@@ -504,7 +504,7 @@ BEGIN
                         WHEN m.player2 = v_player_record.id THEN COALESCE(m."mmrPlayer2", 1000) + COALESCE(m."mmrChangeTeam2", 0)
                     END
                 INTO v_end_of_day_mmr
-                FROM public.matches m
+                FROM matches m
                 WHERE DATE(m.created_at) = v_current_date
                 AND m.gamemode = '1on1'
                 AND m.kicker_id = v_player_record.kicker_id
@@ -516,7 +516,7 @@ BEGIN
                 -- If no 1on1 match that day, get from previous history or default
                 IF v_end_of_day_mmr IS NULL THEN
                     SELECT ph.mmr INTO v_end_of_day_mmr
-                    FROM public.player_history ph
+                    FROM player_history ph
                     WHERE ph.player_id = v_player_record.id
                     AND DATE(ph.created_at) < v_current_date
                     ORDER BY ph.created_at DESC
@@ -534,7 +534,7 @@ BEGIN
                         WHEN m.player4 = v_player_record.id THEN COALESCE(m."mmrPlayer4", 1000) + COALESCE(m."mmrChangeTeam2", 0)
                     END
                 INTO v_end_of_day_mmr2on2
-                FROM public.matches m
+                FROM matches m
                 WHERE DATE(m.created_at) = v_current_date
                 AND m.gamemode = '2on2'
                 AND m.kicker_id = v_player_record.kicker_id
@@ -546,7 +546,7 @@ BEGIN
                 -- If no 2on2 match that day, get from previous history or default
                 IF v_end_of_day_mmr2on2 IS NULL THEN
                     SELECT ph.mmr2on2 INTO v_end_of_day_mmr2on2
-                    FROM public.player_history ph
+                    FROM player_history ph
                     WHERE ph.player_id = v_player_record.id
                     AND DATE(ph.created_at) < v_current_date
                     ORDER BY ph.created_at DESC
@@ -557,7 +557,7 @@ BEGIN
             END IF;
 
             -- Insert player_history entry for this day
-            INSERT INTO public.player_history (
+            INSERT INTO player_history (
                 created_at, player_name, player_id, user_id, kicker_id,
                 mmr, mmr2on2, wins, losses, wins2on2, losses2on2, 
                 wins2on1, losses2on1, duration, duration2on2, duration2on1, season_id
@@ -579,4 +579,4 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Grant execute permission to authenticated users (admin check is done inside the function)
-GRANT EXECUTE ON FUNCTION public.delete_match_with_recalculation(BIGINT, BIGINT, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION delete_match_with_recalculation(BIGINT, BIGINT, UUID) TO authenticated;
