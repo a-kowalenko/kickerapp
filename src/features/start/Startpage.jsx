@@ -430,7 +430,7 @@ function Startpage() {
                     </JoinKickerContainer>
                 </ColumnsContainer>
             </Main>
-            <Footer>© 2023 Andreas Kowalenko</Footer>
+            <Footer>© 2023-{new Date().getFullYear()} Andreas Kowalenko</Footer>
         </StyledStartpage>
     );
 }

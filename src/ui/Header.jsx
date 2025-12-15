@@ -94,7 +94,7 @@ function Header() {
     return (
         <StyledHeader>
             <KickerInfoWrapper>
-                {isLoadingKickerData || isLoadingKickers ? (
+                {isLoadingKickerData || isLoadingKickers || !kickers ? (
                     <SpinnerMini />
                 ) : (
                     <>
