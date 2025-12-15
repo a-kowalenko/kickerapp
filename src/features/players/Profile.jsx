@@ -254,16 +254,14 @@ const RankIcon = styled.div`
     width: 4.8rem;
     height: 4.8rem;
     border-radius: 50%;
-    background-color: ${(props) =>
-        props.$variant === "gold"
-            ? "linear-gradient(135deg, #f6d365 0%, #fda085 100%)"
-            : "var(--color-grey-100)"};
     background: ${(props) =>
         props.$variant === "gold"
-            ? "linear-gradient(135deg, #f6d365 0%, #fda085 100%)"
+            ? "linear-gradient(135deg, #FFD700 0%, #FFC107 100%)"
             : props.$variant === "silver"
-            ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
-            : "var(--color-grey-100)"};
+              ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
+              : props.$variant === "bronze"
+                ? "linear-gradient(135deg, #CD7F32 0%, #A0522D 100%)"
+                : "var(--color-grey-100)"};
 
     ${media.desktop} {
         width: 3.6rem;
@@ -280,10 +278,12 @@ const RankIcon = styled.div`
         height: 2.4rem;
         color: ${(props) =>
             props.$variant === "gold"
-                ? "#a85c00"
+                ? "#7a5c00"
                 : props.$variant === "silver"
-                ? "#616161"
-                : "var(--color-grey-600)"};
+                  ? "#616161"
+                  : props.$variant === "bronze"
+                    ? "#5D4037"
+                    : "var(--color-grey-600)"};
 
         ${media.desktop} {
             width: 1.8rem;
@@ -343,6 +343,36 @@ function Profile() {
         isLoading: isLoadingRank,
     } = usePlayerRank(userId);
 
+    let trophyVariant1on1;
+    switch (rank1on1) {
+        case 1:
+            trophyVariant1on1 = "gold";
+            break;
+        case 2:
+            trophyVariant1on1 = "silver";
+            break;
+        case 3:
+            trophyVariant1on1 = "bronze";
+            break;
+        default:
+            trophyVariant1on1 = "none";
+    }
+
+    let trophyVariant2on2;
+    switch (rank2on2) {
+        case 1:
+            trophyVariant2on2 = "gold";
+            break;
+        case 2:
+            trophyVariant2on2 = "silver";
+            break;
+        case 3:
+            trophyVariant2on2 = "bronze";
+            break;
+        default:
+            trophyVariant2on2 = "none";
+    }
+
     if (error) {
         return <Error message={error.message} />;
     }
@@ -377,9 +407,13 @@ function Profile() {
                     <InfoSection>
                         <RankGrid>
                             <RankCard>
-                                <RankIcon $variant="gold">
-                                    <HiOutlineTrophy />
-                                </RankIcon>
+                                {rank1on1 && rank1on1 <= 3 ? (
+                                    <RankIcon $variant={trophyVariant1on1}>
+                                        <HiOutlineTrophy />
+                                    </RankIcon>
+                                ) : (
+                                    <></>
+                                )}
                                 <RankInfo>
                                     <RankLabel>1on1 Rank</RankLabel>
                                     <RankValue>
@@ -392,9 +426,13 @@ function Profile() {
                                 </RankInfo>
                             </RankCard>
                             <RankCard>
-                                <RankIcon $variant="silver">
-                                    <HiOutlineTrophy />
-                                </RankIcon>
+                                {rank2on2 && rank2on2 <= 3 ? (
+                                    <RankIcon $variant={trophyVariant2on2}>
+                                        <HiOutlineTrophy />
+                                    </RankIcon>
+                                ) : (
+                                    <></>
+                                )}
                                 <RankInfo>
                                     <RankLabel>2on2 Rank</RankLabel>
                                     <RankValue>
