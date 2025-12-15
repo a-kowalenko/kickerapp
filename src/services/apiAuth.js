@@ -52,6 +52,14 @@ export async function getCurrentUser() {
     const { data, error } = await supabase.auth.getUser();
 
     if (error) {
+        // If the session is invalid/stale (e.g., deleted server-side), sign out and return null
+        if (
+            error.status === 403 ||
+            error.message?.includes("session_id claim in JWT does not exist")
+        ) {
+            await supabase.auth.signOut();
+            return null;
+        }
         throw new Error(error.message);
     }
 
