@@ -24,7 +24,7 @@ interface WebhookPayload {
 
 interface FCMMessage {
     token: string;
-    notification: {
+    notification?: {
         title: string;
         body: string;
     };
@@ -33,10 +33,36 @@ interface FCMMessage {
         matchId?: string;
         kickerId: string;
         url: string;
+        title: string;
+        body: string;
     };
     webpush?: {
-        fcm_options: {
+        headers?: {
+            Urgency?: string;
+        };
+        notification?: {
+            title: string;
+            body: string;
+            icon?: string;
+            badge?: string;
+            tag?: string;
+            renotify?: boolean;
+            requireInteraction?: boolean;
+        };
+        fcm_options?: {
             link: string;
+        };
+    };
+    apns?: {
+        payload: {
+            aps: {
+                alert: {
+                    title: string;
+                    body: string;
+                };
+                sound?: string;
+                badge?: number;
+            };
         };
     };
 }
@@ -419,16 +445,11 @@ serve(async (req) => {
         const invalidTokens: string[] = [];
 
         for (const sub of subscriptions) {
-            // Use DATA-ONLY message to let the client control notification display
-            // This prevents duplicate notifications (FCM auto-notification + app notification)
+            // Use DATA-ONLY message to let the service worker control notification display
+            // This prevents duplicate notifications (FCM auto-notification + service worker notification)
             const message: FCMMessage = {
                 token: sub.fcm_token,
-                // Don't include 'notification' field - this makes it a data-only message
-                // The service worker will handle showing the notification
-                notification: {
-                    title,
-                    body: notificationBody,
-                },
+                // NO 'notification' field - this makes it a data-only message
                 data: {
                     type: notificationType,
                     kickerId: kickerId.toString(),
@@ -438,9 +459,35 @@ serve(async (req) => {
                     body: notificationBody,
                     ...(matchId && { matchId: matchId.toString() }),
                 },
+                // Web push specific options
                 webpush: {
+                    headers: {
+                        Urgency: "high",
+                    },
+                    notification: {
+                        title,
+                        body: notificationBody,
+                        icon: "/android-chrome-192x192.png",
+                        badge: "/favicon-32x32.png",
+                        tag: `kicker-${notificationType}-${Date.now()}`,
+                        renotify: true,
+                        requireInteraction: false,
+                    },
                     fcm_options: {
                         link: url,
+                    },
+                },
+                // iOS/APNs specific options
+                apns: {
+                    payload: {
+                        aps: {
+                            alert: {
+                                title,
+                                body: notificationBody,
+                            },
+                            sound: "default",
+                            badge: 1,
+                        },
                     },
                 },
             };

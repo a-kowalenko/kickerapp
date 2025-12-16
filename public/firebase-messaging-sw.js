@@ -27,7 +27,7 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Firebase Cloud Messaging
 const messaging = firebase.messaging();
 
-// Handle background messages
+// Handle background messages (data-only messages)
 messaging.onBackgroundMessage((payload) => {
     console.log(
         "[firebase-messaging-sw.js] Received background message:",
@@ -37,15 +37,22 @@ messaging.onBackgroundMessage((payload) => {
     const notificationData = payload.data || {};
     const notification = payload.notification || {};
 
+    // Build notification title - prefer data field for data-only messages
+    const notificationTitle =
+        notificationData.title || notification.title || "KickerApp";
+
     // Build notification options
-    const notificationTitle = notification.title || "KickerApp";
     const notificationOptions = {
-        body: notification.body || notificationData.body || "",
+        body: notificationData.body || notification.body || "",
         icon: "/android-chrome-192x192.png",
         badge: "/favicon-32x32.png",
-        tag: notificationData.tag || "kicker-notification",
+        tag:
+            notificationData.tag ||
+            `kicker-${notificationData.type || "notification"}-${Date.now()}`,
         renotify: true,
         requireInteraction: false,
+        silent: false, // Allow sound
+        vibrate: [200, 100, 200], // Vibration pattern for mobile
         // Store data for click handling
         data: {
             type: notificationData.type || "general", // 'comment', 'chat', 'mention'
@@ -58,6 +65,12 @@ messaging.onBackgroundMessage((payload) => {
             ? [{ action: "view", title: "View" }]
             : [],
     };
+
+    console.log(
+        "[firebase-messaging-sw.js] Showing notification:",
+        notificationTitle,
+        notificationOptions
+    );
 
     // Show the notification
     return self.registration.showNotification(
