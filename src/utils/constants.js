@@ -45,6 +45,12 @@ export const KICKER = "kicker";
 export const GOALS = "goals";
 export const SEASONS = "seasons";
 export const SEASON_RANKINGS = "season_rankings";
+export const MATCH_COMMENTS = "match_comments";
+export const MATCH_REACTIONS = "match_reactions";
+export const COMMENT_REACTIONS = "comment_reactions";
+
+// COMMENT CONSTANTS
+export const MAX_COMMENT_LENGTH = 1000;
 
 // SEASON FILTER VALUES
 export const SEASON_ALL_TIME = "all-time";
