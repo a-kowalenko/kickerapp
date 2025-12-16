@@ -21,43 +21,23 @@ try {
  * @returns {Promise<string|null>} FCM token or null if permission denied/error
  */
 export async function requestNotificationPermission() {
-    console.log("requestNotificationPermission called");
-    console.log("messaging available:", !!messaging);
-
     if (!messaging) {
         console.warn("Firebase messaging not available");
         return null;
     }
 
     try {
-        console.log(
-            "Current permission before request:",
-            Notification.permission
-        );
         const permission = await Notification.requestPermission();
-        console.log("Permission after request:", permission);
 
         if (permission !== "granted") {
-            console.log(
-                "Notification permission denied, permission:",
-                permission
-            );
             return null;
         }
 
         // Get FCM token
-        console.log(
-            "Getting FCM token with vapidKey:",
-            vapidKey?.substring(0, 20) + "..."
-        );
         const token = await getToken(messaging, { vapidKey });
         if (token) {
-            console.log("FCM Token obtained:", token.substring(0, 20) + "...");
             return token;
         } else {
-            console.log(
-                "No registration token available. Request permission to generate one."
-            );
             return null;
         }
     } catch (error) {
@@ -100,7 +80,6 @@ export function onForegroundMessage(callback) {
     }
 
     return onMessage(messaging, (payload) => {
-        console.log("Foreground message received:", payload);
         callback(payload);
     });
 }
@@ -115,14 +94,6 @@ export function getNotificationStatus() {
     const isPWAInstalled =
         window.matchMedia("(display-mode: standalone)").matches ||
         window.navigator.standalone === true;
-
-    console.log("Notification status check:", {
-        isIOSDevice,
-        isPWAInstalled,
-        hasNotificationAPI: "Notification" in window,
-        permission:
-            "Notification" in window ? Notification.permission : "no-api",
-    });
 
     // iOS Safari (non-PWA) doesn't support push notifications at all
     if (isIOSDevice && !isPWAInstalled) {

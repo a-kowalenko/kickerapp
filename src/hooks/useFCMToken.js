@@ -61,18 +61,36 @@ export function useFCMToken(userId) {
 
             const deviceType = getDeviceType();
 
-            // First, delete any existing subscription for this user + device type
-            // This prevents duplicates when FCM generates new tokens
-            const { error: deleteError } = await supabase
+            // First, check if this exact token already exists for this user
+            const { data: existingByToken } = await supabase
+                .schema(databaseSchema)
+                .from(PUSH_SUBSCRIPTIONS_TABLE)
+                .select("id")
+                .eq("fcm_token", token)
+                .eq("user_id", userId)
+                .maybeSingle();
+
+            // If token already exists for this user, no need to do anything
+            if (existingByToken) {
+                return existingByToken;
+            }
+
+            // Delete any existing subscription for this user + device type
+            // This prevents multiple tokens per device type
+            await supabase
                 .schema(databaseSchema)
                 .from(PUSH_SUBSCRIPTIONS_TABLE)
                 .delete()
                 .eq("user_id", userId)
                 .like("device_info", `%"deviceType":"${deviceType}"%`);
 
-            if (deleteError) {
-                console.warn("Error deleting old subscription:", deleteError);
-            }
+            // Also delete if this token exists for a different user (token reassignment)
+            await supabase
+                .schema(databaseSchema)
+                .from(PUSH_SUBSCRIPTIONS_TABLE)
+                .delete()
+                .eq("fcm_token", token)
+                .neq("user_id", userId);
 
             // Insert new subscription
             const { data, error } = await supabase
@@ -93,6 +111,10 @@ export function useFCMToken(userId) {
             queryClient.invalidateQueries(["pushSubscription", userId]);
         },
         onError: (error) => {
+            // Ignore duplicate key errors silently - token is already saved
+            if (error?.code === "23505") {
+                return;
+            }
             console.error("Error saving FCM token:", error);
         },
     });
