@@ -6,7 +6,10 @@ import {
     getCurrentToken,
     onForegroundMessage,
     getNotificationStatus,
+    messaging,
 } from "../services/firebase";
+import { getToken } from "firebase/messaging";
+import { vapidKey } from "../services/firebaseConfig";
 import toast from "react-hot-toast";
 
 const PUSH_SUBSCRIPTIONS_TABLE = "push_subscriptions";
@@ -159,22 +162,43 @@ export function useFCMToken(userId) {
                 return false;
             }
 
-            // Now get the FCM token
-            const token = await requestNotificationPermission();
-
-            if (!token) {
-                toast.error("Got permission but failed to get FCM token");
-                return false;
-            }
-
-            // Save token to database
-            saveToken({
-                token,
-                deviceInfo: getDeviceInfo(),
+            // Now get the FCM token with better error handling
+            toast(`Getting FCM token...`, { duration: 2000 });
+            toast(`VAPID Key: ${vapidKey?.substring(0, 30)}...`, {
+                duration: 3000,
             });
 
-            toast.success("Notifications enabled!");
-            return true;
+            try {
+                if (!messaging) {
+                    toast.error("Firebase messaging not initialized");
+                    return false;
+                }
+
+                const token = await getToken(messaging, { vapidKey });
+
+                if (!token) {
+                    toast.error("getToken returned null/undefined");
+                    return false;
+                }
+
+                toast.success(`Token: ${token.substring(0, 20)}...`, {
+                    duration: 3000,
+                });
+
+                // Save token to database
+                saveToken({
+                    token,
+                    deviceInfo: getDeviceInfo(),
+                });
+
+                toast.success("Notifications enabled!");
+                return true;
+            } catch (tokenError) {
+                toast.error(`Token error: ${tokenError.message}`, {
+                    duration: 5000,
+                });
+                return false;
+            }
         } catch (error) {
             toast.error(`Error: ${error.message}`);
             return false;
