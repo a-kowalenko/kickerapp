@@ -48,26 +48,45 @@ async function saveFCMToken(userId) {
                 timestamp: new Date().toISOString(),
             });
 
-            // Save to database
+            // Check if token already exists for this user
+            const { data: existing } = await supabase
+                .schema(databaseSchema)
+                .from("push_subscriptions")
+                .select("id")
+                .eq("fcm_token", token)
+                .eq("user_id", userId)
+                .maybeSingle();
+
+            if (existing) {
+                // Token already saved for this user
+                return;
+            }
+
+            // Delete old tokens for this user + device type
             await supabase
                 .schema(databaseSchema)
                 .from("push_subscriptions")
-                .upsert(
-                    {
-                        user_id: userId,
-                        fcm_token: token,
-                        device_info: deviceInfo,
-                        updated_at: new Date().toISOString(),
-                    },
-                    {
-                        onConflict: "fcm_token",
-                        ignoreDuplicates: false,
-                    }
-                );
+                .delete()
+                .eq("user_id", userId)
+                .like("device_info", `%"deviceType":"${deviceType}"%`);
+
+            // Insert new token
+            await supabase
+                .schema(databaseSchema)
+                .from("push_subscriptions")
+                .insert({
+                    user_id: userId,
+                    fcm_token: token,
+                    device_info: deviceInfo,
+                });
 
             console.log("FCM token saved on login");
         }
     } catch (error) {
+        // Ignore duplicate key errors - token already exists
+        if (error?.code === "23505") {
+            return;
+        }
         console.error("Error saving FCM token on login:", error);
         // Don't show error to user - notifications are optional
     }
