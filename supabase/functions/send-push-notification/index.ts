@@ -193,10 +193,13 @@ serve(async (req) => {
     }
 
     try {
+        console.log("=== Push notification function called ===");
         const body = await req.json();
+        console.log("Received body:", JSON.stringify(body, null, 2));
 
         // Check if this is a Database Webhook payload
         const isWebhook = body.type === "INSERT" && body.record;
+        console.log("Is webhook:", isWebhook);
 
         let content: string;
         let senderPlayerId: number;
