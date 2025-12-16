@@ -170,6 +170,21 @@ export async function endSeason(seasonId) {
         throw new Error(updateKickerError.message);
     }
 
+    // Create player_history entries for all players as season end snapshot
+    const { error: historyError } = await supabase.rpc(
+        "create_season_end_history",
+        {
+            p_season_id: seasonId,
+            p_kicker_id: data.kicker_id,
+        }
+    );
+
+    if (historyError) {
+        console.error("Failed to create season end history:", historyError);
+        // Don't throw here - the season was already ended successfully
+        // This is a non-critical operation
+    }
+
     return data;
 }
 

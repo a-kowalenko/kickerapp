@@ -14,6 +14,7 @@ export function useEndSeason() {
             queryClient.invalidateQueries(["seasons", kicker]);
             queryClient.invalidateQueries(["currentSeason", kicker]);
             queryClient.invalidateQueries(["kicker-info", kicker]);
+            queryClient.invalidateQueries(["player_history"]);
         },
         onError: (error) => {
             toast.error(error.message);
