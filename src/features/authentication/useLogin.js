@@ -62,6 +62,14 @@ async function saveFCMToken(userId) {
                 return;
             }
 
+            // Delete this token if it exists for OTHER users (user switched accounts on same device)
+            await supabase
+                .schema(databaseSchema)
+                .from("push_subscriptions")
+                .delete()
+                .eq("fcm_token", token)
+                .neq("user_id", userId);
+
             // Delete old tokens for this user + device type
             await supabase
                 .schema(databaseSchema)
@@ -71,7 +79,7 @@ async function saveFCMToken(userId) {
                 .like("device_info", `%"deviceType":"${deviceType}"%`);
 
             // Insert new token
-            await supabase
+            const { error } = await supabase
                 .schema(databaseSchema)
                 .from("push_subscriptions")
                 .insert({
@@ -80,15 +88,20 @@ async function saveFCMToken(userId) {
                     device_info: deviceInfo,
                 });
 
-            console.log("FCM token saved on login");
+            // Ignore duplicate key errors silently
+            if (error?.code === "23505") {
+                return;
+            }
+            if (error) {
+                throw error;
+            }
         }
     } catch (error) {
         // Ignore duplicate key errors - token already exists
         if (error?.code === "23505") {
             return;
         }
-        console.error("Error saving FCM token on login:", error);
-        // Don't show error to user - notifications are optional
+        // Don't log or show error - notifications are optional
     }
 }
 

@@ -104,6 +104,10 @@ export function useFCMToken(userId) {
                 .select()
                 .single();
 
+            // Ignore duplicate key errors - token already exists
+            if (error?.code === "23505") {
+                return null;
+            }
             if (error) throw error;
             return data;
         },
@@ -111,11 +115,10 @@ export function useFCMToken(userId) {
             queryClient.invalidateQueries(["pushSubscription", userId]);
         },
         onError: (error) => {
-            // Ignore duplicate key errors silently - token is already saved
-            if (error?.code === "23505") {
-                return;
+            // Only log non-duplicate errors
+            if (error?.code !== "23505") {
+                console.error("Error saving FCM token:", error);
             }
-            console.error("Error saving FCM token:", error);
         },
     });
 
