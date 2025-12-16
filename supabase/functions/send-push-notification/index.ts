@@ -193,7 +193,8 @@ serve(async (req) => {
     }
 
     try {
-        console.log("=== Push notification function called ===");
+        console.log("=== Push notification function called v2 ===");
+        console.log("Timestamp:", new Date().toISOString());
 
         // Get raw body text first for debugging
         const rawBody = await req.text();
