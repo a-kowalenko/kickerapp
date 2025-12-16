@@ -29,11 +29,6 @@ const messaging = firebase.messaging();
 
 // Handle background messages (data-only messages)
 messaging.onBackgroundMessage((payload) => {
-    console.log(
-        "[firebase-messaging-sw.js] Received background message:",
-        payload
-    );
-
     const notificationData = payload.data || {};
     const notification = payload.notification || {};
 
@@ -66,12 +61,6 @@ messaging.onBackgroundMessage((payload) => {
             : [],
     };
 
-    console.log(
-        "[firebase-messaging-sw.js] Showing notification:",
-        notificationTitle,
-        notificationOptions
-    );
-
     // Show the notification
     return self.registration.showNotification(
         notificationTitle,
@@ -81,8 +70,6 @@ messaging.onBackgroundMessage((payload) => {
 
 // Handle notification click
 self.addEventListener("notificationclick", (event) => {
-    console.log("[firebase-messaging-sw.js] Notification clicked:", event);
-
     event.notification.close();
 
     const data = event.notification.data || {};
@@ -127,7 +114,6 @@ self.addEventListener("notificationclick", (event) => {
 
 // Handle service worker installation
 self.addEventListener("install", (event) => {
-    console.log("[firebase-messaging-sw.js] Service Worker installing...");
     self.skipWaiting();
 });
 

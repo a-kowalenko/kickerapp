@@ -219,40 +219,21 @@ serve(async (req) => {
     }
 
     try {
-        console.log("=== Push notification function called v2 ===");
-        console.log("Timestamp:", new Date().toISOString());
-
-        // Get raw body text first for debugging
+        // Parse request body
         const rawBody = await req.text();
-        console.log("Raw body received:", rawBody);
-        console.log("Raw body length:", rawBody.length);
-        console.log("Content-Type:", req.headers.get("content-type"));
-
-        // Try to parse as JSON
         let body;
         try {
             body = JSON.parse(rawBody);
         } catch (parseError) {
             console.error("JSON parse error:", parseError);
-            console.error("First 100 chars:", rawBody.substring(0, 100));
-            console.error(
-                "Char codes:",
-                [...rawBody.substring(0, 20)].map((c) => c.charCodeAt(0))
-            );
-            return new Response(
-                JSON.stringify({
-                    error: parseError.message,
-                    rawBody: rawBody.substring(0, 200),
-                }),
-                { status: 500, headers: { "Content-Type": "application/json" } }
-            );
+            return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+                status: 400,
+                headers: { "Content-Type": "application/json" },
+            });
         }
-
-        console.log("Received body:", JSON.stringify(body, null, 2));
 
         // Check if this is a Database Webhook payload
         const isWebhook = body.type === "INSERT" && body.record;
-        console.log("Is webhook:", isWebhook);
 
         let content: string;
         let senderPlayerId: number;
@@ -277,7 +258,6 @@ serve(async (req) => {
                 notificationType = "chat";
                 // Skip whispers (private messages)
                 if (webhook.record.recipient_id) {
-                    console.log("Skipping whisper message");
                     return new Response(
                         JSON.stringify({ sent: 0, reason: "whisper" }),
                         {
@@ -296,15 +276,8 @@ serve(async (req) => {
             databaseSchema = body.databaseSchema || "public";
         }
 
-        console.log("Processing notification:", {
-            notificationType,
-            kickerId,
-            matchId,
-        });
-
         // Check for @ mentions
         if (!content.includes("@")) {
-            console.log("No mentions in content");
             return new Response(
                 JSON.stringify({ sent: 0, reason: "no_mentions" }),
                 {
@@ -339,7 +312,6 @@ serve(async (req) => {
         const { playerIds, hasEveryone } = parseMentions(content);
 
         if (playerIds.length === 0 && !hasEveryone) {
-            console.log("No valid mentions found in content");
             return new Response(JSON.stringify({ sent: 0 }), {
                 headers: { "Content-Type": "application/json" },
             });
@@ -385,14 +357,10 @@ serve(async (req) => {
         }
 
         if (userIdsToNotify.length === 0) {
-            console.log("No users to notify");
             return new Response(JSON.stringify({ sent: 0 }), {
                 headers: { "Content-Type": "application/json" },
             });
         }
-
-        console.log("Users to notify:", userIdsToNotify);
-        console.log("Using schema:", databaseSchema);
 
         // Get FCM tokens for these users (using same schema as source data)
         const { data: subscriptions, error: subError } = await supabase
@@ -406,13 +374,10 @@ serve(async (req) => {
         }
 
         if (!subscriptions || subscriptions.length === 0) {
-            console.log("No FCM tokens found for users");
             return new Response(JSON.stringify({ sent: 0 }), {
                 headers: { "Content-Type": "application/json" },
             });
         }
-
-        console.log(`Found ${subscriptions.length} FCM tokens to notify`);
 
         // Get FCM access token
         const accessToken = await getFCMAccessToken(serviceAccount);

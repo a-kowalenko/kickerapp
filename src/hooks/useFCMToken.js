@@ -163,60 +163,38 @@ export function useFCMToken(userId) {
         setIsRequesting(true);
 
         try {
-            // Debug: Show what happens during permission request
-            const permissionBefore = Notification.permission;
-            toast(`Before request: ${permissionBefore}`, { duration: 3000 });
-
-            // Request permission directly first
+            // Request permission
             const permissionResult = await Notification.requestPermission();
-            toast(`After request: ${permissionResult}`, { duration: 3000 });
 
             if (permissionResult !== "granted") {
-                toast.error(
-                    `Permission not granted. Result: ${permissionResult}`
-                );
+                toast.error("Notification permission was not granted");
                 return false;
             }
 
-            // Now get the FCM token with better error handling
-            toast(`Getting FCM token...`, { duration: 2000 });
-            toast(`VAPID Key: ${vapidKey?.substring(0, 30)}...`, {
-                duration: 3000,
+            // Get FCM token
+            if (!messaging) {
+                toast.error("Notifications not available");
+                return false;
+            }
+
+            const token = await getToken(messaging, { vapidKey });
+
+            if (!token) {
+                toast.error("Failed to get notification token");
+                return false;
+            }
+
+            // Save token to database
+            saveToken({
+                token,
+                deviceInfo: getDeviceInfo(),
             });
 
-            try {
-                if (!messaging) {
-                    toast.error("Firebase messaging not initialized");
-                    return false;
-                }
-
-                const token = await getToken(messaging, { vapidKey });
-
-                if (!token) {
-                    toast.error("getToken returned null/undefined");
-                    return false;
-                }
-
-                toast.success(`Token: ${token.substring(0, 20)}...`, {
-                    duration: 3000,
-                });
-
-                // Save token to database
-                saveToken({
-                    token,
-                    deviceInfo: getDeviceInfo(),
-                });
-
-                toast.success("Notifications enabled!");
-                return true;
-            } catch (tokenError) {
-                toast.error(`Token error: ${tokenError.message}`, {
-                    duration: 5000,
-                });
-                return false;
-            }
+            toast.success("Notifications enabled!");
+            return true;
         } catch (error) {
-            toast.error(`Error: ${error.message}`);
+            console.error("Error enabling notifications:", error);
+            toast.error("Failed to enable notifications");
             return false;
         } finally {
             setIsRequesting(false);
@@ -264,8 +242,6 @@ export function useFCMToken(userId) {
     // Set up foreground message handler
     useEffect(() => {
         const unsubscribe = onForegroundMessage((payload) => {
-            console.log("Foreground message received:", payload);
-
             // Get notification data - check both notification and data fields
             const notification = payload.notification || {};
             const data = payload.data || {};

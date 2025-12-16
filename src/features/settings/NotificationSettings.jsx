@@ -265,36 +265,6 @@ function NotificationSettings() {
                     </InfoText>
                 </InfoCard>
             </Section>
-
-            {/* Debug Section - Remove after fixing */}
-            <Section>
-                <SectionTitle>Debug Info</SectionTitle>
-                <InfoCard>
-                    <InfoText>
-                        supported: {String(notificationStatus.supported)}
-                        <br />
-                        permission: {notificationStatus.permission}
-                        <br />
-                        isIOS: {String(notificationStatus.isIOS)}
-                        <br />
-                        isPWA: {String(notificationStatus.isPWA)}
-                        <br />
-                        isEnabled: {String(isEnabled)}
-                        <br />
-                        isBlocked: {String(isBlocked)}
-                        <br />
-                        needsPWAForIOS: {String(needsPWAForIOS)}
-                        <br />
-                        Notification in window:{" "}
-                        {String("Notification" in window)}
-                        <br />
-                        Raw permission:{" "}
-                        {"Notification" in window
-                            ? Notification.permission
-                            : "N/A"}
-                    </InfoText>
-                </InfoCard>
-            </Section>
         </Container>
     );
 }
