@@ -445,33 +445,23 @@ serve(async (req) => {
         const invalidTokens: string[] = [];
 
         for (const sub of subscriptions) {
-            // Use DATA-ONLY message to let the service worker control notification display
-            // This prevents duplicate notifications (FCM auto-notification + service worker notification)
+            // Pure DATA-ONLY message - no notification field anywhere
+            // The service worker's onBackgroundMessage will handle displaying the notification
             const message: FCMMessage = {
                 token: sub.fcm_token,
-                // NO 'notification' field - this makes it a data-only message
+                // Only data field - no notification field
                 data: {
                     type: notificationType,
                     kickerId: kickerId.toString(),
                     url,
-                    // Include title and body in data for service worker to use
                     title,
                     body: notificationBody,
                     ...(matchId && { matchId: matchId.toString() }),
                 },
-                // Web push specific options
+                // Web push - only headers and link, NO notification
                 webpush: {
                     headers: {
                         Urgency: "high",
-                    },
-                    notification: {
-                        title,
-                        body: notificationBody,
-                        icon: "/android-chrome-192x192.png",
-                        badge: "/favicon-32x32.png",
-                        tag: `kicker-${notificationType}-${Date.now()}`,
-                        renotify: true,
-                        requireInteraction: false,
                     },
                     fcm_options: {
                         link: url,
