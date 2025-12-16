@@ -1,10 +1,8 @@
--- Function: public.update_player_history()
--- Description: Daily job to snapshot player statistics into player_history table
--- Type: Regular Function
--- Security: Invoker
--- Usage: Called by scheduled job (cron) daily
+-- Migration: Fix update_player_history to get MMR from season_rankings
+-- The mmr and mmr2on2 values should come from season_rankings for the current active season
+-- instead of directly from the player table
 
-CREATE OR REPLACE FUNCTION public.update_player_history()
+CREATE OR REPLACE FUNCTION update_player_history()
 RETURNS void AS $$
 DECLARE
     currentPlayer RECORD;
