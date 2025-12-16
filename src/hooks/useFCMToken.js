@@ -46,27 +46,43 @@ export function useFCMToken(userId) {
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
+    // Get device type for deduplication
+    const getDeviceType = useCallback(() => {
+        const ua = navigator.userAgent;
+        if (/iPhone|iPad|iPod/.test(ua)) return "ios";
+        if (/Android/.test(ua)) return "android";
+        return "desktop";
+    }, []);
+
     // Mutation to save FCM token
     const { mutate: saveToken, isLoading: isSaving } = useMutation({
         mutationFn: async ({ token, deviceInfo }) => {
             if (!userId) throw new Error("User not authenticated");
 
-            // Upsert the token (update if exists, insert if not)
+            const deviceType = getDeviceType();
+
+            // First, delete any existing subscription for this user + device type
+            // This prevents duplicates when FCM generates new tokens
+            const { error: deleteError } = await supabase
+                .schema(databaseSchema)
+                .from(PUSH_SUBSCRIPTIONS_TABLE)
+                .delete()
+                .eq("user_id", userId)
+                .like("device_info", `%"deviceType":"${deviceType}"%`);
+
+            if (deleteError) {
+                console.warn("Error deleting old subscription:", deleteError);
+            }
+
+            // Insert new subscription
             const { data, error } = await supabase
                 .schema(databaseSchema)
                 .from(PUSH_SUBSCRIPTIONS_TABLE)
-                .upsert(
-                    {
-                        user_id: userId,
-                        fcm_token: token,
-                        device_info: deviceInfo,
-                        updated_at: new Date().toISOString(),
-                    },
-                    {
-                        onConflict: "fcm_token",
-                        ignoreDuplicates: false,
-                    }
-                )
+                .insert({
+                    user_id: userId,
+                    fcm_token: token,
+                    device_info: deviceInfo,
+                })
                 .select()
                 .single();
 
