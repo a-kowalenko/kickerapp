@@ -194,7 +194,33 @@ serve(async (req) => {
 
     try {
         console.log("=== Push notification function called ===");
-        const body = await req.json();
+
+        // Get raw body text first for debugging
+        const rawBody = await req.text();
+        console.log("Raw body received:", rawBody);
+        console.log("Raw body length:", rawBody.length);
+        console.log("Content-Type:", req.headers.get("content-type"));
+
+        // Try to parse as JSON
+        let body;
+        try {
+            body = JSON.parse(rawBody);
+        } catch (parseError) {
+            console.error("JSON parse error:", parseError);
+            console.error("First 100 chars:", rawBody.substring(0, 100));
+            console.error(
+                "Char codes:",
+                [...rawBody.substring(0, 20)].map((c) => c.charCodeAt(0))
+            );
+            return new Response(
+                JSON.stringify({
+                    error: parseError.message,
+                    rawBody: rawBody.substring(0, 200),
+                }),
+                { status: 500, headers: { "Content-Type": "application/json" } }
+            );
+        }
+
         console.log("Received body:", JSON.stringify(body, null, 2));
 
         // Check if this is a Database Webhook payload
