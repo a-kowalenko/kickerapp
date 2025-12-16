@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 
 const StyledSwitchButton = styled.div`
@@ -65,16 +65,20 @@ const SwitchIndicator = styled.span`
 `;
 
 function SwitchButton({ label, value, onChange, disabled = false }) {
-    const [isToggled, setIsToggled] = useState(value);
+    const [isToggled, setIsToggled] = useState(value ?? false);
+
+    // Sync internal state with external value
+    useEffect(() => {
+        setIsToggled(value ?? false);
+    }, [value]);
 
     function handleToggle() {
         if (disabled) {
             return;
         }
-        setIsToggled((prev) => {
-            onChange?.(!prev);
-            return !prev;
-        });
+        const newValue = !isToggled;
+        setIsToggled(newValue);
+        onChange?.(newValue);
     }
 
     return (

@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { HiBell, HiBellSlash, HiDevicePhoneMobile } from "react-icons/hi2";
 import { useFCMToken } from "../../hooks/useFCMToken";
 import { useUser } from "../../features/authentication/useUser";
-import Button from "../../ui/Button";
+import SwitchButton from "../../ui/SwitchButton";
 import SpinnerMini from "../../ui/SpinnerMini";
 
 const Container = styled.div`
@@ -116,8 +116,9 @@ const InfoText = styled.span`
     line-height: 1.5;
 `;
 
-const ButtonRow = styled.div`
+const ToggleRow = styled.div`
     display: flex;
+    align-items: center;
     gap: 1.2rem;
     margin-top: 0.8rem;
 `;
@@ -195,7 +196,7 @@ function NotificationSettings() {
                     </WarningCard>
                 )}
 
-                {/* Action Buttons */}
+                {/* Toggle Switch */}
                 {!notificationStatus.supported ? (
                     <InfoCard>
                         <InfoText>
@@ -204,37 +205,29 @@ function NotificationSettings() {
                         </InfoText>
                     </InfoCard>
                 ) : (
-                    <ButtonRow>
-                        {!isEnabled ? (
-                            <Button
-                                onClick={enableNotifications}
+                    <ToggleRow>
+                        {isLoading || isRequesting ? (
+                            <SpinnerMini />
+                        ) : (
+                            <SwitchButton
+                                label={isEnabled ? "Enabled" : "Disabled"}
+                                value={isEnabled}
+                                onChange={(newValue) => {
+                                    if (newValue) {
+                                        enableNotifications();
+                                    } else {
+                                        disableNotifications();
+                                    }
+                                }}
                                 disabled={
                                     isLoading ||
                                     isRequesting ||
                                     isBlocked ||
                                     needsPWAForIOS
                                 }
-                            >
-                                {isRequesting ? (
-                                    <SpinnerMini />
-                                ) : (
-                                    "Enable Notifications"
-                                )}
-                            </Button>
-                        ) : (
-                            <Button
-                                $variation="danger"
-                                onClick={disableNotifications}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <SpinnerMini />
-                                ) : (
-                                    "Disable Notifications"
-                                )}
-                            </Button>
+                            />
                         )}
-                    </ButtonRow>
+                    </ToggleRow>
                 )}
             </Section>
 
