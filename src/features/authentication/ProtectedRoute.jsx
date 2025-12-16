@@ -27,7 +27,10 @@ function ProtectedRoute({ children }) {
         queryKey: ["verifyMembership", user?.id, currentKicker],
         queryFn: () => verifyKickerMembership(user.id, currentKicker),
         retry: 0,
-        enabled: isAuthenticated && !!currentKicker,
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        enabled: isAuthenticated && !!currentKicker && !!user?.id,
         onSuccess: (isMember) => {
             if (!isMember) {
                 toast.error(

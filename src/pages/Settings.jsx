@@ -11,6 +11,7 @@ import { media } from "../utils/constants";
 import useWindowWidth from "../hooks/useWindowWidth";
 import TabView from "../ui/TabView";
 import SeasonManagement from "../features/seasons/SeasonManagement";
+import NotificationSettings from "../features/settings/NotificationSettings";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
@@ -119,6 +120,11 @@ function Settings() {
             path: "/settings/general",
             label: "General",
             component: <GeneralSettings />,
+        },
+        {
+            path: "/settings/notifications",
+            label: "Notifications",
+            component: <NotificationSettings />,
         },
         {
             path: "/settings/seasons",
