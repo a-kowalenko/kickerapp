@@ -37,10 +37,10 @@ import Divider from "../../ui/Divider";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 
 const StyledTimePlayedChart = styled(ContentBox)`
-    grid-area: 4 / 1 / 7 / 5;
+    grid-area: 5 / 1 / 8 / 5;
 
     @media (max-width: 1350px) {
-        grid-area: 6 / 1 / 7 / 3;
+        grid-area: 7 / 1 / 8 / 3;
     }
 `;
 

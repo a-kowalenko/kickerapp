@@ -74,6 +74,7 @@ function EmojiPicker({
 
     useEffect(() => {
         function handleClickOutside(event) {
+            // Don't close if clicking on the picker itself
             if (
                 pickerRef.current &&
                 !pickerRef.current.contains(event.target)
@@ -82,9 +83,17 @@ function EmojiPicker({
             }
         }
 
-        document.addEventListener("mousedown", handleClickOutside);
+        // Longer delay to prevent immediate close on mobile touch
+        // Mobile touch events can fire in unexpected order
+        const timeoutId = setTimeout(() => {
+            document.addEventListener("mousedown", handleClickOutside);
+            document.addEventListener("touchend", handleClickOutside);
+        }, 200);
+
         return () => {
+            clearTimeout(timeoutId);
             document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchend", handleClickOutside);
         };
     }, [onClose]);
 

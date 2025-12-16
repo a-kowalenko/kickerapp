@@ -48,9 +48,17 @@ export const SEASON_RANKINGS = "season_rankings";
 export const MATCH_COMMENTS = "match_comments";
 export const MATCH_REACTIONS = "match_reactions";
 export const COMMENT_REACTIONS = "comment_reactions";
+export const CHAT_MESSAGES = "chat_messages";
+export const CHAT_REACTIONS = "chat_reactions";
+export const CHAT_TYPING = "chat_typing";
 
 // COMMENT CONSTANTS
 export const MAX_COMMENT_LENGTH = 1000;
+
+// CHAT CONSTANTS
+export const MAX_CHAT_MESSAGE_LENGTH = 500;
+export const CHAT_PAGE_SIZE = 50;
+export const TYPING_TIMEOUT = 3000;
 
 // SEASON FILTER VALUES
 export const SEASON_ALL_TIME = "all-time";

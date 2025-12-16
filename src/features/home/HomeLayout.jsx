@@ -3,6 +3,7 @@ import RecentMatches from "./RecentMatches";
 import MonthlyFatalities from "./MonthlyFatalities";
 import MostPlayed from "./MostPlayed";
 import TodayStats from "./TodayStats";
+import ChatSection from "./ChatSection";
 import { media } from "../../utils/constants";
 import TimePlayedChart from "./TimePlayedChart";
 
@@ -16,13 +17,13 @@ const StyledHomeLayout = styled.div`
 const StatsGrid = styled.div`
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: auto 34rem auto;
+    grid-template-rows: auto 34rem auto auto;
     grid-column-gap: 24px;
     grid-row-gap: 24px;
 
     @media (max-width: 1350px) {
         grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: auto auto 34rem auto;
+        grid-template-rows: auto auto 34rem auto auto;
     }
 
     ${media.tablet} {
@@ -39,6 +40,7 @@ function HomeLayout() {
                 <MonthlyFatalities />
                 <MostPlayed />
                 <RecentMatches />
+                <ChatSection />
                 <TimePlayedChart />
             </StatsGrid>
         </StyledHomeLayout>
