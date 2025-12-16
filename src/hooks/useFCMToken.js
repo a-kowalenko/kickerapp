@@ -46,79 +46,27 @@ export function useFCMToken(userId) {
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
-    // Get device type for deduplication
-    const getDeviceType = useCallback(() => {
-        const ua = navigator.userAgent;
-        if (/iPhone|iPad|iPod/.test(ua)) return "ios";
-        if (/Android/.test(ua)) return "android";
-        return "desktop";
-    }, []);
-
-    // Mutation to save FCM token
+    // Mutation to save FCM token using RPC function
     const { mutate: saveToken, isLoading: isSaving } = useMutation({
         mutationFn: async ({ token, deviceInfo }) => {
             if (!userId) throw new Error("User not authenticated");
 
-            const deviceType = getDeviceType();
-
-            // First, check if this exact token already exists for this user
-            const { data: existingByToken } = await supabase
+            // Use RPC function that handles user switching on same device
+            const { error } = await supabase
                 .schema(databaseSchema)
-                .from(PUSH_SUBSCRIPTIONS_TABLE)
-                .select("id")
-                .eq("fcm_token", token)
-                .eq("user_id", userId)
-                .maybeSingle();
+                .rpc("upsert_fcm_token", {
+                    p_fcm_token: token,
+                    p_device_info: deviceInfo,
+                });
 
-            // If token already exists for this user, no need to do anything
-            if (existingByToken) {
-                return existingByToken;
-            }
-
-            // Delete any existing subscription for this user + device type
-            // This prevents multiple tokens per device type
-            await supabase
-                .schema(databaseSchema)
-                .from(PUSH_SUBSCRIPTIONS_TABLE)
-                .delete()
-                .eq("user_id", userId)
-                .like("device_info", `%"deviceType":"${deviceType}"%`);
-
-            // Also delete if this token exists for a different user (token reassignment)
-            await supabase
-                .schema(databaseSchema)
-                .from(PUSH_SUBSCRIPTIONS_TABLE)
-                .delete()
-                .eq("fcm_token", token)
-                .neq("user_id", userId);
-
-            // Insert new subscription
-            const { data, error } = await supabase
-                .schema(databaseSchema)
-                .from(PUSH_SUBSCRIPTIONS_TABLE)
-                .insert({
-                    user_id: userId,
-                    fcm_token: token,
-                    device_info: deviceInfo,
-                })
-                .select()
-                .single();
-
-            // Ignore duplicate key errors - token already exists
-            if (error?.code === "23505") {
-                return null;
-            }
             if (error) throw error;
-            return data;
+            return { fcm_token: token };
         },
         onSuccess: () => {
             queryClient.invalidateQueries(["pushSubscription", userId]);
         },
         onError: (error) => {
-            // Only log non-duplicate errors
-            if (error?.code !== "23505") {
-                console.error("Error saving FCM token:", error);
-            }
+            console.error("Error saving FCM token:", error);
         },
     });
 

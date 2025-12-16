@@ -13,8 +13,8 @@ import {
 } from "../../services/firebase";
 import supabase, { databaseSchema } from "../../services/supabase";
 
-// Helper to save FCM token after login
-async function saveFCMToken(userId) {
+// Helper to save FCM token after login using RPC function
+async function saveFCMToken() {
     const status = getNotificationStatus();
 
     // Only request if notifications are supported and not denied
@@ -48,59 +48,19 @@ async function saveFCMToken(userId) {
                 timestamp: new Date().toISOString(),
             });
 
-            // Check if token already exists for this user
-            const { data: existing } = await supabase
-                .schema(databaseSchema)
-                .from("push_subscriptions")
-                .select("id")
-                .eq("fcm_token", token)
-                .eq("user_id", userId)
-                .maybeSingle();
-
-            if (existing) {
-                // Token already saved for this user
-                return;
-            }
-
-            // Delete this token if it exists for OTHER users (user switched accounts on same device)
-            await supabase
-                .schema(databaseSchema)
-                .from("push_subscriptions")
-                .delete()
-                .eq("fcm_token", token)
-                .neq("user_id", userId);
-
-            // Delete old tokens for this user + device type
-            await supabase
-                .schema(databaseSchema)
-                .from("push_subscriptions")
-                .delete()
-                .eq("user_id", userId)
-                .like("device_info", `%"deviceType":"${deviceType}"%`);
-
-            // Insert new token
+            // Use RPC function that handles user switching on same device
             const { error } = await supabase
                 .schema(databaseSchema)
-                .from("push_subscriptions")
-                .insert({
-                    user_id: userId,
-                    fcm_token: token,
-                    device_info: deviceInfo,
+                .rpc("upsert_fcm_token", {
+                    p_fcm_token: token,
+                    p_device_info: deviceInfo,
                 });
 
-            // Ignore duplicate key errors silently
-            if (error?.code === "23505") {
-                return;
-            }
             if (error) {
                 throw error;
             }
         }
     } catch (error) {
-        // Ignore duplicate key errors - token already exists
-        if (error?.code === "23505") {
-            return;
-        }
         // Don't log or show error - notifications are optional
     }
 }
@@ -122,7 +82,7 @@ export function useLogin() {
 
             // Request notification permission after successful login
             if (data.user?.id) {
-                saveFCMToken(data.user.id);
+                saveFCMToken();
             }
 
             const { kickers } = data;
