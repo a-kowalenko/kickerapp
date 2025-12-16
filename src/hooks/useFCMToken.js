@@ -248,13 +248,46 @@ export function useFCMToken(userId) {
     // Set up foreground message handler
     useEffect(() => {
         const unsubscribe = onForegroundMessage((payload) => {
-            // Show toast notification when app is in foreground
-            const { title, body } = payload.notification || {};
-            if (title) {
-                toast(body || title, {
-                    icon: "🔔",
-                    duration: 5000,
+            console.log("Foreground message received:", payload);
+
+            // Get notification data - check both notification and data fields
+            const notification = payload.notification || {};
+            const data = payload.data || {};
+
+            const title = notification.title || data.title || "KickerApp";
+            const body = notification.body || data.body || "";
+
+            // Show browser notification if permission granted
+            if (Notification.permission === "granted") {
+                const notif = new Notification(title, {
+                    body,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: data.type || "kicker-notification",
+                    data: {
+                        type: data.type,
+                        matchId: data.matchId,
+                        kickerId: data.kickerId,
+                        url: data.url || "/home",
+                    },
                 });
+
+                // Handle notification click
+                notif.onclick = () => {
+                    window.focus();
+                    if (data.url) {
+                        window.location.href = data.url;
+                    }
+                    notif.close();
+                };
+            } else {
+                // Fallback to toast if notification permission not granted
+                if (title) {
+                    toast(body || title, {
+                        icon: "🔔",
+                        duration: 5000,
+                    });
+                }
             }
         });
 

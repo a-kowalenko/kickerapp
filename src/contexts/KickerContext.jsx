@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useRef, useCallback } from "react";
 import { createContext } from "react";
 import { useLocalStorageState } from "../hooks/useLocalStorageState";
 import { useUser } from "../features/authentication/useUser";
@@ -15,24 +15,36 @@ function KickerProvider({ children }) {
     );
     const currentKickerRef = useRef(currentKicker);
     const isAuthenticatedRef = useRef(isAuthenticated);
+    const prevAuthenticatedRef = useRef(isAuthenticated);
 
     useEffect(() => {
         currentKickerRef.current = currentKicker;
         isAuthenticatedRef.current = isAuthenticated;
     }, [currentKicker, isAuthenticated]);
 
-    // Reset currentKicker when user logs out
+    // Reset currentKicker when user logs out (detect transition from authenticated to not authenticated)
     useEffect(() => {
-        if (!isAuthenticated && currentKicker) {
+        if (prevAuthenticatedRef.current && !isAuthenticated) {
+            // User just logged out
             setCurrentKicker(null);
         }
-    }, [isAuthenticated, currentKicker, setCurrentKicker]);
+        prevAuthenticatedRef.current = isAuthenticated;
+    }, [isAuthenticated, setCurrentKicker]);
 
+    // Sync with localStorage changes (e.g., from logout clearing localStorage directly)
     useEffect(() => {
-        if (currentKicker) {
-            localStorage.setItem("currentKicker", currentKicker);
-        }
-    }, [currentKicker]);
+        const handleStorageChange = (e) => {
+            if (e.key === "currentKicker") {
+                const newValue = e.newValue ? JSON.parse(e.newValue) : null;
+                if (newValue !== currentKicker) {
+                    setCurrentKicker(newValue);
+                }
+            }
+        };
+
+        window.addEventListener("storage", handleStorageChange);
+        return () => window.removeEventListener("storage", handleStorageChange);
+    }, [currentKicker, setCurrentKicker]);
 
     function handleKickerSelect(kicker) {
         queryClient.invalidateQueries(["matches"]);

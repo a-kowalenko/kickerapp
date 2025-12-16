@@ -13,7 +13,17 @@ export function useLogout() {
             queryClient.clear();
 
             // Clear kicker selection from localStorage
-            localStorage.removeItem("currentKicker");
+            // Set to JSON null to properly trigger useLocalStorageState update
+            localStorage.setItem("currentKicker", JSON.stringify(null));
+
+            // Dispatch storage event manually for same-window updates
+            window.dispatchEvent(
+                new StorageEvent("storage", {
+                    key: "currentKicker",
+                    newValue: JSON.stringify(null),
+                    oldValue: localStorage.getItem("currentKicker"),
+                })
+            );
 
             navigate("/");
             toast.success("You were logged out successfully");

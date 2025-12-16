@@ -365,9 +365,11 @@ serve(async (req) => {
             });
         }
 
-        // Get FCM tokens for these users (using public schema for push_subscriptions)
-        const supabasePublic = createClient(supabaseUrl, supabaseServiceKey);
-        const { data: subscriptions, error: subError } = await supabasePublic
+        console.log("Users to notify:", userIdsToNotify);
+        console.log("Using schema:", databaseSchema);
+
+        // Get FCM tokens for these users (using same schema as source data)
+        const { data: subscriptions, error: subError } = await supabase
             .from("push_subscriptions")
             .select("fcm_token, user_id")
             .in("user_id", userIdsToNotify);
@@ -417,8 +419,12 @@ serve(async (req) => {
         const invalidTokens: string[] = [];
 
         for (const sub of subscriptions) {
+            // Use DATA-ONLY message to let the client control notification display
+            // This prevents duplicate notifications (FCM auto-notification + app notification)
             const message: FCMMessage = {
                 token: sub.fcm_token,
+                // Don't include 'notification' field - this makes it a data-only message
+                // The service worker will handle showing the notification
                 notification: {
                     title,
                     body: notificationBody,
@@ -427,6 +433,9 @@ serve(async (req) => {
                     type: notificationType,
                     kickerId: kickerId.toString(),
                     url,
+                    // Include title and body in data for service worker to use
+                    title,
+                    body: notificationBody,
                     ...(matchId && { matchId: matchId.toString() }),
                 },
                 webpush: {
