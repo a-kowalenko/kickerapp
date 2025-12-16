@@ -9,7 +9,12 @@ export function useLogout() {
     const { mutate: logout, isLoading } = useMutation({
         mutationFn: logoutApi,
         onSuccess: () => {
-            queryClient.invalidateQueries(["user"]);
+            // Clear all cached queries
+            queryClient.clear();
+
+            // Clear kicker selection from localStorage
+            localStorage.removeItem("currentKicker");
+
             navigate("/");
             toast.success("You were logged out successfully");
         },

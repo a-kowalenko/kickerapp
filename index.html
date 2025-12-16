@@ -44,5 +44,39 @@
     <body>
         <div id="root"></div>
         <script type="module" src="/src/main.jsx"></script>
+        <script>
+            // Register Firebase Messaging Service Worker
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", function () {
+                    navigator.serviceWorker
+                        .register("/firebase-messaging-sw.js")
+                        .then(function (registration) {
+                            console.log(
+                                "Firebase SW registered:",
+                                registration.scope
+                            );
+                        })
+                        .catch(function (error) {
+                            console.log(
+                                "Firebase SW registration failed:",
+                                error
+                            );
+                        });
+                });
+
+                // Handle navigation from notification click
+                navigator.serviceWorker.addEventListener(
+                    "message",
+                    function (event) {
+                        if (
+                            event.data &&
+                            event.data.type === "NOTIFICATION_CLICK"
+                        ) {
+                            window.location.href = event.data.url;
+                        }
+                    }
+                );
+            }
+        </script>
     </body>
 </html>

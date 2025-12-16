@@ -214,6 +214,12 @@ const PlayerName = styled.span`
     color: var(--primary-text-color);
 `;
 
+const EveryoneLabel = styled.span`
+    font-size: 1.2rem;
+    color: var(--tertiary-text-color);
+    margin-left: 0.4rem;
+`;
+
 const HintText = styled.div`
     font-size: 1.1rem;
     color: var(--tertiary-text-color);
@@ -265,13 +271,40 @@ function ChatInput({
         return players?.filter((p) => p.id !== currentPlayer?.id) || [];
     }, [players, currentPlayer]);
 
-    // Filter players by search term
+    // Special @everyone option
+    const EVERYONE_OPTION = useMemo(
+        () => ({
+            id: "everyone",
+            name: "everyone",
+            isEveryone: true,
+        }),
+        []
+    );
+
+    // Filter players by search term (only for mentions, not whispers)
     const filteredPlayers = useMemo(() => {
-        if (!playerSearch) return availablePlayers;
-        return availablePlayers.filter((player) =>
-            player.name.toLowerCase().includes(playerSearch.toLowerCase())
-        );
-    }, [availablePlayers, playerSearch]);
+        let filtered;
+        if (!playerSearch) {
+            filtered = availablePlayers;
+        } else {
+            filtered = availablePlayers.filter((player) =>
+                player.name.toLowerCase().includes(playerSearch.toLowerCase())
+            );
+        }
+
+        // Add @everyone option for mentions (not whispers)
+        if (dropdownMode === "mention") {
+            const everyoneMatches =
+                "everyone".includes(playerSearch.toLowerCase()) ||
+                playerSearch === "";
+
+            if (everyoneMatches) {
+                return [EVERYONE_OPTION, ...filtered];
+            }
+        }
+
+        return filtered;
+    }, [availablePlayers, playerSearch, dropdownMode, EVERYONE_OPTION]);
 
     const isOverLimit = content.length > MAX_CHAT_MESSAGE_LENGTH;
     const canSubmit =
@@ -427,7 +460,11 @@ function ChatInput({
             const afterMention = content.slice(
                 atIndex + 1 + playerSearch.length
             );
-            const mentionText = `@[${player.name}](${player.id}) `;
+
+            // Handle @everyone differently
+            const mentionText = player.isEveryone
+                ? "@everyone "
+                : `@[${player.name}](${player.id}) `;
 
             setContent(beforeMention + mentionText + afterMention);
             setShowPlayerDropdown(false);
@@ -581,14 +618,35 @@ function ChatInput({
                                             handleSelectPlayer(player)
                                         }
                                     >
-                                        <Avatar
-                                            $size="xs"
-                                            src={
-                                                player.avatar || DEFAULT_AVATAR
-                                            }
-                                            alt={player.name}
-                                        />
-                                        <PlayerName>{player.name}</PlayerName>
+                                        {player.isEveryone ? (
+                                            <>
+                                                <Avatar
+                                                    $size="xs"
+                                                    src={DEFAULT_AVATAR}
+                                                    alt="everyone"
+                                                />
+                                                <PlayerName>
+                                                    @everyone
+                                                    <EveryoneLabel>
+                                                        (notify all players)
+                                                    </EveryoneLabel>
+                                                </PlayerName>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Avatar
+                                                    $size="xs"
+                                                    src={
+                                                        player.avatar ||
+                                                        DEFAULT_AVATAR
+                                                    }
+                                                    alt={player.name}
+                                                />
+                                                <PlayerName>
+                                                    {player.name}
+                                                </PlayerName>
+                                            </>
+                                        )}
                                     </PlayerItem>
                                 ))
                             ) : (

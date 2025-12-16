@@ -144,6 +144,19 @@ const MentionName = styled.span`
     color: var(--primary-text-color);
 `;
 
+const EveryoneLabel = styled.span`
+    font-size: 1.2rem;
+    color: var(--tertiary-text-color);
+    margin-left: 0.4rem;
+`;
+
+// Special @everyone option
+const EVERYONE_OPTION = {
+    id: "everyone",
+    name: "everyone",
+    isEveryone: true,
+};
+
 function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
     const [content, setContent] = useState("");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -155,9 +168,23 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
     const emojiButtonRef = useRef(null);
     const { players } = usePlayers();
 
-    const filteredPlayers = players?.filter((player) =>
-        player.name.toLowerCase().includes(mentionSearch.toLowerCase())
-    );
+    // Filter players and add @everyone option at the beginning
+    const filteredPlayers = (() => {
+        const filtered =
+            players?.filter((player) =>
+                player.name.toLowerCase().includes(mentionSearch.toLowerCase())
+            ) || [];
+
+        // Add @everyone if search matches "everyone" or is empty
+        const everyoneMatches =
+            "everyone".includes(mentionSearch.toLowerCase()) ||
+            mentionSearch === "";
+
+        if (everyoneMatches) {
+            return [EVERYONE_OPTION, ...filtered];
+        }
+        return filtered;
+    })();
 
     const isOverLimit = content.length > MAX_COMMENT_LENGTH;
     const canSubmit =
@@ -223,7 +250,11 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
         const afterMention = content.slice(
             mentionStartIndex + 1 + mentionSearch.length
         );
-        const mentionText = `@[${player.name}](${player.id}) `;
+
+        // Handle @everyone differently
+        const mentionText = player.isEveryone
+            ? "@everyone "
+            : `@[${player.name}](${player.id}) `;
 
         setContent(beforeMention + mentionText + afterMention);
         setShowMentionDropdown(false);
@@ -295,12 +326,35 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                                     }
                                     onClick={() => handleSelectMention(player)}
                                 >
-                                    <Avatar
-                                        $size="xs"
-                                        src={player.avatar || DEFAULT_AVATAR}
-                                        alt={player.name}
-                                    />
-                                    <MentionName>{player.name}</MentionName>
+                                    {player.isEveryone ? (
+                                        <>
+                                            <Avatar
+                                                $size="xs"
+                                                src={DEFAULT_AVATAR}
+                                                alt="everyone"
+                                            />
+                                            <MentionName>
+                                                @everyone
+                                                <EveryoneLabel>
+                                                    (notify all players)
+                                                </EveryoneLabel>
+                                            </MentionName>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Avatar
+                                                $size="xs"
+                                                src={
+                                                    player.avatar ||
+                                                    DEFAULT_AVATAR
+                                                }
+                                                alt={player.name}
+                                            />
+                                            <MentionName>
+                                                {player.name}
+                                            </MentionName>
+                                        </>
+                                    )}
                                 </MentionItem>
                             ))}
                         </MentionDropdown>

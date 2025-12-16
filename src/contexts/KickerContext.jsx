@@ -21,6 +21,13 @@ function KickerProvider({ children }) {
         isAuthenticatedRef.current = isAuthenticated;
     }, [currentKicker, isAuthenticated]);
 
+    // Reset currentKicker when user logs out
+    useEffect(() => {
+        if (!isAuthenticated && currentKicker) {
+            setCurrentKicker(null);
+        }
+    }, [isAuthenticated, currentKicker, setCurrentKicker]);
+
     useEffect(() => {
         if (currentKicker) {
             localStorage.setItem("currentKicker", currentKicker);
