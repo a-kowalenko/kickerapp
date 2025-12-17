@@ -16,6 +16,22 @@ function getCustomerId() {
 }
 
 /**
+ * Safely parse JSON response, handling empty responses
+ */
+async function safeJsonParse(response) {
+    const text = await response.text();
+    if (!text || text.trim() === "") {
+        throw new Error("Empty response from API");
+    }
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        console.error("Failed to parse API response:", text);
+        throw new Error("Invalid JSON response from API");
+    }
+}
+
+/**
  * Fetch trending GIFs from Klipy API
  * @param {number} page - Page number (1-indexed)
  * @param {number} perPage - Number of items per page (max 50)
@@ -32,11 +48,24 @@ export async function getTrendingGifs(page = 1, perPage = 24) {
 
     const response = await fetch(url.toString());
 
+    // 204 No Content means empty response - treat as no results or API key issue
+    if (response.status === 204) {
+        console.warn(
+            "Klipy API returned 204 No Content - API key may need activation"
+        );
+        return {
+            items: [],
+            hasMore: false,
+        };
+    }
+
     if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        console.error("Klipy API error:", response.status, errorText);
         throw new Error(`Klipy API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await safeJsonParse(response);
 
     if (!data.result) {
         throw new Error("Failed to fetch trending GIFs");
@@ -71,11 +100,24 @@ export async function searchGifs(query, page = 1, perPage = 24) {
 
     const response = await fetch(url.toString());
 
+    // 204 No Content means empty response - treat as no results or API key issue
+    if (response.status === 204) {
+        console.warn(
+            "Klipy API returned 204 No Content - API key may need activation"
+        );
+        return {
+            items: [],
+            hasMore: false,
+        };
+    }
+
     if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        console.error("Klipy API error:", response.status, errorText);
         throw new Error(`Klipy API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await safeJsonParse(response);
 
     if (!data.result) {
         throw new Error("Failed to search GIFs");
