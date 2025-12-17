@@ -39,7 +39,7 @@ async function safeJsonParse(response) {
  */
 export async function getTrendingGifs(page = 1, perPage = 24) {
     const customerId = getCustomerId();
-    const url = new URL(`${BASE_URL}/v1/gifs/${KLIPY_API_KEY}/trending`);
+    const url = new URL(`${BASE_URL}/v1/${KLIPY_API_KEY}/gifs/trending`);
 
     url.searchParams.set("page", page.toString());
     url.searchParams.set("per_page", perPage.toString());
@@ -90,7 +90,7 @@ export async function searchGifs(query, page = 1, perPage = 24) {
     }
 
     const customerId = getCustomerId();
-    const url = new URL(`${BASE_URL}/v1/gifs/${KLIPY_API_KEY}/search`);
+    const url = new URL(`${BASE_URL}/v1/${KLIPY_API_KEY}/gifs/search`);
 
     url.searchParams.set("q", query.trim());
     url.searchParams.set("page", page.toString());
