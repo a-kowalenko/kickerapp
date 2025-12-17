@@ -90,9 +90,7 @@ const GifItem = styled.button`
     height: 0;
     padding-bottom: 100%; /* Square aspect ratio */
     position: relative;
-    transition:
-        transform 0.15s,
-        box-shadow 0.15s;
+    transition: transform 0.15s, box-shadow 0.15s;
 
     &:hover {
         transform: scale(1.03);
@@ -296,6 +294,31 @@ function GifPicker({
         };
     }, [onClose]);
 
+    // Capture all wheel events and forward them to the picker's scrollable area
+    useEffect(() => {
+        function handleWheel(event) {
+            if (!pickerRef.current) return;
+
+            // Find the GifGrid scroll container
+            const scrollContainer = pickerRef.current.querySelector(
+                '[data-gif-grid="true"]'
+            );
+
+            if (scrollContainer) {
+                // Prevent default scroll behavior everywhere
+                event.preventDefault();
+                // Forward the scroll to the gif picker
+                scrollContainer.scrollTop += event.deltaY;
+            }
+        }
+
+        // Capture wheel events on the entire document
+        document.addEventListener("wheel", handleWheel, { passive: false });
+        return () => {
+            document.removeEventListener("wheel", handleWheel);
+        };
+    }, []);
+
     // Handle search with debounce
     function handleSearchChange(e) {
         const query = e.target.value;
@@ -357,7 +380,7 @@ function GifPicker({
                     </SearchInputWrapper>
                 </SearchContainer>
 
-                <GifGrid>
+                <GifGrid data-gif-grid="true">
                     {isLoading ? (
                         <LoadingContainer style={{ gridColumn: "1 / -1" }}>
                             <SpinnerMini />

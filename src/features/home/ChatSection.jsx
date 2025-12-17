@@ -29,6 +29,7 @@ const ChatContainer = styled.div`
     height: 90rem;
     position: relative;
     background-color: var(--secondary-background-color);
+    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
 
     ${media.tablet} {
         height: 50rem;
@@ -37,10 +38,9 @@ const ChatContainer = styled.div`
 
 const TabBar = styled.div`
     display: flex;
-    gap: 0.2rem;
-    padding: 0.6rem 0.6rem 0;
+    /* gap: 0.2rem; */
     background-color: var(--tertiary-background-color);
-    border: 1px solid var(--primary-border-color);
+    /* border: 1px solid var(--primary-border-color); */
     border-bottom: none;
     border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
 `;
@@ -52,13 +52,17 @@ const TabButton = styled.button`
     align-items: center;
     justify-content: center;
     gap: 0.8rem;
-    border: none;
+    /* border: 1px solid var(--primary-border-color); */
+    border: ${(props) =>
+        props.$active ? "1px solid var(--primary-border-color);" : "none"};
+    border-bottom: ${(props) =>
+        props.$active ? "none" : "1px solid var(--primary-border-color);"};
     background-color: ${(props) =>
         props.$active ? "var(--secondary-background-color)" : "transparent"};
     color: ${(props) =>
         props.$active
             ? "var(--primary-text-color)"
-            : "var(--tertiary-text-color)"};
+            : "var(--secondary-text-color)"};
     font-size: 1.4rem;
     font-weight: ${(props) => (props.$active ? "600" : "500")};
     cursor: pointer;
@@ -75,7 +79,7 @@ const TabButton = styled.button`
         background-color: ${(props) =>
             props.$active
                 ? "var(--secondary-background-color)"
-                : "rgba(0, 0, 0, 0.05)"};
+                : "var(--table-row-color-hover)"};
         color: var(--primary-text-color);
     }
 
@@ -83,13 +87,13 @@ const TabButton = styled.button`
         font-size: 1.8rem;
         color: ${(props) =>
             props.$active
-                ? "var(--primary-button-color)"
-                : "var(--tertiary-text-color)"};
+                ? "var(--primary-text-color)"
+                : "var(--secondary-text-color)"};
         transition: color 0.2s;
     }
 
     &:hover svg {
-        color: var(--primary-button-color);
+        color: var(--primary-text-color);
     }
 `;
 
