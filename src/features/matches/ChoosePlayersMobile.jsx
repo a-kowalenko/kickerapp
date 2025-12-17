@@ -108,7 +108,7 @@ function ChoosePlayersMobile() {
         // 2v2 or 2v1: use mmr2on2
         if (hasSecondPlayer && secondPlayer) {
             // Team has 2 players - show average
-            return Math.round((mainPlayer.mmr2on2 + secondPlayer.mmr2on2) / 2);
+            return Math.ceil((mainPlayer.mmr2on2 + secondPlayer.mmr2on2) / 2);
         }
 
         // Team has 1 player in a 2v1/2v2 context
