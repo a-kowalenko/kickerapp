@@ -1,5 +1,6 @@
 import styled from "styled-components";
-import { useRef, useEffect, useMemo, useState } from "react";
+import { useRef, useEffect, useMemo, useState, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { HiChatBubbleLeftRight } from "react-icons/hi2";
 import { useComments } from "./useComments";
 import { useCreateComment } from "./useCreateComment";
@@ -14,6 +15,9 @@ import {
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
+import { useKicker } from "../../contexts/KickerContext";
+import { updateCommentReadStatus } from "../../services/apiComments";
+import { useQueryClient } from "react-query";
 import Comment from "./Comment";
 import CommentInput from "./CommentInput";
 import ReactionBar from "./ReactionBar";
@@ -83,6 +87,20 @@ const CommentsContainer = styled.div`
     &::-webkit-scrollbar-thumb:hover {
         background: var(--secondary-text-color);
     }
+
+    /* Highlight animation for deep-linked comments */
+    & [data-comment-id].highlight {
+        animation: highlightPulse 2s ease-out;
+    }
+
+    @keyframes highlightPulse {
+        0% {
+            background-color: var(--primary-button-color-light);
+        }
+        100% {
+            background-color: transparent;
+        }
+    }
 `;
 
 const EmptyState = styled.div`
@@ -108,6 +126,10 @@ const EmptyText = styled.p`
 function CommentsSection({ maxHeight }) {
     const commentsContainerRef = useRef(null);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
+    const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
+    const location = useLocation();
+    const queryClient = useQueryClient();
+    const { currentKicker } = useKicker();
 
     // Hooks
     const { comments, isLoading: isLoadingComments } = useComments();
@@ -142,6 +164,71 @@ function CommentsSection({ maxHeight }) {
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
 
+    // Parse deep link from URL hash (e.g., #comment-123)
+    const deepLinkCommentId = useMemo(() => {
+        const hash = location.hash;
+        if (hash && hash.startsWith("#comment-")) {
+            return hash.replace("#comment-", "");
+        }
+        return null;
+    }, [location.hash]);
+
+    // Scroll to deep-linked comment
+    const scrollToComment = useCallback((commentId) => {
+        const container = commentsContainerRef.current;
+        if (!container) return;
+
+        const commentElement = container.querySelector(
+            `[data-comment-id="${commentId}"]`
+        );
+        if (commentElement) {
+            commentElement.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+            // Add highlight effect
+            commentElement.classList.add("highlight");
+            setTimeout(() => {
+                commentElement.classList.remove("highlight");
+            }, 2000);
+        }
+    }, []);
+
+    // Mark comments as read when viewing this section
+    const markCommentsAsRead = useCallback(async () => {
+        if (!currentKicker) return;
+        try {
+            await updateCommentReadStatus(currentKicker);
+            // Invalidate unread count query
+            queryClient.invalidateQueries([
+                "unread-comment-count",
+                currentKicker,
+            ]);
+        } catch (error) {
+            console.error("Error marking comments as read:", error);
+        }
+    }, [currentKicker, queryClient]);
+
+    // Mark as read when comments are loaded and user is viewing
+    useEffect(() => {
+        if (
+            !isLoadingComments &&
+            comments?.length > 0 &&
+            hasInitiallyScrolled
+        ) {
+            // Small delay to ensure user is actually viewing
+            const timer = setTimeout(() => {
+                markCommentsAsRead();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [
+        isLoadingComments,
+        comments?.length,
+        hasInitiallyScrolled,
+        markCommentsAsRead,
+    ]);
+
     // Scroll to bottom on initial load and when new comments are added
     useEffect(() => {
         if (!commentsContainerRef.current || !comments?.length) return;
@@ -152,13 +239,23 @@ function CommentsSection({ maxHeight }) {
 
         // Initial scroll (without animation)
         if (!hasInitiallyScrolled && !isLoadingComments) {
-            container.scrollTop = container.scrollHeight;
-            setHasInitiallyScrolled(true);
+            // If there's a deep link, scroll to that comment instead
+            if (deepLinkCommentId && !hasScrolledToDeepLink) {
+                setHasInitiallyScrolled(true);
+                setHasScrolledToDeepLink(true);
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    scrollToComment(deepLinkCommentId);
+                }, 100);
+            } else {
+                container.scrollTop = container.scrollHeight;
+                setHasInitiallyScrolled(true);
+            }
             return;
         }
 
         // Scroll for new comments (with smooth animation)
-        if (hasInitiallyScrolled) {
+        if (hasInitiallyScrolled && !deepLinkCommentId) {
             container.scrollTo({
                 top: container.scrollHeight,
                 behavior: "smooth",
@@ -169,6 +266,9 @@ function CommentsSection({ maxHeight }) {
         isLoadingComments,
         isLoadingCommentReactions,
         hasInitiallyScrolled,
+        deepLinkCommentId,
+        hasScrolledToDeepLink,
+        scrollToComment,
     ]);
 
     function handleCreateComment(content) {
@@ -259,22 +359,27 @@ function CommentsSection({ maxHeight }) {
                             shouldGroupWithPrevious(comment, prevComment);
 
                         return (
-                            <Comment
-                                key={comment.id}
-                                comment={comment}
-                                currentPlayerId={currentPlayerId}
-                                isAdmin={isAdmin}
-                                onUpdate={updateComment}
-                                onDelete={deleteComment}
-                                isUpdating={isUpdating}
-                                isDeleting={isDeleting}
-                                commentReactions={
-                                    commentReactionsMap[comment.id] || {}
-                                }
-                                onToggleReaction={handleToggleCommentReaction}
-                                isTogglingReaction={isTogglingCommentReaction}
-                                isGrouped={isGrouped}
-                            />
+                            <div key={comment.id} data-comment-id={comment.id}>
+                                <Comment
+                                    comment={comment}
+                                    currentPlayerId={currentPlayerId}
+                                    isAdmin={isAdmin}
+                                    onUpdate={updateComment}
+                                    onDelete={deleteComment}
+                                    isUpdating={isUpdating}
+                                    isDeleting={isDeleting}
+                                    commentReactions={
+                                        commentReactionsMap[comment.id] || {}
+                                    }
+                                    onToggleReaction={
+                                        handleToggleCommentReaction
+                                    }
+                                    isTogglingReaction={
+                                        isTogglingCommentReaction
+                                    }
+                                    isGrouped={isGrouped}
+                                />
+                            </div>
                         );
                     })
                 )}

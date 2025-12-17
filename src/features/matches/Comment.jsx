@@ -25,12 +25,18 @@ const CommentContainer = styled.div`
     padding: ${(props) => (props.$isGrouped ? "0.2rem 1rem" : "1rem")};
     padding-left: ${(props) => (props.$isGrouped ? "4.8rem" : "1rem")};
     border-radius: var(--border-radius-md);
-    background-color: var(--secondary-background-color);
+    background-color: ${(props) =>
+        props.$disableHover
+            ? "transparent"
+            : "var(--secondary-background-color)"};
     transition: background-color 0.2s;
     position: relative;
 
     &:hover {
-        background-color: var(--tertiary-background-color);
+        background-color: ${(props) =>
+            props.$disableHover
+                ? "transparent"
+                : "var(--tertiary-background-color)"};
     }
 `;
 
@@ -57,9 +63,7 @@ const HoverToolbar = styled.div`
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     opacity: 0;
     visibility: hidden;
-    transition:
-        opacity 0.15s,
-        visibility 0.15s;
+    transition: opacity 0.15s, visibility 0.15s;
     z-index: 20;
 
     ${CommentContainer}:hover & {
@@ -305,6 +309,7 @@ function Comment({
     onToggleReaction,
     isTogglingReaction,
     isGrouped = false,
+    disableHover = false,
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
@@ -336,7 +341,7 @@ function Comment({
     }
 
     return (
-        <CommentContainer $isGrouped={isGrouped}>
+        <CommentContainer $isGrouped={isGrouped} $disableHover={disableHover}>
             {/* Discord-style hover toolbar */}
             <HoverToolbar>
                 {/* Quick reactions */}

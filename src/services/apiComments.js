@@ -3,10 +3,47 @@ import {
     MATCH_REACTIONS,
     COMMENT_REACTIONS,
     PLAYER,
+    MATCHES,
+    CHAT_PAGE_SIZE,
 } from "../utils/constants";
 import supabase from "./supabase";
 
 // ============ COMMENTS ============
+
+/**
+ * Get all comments for a kicker (for the Match Comments tab on Home)
+ * Returns comments with player info and match info for display
+ */
+export async function getCommentsByKicker(
+    kicker,
+    { offset = 0, limit = CHAT_PAGE_SIZE } = {}
+) {
+    const { data, error } = await supabase
+        .from(MATCH_COMMENTS)
+        .select(
+            `*, 
+            player: ${PLAYER}!${MATCH_COMMENTS}_player_id_fkey (*),
+            match: ${MATCHES}!${MATCH_COMMENTS}_match_id_fkey (
+                id,
+                created_at,
+                player1: ${PLAYER}!${MATCHES}_player1_fkey (id, name),
+                player2: ${PLAYER}!${MATCHES}_player2_fkey (id, name),
+                player3: ${PLAYER}!${MATCHES}_player3_fkey (id, name),
+                player4: ${PLAYER}!${MATCHES}_player4_fkey (id, name),
+                scoreTeam1,
+                scoreTeam2
+            )`
+        )
+        .eq("kicker_id", kicker)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
 
 export async function getCommentsByMatch(kicker, matchId) {
     const { data, error } = await supabase
@@ -263,4 +300,52 @@ export async function toggleCommentReaction({
             reactionType,
         });
     }
+}
+
+// ============ COMMENT READ STATUS ============
+
+/**
+ * Update last read timestamp for comments in a specific kicker
+ */
+export async function updateCommentReadStatus(kickerId) {
+    const { error } = await supabase.rpc("update_comment_read_status", {
+        p_kicker_id: kickerId,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return { success: true };
+}
+
+/**
+ * Get unread comment count for a specific kicker
+ */
+export async function getUnreadCommentCount(kickerId) {
+    const { data, error } = await supabase.rpc("get_unread_comment_count", {
+        p_kicker_id: kickerId,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data || 0;
+}
+
+/**
+ * Get unread comment count per kicker for current user
+ * Returns array of { kicker_id, unread_count }
+ */
+export async function getUnreadCommentCountPerKicker() {
+    const { data, error } = await supabase.rpc(
+        "get_unread_comment_count_per_kicker"
+    );
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data || [];
 }

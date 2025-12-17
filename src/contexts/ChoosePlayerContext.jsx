@@ -18,6 +18,7 @@ const initialState = {
     isLoading: false,
     isStarting: false,
     timer: START_MATCH_COUNTDOWN,
+    originalPlayersBeforeBalance: null,
 };
 
 function reducer(state, action) {
@@ -110,6 +111,17 @@ function reducer(state, action) {
                 selectedPlayers: [null, null, null, null],
                 isPlayer3Active: false,
                 isPlayer4Active: false,
+                originalPlayersBeforeBalance: null,
+            };
+        case "save_original_players":
+            return {
+                ...state,
+                originalPlayersBeforeBalance: action.payload,
+            };
+        case "clear_original_players":
+            return {
+                ...state,
+                originalPlayersBeforeBalance: null,
             };
     }
 }
@@ -125,6 +137,7 @@ function ChoosePlayerProvider({ children }) {
             isStarting,
             filteredPlayers,
             filteredForPlayer3And4,
+            originalPlayersBeforeBalance,
         },
         dispatch,
     ] = useReducer(reducer, initialState);
@@ -316,6 +329,115 @@ function ChoosePlayerProvider({ children }) {
         setSearchParams(searchParams, { replace: true });
     }
 
+    // Check if all 4 players are selected for 2on2 balancing
+    const [player1, player2, player3, player4] = selectedPlayers;
+    const canBalanceTeams =
+        isPlayer3Active &&
+        isPlayer4Active &&
+        player1 &&
+        player2 &&
+        player3 &&
+        player4;
+
+    // Calculate if teams are already optimally balanced
+    function calculateBestBalance() {
+        if (!canBalanceTeams) return { isBalanced: false, minDiff: Infinity };
+
+        const playersArr = [player1, player2, player3, player4];
+
+        // Current team setup: Team1 = p1+p3, Team2 = p2+p4
+        const currentTeam1Mmr = player1.mmr2on2 + player3.mmr2on2;
+        const currentTeam2Mmr = player2.mmr2on2 + player4.mmr2on2;
+        const currentDiff = Math.abs(currentTeam1Mmr - currentTeam2Mmr);
+
+        // All possible combinations (indices in playersArr)
+        // Team1: [0,1] vs Team2: [2,3] → p1+p2 vs p3+p4
+        // Team1: [0,2] vs Team2: [1,3] → p1+p3 vs p2+p4 (current)
+        // Team1: [0,3] vs Team2: [1,2] → p1+p4 vs p2+p3
+        const combinations = [
+            { team1: [0, 1], team2: [2, 3] },
+            { team1: [0, 2], team2: [1, 3] },
+            { team1: [0, 3], team2: [1, 2] },
+        ];
+
+        let bestCombo = null;
+        let minDiff = Infinity;
+
+        for (const combo of combinations) {
+            const team1Mmr =
+                playersArr[combo.team1[0]].mmr2on2 +
+                playersArr[combo.team1[1]].mmr2on2;
+            const team2Mmr =
+                playersArr[combo.team2[0]].mmr2on2 +
+                playersArr[combo.team2[1]].mmr2on2;
+            const diff = Math.abs(team1Mmr - team2Mmr);
+
+            if (diff < minDiff) {
+                minDiff = diff;
+                bestCombo = combo;
+            }
+        }
+
+        return {
+            isBalanced: currentDiff === minDiff,
+            minDiff: (minDiff / 2).toFixed(0),
+            bestCombo,
+            playersArr,
+        };
+    }
+
+    const balanceResult = calculateBestBalance();
+    const isAlreadyBalanced = canBalanceTeams && balanceResult.isBalanced;
+
+    function balanceTeams() {
+        if (!canBalanceTeams) {
+            toast.error("All 4 players must be selected to balance teams");
+            return;
+        }
+
+        // If already balanced and we have original players saved, restore them
+        if (isAlreadyBalanced && originalPlayersBeforeBalance) {
+            const [origP1, origP2, origP3, origP4] =
+                originalPlayersBeforeBalance;
+            searchParams.set("player1", origP1.id);
+            searchParams.set("player2", origP2.id);
+            searchParams.set("player3", origP3.id);
+            searchParams.set("player4", origP4.id);
+            setSearchParams(searchParams, { replace: true });
+            dispatch({ type: "clear_original_players" });
+            toast.success("Original teams restored");
+            return;
+        }
+
+        // If already balanced but no original saved, nothing to do
+        if (isAlreadyBalanced) {
+            return;
+        }
+
+        const { bestCombo, playersArr, minDiff } = balanceResult;
+
+        // Save current configuration before balancing
+        dispatch({
+            type: "save_original_players",
+            payload: [player1, player2, player3, player4],
+        });
+
+        // Map indices back to player positions
+        // Team 1 = player1 + player3, Team 2 = player2 + player4
+        const newPlayer1 = playersArr[bestCombo.team1[0]];
+        const newPlayer3 = playersArr[bestCombo.team1[1]];
+        const newPlayer2 = playersArr[bestCombo.team2[0]];
+        const newPlayer4 = playersArr[bestCombo.team2[1]];
+
+        searchParams.set("player1", newPlayer1.id);
+        searchParams.set("player2", newPlayer2.id);
+        searchParams.set("player3", newPlayer3.id);
+        searchParams.set("player4", newPlayer4.id);
+        setSearchParams(searchParams, { replace: true });
+
+        toast.success(`Teams balanced! MMR difference: ${minDiff}`);
+    }
+
     return (
         <ChoosePlayerContext.Provider
             value={{
@@ -333,6 +455,9 @@ function ChoosePlayerProvider({ children }) {
                 switchTeams,
                 selectedPlayers,
                 clearAllPlayers,
+                balanceTeams,
+                canBalanceTeams,
+                isAlreadyBalanced,
             }}
         >
             {children}
