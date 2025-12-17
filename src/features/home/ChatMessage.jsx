@@ -40,7 +40,7 @@ const MessageContainer = styled.div`
     gap: 1rem;
     padding: ${(props) =>
         props.$isGrouped ? "0.2rem 1rem 0.2rem 1rem" : "0.8rem 1rem"};
-    padding-left: ${(props) => (props.$isGrouped ? "4.8rem" : "1rem")};
+    padding-left: ${(props) => (props.$isGrouped ? "5.4rem" : "1rem")};
     border-radius: var(--border-radius-md);
     background-color: ${(props) =>
         props.$isWhisper
@@ -108,9 +108,7 @@ const HoverToolbar = styled.div`
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     opacity: 0;
     visibility: hidden;
-    transition:
-        opacity 0.15s,
-        visibility 0.15s;
+    transition: opacity 0.15s, visibility 0.15s;
     z-index: 20;
 
     ${MessageContainer}:hover & {
@@ -219,7 +217,8 @@ const Timestamp = styled.span`
 
 const HoverTimestamp = styled.span`
     position: absolute;
-    left: 0.5rem;
+    left: 1.5rem;
+    top: 0.4rem;
     font-size: 1rem;
     color: var(--tertiary-text-color);
     opacity: 0;
