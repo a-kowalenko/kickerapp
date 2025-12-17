@@ -224,6 +224,9 @@ function ChatSection() {
         try {
             await updateChatReadStatus(currentKicker);
 
+            // Immediately clear document title badge
+            document.title = "KickerApp";
+
             // Clear app badge (works for Android/Desktop PWA)
             // Note: iOS PWA badge can only be set via APNs push, not cleared via JS
             if ("clearAppBadge" in navigator) {
