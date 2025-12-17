@@ -380,7 +380,7 @@ function ChoosePlayerProvider({ children }) {
 
         return {
             isBalanced: currentDiff === minDiff,
-            minDiff: (minDiff / 2).toFixed(0),
+            minDiff: Math.floor(minDiff / 2),
             bestCombo,
             playersArr,
         };
