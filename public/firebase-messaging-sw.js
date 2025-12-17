@@ -113,6 +113,8 @@ async function clearBadge() {
 
 // Handle background messages (data-only messages)
 messaging.onBackgroundMessage(async (payload) => {
+    console.log("[SW] Background message received:", payload);
+
     const notificationData = payload.data || {};
     const notification = payload.notification || {};
 
@@ -145,15 +147,26 @@ messaging.onBackgroundMessage(async (payload) => {
             : [],
     };
 
-    // Increment badge count for new messages
+    // Set badge count - use server-provided count or increment locally
     if (
         notificationData.type === "chat" ||
         notificationData.type === "comment"
     ) {
-        await incrementBadge();
+        const serverBadgeCount = parseInt(notificationData.badge, 10);
+        if (!isNaN(serverBadgeCount) && serverBadgeCount > 0) {
+            // Use the server-provided badge count
+            console.log("[SW] Setting badge from server:", serverBadgeCount);
+            await setBadgeCount(serverBadgeCount);
+            await updateAppBadge(serverBadgeCount);
+        } else {
+            // Fallback to increment
+            console.log("[SW] Incrementing badge locally");
+            await incrementBadge();
+        }
     }
 
     // Show the notification
+    console.log("[SW] Showing notification:", notificationTitle);
     return self.registration.showNotification(
         notificationTitle,
         notificationOptions

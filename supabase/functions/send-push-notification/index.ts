@@ -440,6 +440,7 @@ serve(async (req) => {
                     url,
                     title,
                     body: notificationBody,
+                    badge: badgeCount.toString(), // Send badge count to service worker
                     ...(matchId && { matchId: matchId.toString() }),
                 },
                 // Web push - only headers and link, NO notification
@@ -451,7 +452,7 @@ serve(async (req) => {
                         link: url,
                     },
                 },
-                // iOS/APNs specific options
+                // iOS/APNs specific options (for native iOS apps, not PWA)
                 apns: {
                     headers: {
                         "apns-priority": "10", // High priority for immediate delivery
@@ -464,7 +465,7 @@ serve(async (req) => {
                             },
                             sound: "default",
                             badge: badgeCount,
-                            "mutable-content": 1, // Allow notification service extension to modify
+                            "mutable-content": 1,
                         },
                     },
                 },
