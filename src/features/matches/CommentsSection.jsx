@@ -190,6 +190,20 @@ function CommentsSection({ maxHeight }) {
         });
     }
 
+    // Helper to determine if a comment should be grouped with the previous one
+    // (i.e., hide avatar/name/timestamp for consecutive comments from same user)
+    function shouldGroupWithPrevious(currentComment, prevComment) {
+        // Must be from the same player
+        if (currentComment.player_id !== prevComment.player_id) return false;
+
+        // Check time difference - group if within 10 minutes
+        const currentTime = new Date(currentComment.created_at);
+        const prevTime = new Date(prevComment.created_at);
+        const timeDiffMinutes = Math.abs(currentTime - prevTime) / (1000 * 60);
+
+        return timeDiffMinutes <= 10;
+    }
+
     if (isLoadingComments) {
         return (
             <SectionContainer>
@@ -237,23 +251,32 @@ function CommentsSection({ maxHeight }) {
                         </EmptyText>
                     </EmptyState>
                 ) : (
-                    comments?.map((comment) => (
-                        <Comment
-                            key={comment.id}
-                            comment={comment}
-                            currentPlayerId={currentPlayerId}
-                            isAdmin={isAdmin}
-                            onUpdate={updateComment}
-                            onDelete={deleteComment}
-                            isUpdating={isUpdating}
-                            isDeleting={isDeleting}
-                            commentReactions={
-                                commentReactionsMap[comment.id] || {}
-                            }
-                            onToggleReaction={handleToggleCommentReaction}
-                            isTogglingReaction={isTogglingCommentReaction}
-                        />
-                    ))
+                    comments?.map((comment, index) => {
+                        // Check if this comment should be grouped with the one above it
+                        const prevComment = comments[index - 1];
+                        const isGrouped =
+                            prevComment &&
+                            shouldGroupWithPrevious(comment, prevComment);
+
+                        return (
+                            <Comment
+                                key={comment.id}
+                                comment={comment}
+                                currentPlayerId={currentPlayerId}
+                                isAdmin={isAdmin}
+                                onUpdate={updateComment}
+                                onDelete={deleteComment}
+                                isUpdating={isUpdating}
+                                isDeleting={isDeleting}
+                                commentReactions={
+                                    commentReactionsMap[comment.id] || {}
+                                }
+                                onToggleReaction={handleToggleCommentReaction}
+                                isTogglingReaction={isTogglingCommentReaction}
+                                isGrouped={isGrouped}
+                            />
+                        );
+                    })
                 )}
             </CommentsContainer>
 
