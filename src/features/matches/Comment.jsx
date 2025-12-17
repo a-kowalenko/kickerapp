@@ -1,21 +1,33 @@
 import styled from "styled-components";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
-import { HiPencil, HiTrash, HiCheck, HiXMark } from "react-icons/hi2";
+import {
+    HiPencil,
+    HiTrash,
+    HiCheck,
+    HiXMark,
+    HiOutlineFaceSmile,
+    HiPlus,
+} from "react-icons/hi2";
 import { Link } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
 import MentionText from "../../ui/MentionText";
-import ReactionBar from "./ReactionBar";
 import SpinnerMini from "../../ui/SpinnerMini";
+import EmojiPicker from "../../ui/EmojiPicker";
 import { DEFAULT_AVATAR, MAX_COMMENT_LENGTH } from "../../utils/constants";
+
+// Quick reaction emojis (Discord-style)
+const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
 
 const CommentContainer = styled.div`
     display: flex;
     gap: 1rem;
-    padding: 1rem;
+    padding: ${(props) => (props.$isGrouped ? "0.2rem 1rem" : "1rem")};
+    padding-left: ${(props) => (props.$isGrouped ? "4.8rem" : "1rem")};
     border-radius: var(--border-radius-md);
     background-color: var(--secondary-background-color);
     transition: background-color 0.2s;
+    position: relative;
 
     &:hover {
         background-color: var(--tertiary-background-color);
@@ -28,6 +40,98 @@ const CommentContent = styled.div`
     flex-direction: column;
     gap: 0.4rem;
     min-width: 0;
+`;
+
+// Discord-style hover toolbar
+const HoverToolbar = styled.div`
+    position: absolute;
+    top: -1.2rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.3rem;
+    background-color: var(--secondary-background-color);
+    border: 1px solid var(--primary-border-color);
+    border-radius: var(--border-radius-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        opacity 0.15s,
+        visibility 0.15s;
+    z-index: 20;
+
+    ${CommentContainer}:hover & {
+        opacity: 1;
+        visibility: visible;
+    }
+`;
+
+const ToolbarDivider = styled.div`
+    width: 1px;
+    height: 1.6rem;
+    background-color: var(--primary-border-color);
+    margin: 0 0.2rem;
+`;
+
+const QuickReactionButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    font-size: 1.4rem;
+    transition: all 0.15s;
+
+    &:hover:not(:disabled) {
+        background-color: var(--tertiary-background-color);
+        transform: scale(1.15);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+`;
+
+const ToolbarActionButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    border: none;
+    background-color: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.15s;
+
+    &:hover:not(:disabled) {
+        background-color: var(--tertiary-background-color);
+        color: ${(props) =>
+            props.$danger
+                ? "var(--color-red-700)"
+                : "var(--primary-button-color)"};
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    & svg {
+        font-size: 1.6rem;
+    }
+`;
+
+const AddReactionWrapper = styled.div`
+    position: relative;
 `;
 
 const CommentHeader = styled.div`
@@ -53,6 +157,19 @@ const Timestamp = styled.span`
     color: var(--tertiary-text-color);
 `;
 
+const HoverTimestamp = styled.span`
+    position: absolute;
+    left: 0.5rem;
+    font-size: 1rem;
+    color: var(--tertiary-text-color);
+    opacity: 0;
+    transition: opacity 0.2s;
+
+    ${CommentContainer}:hover & {
+        opacity: 1;
+    }
+`;
+
 const EditedLabel = styled.span`
     font-size: 1.1rem;
     color: var(--tertiary-text-color);
@@ -67,30 +184,22 @@ const CommentBody = styled.div`
     white-space: pre-wrap;
 `;
 
-const CommentActions = styled.div`
-    display: flex;
-    gap: 0.4rem;
-    margin-left: auto;
-`;
-
-const ActionButton = styled.button`
+const EditActionButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0.4rem;
-    border: none;
-    background-color: transparent;
-    color: var(--tertiary-text-color);
+    border: 1px solid var(--primary-border-color);
+    background-color: var(--secondary-background-color);
+    color: var(--secondary-text-color);
     cursor: pointer;
     border-radius: var(--border-radius-sm);
     transition: all 0.2s;
 
     &:hover:not(:disabled) {
-        color: ${(props) =>
-            props.$danger
-                ? "var(--color-red-700)"
-                : "var(--primary-button-color)"};
+        color: var(--primary-button-color);
         background-color: var(--tertiary-background-color);
+        border-color: var(--primary-button-color);
     }
 
     &:disabled {
@@ -137,7 +246,51 @@ const EditCharCount = styled.span`
 `;
 
 const ReactionsRow = styled.div`
-    margin-top: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+`;
+
+const ReactionBadge = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid
+        ${(props) =>
+            props.$isActive
+                ? "var(--primary-button-color)"
+                : "var(--primary-border-color)"};
+    background-color: ${(props) =>
+        props.$isActive
+            ? "var(--primary-button-color-light)"
+            : "var(--secondary-background-color)"};
+    cursor: pointer;
+    font-size: 1.3rem;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+        border-color: var(--primary-button-color);
+        background-color: var(--primary-button-color-light);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+`;
+
+const ReactionEmoji = styled.span`
+    font-size: 1.4rem;
+`;
+
+const ReactionCount = styled.span`
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-text-color);
 `;
 
 function Comment({
@@ -151,15 +304,20 @@ function Comment({
     commentReactions,
     onToggleReaction,
     isTogglingReaction,
+    isGrouped = false,
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const addReactionRef = useRef(null);
 
     const isAuthor = comment.player_id === currentPlayerId;
     const canEdit = isAuthor;
     const canDelete = isAdmin;
 
     const isOverLimit = editContent.length > MAX_COMMENT_LENGTH;
+    const reactionEntries = Object.values(commentReactions || {});
+    const hasReactions = reactionEntries.length > 0;
 
     function handleSaveEdit() {
         if (!editContent.trim() || editContent.length > MAX_COMMENT_LENGTH)
@@ -178,58 +336,126 @@ function Comment({
     }
 
     return (
-        <CommentContainer>
-            <Link to={`/players/${comment.player_id}`}>
-                <Avatar
-                    $size="small"
-                    src={comment.player?.avatar || DEFAULT_AVATAR}
-                    alt={comment.player?.name}
-                    $cursor="pointer"
-                />
-            </Link>
+        <CommentContainer $isGrouped={isGrouped}>
+            {/* Discord-style hover toolbar */}
+            <HoverToolbar>
+                {/* Quick reactions */}
+                {QUICK_REACTIONS.map((emoji) => (
+                    <QuickReactionButton
+                        key={emoji}
+                        onClick={() =>
+                            onToggleReaction({
+                                commentId: comment.id,
+                                reactionType: emoji,
+                            })
+                        }
+                        disabled={
+                            isUpdating || isDeleting || isTogglingReaction
+                        }
+                        title={`React with ${emoji}`}
+                    >
+                        {emoji}
+                    </QuickReactionButton>
+                ))}
+                <AddReactionWrapper>
+                    <QuickReactionButton
+                        ref={addReactionRef}
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        disabled={
+                            isUpdating || isDeleting || isTogglingReaction
+                        }
+                        title="Add reaction"
+                    >
+                        <HiOutlineFaceSmile />
+                        <HiPlus
+                            style={{
+                                fontSize: "0.8rem",
+                                marginLeft: "-0.2rem",
+                            }}
+                        />
+                    </QuickReactionButton>
+                    {showEmojiPicker && (
+                        <EmojiPicker
+                            onSelect={(emoji) => {
+                                onToggleReaction({
+                                    commentId: comment.id,
+                                    reactionType: emoji,
+                                });
+                                setShowEmojiPicker(false);
+                            }}
+                            onClose={() => setShowEmojiPicker(false)}
+                            position="bottom"
+                            align="right"
+                            triggerRef={addReactionRef}
+                        />
+                    )}
+                </AddReactionWrapper>
+
+                <ToolbarDivider />
+
+                {/* Action buttons */}
+                {canEdit && !isEditing && (
+                    <ToolbarActionButton
+                        onClick={() => setIsEditing(true)}
+                        title="Edit comment"
+                        disabled={isUpdating || isDeleting}
+                    >
+                        <HiPencil />
+                    </ToolbarActionButton>
+                )}
+                {canDelete && (
+                    <ToolbarActionButton
+                        $danger
+                        onClick={handleDelete}
+                        title="Delete comment"
+                        disabled={isUpdating || isDeleting}
+                    >
+                        {isDeleting ? <SpinnerMini /> : <HiTrash />}
+                    </ToolbarActionButton>
+                )}
+            </HoverToolbar>
+
+            {/* Show hover timestamp for grouped comments */}
+            {isGrouped && (
+                <HoverTimestamp>
+                    {format(new Date(comment.created_at), "HH:mm")}
+                </HoverTimestamp>
+            )}
+
+            {!isGrouped && (
+                <Link to={`/players/${comment.player_id}`}>
+                    <Avatar
+                        $size="small"
+                        src={comment.player?.avatar || DEFAULT_AVATAR}
+                        alt={comment.player?.name}
+                        $cursor="pointer"
+                    />
+                </Link>
+            )}
             <CommentContent>
-                <CommentHeader>
-                    <AuthorName to={`/players/${comment.player_id}`}>
-                        {comment.player?.name}
-                    </AuthorName>
-                    <Timestamp>
-                        {format(
-                            new Date(comment.created_at),
-                            "dd.MM.yyyy HH:mm"
-                        )}
-                    </Timestamp>
-                    {comment.edited_at && (
-                        <EditedLabel>
-                            (edited{" "}
+                {!isGrouped && (
+                    <CommentHeader>
+                        <AuthorName to={`/players/${comment.player_id}`}>
+                            {comment.player?.name}
+                        </AuthorName>
+                        <Timestamp>
                             {format(
-                                new Date(comment.edited_at),
+                                new Date(comment.created_at),
                                 "dd.MM.yyyy HH:mm"
                             )}
-                            )
-                        </EditedLabel>
-                    )}
-                    <CommentActions>
-                        {canEdit && !isEditing && (
-                            <ActionButton
-                                onClick={() => setIsEditing(true)}
-                                title="Edit comment"
-                                disabled={isUpdating || isDeleting}
-                            >
-                                <HiPencil />
-                            </ActionButton>
+                        </Timestamp>
+                        {comment.edited_at && (
+                            <EditedLabel>
+                                (edited{" "}
+                                {format(
+                                    new Date(comment.edited_at),
+                                    "dd.MM.yyyy HH:mm"
+                                )}
+                                )
+                            </EditedLabel>
                         )}
-                        {canDelete && (
-                            <ActionButton
-                                $danger
-                                onClick={handleDelete}
-                                title="Delete comment"
-                                disabled={isUpdating || isDeleting}
-                            >
-                                {isDeleting ? <SpinnerMini /> : <HiTrash />}
-                            </ActionButton>
-                        )}
-                    </CommentActions>
-                </CommentHeader>
+                    </CommentHeader>
+                )}
 
                 {isEditing ? (
                     <>
@@ -242,14 +468,14 @@ function Comment({
                             <EditCharCount $isOverLimit={isOverLimit}>
                                 {editContent.length} / {MAX_COMMENT_LENGTH}
                             </EditCharCount>
-                            <ActionButton
+                            <EditActionButton
                                 onClick={handleCancelEdit}
                                 title="Cancel"
                                 disabled={isUpdating}
                             >
                                 <HiXMark />
-                            </ActionButton>
-                            <ActionButton
+                            </EditActionButton>
+                            <EditActionButton
                                 onClick={handleSaveEdit}
                                 title="Save"
                                 disabled={
@@ -259,7 +485,7 @@ function Comment({
                                 }
                             >
                                 {isUpdating ? <SpinnerMini /> : <HiCheck />}
-                            </ActionButton>
+                            </EditActionButton>
                         </EditActions>
                     </>
                 ) : (
@@ -268,21 +494,44 @@ function Comment({
                     </CommentBody>
                 )}
 
-                <ReactionsRow>
-                    <ReactionBar
-                        groupedReactions={commentReactions}
-                        currentPlayerId={currentPlayerId}
-                        onToggleReaction={(reactionType) =>
-                            onToggleReaction({
-                                commentId: comment.id,
-                                reactionType,
-                            })
-                        }
-                        disabled={
-                            isUpdating || isDeleting || isTogglingReaction
-                        }
-                    />
-                </ReactionsRow>
+                {/* Only show existing reactions (no add button) */}
+                {hasReactions && (
+                    <ReactionsRow>
+                        {reactionEntries.map((reaction) => {
+                            const isActive =
+                                reaction.playerIds.includes(currentPlayerId);
+                            const playerNames = reaction.players
+                                .map((p) => p.name)
+                                .join(", ");
+
+                            return (
+                                <ReactionBadge
+                                    key={reaction.type}
+                                    $isActive={isActive}
+                                    onClick={() =>
+                                        onToggleReaction({
+                                            commentId: comment.id,
+                                            reactionType: reaction.type,
+                                        })
+                                    }
+                                    title={playerNames}
+                                    disabled={
+                                        isUpdating ||
+                                        isDeleting ||
+                                        isTogglingReaction
+                                    }
+                                >
+                                    <ReactionEmoji>
+                                        {reaction.type}
+                                    </ReactionEmoji>
+                                    <ReactionCount>
+                                        {reaction.count}
+                                    </ReactionCount>
+                                </ReactionBadge>
+                            );
+                        })}
+                    </ReactionsRow>
+                )}
             </CommentContent>
         </CommentContainer>
     );

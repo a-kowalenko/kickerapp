@@ -9,6 +9,8 @@ import { DEFAULT_AVATAR } from "../../utils/constants";
 import EmojiPicker from "../../ui/EmojiPicker";
 import GifPicker from "../../ui/GifPicker";
 import SpinnerMini from "../../ui/SpinnerMini";
+import MentionText from "../../ui/MentionText";
+import RichTextInput from "../../ui/RichTextInput";
 
 const InputContainer = styled.div`
     display: flex;
@@ -29,29 +31,6 @@ const InputRow = styled.div`
 const TextAreaWrapper = styled.div`
     flex: 1;
     position: relative;
-`;
-
-const StyledTextArea = styled.textarea`
-    width: 100%;
-    min-height: 6rem;
-    max-height: 15rem;
-    padding: 1rem;
-    border-radius: var(--border-radius-sm);
-    border: 1px solid var(--primary-input-border-color);
-    background-color: var(--primary-input-background-color);
-    color: var(--primary-text-color);
-    font-family: inherit;
-    font-size: 1.4rem;
-    resize: vertical;
-    outline: none;
-
-    &:focus {
-        border-color: var(--primary-input-border-color-active);
-    }
-
-    &::placeholder {
-        color: var(--tertiary-text-color);
-    }
 `;
 
 const BottomRow = styled.div`
@@ -113,6 +92,25 @@ const SubmitButton = styled(IconButton)`
     }
 `;
 
+const ContentPreview = styled.div`
+    padding: 0.8rem 1rem;
+    background-color: var(--tertiary-background-color);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--primary-border-color);
+    font-size: 1.4rem;
+    line-height: 1.4;
+    color: var(--primary-text-color);
+    word-break: break-word;
+    white-space: pre-wrap;
+`;
+
+const PreviewLabel = styled.span`
+    font-size: 1.1rem;
+    color: var(--tertiary-text-color);
+    display: block;
+    margin-bottom: 0.4rem;
+`;
+
 const MentionDropdown = styled.div`
     position: absolute;
     top: 100%;
@@ -165,9 +163,8 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showMentionDropdown, setShowMentionDropdown] = useState(false);
     const [mentionSearch, setMentionSearch] = useState("");
-    const [mentionStartIndex, setMentionStartIndex] = useState(-1);
     const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
-    const textareaRef = useRef(null);
+    const inputRef = useRef(null);
     const emojiButtonRef = useRef(null);
     const gifButtonRef = useRef(null);
     const { players } = usePlayers();
@@ -200,29 +197,20 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
         }
     }, [showMentionDropdown, mentionSearch]);
 
-    function handleContentChange(e) {
-        const value = e.target.value;
-        const cursorPosition = e.target.selectionStart;
-        setContent(value);
+    // Handle content change from RichTextInput
+    function handleContentChange(newValue) {
+        setContent(newValue);
+    }
 
-        // Check for @ mention
-        const textBeforeCursor = value.slice(0, cursorPosition);
-        const atIndex = textBeforeCursor.lastIndexOf("@");
-
-        if (atIndex !== -1) {
-            const textAfterAt = textBeforeCursor.slice(atIndex + 1);
-            // Check if there's no space after @ (still typing mention)
-            if (!textAfterAt.includes(" ") && !textAfterAt.includes("\n")) {
-                setMentionSearch(textAfterAt);
-                setMentionStartIndex(atIndex);
-                setShowMentionDropdown(true);
-                return;
-            }
+    // Handle @ mention trigger from RichTextInput
+    function handleMentionTrigger(search, atIndex) {
+        if (search !== null && atIndex !== -1) {
+            setMentionSearch(search);
+            setShowMentionDropdown(true);
+        } else {
+            setShowMentionDropdown(false);
+            setMentionSearch("");
         }
-
-        setShowMentionDropdown(false);
-        setMentionSearch("");
-        setMentionStartIndex(-1);
     }
 
     function handleKeyDown(e) {
@@ -250,53 +238,25 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
     }
 
     function handleSelectMention(player) {
-        const beforeMention = content.slice(0, mentionStartIndex);
-        const afterMention = content.slice(
-            mentionStartIndex + 1 + mentionSearch.length
-        );
-
-        // Handle @everyone differently
-        const mentionText = player.isEveryone
-            ? "@everyone "
-            : `@[${player.name}](${player.id}) `;
-
-        setContent(beforeMention + mentionText + afterMention);
+        // Use RichTextInput's insertMention method
+        inputRef.current?.insertMention(player);
         setShowMentionDropdown(false);
         setMentionSearch("");
-        setMentionStartIndex(-1);
-
-        // Focus textarea and set cursor position
-        setTimeout(() => {
-            if (textareaRef.current) {
-                const newPosition = beforeMention.length + mentionText.length;
-                textareaRef.current.focus();
-                textareaRef.current.setSelectionRange(newPosition, newPosition);
-            }
-        }, 0);
     }
 
     function handleEmojiSelect(emoji) {
-        const textarea = textareaRef.current;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const newContent = content.slice(0, start) + emoji + content.slice(end);
-        setContent(newContent);
-
-        // Set cursor position after emoji
-        setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(
-                start + emoji.length,
-                start + emoji.length
-            );
-        }, 0);
+        inputRef.current?.insertText(emoji);
     }
 
     function handleGifSelect(gifUrl) {
-        // Send GIF immediately as a GIF-only message
-        onSubmit(`[gif:${gifUrl}]`);
+        // Use RichTextInput's insertGif method
+        inputRef.current?.insertGif(gifUrl);
         setShowGifPicker(false);
     }
+
+    // Check if content has GIFs that need preview (mentions handled inline)
+    const hasGifs = /\[gif:[^\]]+\]/.test(content);
+    const needsPreview = hasGifs;
 
     function handleSubmit() {
         if (!canSubmit) return;
@@ -309,6 +269,13 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
 
     return (
         <InputContainer>
+            {/* Content Preview - shows how mentions and GIFs will appear */}
+            {needsPreview && (
+                <ContentPreview>
+                    <PreviewLabel>Preview:</PreviewLabel>
+                    <MentionText content={content} />
+                </ContentPreview>
+            )}
             <InputRow>
                 <Avatar
                     $size="small"
@@ -316,11 +283,12 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                     alt={currentPlayer.name}
                 />
                 <TextAreaWrapper>
-                    <StyledTextArea
-                        ref={textareaRef}
+                    <RichTextInput
+                        ref={inputRef}
                         value={content}
                         onChange={handleContentChange}
                         onKeyDown={handleKeyDown}
+                        onMentionTrigger={handleMentionTrigger}
                         placeholder="Write a comment... Use @ to mention players"
                         disabled={isSubmitting}
                     />

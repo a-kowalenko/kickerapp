@@ -8,6 +8,8 @@ import Avatar from "../../ui/Avatar";
 import EmojiPicker from "../../ui/EmojiPicker";
 import GifPicker from "../../ui/GifPicker";
 import SpinnerMini from "../../ui/SpinnerMini";
+import MentionText from "../../ui/MentionText";
+import RichTextInput from "../../ui/RichTextInput";
 
 const InputContainer = styled.div`
     display: flex;
@@ -100,28 +102,6 @@ const InputRow = styled.div`
 const TextAreaWrapper = styled.div`
     flex: 1;
     position: relative;
-`;
-
-const StyledInput = styled.input`
-    width: 100%;
-    padding: 1rem;
-    border-radius: var(--border-radius-sm);
-    border: 1px solid var(--primary-input-border-color);
-    background-color: var(--primary-input-background-color);
-    color: var(--primary-text-color);
-    font-family: inherit;
-    font-size: 1.6rem; /* 16px prevents zoom on mobile */
-    outline: none;
-    /* Prevent zoom on iOS */
-    touch-action: manipulation;
-
-    &:focus {
-        border-color: var(--primary-input-border-color-active);
-    }
-
-    &::placeholder {
-        color: var(--tertiary-text-color);
-    }
 `;
 
 const BottomRow = styled.div`
@@ -226,6 +206,25 @@ const HintText = styled.div`
     font-size: 1.1rem;
     color: var(--tertiary-text-color);
     padding: 0.4rem 0;
+`;
+
+const ContentPreview = styled.div`
+    padding: 0.8rem 1rem;
+    background-color: var(--tertiary-background-color);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--primary-border-color);
+    font-size: 1.4rem;
+    line-height: 1.4;
+    color: var(--primary-text-color);
+    word-break: break-word;
+    white-space: pre-wrap;
+`;
+
+const PreviewLabel = styled.span`
+    font-size: 1.1rem;
+    color: var(--tertiary-text-color);
+    display: block;
+    margin-bottom: 0.4rem;
 `;
 
 function ChatInput({
@@ -337,25 +336,9 @@ function ChatInput({
         return null;
     }
 
-    // Check for @ mention
-    function checkMention(value, cursorPosition) {
-        const textBeforeCursor = value.slice(0, cursorPosition);
-        const atIndex = textBeforeCursor.lastIndexOf("@");
-
-        if (atIndex !== -1) {
-            const textAfterAt = textBeforeCursor.slice(atIndex + 1);
-            // Check if there's no space after @ (still typing mention)
-            if (!textAfterAt.includes(" ") && !textAfterAt.includes("\n")) {
-                return { index: atIndex, search: textAfterAt };
-            }
-        }
-        return null;
-    }
-
-    function handleContentChange(e) {
-        const value = e.target.value;
-        const cursorPosition = e.target.selectionStart;
-        setContent(value);
+    // Handle content change from RichTextInput
+    function handleContentChange(newValue) {
+        setContent(newValue);
 
         // Trigger typing indicator
         if (onTyping) {
@@ -364,21 +347,11 @@ function ChatInput({
 
         // If we already have a whisper recipient set, don't parse commands anymore
         if (whisperRecipient) {
-            // But still check for @ mentions
-            const mention = checkMention(value, cursorPosition);
-            if (mention) {
-                setPlayerSearch(mention.search);
-                setDropdownMode("mention");
-                setShowPlayerDropdown(true);
-            } else {
-                setShowPlayerDropdown(false);
-                setDropdownMode(null);
-            }
             return;
         }
 
         // Parse commands from beginning of input
-        const parsed = parseCommand(value);
+        const parsed = parseCommand(newValue);
         if (parsed) {
             if (parsed.command === "whisper") {
                 setPlayerSearch(parsed.search);
@@ -396,19 +369,21 @@ function ChatInput({
                 return;
             }
         }
+    }
 
-        // Check for @ mention
-        const mention = checkMention(value, cursorPosition);
-        if (mention) {
-            setPlayerSearch(mention.search);
+    // Handle @ mention trigger from RichTextInput
+    function handleMentionTrigger(search, atIndex) {
+        if (search !== null && atIndex !== -1) {
+            setPlayerSearch(search);
             setDropdownMode("mention");
             setShowPlayerDropdown(true);
-            return;
+        } else {
+            if (dropdownMode === "mention") {
+                setShowPlayerDropdown(false);
+                setDropdownMode(null);
+                setPlayerSearch("");
+            }
         }
-
-        setShowPlayerDropdown(false);
-        setDropdownMode(null);
-        setPlayerSearch("");
     }
 
     function handleKeyDown(e) {
@@ -454,54 +429,16 @@ function ChatInput({
             setPlayerSearch("");
             setTimeout(() => inputRef.current?.focus(), 0);
         } else if (dropdownMode === "mention") {
-            // Insert mention into content
-            const textBeforeCursor = content.slice(
-                0,
-                inputRef.current.selectionStart
-            );
-            const atIndex = textBeforeCursor.lastIndexOf("@");
-            const beforeMention = content.slice(0, atIndex);
-            const afterMention = content.slice(
-                atIndex + 1 + playerSearch.length
-            );
-
-            // Handle @everyone differently
-            const mentionText = player.isEveryone
-                ? "@everyone "
-                : `@[${player.name}](${player.id}) `;
-
-            setContent(beforeMention + mentionText + afterMention);
+            // Use RichTextInput's insertMention method
+            inputRef.current?.insertMention(player);
             setShowPlayerDropdown(false);
             setDropdownMode(null);
             setPlayerSearch("");
-
-            // Focus and set cursor position
-            setTimeout(() => {
-                if (inputRef.current) {
-                    const newPosition =
-                        beforeMention.length + mentionText.length;
-                    inputRef.current.focus();
-                    inputRef.current.setSelectionRange(
-                        newPosition,
-                        newPosition
-                    );
-                }
-            }, 0);
         }
     }
 
     function handleEmojiSelect(emoji) {
-        const input = inputRef.current;
-        const start = input.selectionStart;
-        const end = input.selectionEnd;
-        const newContent = content.slice(0, start) + emoji + content.slice(end);
-        setContent(newContent);
-
-        // Set cursor position after emoji
-        setTimeout(() => {
-            input.focus();
-            input.setSelectionRange(start + emoji.length, start + emoji.length);
-        }, 0);
+        inputRef.current?.insertText(emoji);
     }
 
     function handleSubmit() {
@@ -548,16 +485,14 @@ function ChatInput({
     }
 
     function handleGifSelect(gifUrl) {
-        // Send GIF immediately as a GIF-only message
-        onSubmit({
-            content: `[gif:${gifUrl}]`,
-            recipientId: whisperRecipient?.id || null,
-            replyToId: replyTo?.id || null,
-        });
+        // Use RichTextInput's insertGif method
+        inputRef.current?.insertGif(gifUrl);
         setShowGifPicker(false);
-        setWhisperRecipient(null);
-        setShouldRefocusAfterSubmit(true);
     }
+
+    // Check if content has GIFs that need preview (mentions handled inline)
+    const hasGifs = /\[gif:[^\]]+\]/.test(content);
+    const needsPreview = hasGifs;
 
     // Build placeholder text
     const placeholder = useMemo(() => {
@@ -604,6 +539,14 @@ function ChatInput({
                 </WhisperBanner>
             )}
 
+            {/* Content Preview - shows how mentions and GIFs will appear */}
+            {needsPreview && (
+                <ContentPreview>
+                    <PreviewLabel>Preview:</PreviewLabel>
+                    <MentionText content={content} />
+                </ContentPreview>
+            )}
+
             <InputRow>
                 <Avatar
                     $size="small"
@@ -611,11 +554,12 @@ function ChatInput({
                     alt={currentPlayer.name}
                 />
                 <TextAreaWrapper>
-                    <StyledInput
+                    <RichTextInput
                         ref={inputRef}
                         value={content}
                         onChange={handleContentChange}
                         onKeyDown={handleKeyDown}
+                        onMentionTrigger={handleMentionTrigger}
                         placeholder={placeholder}
                         disabled={isSubmitting}
                     />

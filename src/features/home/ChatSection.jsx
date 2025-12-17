@@ -34,7 +34,7 @@ const ChatContainer = styled.div`
     display: flex;
     flex-direction: column;
     overflow: visible;
-    height: 70rem;
+    height: 90rem;
     position: relative;
     border: 1px solid var(--primary-border-color);
     border-radius: var(--border-radius-md);
@@ -546,6 +546,34 @@ function ChatSection() {
         });
     }
 
+    // Helper to determine if a message should be grouped with the visually previous one
+    // (i.e., hide avatar/name/timestamp for consecutive messages from same user)
+    function shouldGroupWithPrevious(currentMsg, prevMsg) {
+        // Don't group if message has a reply - it should always show its header
+        if (currentMsg.reply_to_id) return false;
+
+        // Must be from the same player
+        if (currentMsg.player_id !== prevMsg.player_id) return false;
+
+        // For whispers, must have same recipient
+        const currentIsWhisper = currentMsg.recipient_id !== null;
+        const prevIsWhisper = prevMsg.recipient_id !== null;
+
+        if (currentIsWhisper !== prevIsWhisper) return false;
+        if (
+            currentIsWhisper &&
+            currentMsg.recipient_id !== prevMsg.recipient_id
+        )
+            return false;
+
+        // Check time difference - group if within 10 minutes
+        const currentTime = new Date(currentMsg.created_at);
+        const prevTime = new Date(prevMsg.created_at);
+        const timeDiffMinutes = Math.abs(currentTime - prevTime) / (1000 * 60);
+
+        return timeDiffMinutes <= 10;
+    }
+
     if (isLoadingMessages) {
         return (
             <StyledChatSection>
@@ -590,28 +618,46 @@ function ChatSection() {
                         ) : (
                             <>
                                 {/* Messages - with column-reverse, first item appears at bottom */}
-                                {messages?.map((message) => (
-                                    <ChatMessage
-                                        key={message.id}
-                                        message={message}
-                                        currentPlayerId={currentPlayerId}
-                                        isAdmin={isAdmin}
-                                        onUpdate={updateChatMessage}
-                                        onDelete={deleteChatMessage}
-                                        isUpdating={isUpdating}
-                                        isDeleting={isDeleting}
-                                        messageReactions={
-                                            messageReactionsMap[message.id] ||
-                                            {}
-                                        }
-                                        onToggleReaction={handleToggleReaction}
-                                        isTogglingReaction={isTogglingReaction}
-                                        onReply={handleReply}
-                                        onScrollToMessage={
-                                            handleScrollToMessage
-                                        }
-                                    />
-                                ))}
+                                {messages?.map((message, index) => {
+                                    // Check if this message should be grouped with the one below it (visually previous)
+                                    // In column-reverse, index 0 is newest (bottom), index+1 is older (above)
+                                    const nextMessage = messages[index + 1];
+                                    const isGrouped =
+                                        nextMessage &&
+                                        shouldGroupWithPrevious(
+                                            message,
+                                            nextMessage
+                                        );
+
+                                    return (
+                                        <ChatMessage
+                                            key={message.id}
+                                            message={message}
+                                            currentPlayerId={currentPlayerId}
+                                            isAdmin={isAdmin}
+                                            onUpdate={updateChatMessage}
+                                            onDelete={deleteChatMessage}
+                                            isUpdating={isUpdating}
+                                            isDeleting={isDeleting}
+                                            messageReactions={
+                                                messageReactionsMap[
+                                                    message.id
+                                                ] || {}
+                                            }
+                                            onToggleReaction={
+                                                handleToggleReaction
+                                            }
+                                            isTogglingReaction={
+                                                isTogglingReaction
+                                            }
+                                            onReply={handleReply}
+                                            onScrollToMessage={
+                                                handleScrollToMessage
+                                            }
+                                            isGrouped={isGrouped}
+                                        />
+                                    );
+                                })}
                                 {/* Load more trigger - with column-reverse, last item appears at top */}
                                 {hasNextPage && (
                                     <LoadMoreTrigger ref={loadMoreRef}>
