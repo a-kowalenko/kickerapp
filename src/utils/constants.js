@@ -3,6 +3,10 @@ export const K_FACTOR = 32;
 export const START_MATCH_COUNTDOWN = 10;
 export const DEFAULT_AVATAR = "/default-user.jpg";
 export const ACTIVE_MATCH_REFETCH_INTERVAL = 1000 * 1;
+
+// KLIPY GIF API
+export const KLIPY_API_KEY =
+    "OJASVEvpvavqatr15vuy7b0uTnOVsPdzVbi95dYA6llMX2IGRBu84qvOIYAVMbcW";
 export const CHECK_FOR_ACTIVE_MATCH_INTERVAL = 1000 * 3;
 export const FATALITY_FAKTOR = 2;
 

@@ -1,10 +1,12 @@
 import styled from "styled-components";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { HiOutlineFaceSmile, HiPaperAirplane, HiXMark } from "react-icons/hi2";
+import { PiGifBold } from "react-icons/pi";
 import { usePlayers } from "../../hooks/usePlayers";
 import { MAX_CHAT_MESSAGE_LENGTH, DEFAULT_AVATAR } from "../../utils/constants";
 import Avatar from "../../ui/Avatar";
 import EmojiPicker from "../../ui/EmojiPicker";
+import GifPicker from "../../ui/GifPicker";
 import SpinnerMini from "../../ui/SpinnerMini";
 
 const InputContainer = styled.div`
@@ -238,6 +240,7 @@ function ChatInput({
 }) {
     const [content, setContent] = useState("");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
     const [playerSearch, setPlayerSearch] = useState("");
     const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0);
@@ -247,6 +250,7 @@ function ChatInput({
         useState(false);
     const inputRef = useRef(null);
     const emojiButtonRef = useRef(null);
+    const gifButtonRef = useRef(null);
     const { players } = usePlayers();
 
     // Refocus input after submission completes (when isSubmitting goes from true to false)
@@ -543,6 +547,18 @@ function ChatInput({
         inputRef.current?.focus();
     }
 
+    function handleGifSelect(gifUrl) {
+        // Send GIF immediately as a GIF-only message
+        onSubmit({
+            content: `[gif:${gifUrl}]`,
+            recipientId: whisperRecipient?.id || null,
+            replyToId: replyTo?.id || null,
+        });
+        setShowGifPicker(false);
+        setWhisperRecipient(null);
+        setShouldRefocusAfterSubmit(true);
+    }
+
     // Build placeholder text
     const placeholder = useMemo(() => {
         if (replyTo) {
@@ -672,6 +688,23 @@ function ChatInput({
                     )}
                 </div>
                 <ButtonsRow>
+                    <IconButton
+                        ref={gifButtonRef}
+                        onClick={() => setShowGifPicker(!showGifPicker)}
+                        disabled={isSubmitting}
+                        title="Add GIF"
+                    >
+                        <PiGifBold />
+                    </IconButton>
+                    {showGifPicker && (
+                        <GifPicker
+                            onSelect={handleGifSelect}
+                            onClose={() => setShowGifPicker(false)}
+                            position="top"
+                            align="right"
+                            triggerRef={gifButtonRef}
+                        />
+                    )}
                     <IconButton
                         ref={emojiButtonRef}
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
