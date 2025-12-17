@@ -33,6 +33,7 @@ import LoadingSpinner from "../../ui/LoadingSpinner";
 import ScoreButton from "./ScoreButton";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
+import CommentsSection from "./CommentsSection";
 
 const GameInfoContainer = styled.div`
     display: flex;
@@ -814,6 +815,10 @@ function MatchDetailMobile({ match, timer }) {
                     ))}
                 </GoalsContainer>
             )}
+
+            <Divider $variation="horizontal" />
+
+            <CommentsSection maxHeight="40rem" />
         </StyledMatchDetailMobile>
     );
 }

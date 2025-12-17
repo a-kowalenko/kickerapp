@@ -1,0 +1,3 @@
+-- Rollback: Nothing to rollback - Webhooks are configured in Supabase Dashboard
+-- If you need to disable notifications, delete the webhooks in:
+-- Supabase Dashboard > Database > Webhooks

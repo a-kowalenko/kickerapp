@@ -8,6 +8,9 @@ CREATE OR REPLACE FUNCTION public.update_player_history()
 RETURNS void AS $$
 DECLARE
     currentPlayer RECORD;
+    seasonId BIGINT;
+    playerMmr INT;
+    playerMmr2on2 INT;
     winCount INT;
     lossCount INT;
     win2on2Count INT;
@@ -18,11 +21,33 @@ DECLARE
     totalDuration2on2 INT;
     totalDuration2on1 INT;
 BEGIN
-    -- Iteriere über alle Spieler in der player-Tabelle
+    -- Iterate over all players in the player table
     FOR currentPlayer IN
         SELECT * FROM player
     LOOP
-        -- Berechne wins und losses für 1on1 am aktuellen Tag
+        -- Get current season for this player's kicker
+        SELECT current_season_id INTO seasonId
+        FROM kicker
+        WHERE id = currentPlayer.kicker_id;
+
+        -- Get MMR values: from season_rankings if season is active, otherwise from player
+        IF seasonId IS NOT NULL THEN
+            SELECT sr.mmr, sr.mmr2on2
+            INTO playerMmr, playerMmr2on2
+            FROM season_rankings sr
+            WHERE sr.player_id = currentPlayer.id
+            AND sr.season_id = seasonId;
+        END IF;
+
+        -- If no season active or no ranking exists, use player's MMR values
+        IF playerMmr IS NULL THEN
+            playerMmr := currentPlayer.mmr;
+        END IF;
+        IF playerMmr2on2 IS NULL THEN
+            playerMmr2on2 := currentPlayer.mmr2on2;
+        END IF;
+
+        -- Calculate wins and losses for 1on1 on the current day
         SELECT COUNT(*) INTO winCount
         FROM matches
         WHERE DATE(created_at) = CURRENT_DATE
@@ -37,7 +62,7 @@ BEGIN
         AND ((player1 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2"));
 
-        -- Berechne wins2on2 und losses2on2 für 2on2 am aktuellen Tag
+        -- Calculate wins2on2 and losses2on2 for 2on2 on the current day
         SELECT COUNT(*) INTO win2on2Count
         FROM matches
         WHERE DATE(created_at) = CURRENT_DATE
@@ -52,7 +77,7 @@ BEGIN
         AND ((player1 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2"));
 
-        -- Berechne wins2on1 und losses2on1 für 2on1 am aktuellen Tag
+        -- Calculate wins2on1 and losses2on1 for 2on1 on the current day
         SELECT COUNT(*) INTO win2on1Count
         FROM matches
         WHERE DATE(created_at) = CURRENT_DATE
@@ -67,7 +92,7 @@ BEGIN
         AND ((player1 = currentPlayer.id AND "scoreTeam1" < "scoreTeam2") OR
              (player2 = currentPlayer.id AND "scoreTeam1" > "scoreTeam2"));
 
-        -- Berechne die gesamte Spielzeit für 1on1, 2on2, 2on1 am aktuellen Tag
+        -- Calculate total play time for 1on1, 2on2, 2on1 on the current day
         SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))) INTO totalDuration
         FROM matches
         WHERE DATE(created_at) = CURRENT_DATE
@@ -86,9 +111,20 @@ BEGIN
         AND gamemode = '2on1'
         AND (player1 = currentPlayer.id OR player2 = currentPlayer.id OR player3 = currentPlayer.id OR player4 = currentPlayer.id);
 
-        -- Fügen Sie die berechneten Werte in player_history ein
-        INSERT INTO player_history (player_name, player_id, user_id, mmr, mmr2on2, wins, losses, wins2on2, losses2on2, wins2on1, losses2on1, duration, duration2on2, duration2on1, kicker_id)
-        VALUES (currentPlayer.name, currentPlayer.id, currentPlayer.user_id, currentPlayer.mmr, currentPlayer.mmr2on2, winCount, lossCount, win2on2Count, loss2on2Count, win2on1Count, loss2on1Count, COALESCE(totalDuration, 0), COALESCE(totalDuration2on2, 0), COALESCE(totalDuration2on1, 0), currentPlayer.kicker_id);
+        -- Insert the calculated values into player_history with season_id
+        INSERT INTO player_history (
+            player_name, player_id, user_id, mmr, mmr2on2, 
+            wins, losses, wins2on2, losses2on2, wins2on1, losses2on1, 
+            duration, duration2on2, duration2on1, kicker_id, season_id
+        )
+        VALUES (
+            currentPlayer.name, currentPlayer.id, currentPlayer.user_id, 
+            playerMmr, playerMmr2on2, 
+            winCount, lossCount, win2on2Count, loss2on2Count, 
+            win2on1Count, loss2on1Count, 
+            COALESCE(totalDuration, 0), COALESCE(totalDuration2on2, 0), 
+            COALESCE(totalDuration2on1, 0), currentPlayer.kicker_id, seasonId
+        );
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;

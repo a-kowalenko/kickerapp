@@ -1,9 +1,21 @@
 import { useSearchParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useCurrentSeason } from "./useCurrentSeason";
+import { useSeasons } from "./useSeasons";
 import { SEASON_ALL_TIME, SEASON_OFF_SEASON } from "../../utils/constants";
 
 const STORAGE_KEY = "global_season";
+
+/**
+ * Validates if a season value is in a valid format.
+ * Valid formats: numeric ID, "all-time", "off-season"
+ */
+function isValidSeasonFormat(value) {
+    if (!value || typeof value !== "string") return false;
+    if (value === SEASON_ALL_TIME || value === SEASON_OFF_SEASON) return true;
+    // Check if it's a valid numeric string (season ID)
+    return /^\d+$/.test(value);
+}
 
 /**
  * Reads the season value synchronously from localStorage.
@@ -34,22 +46,64 @@ function getStoredSeasonValue() {
  * - isLoading: Whether we're still determining the season (currentSeason loading)
  */
 export function useSelectedSeason() {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { currentSeason, isLoading: isLoadingCurrentSeason } =
         useCurrentSeason();
+    const { seasons, isLoading: isLoadingSeasons } = useSeasons();
+
+    // Check if a season ID exists in the available seasons
+    const isValidSeasonId = (id) => {
+        if (!seasons || !id) return false;
+        return seasons.some((s) => String(s.id) === id);
+    };
 
     // Determine season value with priority: URL > localStorage > currentSeason
     const seasonValue = useMemo(() => {
         // 1. Check URL param first
         const urlSeason = searchParams.get("season");
         if (urlSeason) {
+            // Validate format first
+            if (!isValidSeasonFormat(urlSeason)) {
+                return null; // Invalid format, will be cleaned up by effect
+            }
+            // For special values, return directly
+            if (
+                urlSeason === SEASON_ALL_TIME ||
+                urlSeason === SEASON_OFF_SEASON
+            ) {
+                return urlSeason;
+            }
+            // For numeric IDs, validate against available seasons if loaded
+            if (!isLoadingSeasons && seasons) {
+                if (isValidSeasonId(urlSeason)) {
+                    return urlSeason;
+                }
+                return null; // Invalid season ID, will be cleaned up by effect
+            }
+            // Seasons still loading, trust the URL for now
             return urlSeason;
         }
 
         // 2. Check localStorage
         const storedSeason = getStoredSeasonValue();
-        if (storedSeason) {
-            return storedSeason;
+        if (storedSeason && isValidSeasonFormat(storedSeason)) {
+            // For special values, return directly
+            if (
+                storedSeason === SEASON_ALL_TIME ||
+                storedSeason === SEASON_OFF_SEASON
+            ) {
+                return storedSeason;
+            }
+            // For numeric IDs, validate if seasons are loaded
+            if (!isLoadingSeasons && seasons) {
+                if (isValidSeasonId(storedSeason)) {
+                    return storedSeason;
+                }
+                // Invalid stored season ID, fall through to default
+            } else {
+                // Seasons still loading, trust localStorage for now
+                return storedSeason;
+            }
         }
 
         // 3. Fall back to current season if available
@@ -59,7 +113,35 @@ export function useSelectedSeason() {
 
         // 4. Return null while loading, will resolve once currentSeason loads
         return null;
-    }, [searchParams, currentSeason]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, currentSeason, seasons, isLoadingSeasons]);
+
+    // Clean up invalid URL season parameter
+    useEffect(() => {
+        const urlSeason = searchParams.get("season");
+        if (!urlSeason) return;
+
+        // Check if URL param is invalid format
+        if (!isValidSeasonFormat(urlSeason)) {
+            // Remove invalid season param from URL
+            searchParams.delete("season");
+            setSearchParams(searchParams, { replace: true });
+            return;
+        }
+
+        // Check if it's an invalid season ID (not found in available seasons)
+        if (!isLoadingSeasons && seasons) {
+            const isSpecialValue =
+                urlSeason === SEASON_ALL_TIME ||
+                urlSeason === SEASON_OFF_SEASON;
+            if (!isSpecialValue && !isValidSeasonId(urlSeason)) {
+                // Remove invalid season param from URL
+                searchParams.delete("season");
+                setSearchParams(searchParams, { replace: true });
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, seasons, isLoadingSeasons]);
 
     // Build the season filter object for API calls
     const seasonFilter = useMemo(() => {
@@ -76,7 +158,8 @@ export function useSelectedSeason() {
     }, [seasonValue]);
 
     // We're loading if currentSeason is loading AND we don't have a value from URL/localStorage
-    const isLoading = isLoadingCurrentSeason && !seasonValue;
+    const isLoading =
+        (isLoadingCurrentSeason || isLoadingSeasons) && !seasonValue;
 
     return {
         seasonValue,

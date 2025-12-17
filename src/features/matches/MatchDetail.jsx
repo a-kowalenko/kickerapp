@@ -31,6 +31,7 @@ import { HiArrowDownTray, HiArrowPath, HiTrash } from "react-icons/hi2";
 import Button from "../../ui/Button";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
+import CommentsSection from "./CommentsSection";
 
 const StyledMatchDetail = styled.div``;
 
@@ -209,6 +210,22 @@ const CenteredInfoLabel = styled.label`
     display: flex;
     justify-content: center;
     align-items: center;
+`;
+
+const ContentRow = styled.div`
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+`;
+
+const GoalsSection = styled.div`
+    flex: 1;
+    min-width: 0;
+`;
+
+const CommentsSectionWrapper = styled.div`
+    width: 35%;
+    min-width: 30rem;
 `;
 
 function MatchDetail() {
@@ -453,71 +470,87 @@ function MatchDetail() {
                     )}
                 </>
             )}
-            <GoalsFilterRow />
-            <GoalsContainer ref={goalBoxRef}>
-                {finalGoals.length === 0 && goals.length > 0 && (
-                    <CenteredInfoLabel>
-                        <i>
-                            Only generated goals without timestamp are
-                            available.
-                        </i>
-                    </CenteredInfoLabel>
-                )}
-                {finalGoals.map((goal) => (
-                    <GoalRow key={goal.id}>
-                        {goal.team === 2 && (
-                            <>
-                                <div></div>
-                                <CurrentTeamScore>
-                                    {goal.scoreTeam1}
-                                </CurrentTeamScore>
-                                <GoalTime>
-                                    {format(
-                                        new Date(goal.created_at) -
-                                            new Date(finalMatch.start_time),
-                                        "mm:ss"
-                                    )}
-                                </GoalTime>
-                                <CurrentTeamScore>
-                                    {goal.scoreTeam2}
-                                </CurrentTeamScore>
-                            </>
+            <ContentRow>
+                <GoalsSection>
+                    <GoalsFilterRow />
+                    <GoalsContainer ref={goalBoxRef}>
+                        {finalGoals.length === 0 && goals.length > 0 && (
+                            <CenteredInfoLabel>
+                                <i>
+                                    Only generated goals without timestamp are
+                                    available.
+                                </i>
+                            </CenteredInfoLabel>
                         )}
+                        {finalGoals.map((goal) => (
+                            <GoalRow key={goal.id}>
+                                {goal.team === 2 && (
+                                    <>
+                                        <div></div>
+                                        <CurrentTeamScore>
+                                            {goal.scoreTeam1}
+                                        </CurrentTeamScore>
+                                        <GoalTime>
+                                            {format(
+                                                new Date(goal.created_at) -
+                                                    new Date(
+                                                        finalMatch.start_time
+                                                    ),
+                                                "mm:ss"
+                                            )}
+                                        </GoalTime>
+                                        <CurrentTeamScore>
+                                            {goal.scoreTeam2}
+                                        </CurrentTeamScore>
+                                    </>
+                                )}
 
-                        <GoalItem $team={goal.team} $goaltype={goal.goal_type}>
-                            <Avatar
-                                $size="xs"
-                                src={goal.player.avatar || DEFAULT_AVATAR}
-                                alt={`Avatar of ${goal.player.name}`}
-                            />
-                            {`${goal.player.name} scored ${
-                                goal.goal_type === STANDARD_GOAL
-                                    ? "a goal"
-                                    : "an own goal"
-                            }!`}
-                        </GoalItem>
+                                <GoalItem
+                                    $team={goal.team}
+                                    $goaltype={goal.goal_type}
+                                >
+                                    <Avatar
+                                        $size="xs"
+                                        src={
+                                            goal.player.avatar || DEFAULT_AVATAR
+                                        }
+                                        alt={`Avatar of ${goal.player.name}`}
+                                    />
+                                    {`${goal.player.name} scored ${
+                                        goal.goal_type === STANDARD_GOAL
+                                            ? "a goal"
+                                            : "an own goal"
+                                    }!`}
+                                </GoalItem>
 
-                        {goal.team === 1 && (
-                            <>
-                                <CurrentTeamScore>
-                                    {goal.scoreTeam1}
-                                </CurrentTeamScore>
-                                <GoalTime>
-                                    {format(
-                                        new Date(goal.created_at) -
-                                            new Date(finalMatch.start_time),
-                                        "mm:ss"
-                                    )}
-                                </GoalTime>
-                                <CurrentTeamScore>
-                                    {goal.scoreTeam2}
-                                </CurrentTeamScore>
-                                <div></div>
-                            </>
-                        )}
-                    </GoalRow>
-                ))}
-            </GoalsContainer>
+                                {goal.team === 1 && (
+                                    <>
+                                        <CurrentTeamScore>
+                                            {goal.scoreTeam1}
+                                        </CurrentTeamScore>
+                                        <GoalTime>
+                                            {format(
+                                                new Date(goal.created_at) -
+                                                    new Date(
+                                                        finalMatch.start_time
+                                                    ),
+                                                "mm:ss"
+                                            )}
+                                        </GoalTime>
+                                        <CurrentTeamScore>
+                                            {goal.scoreTeam2}
+                                        </CurrentTeamScore>
+                                        <div></div>
+                                    </>
+                                )}
+                            </GoalRow>
+                        ))}
+                    </GoalsContainer>
+                </GoalsSection>
+                <CommentsSectionWrapper>
+                    <CommentsSection maxHeight="50rem" />
+                </CommentsSectionWrapper>
+            </ContentRow>
             <BottomRow>
                 {isActive && (
                     <DelayedButton

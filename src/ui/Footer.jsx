@@ -268,7 +268,9 @@ function Footer() {
                     </SocialsList>
                 </SocialsContainer>
             </FooterLayout>
-            <Copyright>© 2023 Andreas Kowalenko</Copyright>
+            <Copyright>
+                © 2023-{new Date().getFullYear()} Andreas Kowalenko
+            </Copyright>
         </StyledFooter>
     );
 }

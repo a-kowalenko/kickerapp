@@ -109,9 +109,7 @@ const DropdownList = styled.ul`
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
     opacity: ${(props) => (props.$isOpen ? "1" : "0")};
     overflow-y: auto;
-    transition:
-        max-height 0.2s ease-in-out,
-        opacity 0.2s ease-in-out;
+    transition: max-height 0.2s ease-in-out, opacity 0.2s ease-in-out;
 
     /* Open upwards on mobile (footer position) */
     ${(props) =>
@@ -242,10 +240,39 @@ function SeasonBadge({ openUpwards = false }) {
     const close = () => setIsOpen(false);
     const ref = useOutsideClick(close, false);
 
+    // Helper to check if a new season was created since user's last selection
+    const isNewSeasonCreated = () => {
+        if (!currentSeason || !selectedOption) return false;
+
+        const lastKnown = selectedOption.lastKnownCurrentSeasonId;
+        // If no lastKnownCurrentSeasonId stored, a new season might have been created
+        // (user had cached selection before this feature was added, or first time)
+        if (!lastKnown) return true;
+
+        // If current season ID is greater than what user last knew, new season was created
+        return Number(currentSeason.id) > Number(lastKnown);
+    };
+
     // Set search param on mount when data is ready
     useEffect(() => {
         if (!isLoadingSeasons && !isLoadingCurrent && !initialized) {
             const urlSeason = searchParams.get("season");
+
+            // Check if a new season was created - if so, auto-select it
+            // This overrides any cached selection to ensure all players see the new season
+            if (currentSeason && isNewSeasonCreated()) {
+                const defaultOpt = getDefaultOption();
+                searchParams.set("season", defaultOpt.value);
+                setSearchParams(searchParams, { replace: true });
+                setSelectedOption({
+                    text: defaultOpt.text,
+                    value: defaultOpt.value,
+                    variant: defaultOpt.variant,
+                    lastKnownCurrentSeasonId: String(currentSeason.id),
+                });
+                setInitialized(true);
+                return;
+            }
 
             // If URL already has a valid season param, use it
             if (urlSeason) {
@@ -255,6 +282,9 @@ function SeasonBadge({ openUpwards = false }) {
                         text: found.text,
                         value: found.value,
                         variant: found.variant,
+                        lastKnownCurrentSeasonId: currentSeason
+                            ? String(currentSeason.id)
+                            : selectedOption?.lastKnownCurrentSeasonId,
                     });
                     setInitialized(true);
                     return;
@@ -273,6 +303,9 @@ function SeasonBadge({ openUpwards = false }) {
                         text: found.text,
                         value: found.value,
                         variant: found.variant,
+                        lastKnownCurrentSeasonId: currentSeason
+                            ? String(currentSeason.id)
+                            : selectedOption?.lastKnownCurrentSeasonId,
                     });
                     setInitialized(true);
                     return;
@@ -287,6 +320,9 @@ function SeasonBadge({ openUpwards = false }) {
                 text: defaultOpt.text,
                 value: defaultOpt.value,
                 variant: defaultOpt.variant,
+                lastKnownCurrentSeasonId: currentSeason
+                    ? String(currentSeason.id)
+                    : null,
             });
             setInitialized(true);
         }
@@ -305,11 +341,15 @@ function SeasonBadge({ openUpwards = false }) {
         }
         searchParams.set("season", option.value);
         setSearchParams(searchParams, { replace: true });
-        // Store only serializable data
+        // Store only serializable data, including lastKnownCurrentSeasonId
+        // so we can detect when a new season is created
         setSelectedOption({
             text: option.text,
             value: option.value,
             variant: option.variant,
+            lastKnownCurrentSeasonId: currentSeason
+                ? String(currentSeason.id)
+                : null,
         });
         close();
     }

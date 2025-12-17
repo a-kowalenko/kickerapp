@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import AppLayout from "./ui/AppLayout";
+import UnreadBadgeManager from "./ui/UnreadBadgeManager";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -56,6 +57,7 @@ function App() {
                                     element={
                                         <ProtectedRoute>
                                             <MatchProvider>
+                                                <UnreadBadgeManager />
                                                 <AppLayout />
                                             </MatchProvider>
                                         </ProtectedRoute>

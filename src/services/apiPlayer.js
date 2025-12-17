@@ -94,9 +94,10 @@ export async function getOwnPlayer(kicker) {
     return data;
 }
 
-export async function getPlayersByKicker(kickerId) {
+export async function getPlayersByKicker(kickerId, seasonId = null) {
     const { data, error } = await supabase.rpc("get_players_by_kicker", {
         kicker_id_param: kickerId,
+        p_season_id: seasonId,
     });
 
     if (error) {
