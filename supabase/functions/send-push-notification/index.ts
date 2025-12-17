@@ -410,6 +410,22 @@ serve(async (req) => {
         const invalidTokens: string[] = [];
 
         for (const sub of subscriptions) {
+            // Get actual unread count for this user (for iOS badge)
+            let badgeCount = 1;
+            try {
+                const { data: unreadData } = await supabase.rpc(
+                    "get_unread_count_for_user",
+                    { p_user_id: sub.user_id }
+                );
+                if (unreadData !== null && unreadData !== undefined) {
+                    // Add 1 to include the current message being sent
+                    badgeCount = Math.max(1, Number(unreadData) + 1);
+                }
+            } catch (badgeError) {
+                console.error("Error getting unread count for badge:", badgeError);
+                // Fall back to badge: 1 if RPC fails
+            }
+
             // Pure DATA-ONLY message - no notification field anywhere
             // The service worker's onBackgroundMessage will handle displaying the notification
             const message: FCMMessage = {
@@ -441,7 +457,7 @@ serve(async (req) => {
                                 body: notificationBody,
                             },
                             sound: "default",
-                            badge: 1,
+                            badge: badgeCount,
                         },
                     },
                 },

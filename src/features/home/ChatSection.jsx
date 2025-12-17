@@ -11,6 +11,8 @@ import { useTypingIndicator } from "./useTypingIndicator";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
+import { useKicker } from "../../contexts/KickerContext";
+import { updateChatReadStatus } from "../../services/apiChat";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LoadingSpinner from "../../ui/LoadingSpinner";
@@ -207,6 +209,7 @@ function ChatSection() {
     const { data: currentPlayer } = useOwnPlayer();
     const { data: kickerData } = useKickerInfo();
     const { user } = useUser();
+    const { currentKicker } = useKicker();
 
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
@@ -214,6 +217,49 @@ function ChatSection() {
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
+
+    // Mark messages as read and clear badge when chat is viewed
+    const markAsRead = useCallback(async () => {
+        if (!currentKicker) return;
+        try {
+            await updateChatReadStatus(currentKicker);
+            
+            // Clear app badge
+            if ("clearAppBadge" in navigator) {
+                navigator.clearAppBadge().catch(() => {});
+            }
+            
+            // Notify service worker to clear badge count
+            if (navigator.serviceWorker?.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: "CLEAR_BADGE",
+                });
+            }
+        } catch (error) {
+            console.error("Error marking chat as read:", error);
+        }
+    }, [currentKicker]);
+
+    // Mark as read on mount and when messages load
+    useEffect(() => {
+        if (hasInitiallyScrolled && currentKicker) {
+            markAsRead();
+        }
+    }, [hasInitiallyScrolled, currentKicker, markAsRead]);
+
+    // Mark as read when tab becomes visible
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible" && currentKicker) {
+                markAsRead();
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+    }, [currentKicker, markAsRead]);
 
     // Handle scroll for showing/hiding jump to latest
     const handleScroll = useCallback(() => {
