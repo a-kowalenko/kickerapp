@@ -111,10 +111,19 @@ export function useUnreadBadge(userId) {
     }, [setBadge]);
 
     // Update badges when count changes
+    // Note: We only SET the badge, never clear it here automatically
+    // Clearing is done explicitly when user views the chat
     useEffect(() => {
         previousCountRef.current = totalUnreadCount;
-        setBadge(totalUnreadCount);
-    }, [totalUnreadCount, setBadge]);
+        // Only update badge if there are unread messages
+        // Don't automatically clear badge when count becomes 0
+        // (that's handled by ChatSection when user actually reads messages)
+        if (totalUnreadCount > 0) {
+            setBadge(totalUnreadCount);
+        }
+        // Always update document title though
+        updateDocumentTitle(totalUnreadCount);
+    }, [totalUnreadCount, setBadge, updateDocumentTitle]);
 
     // Subscribe to realtime chat message inserts
     useEffect(() => {

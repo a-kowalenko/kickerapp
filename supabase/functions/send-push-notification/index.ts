@@ -453,6 +453,9 @@ serve(async (req) => {
                 },
                 // iOS/APNs specific options
                 apns: {
+                    headers: {
+                        "apns-priority": "10", // High priority for immediate delivery
+                    },
                     payload: {
                         aps: {
                             alert: {
@@ -461,6 +464,7 @@ serve(async (req) => {
                             },
                             sound: "default",
                             badge: badgeCount,
+                            "mutable-content": 1, // Allow notification service extension to modify
                         },
                     },
                 },
