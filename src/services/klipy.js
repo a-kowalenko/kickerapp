@@ -71,9 +71,13 @@ export async function getTrendingGifs(page = 1, perPage = 24) {
         throw new Error("Failed to fetch trending GIFs");
     }
 
+    // Extract items from nested data.data structure
+    const items = data.data?.data || [];
+    const hasNext = data.data?.has_next || false;
+
     return {
-        items: data.data?.items || [],
-        hasMore: (data.data?.items?.length || 0) === perPage,
+        items: Array.isArray(items) ? items : [],
+        hasMore: hasNext,
     };
 }
 
@@ -123,9 +127,13 @@ export async function searchGifs(query, page = 1, perPage = 24) {
         throw new Error("Failed to search GIFs");
     }
 
+    // Extract items from nested data.data structure
+    const items = data.data?.data || [];
+    const hasNext = data.data?.has_next || false;
+
     return {
-        items: data.data?.items || [],
-        hasMore: (data.data?.items?.length || 0) === perPage,
+        items: Array.isArray(items) ? items : [],
+        hasMore: hasNext,
     };
 }
 
@@ -137,13 +145,13 @@ export async function searchGifs(query, page = 1, perPage = 24) {
  * @returns {string|null} - URL of the GIF
  */
 export function getGifUrl(gif, size = "sm") {
-    if (!gif?.files) return null;
+    if (!gif?.file) return null;
 
-    const sizeData = gif.files[size];
+    const sizeData = gif.file[size];
     if (!sizeData) return null;
 
-    // Prefer webp, then gif, then mp4
-    return sizeData.webp || sizeData.gif || sizeData.mp4 || null;
+    // Prefer webp, then gif, then mp4 - access the .url property
+    return sizeData.webp?.url || sizeData.gif?.url || sizeData.mp4?.url || null;
 }
 
 /**
@@ -153,10 +161,14 @@ export function getGifUrl(gif, size = "sm") {
  * @returns {{width: number, height: number}|null}
  */
 export function getGifDimensions(gif, size = "sm") {
-    if (!gif?.files?.[size]) return null;
+    if (!gif?.file?.[size]) return null;
+
+    // Get dimensions from the webp or gif format
+    const format = gif.file[size].webp || gif.file[size].gif;
+    if (!format) return null;
 
     return {
-        width: gif.files[size].width,
-        height: gif.files[size].height,
+        width: format.width,
+        height: format.height,
     };
 }

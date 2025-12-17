@@ -71,22 +71,25 @@ const GifGrid = styled.div`
     padding: 0.8rem;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: min-content;
     gap: 0.8rem;
     min-height: 20rem;
     max-height: 30rem;
+    align-content: start;
 `;
 
 const GifItem = styled.button`
     border: none;
     padding: 0;
+    margin: 0;
     cursor: pointer;
     border-radius: var(--border-radius-sm);
     overflow: hidden;
     background-color: var(--tertiary-background-color);
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%; /* Square aspect ratio */
+    position: relative;
     transition:
         transform 0.15s,
         box-shadow 0.15s;
@@ -103,6 +106,9 @@ const GifItem = styled.button`
 `;
 
 const GifImage = styled.img`
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
