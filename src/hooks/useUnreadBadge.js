@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "react-query";
 import supabase, { databaseSchema } from "../services/supabase";
-import { getTotalUnreadCount, getUnreadCountPerKicker } from "../services/apiChat";
+import {
+    getTotalUnreadCount,
+    getUnreadCountPerKicker,
+} from "../services/apiChat";
 import { CHAT_MESSAGES } from "../utils/constants";
 
 const ORIGINAL_TITLE = "KickerApp";
@@ -24,28 +27,24 @@ export function useUnreadBadge(userId) {
     }, []);
 
     // Query total unread count
-    const {
-        data: totalUnreadCount = 0,
-        refetch: refetchUnreadCount,
-    } = useQuery({
-        queryKey: [BADGE_QUERY_KEY, userId],
-        queryFn: getTotalUnreadCount,
-        enabled: !!userId,
-        staleTime: 1000 * 60, // 1 minute
-        refetchOnWindowFocus: true,
-    });
+    const { data: totalUnreadCount = 0, refetch: refetchUnreadCount } =
+        useQuery({
+            queryKey: [BADGE_QUERY_KEY, userId],
+            queryFn: getTotalUnreadCount,
+            enabled: !!userId,
+            staleTime: 1000 * 60, // 1 minute
+            refetchOnWindowFocus: true,
+        });
 
     // Query unread count per kicker (for detail UI)
-    const {
-        data: unreadPerKicker = [],
-        refetch: refetchUnreadPerKicker,
-    } = useQuery({
-        queryKey: [BADGE_QUERY_KEY, "perKicker", userId],
-        queryFn: getUnreadCountPerKicker,
-        enabled: !!userId,
-        staleTime: 1000 * 60, // 1 minute
-        refetchOnWindowFocus: true,
-    });
+    const { data: unreadPerKicker = [], refetch: refetchUnreadPerKicker } =
+        useQuery({
+            queryKey: [BADGE_QUERY_KEY, "perKicker", userId],
+            queryFn: getUnreadCountPerKicker,
+            enabled: !!userId,
+            staleTime: 1000 * 60, // 1 minute
+            refetchOnWindowFocus: true,
+        });
 
     // Update app badge (PWA)
     const updateAppBadge = useCallback(
@@ -79,7 +78,7 @@ export function useUnreadBadge(userId) {
     const clearBadge = useCallback(async () => {
         updateDocumentTitle(0);
         await updateAppBadge(0);
-        
+
         // Notify service worker to clear its badge count
         if (navigator.serviceWorker?.controller) {
             navigator.serviceWorker.controller.postMessage({
@@ -102,7 +101,7 @@ export function useUnreadBadge(userId) {
         const newCount = previousCountRef.current + 1;
         previousCountRef.current = newCount;
         await setBadge(newCount);
-        
+
         // Also notify service worker
         if (navigator.serviceWorker?.controller) {
             navigator.serviceWorker.controller.postMessage({
@@ -156,7 +155,10 @@ export function useUnreadBadge(userId) {
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
         return () => {
-            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
         };
     }, [userId, refetchUnreadCount, refetchUnreadPerKicker]);
 
@@ -169,9 +171,15 @@ export function useUnreadBadge(userId) {
             }
         };
 
-        navigator.serviceWorker?.addEventListener("message", handleServiceWorkerMessage);
+        navigator.serviceWorker?.addEventListener(
+            "message",
+            handleServiceWorkerMessage
+        );
         return () => {
-            navigator.serviceWorker?.removeEventListener("message", handleServiceWorkerMessage);
+            navigator.serviceWorker?.removeEventListener(
+                "message",
+                handleServiceWorkerMessage
+            );
         };
     }, [refetchUnreadCount]);
 

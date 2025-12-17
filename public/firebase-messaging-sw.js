@@ -146,7 +146,10 @@ messaging.onBackgroundMessage(async (payload) => {
     };
 
     // Increment badge count for new messages
-    if (notificationData.type === "chat" || notificationData.type === "comment") {
+    if (
+        notificationData.type === "chat" ||
+        notificationData.type === "comment"
+    ) {
         await incrementBadge();
     }
 

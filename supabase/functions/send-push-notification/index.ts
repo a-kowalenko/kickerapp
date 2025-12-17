@@ -422,7 +422,10 @@ serve(async (req) => {
                     badgeCount = Math.max(1, Number(unreadData) + 1);
                 }
             } catch (badgeError) {
-                console.error("Error getting unread count for badge:", badgeError);
+                console.error(
+                    "Error getting unread count for badge:",
+                    badgeError
+                );
                 // Fall back to badge: 1 if RPC fails
             }
 

@@ -223,12 +223,12 @@ function ChatSection() {
         if (!currentKicker) return;
         try {
             await updateChatReadStatus(currentKicker);
-            
+
             // Clear app badge
             if ("clearAppBadge" in navigator) {
                 navigator.clearAppBadge().catch(() => {});
             }
-            
+
             // Notify service worker to clear badge count
             if (navigator.serviceWorker?.controller) {
                 navigator.serviceWorker.controller.postMessage({
@@ -257,7 +257,10 @@ function ChatSection() {
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
         return () => {
-            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
         };
     }, [currentKicker, markAsRead]);
 

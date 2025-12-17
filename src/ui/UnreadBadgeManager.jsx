@@ -8,7 +8,7 @@ import { useUnreadBadge } from "../hooks/useUnreadBadge";
  */
 function UnreadBadgeManager() {
     const { user } = useUser();
-    
+
     // Initialize the badge hook - it handles all the subscription logic
     const { totalUnreadCount } = useUnreadBadge(user?.id);
 
