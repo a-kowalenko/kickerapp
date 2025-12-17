@@ -447,7 +447,10 @@ function Comment({
                         <Timestamp>
                             {format(
                                 new Date(comment.created_at),
-                                "dd.MM.yyyy HH:mm"
+                                new Date(comment.created_at).getDate() ===
+                                    new Date().getDate()
+                                    ? "HH:mm"
+                                    : "dd.MM.yyyy - HH:mm"
                             )}
                         </Timestamp>
                         {comment.edited_at && (

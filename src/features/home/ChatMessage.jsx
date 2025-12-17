@@ -623,7 +623,13 @@ function ChatMessage({
                             </WhisperLabel>
                         )}
                         <Timestamp>
-                            {format(new Date(message.created_at), "HH:mm")}
+                            {format(
+                                new Date(message.created_at),
+                                new Date(message.created_at).getDate() ===
+                                    new Date().getDate()
+                                    ? "HH:mm"
+                                    : "dd.MM.yyyy - HH:mm"
+                            )}
                         </Timestamp>
                         {message.edited_at && (
                             <EditedLabel>(edited)</EditedLabel>
