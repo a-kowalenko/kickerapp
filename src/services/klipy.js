@@ -1,6 +1,6 @@
 import { KLIPY_API_KEY } from "../utils/constants";
 
-const BASE_URL = "https://api.klipy.com";
+const BASE_URL = "https://api.klipy.com/api";
 
 // Generate or retrieve anonymous customer ID for Klipy API
 function getCustomerId() {
