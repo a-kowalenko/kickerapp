@@ -4,7 +4,7 @@ import ContentBox from "../../ui/ContentBox";
 import Dropdown from "../../ui/Dropdown";
 import SpinnerMini from "../../ui/SpinnerMini";
 import Button from "../../ui/Button";
-import { HiArrowsUpDown, HiPlus } from "react-icons/hi2";
+import { HiArrowsUpDown, HiPlus, HiScale } from "react-icons/hi2";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
 import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
@@ -46,6 +46,32 @@ const MidButton = styled(Button)`
     }
 `;
 
+const BalanceButton = styled(MidButton)`
+    ${(props) =>
+        props.$isBalanced &&
+        `
+        background: linear-gradient(135deg, #ffd700, #ffec8b, #ffd700);
+        background-size: 200% 200%;
+        animation: shimmer 2s ease-in-out infinite;
+        color: #5c4a00;
+        border: 2px solid #ffd700;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), 0 0 30px rgba(255, 215, 0, 0.3);
+        cursor: pointer;
+        
+        &:hover {
+            background: linear-gradient(135deg, #ffec8b, #ffd700, #ffec8b);
+            background-size: 200% 200%;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.4);
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    `}
+`;
+
 function ChoosePlayersMobile() {
     const {
         isLoading,
@@ -61,8 +87,36 @@ function ChoosePlayersMobile() {
         filteredForPlayer3And4,
         switchTeams,
         clearAllPlayers,
+        balanceTeams,
+        canBalanceTeams,
+        isAlreadyBalanced,
         selectedPlayers: [player1, player2, player3, player4],
     } = useChoosePlayers();
+
+    // Calculate team MMR display
+    function getTeamMmrDisplay(mainPlayer, secondPlayer, hasSecondPlayer) {
+        if (!mainPlayer) return null;
+
+        // Check if it's a 1v1 (no player3 AND no player4 selected)
+        const is1v1 = !player3 && !player4;
+
+        if (is1v1) {
+            // 1v1: show individual mmr
+            return Math.round(mainPlayer.mmr);
+        }
+
+        // 2v2 or 2v1: use mmr2on2
+        if (hasSecondPlayer && secondPlayer) {
+            // Team has 2 players - show average
+            return Math.round((mainPlayer.mmr2on2 + secondPlayer.mmr2on2) / 2);
+        }
+
+        // Team has 1 player in a 2v1/2v2 context
+        return Math.round(mainPlayer.mmr2on2);
+    }
+
+    const team1Mmr = getTeamMmrDisplay(player1, player3, isPlayer3Active);
+    const team2Mmr = getTeamMmrDisplay(player2, player4, isPlayer4Active);
 
     if (isLoading) {
         return <SpinnerMini />;
@@ -71,7 +125,9 @@ function ChoosePlayersMobile() {
     return (
         <StyledChoosePlayersMobile>
             <TeamContainer>
-                <Heading as="h3">Team 1</Heading>
+                <Heading as="h3">
+                    Team 1{team1Mmr !== null && ` (MMR ${team1Mmr})`}
+                </Heading>
                 <Dropdown
                     options={filteredPlayers}
                     onSelect={(playerId) => selectPlayer(playerId, 1)}
@@ -98,6 +154,20 @@ function ChoosePlayersMobile() {
             </TeamContainer>
 
             <MidButtonsContainer>
+                {canBalanceTeams && (
+                    <BalanceButton
+                        onClick={balanceTeams}
+                        disabled={isStarting}
+                        $isBalanced={isAlreadyBalanced}
+                        title={
+                            isAlreadyBalanced
+                                ? "Restore original teams"
+                                : "Balance Teams by MMR"
+                        }
+                    >
+                        <HiScale />
+                    </BalanceButton>
+                )}
                 <MidButton onClick={switchTeams}>
                     <HiArrowsUpDown />
                 </MidButton>
@@ -111,7 +181,9 @@ function ChoosePlayersMobile() {
             </MidButtonsContainer>
 
             <TeamContainer>
-                <Heading as="h3">Team 2</Heading>
+                <Heading as="h3">
+                    Team 2{team2Mmr !== null && ` (MMR ${team2Mmr})`}
+                </Heading>
                 <Dropdown
                     options={filteredPlayers}
                     onSelect={(playerId) => selectPlayer(playerId, 2)}
