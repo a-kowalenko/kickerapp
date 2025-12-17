@@ -1,11 +1,13 @@
 import styled from "styled-components";
 import { useState, useRef, useEffect } from "react";
 import { HiOutlineFaceSmile, HiPaperAirplane } from "react-icons/hi2";
+import { PiGifBold } from "react-icons/pi";
 import { usePlayers } from "../../hooks/usePlayers";
 import { MAX_COMMENT_LENGTH } from "../../utils/constants";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import EmojiPicker from "../../ui/EmojiPicker";
+import GifPicker from "../../ui/GifPicker";
 import SpinnerMini from "../../ui/SpinnerMini";
 
 const InputContainer = styled.div`
@@ -160,12 +162,14 @@ const EVERYONE_OPTION = {
 function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
     const [content, setContent] = useState("");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     const [showMentionDropdown, setShowMentionDropdown] = useState(false);
     const [mentionSearch, setMentionSearch] = useState("");
     const [mentionStartIndex, setMentionStartIndex] = useState(-1);
     const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
     const textareaRef = useRef(null);
     const emojiButtonRef = useRef(null);
+    const gifButtonRef = useRef(null);
     const { players } = usePlayers();
 
     // Filter players and add @everyone option at the beginning
@@ -288,6 +292,12 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
         }, 0);
     }
 
+    function handleGifSelect(gifUrl) {
+        // Send GIF immediately as a GIF-only message
+        onSubmit(`[gif:${gifUrl}]`);
+        setShowGifPicker(false);
+    }
+
     function handleSubmit() {
         if (!canSubmit) return;
 
@@ -366,6 +376,23 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                     {content.length} / {MAX_COMMENT_LENGTH}
                 </CharacterCount>
                 <ButtonsRow>
+                    <IconButton
+                        ref={gifButtonRef}
+                        onClick={() => setShowGifPicker(!showGifPicker)}
+                        disabled={isSubmitting}
+                        title="Add GIF"
+                    >
+                        <PiGifBold />
+                    </IconButton>
+                    {showGifPicker && (
+                        <GifPicker
+                            onSelect={handleGifSelect}
+                            onClose={() => setShowGifPicker(false)}
+                            position="top"
+                            align="right"
+                            triggerRef={gifButtonRef}
+                        />
+                    )}
                     <IconButton
                         ref={emojiButtonRef}
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
