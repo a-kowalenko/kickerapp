@@ -331,3 +331,47 @@ export async function getTypingUsers(kickerId) {
 
     return data;
 }
+
+// ============ UNREAD STATUS / BADGE ============
+
+/**
+ * Update last read timestamp for current user in a specific kicker
+ */
+export async function updateChatReadStatus(kickerId) {
+    const { error } = await supabase.rpc("update_chat_read_status", {
+        p_kicker_id: kickerId,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return { success: true };
+}
+
+/**
+ * Get unread count per kicker for current user
+ * Returns array of { kicker_id, unread_count }
+ */
+export async function getUnreadCountPerKicker() {
+    const { data, error } = await supabase.rpc("get_unread_count_per_kicker");
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data || [];
+}
+
+/**
+ * Get total unread count across all kickers for current user
+ */
+export async function getTotalUnreadCount() {
+    const { data, error } = await supabase.rpc("get_total_unread_count");
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data || 0;
+}

@@ -27,8 +27,94 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Firebase Cloud Messaging
 const messaging = firebase.messaging();
 
+// ============ BADGE COUNT MANAGEMENT ============
+const BADGE_DB_NAME = "kickerapp-badge";
+const BADGE_STORE_NAME = "badge";
+const BADGE_KEY = "unread-count";
+
+// Open IndexedDB for badge count persistence
+function openBadgeDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(BADGE_DB_NAME, 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(BADGE_STORE_NAME)) {
+                db.createObjectStore(BADGE_STORE_NAME);
+            }
+        };
+    });
+}
+
+// Get current badge count from IndexedDB
+async function getBadgeCount() {
+    try {
+        const db = await openBadgeDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(BADGE_STORE_NAME, "readonly");
+            const store = tx.objectStore(BADGE_STORE_NAME);
+            const request = store.get(BADGE_KEY);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result || 0);
+        });
+    } catch (error) {
+        console.error("[SW] Error getting badge count:", error);
+        return 0;
+    }
+}
+
+// Set badge count in IndexedDB
+async function setBadgeCount(count) {
+    try {
+        const db = await openBadgeDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(BADGE_STORE_NAME, "readwrite");
+            const store = tx.objectStore(BADGE_STORE_NAME);
+            const request = store.put(count, BADGE_KEY);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    } catch (error) {
+        console.error("[SW] Error setting badge count:", error);
+    }
+}
+
+// Update the app badge
+async function updateAppBadge(count) {
+    try {
+        if (count > 0) {
+            await self.registration.setAppBadge(count);
+        } else {
+            await self.registration.clearAppBadge();
+        }
+    } catch (error) {
+        // Badge API might not be supported
+        console.debug("[SW] App badge update failed:", error);
+    }
+}
+
+// Increment badge count
+async function incrementBadge() {
+    const currentCount = await getBadgeCount();
+    const newCount = currentCount + 1;
+    await setBadgeCount(newCount);
+    await updateAppBadge(newCount);
+    return newCount;
+}
+
+// Clear badge count
+async function clearBadge() {
+    await setBadgeCount(0);
+    await updateAppBadge(0);
+}
+
+// ============ MESSAGE HANDLING ============
+
 // Handle background messages (data-only messages)
-messaging.onBackgroundMessage((payload) => {
+messaging.onBackgroundMessage(async (payload) => {
+    console.log("[SW] Background message received:", payload);
+
     const notificationData = payload.data || {};
     const notification = payload.notification || {};
 
@@ -61,7 +147,26 @@ messaging.onBackgroundMessage((payload) => {
             : [],
     };
 
+    // Set badge count - use server-provided count or increment locally
+    if (
+        notificationData.type === "chat" ||
+        notificationData.type === "comment"
+    ) {
+        const serverBadgeCount = parseInt(notificationData.badge, 10);
+        if (!isNaN(serverBadgeCount) && serverBadgeCount > 0) {
+            // Use the server-provided badge count
+            console.log("[SW] Setting badge from server:", serverBadgeCount);
+            await setBadgeCount(serverBadgeCount);
+            await updateAppBadge(serverBadgeCount);
+        } else {
+            // Fallback to increment
+            console.log("[SW] Incrementing badge locally");
+            await incrementBadge();
+        }
+    }
+
     // Show the notification
+    console.log("[SW] Showing notification:", notificationTitle);
     return self.registration.showNotification(
         notificationTitle,
         notificationOptions
@@ -93,7 +198,7 @@ self.addEventListener("notificationclick", (event) => {
     event.waitUntil(
         clients
             .matchAll({ type: "window", includeUncontrolled: true })
-            .then((clientList) => {
+            .then(async (clientList) => {
                 // Check if app is already open
                 for (const client of clientList) {
                     if (client.url.includes(self.location.origin)) {
@@ -110,6 +215,19 @@ self.addEventListener("notificationclick", (event) => {
                 return clients.openWindow(targetUrl);
             })
     );
+});
+
+// Handle messages from the main app
+self.addEventListener("message", (event) => {
+    if (event.data?.type === "CLEAR_BADGE") {
+        clearBadge();
+    } else if (event.data?.type === "INCREMENT_BADGE") {
+        incrementBadge();
+    } else if (event.data?.type === "SET_BADGE") {
+        const count = event.data.count || 0;
+        setBadgeCount(count);
+        updateAppBadge(count);
+    }
 });
 
 // Handle service worker installation

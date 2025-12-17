@@ -11,6 +11,8 @@ import { useTypingIndicator } from "./useTypingIndicator";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
+import { useKicker } from "../../contexts/KickerContext";
+import { updateChatReadStatus } from "../../services/apiChat";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LoadingSpinner from "../../ui/LoadingSpinner";
@@ -207,6 +209,7 @@ function ChatSection() {
     const { data: currentPlayer } = useOwnPlayer();
     const { data: kickerData } = useKickerInfo();
     const { user } = useUser();
+    const { currentKicker } = useKicker();
 
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
@@ -214,6 +217,73 @@ function ChatSection() {
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
+
+    // Mark messages as read and clear badge when chat is viewed
+    const markAsRead = useCallback(async () => {
+        if (!currentKicker) return;
+        try {
+            await updateChatReadStatus(currentKicker);
+
+            // Immediately clear document title badge
+            document.title = "KickerApp";
+
+            // Clear app badge (works for Android/Desktop PWA)
+            // Note: iOS PWA badge can only be set via APNs push, not cleared via JS
+            if ("clearAppBadge" in navigator) {
+                navigator.clearAppBadge().catch(() => {});
+            }
+
+            // Notify service worker to clear badge count (for next local increment)
+            if (navigator.serviceWorker?.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: "CLEAR_BADGE",
+                });
+            }
+        } catch (error) {
+            console.error("Error marking chat as read:", error);
+        }
+    }, [currentKicker]);
+
+    // Track if user is viewing the chat (at bottom of messages)
+    const markAsReadIfAtBottom = useCallback(() => {
+        // Only mark as read if user is at the bottom (seeing newest messages)
+        if (isNearBottomRef.current && currentKicker && hasInitiallyScrolled) {
+            markAsRead();
+        }
+    }, [currentKicker, hasInitiallyScrolled, markAsRead]);
+
+    // Mark as read when user scrolls to bottom
+    useEffect(() => {
+        if (hasInitiallyScrolled && currentKicker && isNearBottomRef.current) {
+            // Small delay to ensure user is actually viewing the chat
+            const timer = setTimeout(() => {
+                if (isNearBottomRef.current) {
+                    markAsRead();
+                }
+            }, 1000); // 1 second delay
+            return () => clearTimeout(timer);
+        }
+    }, [hasInitiallyScrolled, currentKicker, markAsRead]);
+
+    // Mark as read when tab becomes visible AND user is at bottom
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible" && currentKicker) {
+                // Delay to let the scroll position settle
+                setTimeout(() => {
+                    markAsReadIfAtBottom();
+                }, 500);
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => {
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
+        };
+    }, [currentKicker, markAsReadIfAtBottom]);
 
     // Handle scroll for showing/hiding jump to latest
     const handleScroll = useCallback(() => {
@@ -223,17 +293,23 @@ function ChatSection() {
         const threshold = 100;
         // With column-reverse, scrollTop increases as user scrolls UP
         const nearBottom = Math.abs(container.scrollTop) < threshold;
+        const wasNearBottom = isNearBottomRef.current;
         isNearBottomRef.current = nearBottom;
 
         if (nearBottom) {
             // User scrolled back to bottom - hide button and reset counter
             setShowJumpToLatest(false);
             setNewMessagesCount(0);
+
+            // Mark as read when user scrolls to bottom
+            if (!wasNearBottom && currentKicker) {
+                markAsRead();
+            }
         } else {
             // User scrolled away from bottom - show jump button immediately
             setShowJumpToLatest(true);
         }
-    }, []);
+    }, [currentKicker, markAsRead]);
 
     // Infinite scroll - load more when scrolling to top
     useEffect(() => {
