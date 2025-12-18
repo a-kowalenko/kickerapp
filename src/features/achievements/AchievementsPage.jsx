@@ -77,11 +77,8 @@ function AchievementsOverview() {
             return false;
         }
 
-        // WoW-style chain logic: Only show the first non-unlocked achievement in a chain
-        // If this achievement has a parent that's not unlocked, don't show it
-        if (achievement.parent_id && !achievement.isAvailable) {
-            return false;
-        }
+        // NOTE: Chain filtering is handled in AchievementsList to keep chains complete
+        // Don't filter out chain members here - let AchievementsList handle chain logic
 
         return true;
     });

@@ -4,37 +4,43 @@ import { media } from "../../utils/constants";
 
 const Card = styled.div`
     display: flex;
-    gap: 1.6rem;
-    padding: 1.6rem;
+    gap: ${(props) => (props.$compact ? "1rem" : "1.6rem")};
+    padding: ${(props) => (props.$compact ? "1rem" : "1.6rem")};
     background-color: ${(props) =>
         props.$isUnlocked
             ? "var(--achievement-unlocked-bg, var(--color-grey-50))"
             : props.$isAvailable
             ? "var(--color-grey-0)"
             : "var(--color-grey-100)"};
-    border: 1px solid
-        ${(props) =>
-            props.$isUnlocked
-                ? "var(--achievement-unlocked-border, var(--color-brand-500))"
-                : "var(--secondary-border-color)"};
-    border-radius: var(--border-radius-md);
-    opacity: ${(props) => (props.$isAvailable || props.$isUnlocked ? 1 : 0.6)};
+    border: ${(props) => (props.$compact ? "none" : "1px solid")};
+    border-color: ${(props) =>
+        props.$isUnlocked
+            ? "var(--achievement-unlocked-border, var(--color-brand-500))"
+            : "var(--secondary-border-color)"};
+    border-radius: ${(props) =>
+        props.$compact ? "0" : "var(--border-radius-md)"};
+    opacity: ${(props) =>
+        props.$compact
+            ? 0.7
+            : props.$isAvailable || props.$isUnlocked
+            ? 1
+            : 0.6};
     transition: all 0.2s ease;
 
     &:hover {
         transform: ${(props) =>
-            props.$isAvailable || props.$isUnlocked
+            !props.$compact && (props.$isAvailable || props.$isUnlocked)
                 ? "translateY(-2px)"
                 : "none"};
         box-shadow: ${(props) =>
-            props.$isAvailable || props.$isUnlocked
+            !props.$compact && (props.$isAvailable || props.$isUnlocked)
                 ? "0 4px 12px rgba(0, 0, 0, 0.15)"
                 : "none"};
     }
 
     ${media.mobile} {
-        padding: 1.2rem;
-        gap: 1.2rem;
+        padding: ${(props) => (props.$compact ? "0.8rem" : "1.2rem")};
+        gap: ${(props) => (props.$compact ? "0.8rem" : "1.2rem")};
     }
 `;
 
@@ -42,9 +48,9 @@ const IconContainer = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 6rem;
-    height: 6rem;
-    min-width: 6rem;
+    width: ${(props) => (props.$compact ? "4rem" : "6rem")};
+    height: ${(props) => (props.$compact ? "4rem" : "6rem")};
+    min-width: ${(props) => (props.$compact ? "4rem" : "6rem")};
     border-radius: 50%;
     background: ${(props) =>
         props.$isUnlocked
@@ -54,14 +60,14 @@ const IconContainer = styled.div`
             : "var(--color-grey-300)"};
     color: ${(props) =>
         props.$isUnlocked ? "white" : "var(--color-grey-500)"};
-    font-size: 2.4rem;
+    font-size: ${(props) => (props.$compact ? "1.6rem" : "2.4rem")};
     position: relative;
 
     ${media.mobile} {
-        width: 4.8rem;
-        height: 4.8rem;
-        min-width: 4.8rem;
-        font-size: 2rem;
+        width: ${(props) => (props.$compact ? "3.2rem" : "4.8rem")};
+        height: ${(props) => (props.$compact ? "3.2rem" : "4.8rem")};
+        min-width: ${(props) => (props.$compact ? "3.2rem" : "4.8rem")};
+        font-size: ${(props) => (props.$compact ? "1.4rem" : "2rem")};
     }
 `;
 
@@ -96,7 +102,7 @@ const Header = styled.div`
 `;
 
 const Name = styled.h3`
-    font-size: 1.6rem;
+    font-size: ${(props) => (props.$compact ? "1.4rem" : "1.6rem")};
     font-weight: 600;
     color: ${(props) =>
         props.$isUnlocked
@@ -105,7 +111,7 @@ const Name = styled.h3`
     margin: 0;
 
     ${media.mobile} {
-        font-size: 1.4rem;
+        font-size: ${(props) => (props.$compact ? "1.2rem" : "1.4rem")};
     }
 `;
 
@@ -187,7 +193,7 @@ const UnlockedDate = styled.span`
     margin-top: 0.4rem;
 `;
 
-function AchievementCard({ achievement }) {
+function AchievementCard({ achievement, compact = false }) {
     const {
         name,
         description,
@@ -202,18 +208,26 @@ function AchievementCard({ achievement }) {
         progressPercent,
     } = achievement;
 
-    const showProgress = maxProgress > 1 && !isUnlocked;
+    const showProgress = maxProgress > 1 && !isUnlocked && !compact;
     const displayIcon = icon || "🏆";
 
     return (
-        <Card $isUnlocked={isUnlocked} $isAvailable={isAvailable}>
-            <IconContainer $isUnlocked={isUnlocked} $isAvailable={isAvailable}>
+        <Card
+            $isUnlocked={isUnlocked}
+            $isAvailable={isAvailable}
+            $compact={compact}
+        >
+            <IconContainer
+                $isUnlocked={isUnlocked}
+                $isAvailable={isAvailable}
+                $compact={compact}
+            >
                 {!isAvailable && !isUnlocked ? (
                     <HiLockClosed />
                 ) : (
                     <span>{displayIcon}</span>
                 )}
-                {isUnlocked && (
+                {isUnlocked && !compact && (
                     <CheckBadge>
                         <HiCheck />
                     </CheckBadge>
@@ -229,7 +243,9 @@ function AchievementCard({ achievement }) {
                             gap: "0.8rem",
                         }}
                     >
-                        <Name $isUnlocked={isUnlocked}>{name}</Name>
+                        <Name $isUnlocked={isUnlocked} $compact={compact}>
+                            {name}
+                        </Name>
                         {isHidden && !isUnlocked && (
                             <HiddenBadge>Hidden</HiddenBadge>
                         )}
@@ -240,7 +256,7 @@ function AchievementCard({ achievement }) {
                     </Points>
                 </Header>
 
-                <Description>{description}</Description>
+                {!compact && <Description>{description}</Description>}
 
                 {showProgress && isAvailable && (
                     <ProgressContainer>
@@ -256,7 +272,7 @@ function AchievementCard({ achievement }) {
                     </ProgressContainer>
                 )}
 
-                {isUnlocked && unlockedAt && (
+                {isUnlocked && unlockedAt && !compact && (
                     <UnlockedDate>
                         Unlocked: {new Date(unlockedAt).toLocaleDateString()}
                     </UnlockedDate>
