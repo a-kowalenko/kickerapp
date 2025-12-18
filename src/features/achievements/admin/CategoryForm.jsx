@@ -18,7 +18,8 @@ const Modal = styled.div`
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: var(--color-grey-0);
+    background-color: var(--secondary-background-color);
+    border: 1px solid var(--primary-border-color);
     border-radius: var(--border-radius-md);
     padding: 2.4rem;
     z-index: 1001;
@@ -31,6 +32,7 @@ const Modal = styled.div`
 const Title = styled.h2`
     font-size: 2rem;
     margin-bottom: 2rem;
+    color: var(--primary-text-color);
 `;
 
 const Form = styled.form`
@@ -53,27 +55,47 @@ const Label = styled.label`
 
 const Input = styled.input`
     padding: 1rem;
-    border: 1px solid var(--secondary-border-color);
+    border: 1px solid var(--primary-input-border-color);
     border-radius: var(--border-radius-sm);
     font-size: 1.4rem;
+    background-color: var(--primary-input-background-color);
+    color: var(--primary-text-color);
+
+    &:hover {
+        background-color: var(--primary-input-background-color-hover);
+    }
 
     &:focus {
         outline: none;
-        border-color: var(--color-brand-500);
+        border-color: var(--primary-input-border-color-active);
+    }
+
+    &::placeholder {
+        color: var(--secondary-text-color);
     }
 `;
 
 const TextArea = styled.textarea`
     padding: 1rem;
-    border: 1px solid var(--secondary-border-color);
+    border: 1px solid var(--primary-input-border-color);
     border-radius: var(--border-radius-sm);
     font-size: 1.4rem;
     resize: vertical;
     min-height: 8rem;
+    background-color: var(--primary-input-background-color);
+    color: var(--primary-text-color);
+
+    &:hover {
+        background-color: var(--primary-input-background-color-hover);
+    }
 
     &:focus {
         outline: none;
-        border-color: var(--color-brand-500);
+        border-color: var(--primary-input-border-color-active);
+    }
+
+    &::placeholder {
+        color: var(--secondary-text-color);
     }
 `;
 

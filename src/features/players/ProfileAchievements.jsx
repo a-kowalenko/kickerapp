@@ -5,6 +5,7 @@ import { HiOutlineTrophy, HiCheck } from "react-icons/hi2";
 import { getPlayerAchievements } from "../../services/apiAchievements";
 import { useKicker } from "../../contexts/KickerContext";
 import { usePlayerName } from "./usePlayerName";
+import { useAchievementsWithProgress } from "../achievements/useAchievementsWithProgress";
 import Spinner from "../../ui/Spinner";
 import AchievementsSummary from "../achievements/AchievementsSummary";
 import { media } from "../../utils/constants";
@@ -165,7 +166,13 @@ function ProfileAchievements() {
         }
     );
 
-    if (isLoadingPlayer || isLoadingAchievements) {
+    // Get all achievements to calculate total count
+    const {
+        achievements: allAchievements,
+        isLoading: isLoadingAllAchievements,
+    } = useAchievementsWithProgress(player?.id, null);
+
+    if (isLoadingPlayer || isLoadingAchievements || isLoadingAllAchievements) {
         return <Spinner />;
     }
 
@@ -183,6 +190,7 @@ function ProfileAchievements() {
         0
     );
     const totalUnlocked = achievements.length;
+    const totalAchievements = allAchievements?.length || 0;
 
     // Group by category
     const groupedByCategory = achievements.reduce((acc, achievement) => {
@@ -207,7 +215,7 @@ function ProfileAchievements() {
             <AchievementsSummary
                 totalPoints={totalPoints}
                 totalUnlocked={totalUnlocked}
-                totalAchievements={totalUnlocked}
+                totalAchievements={totalAchievements}
             />
 
             {Object.entries(groupedByCategory).map(

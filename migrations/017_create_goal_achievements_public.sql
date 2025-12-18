@@ -12,8 +12,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'torjaeger_1on1', 
-    'Torjäger', 
+    'goals_1on1_100', 
+    'Tryharder', 
     'Score 100 goals in 1on1 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -31,8 +31,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'scharfschuetze_1on1', 
-    'Scharfschütze', 
+    'goals_1on1_500', 
+    'Sniper', 
     'Score 500 goals in 1on1 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -50,8 +50,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'tormaschine_1on1', 
-    'Tormaschine', 
+    'goals_1on1_1000', 
+    'Goal Machine', 
     'Score 1000 goals in 1on1 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -69,8 +69,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'solo_legende', 
-    'Solo-Legende', 
+    'goals_1on1_2500', 
+    'Solo Legend', 
     'Score 2500 goals in 1on1 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -88,7 +88,7 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'einzelkaempfer', 
+    'goals_1on1_5000', 
     'Einzelkämpfer', 
     'Score 5000 goals in 1on1 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
@@ -111,7 +111,7 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id
 ) VALUES (
-    'teamplayer', 
+    'goals_2on2_10', 
     'Teamplayer', 
     'Score 10 goals in 2on2 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
@@ -129,8 +129,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'doppelpacker', 
-    'Doppelpacker', 
+    'goals_2on2_100', 
+    'Double Striker', 
     'Score 100 goals in 2on2 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -148,8 +148,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'team_kanone', 
-    'Team-Kanone', 
+    'goals_2on2_500', 
+    'Team Cannon', 
     'Score 500 goals in 2on2 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -167,8 +167,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'duo_dynamo', 
-    'Duo-Dynamo', 
+    'goals_2on2_1000', 
+    'Duo Dynamo', 
     'Score 1000 goals in 2on2 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -186,8 +186,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'team_legende', 
-    'Team-Legende', 
+    'goals_2on2_2500', 
+    'Team Legend', 
     'Score 2500 goals in 2on2 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',
@@ -205,8 +205,8 @@ INSERT INTO public.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'duo_gott', 
-    'Duo-Gott', 
+    'goals_2on2_5000', 
+    'Duo God', 
     'Score 5000 goals in 2on2 matches',
     (SELECT id FROM public.achievement_categories WHERE key = 'goals' AND kicker_id = 1),
     'GOAL_SCORED',

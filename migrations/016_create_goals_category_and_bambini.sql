@@ -20,7 +20,7 @@ INSERT INTO achievement_definitions (
     is_repeatable,
     kicker_id
 ) VALUES (
-    'bambini', 
+    'goals_1on1_10', 
     'Bambini', 
     'Score 10 goals in 1on1 matches',
     (SELECT id FROM achievement_categories WHERE key = 'goals' AND kicker_id = 1),

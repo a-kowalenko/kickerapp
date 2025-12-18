@@ -142,8 +142,8 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id
 ) VALUES (
-    'blitz_victory_1on1', 
-    'Blitz Victory (1on1)', 
+    'blitzkrieg_1on1', 
+    'Blitzkrieg (1on1)', 
     'Win a 1on1 match in under 4 minutes',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'speed' AND kicker_id = 1),
     'MATCH_ENDED',
@@ -160,8 +160,8 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id
 ) VALUES (
-    'blitz_victory_2on2', 
-    'Blitz Victory (2on2)', 
+    'blitzkrieg_2on2', 
+    'Blitzkrieg (2on2)', 
     'Win a 2on2 match in under 4 minutes',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'speed' AND kicker_id = 1),
     'MATCH_ENDED',

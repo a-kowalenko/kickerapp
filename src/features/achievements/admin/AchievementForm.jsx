@@ -23,7 +23,8 @@ const Modal = styled.div`
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: var(--color-grey-0);
+    background-color: var(--secondary-background-color);
+    border: 1px solid var(--primary-border-color);
     border-radius: var(--border-radius-md);
     padding: 2.4rem;
     z-index: 1001;
@@ -36,6 +37,7 @@ const Modal = styled.div`
 const Title = styled.h2`
     font-size: 2rem;
     margin-bottom: 2rem;
+    color: var(--primary-text-color);
 `;
 
 const Form = styled.form`
@@ -68,40 +70,70 @@ const Label = styled.label`
 
 const Input = styled.input`
     padding: 1rem;
-    border: 1px solid var(--secondary-border-color);
+    border: 1px solid var(--primary-input-border-color);
     border-radius: var(--border-radius-sm);
     font-size: 1.4rem;
+    background-color: var(--primary-input-background-color);
+    color: var(--primary-text-color);
+
+    &:hover {
+        background-color: var(--primary-input-background-color-hover);
+    }
 
     &:focus {
         outline: none;
-        border-color: var(--color-brand-500);
+        border-color: var(--primary-input-border-color-active);
+    }
+
+    &::placeholder {
+        color: var(--secondary-text-color);
     }
 `;
 
 const Select = styled.select`
     padding: 1rem;
-    border: 1px solid var(--secondary-border-color);
+    border: 1px solid var(--primary-input-border-color);
     border-radius: var(--border-radius-sm);
     font-size: 1.4rem;
-    background-color: var(--color-grey-0);
+    background-color: var(--primary-input-background-color);
+    color: var(--primary-text-color);
+
+    &:hover {
+        background-color: var(--primary-input-background-color-hover);
+    }
 
     &:focus {
         outline: none;
-        border-color: var(--color-brand-500);
+        border-color: var(--primary-input-border-color-active);
+    }
+
+    option {
+        background-color: var(--dropdown-list-background-color);
+        color: var(--primary-text-color);
     }
 `;
 
 const TextArea = styled.textarea`
     padding: 1rem;
-    border: 1px solid var(--secondary-border-color);
+    border: 1px solid var(--primary-input-border-color);
     border-radius: var(--border-radius-sm);
     font-size: 1.4rem;
     resize: vertical;
     min-height: 8rem;
+    background-color: var(--primary-input-background-color);
+    color: var(--primary-text-color);
+
+    &:hover {
+        background-color: var(--primary-input-background-color-hover);
+    }
 
     &:focus {
         outline: none;
-        border-color: var(--color-brand-500);
+        border-color: var(--primary-input-border-color-active);
+    }
+
+    &::placeholder {
+        color: var(--secondary-text-color);
     }
 `;
 
@@ -114,6 +146,7 @@ const CheckboxRow = styled.div`
 const Checkbox = styled.input`
     width: 1.8rem;
     height: 1.8rem;
+    accent-color: var(--primary-button-color);
 `;
 
 const ButtonRow = styled.div`
@@ -124,7 +157,7 @@ const ButtonRow = styled.div`
 `;
 
 const ConditionSection = styled.div`
-    border: 1px solid var(--secondary-border-color);
+    border: 1px solid var(--primary-input-border-color);
     border-radius: var(--border-radius-sm);
     padding: 1.6rem;
 `;
@@ -139,18 +172,30 @@ const ConditionHeader = styled.div`
 const ConditionTitle = styled.h3`
     font-size: 1.6rem;
     margin: 0;
+    color: var(--primary-text-color);
 `;
 
 const ToggleButton = styled.button`
     padding: 0.4rem 1rem;
     background-color: ${(props) =>
-        props.$active ? "var(--color-brand-500)" : "var(--color-grey-200)"};
+        props.$active
+            ? "var(--primary-button-color)"
+            : "var(--secondary-button-color)"};
     color: ${(props) =>
-        props.$active ? "white" : "var(--primary-text-color)"};
+        props.$active
+            ? "var(--primary-button-color-text)"
+            : "var(--secondary-button-color-text)"};
     border: none;
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     font-size: 1.2rem;
+
+    &:hover {
+        background-color: ${(props) =>
+            props.$active
+                ? "var(--primary-button-color-hover)"
+                : "var(--secondary-button-color-active)"};
+    }
 
     &:first-of-type {
         border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm);
