@@ -784,12 +784,12 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id
 ) VALUES (
-    'mmr_1on1_1200', 
+    'mmr_1on1_1100', 
     'Rising Talent (1on1)', 
-    'Reach 1200 MMR in 1on1 mode',
+    'Reach 1100 MMR in 1on1 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 1200, "filters": {"gamemode": "1on1"}}',
+    '{"type": "threshold", "metric": "mmr", "target": 1100, "filters": {"gamemode": "1on1"}}',
     50,
     1,
     false,
@@ -801,13 +801,31 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'mmr_1on1_1300', 
+    'mmr_1on1_1200', 
     'Skilled Player (1on1)', 
+    'Reach 1200 MMR in 1on1 mode',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "mmr", "target": 1200, "filters": {"gamemode": "1on1"}}',
+    100,
+    1,
+    false,
+    false,
+    1,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_1on1_1100' AND kicker_id = 1)
+) ON CONFLICT (key, kicker_id) DO NOTHING;
+
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
+) VALUES (
+    'mmr_1on1_1300', 
+    'Expert (1on1)', 
     'Reach 1300 MMR in 1on1 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
     '{"type": "threshold", "metric": "mmr", "target": 1300, "filters": {"gamemode": "1on1"}}',
-    100,
+    200,
     1,
     false,
     false,
@@ -819,13 +837,13 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'mmr_1on1_1500', 
-    'Expert (1on1)', 
-    'Reach 1500 MMR in 1on1 mode',
+    'mmr_1on1_1400', 
+    'Elite (1on1)', 
+    'Reach 1400 MMR in 1on1 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 1500, "filters": {"gamemode": "1on1"}}',
-    200,
+    '{"type": "threshold", "metric": "mmr", "target": 1400, "filters": {"gamemode": "1on1"}}',
+    400,
     1,
     false,
     false,
@@ -837,36 +855,18 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'mmr_1on1_1750', 
-    'Elite (1on1)', 
-    'Reach 1750 MMR in 1on1 mode',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
-    'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 1750, "filters": {"gamemode": "1on1"}}',
-    400,
-    1,
-    false,
-    false,
-    1,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_1on1_1500' AND kicker_id = 1)
-) ON CONFLICT (key, kicker_id) DO NOTHING;
-
-INSERT INTO kopecht.achievement_definitions (
-    key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
-) VALUES (
-    'mmr_1on1_2000', 
+    'mmr_1on1_1500', 
     'Grandmaster (1on1)', 
-    'Reach 2000 MMR in 1on1 mode',
+    'Reach 1500 MMR in 1on1 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 2000, "filters": {"gamemode": "1on1"}}',
+    '{"type": "threshold", "metric": "mmr", "target": 1500, "filters": {"gamemode": "1on1"}}',
     1000,
     1,
     false,
     false,
     1,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_1on1_1750' AND kicker_id = 1)
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_1on1_1400' AND kicker_id = 1)
 ) ON CONFLICT (key, kicker_id) DO NOTHING;
 
 
@@ -878,12 +878,12 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id
 ) VALUES (
-    'mmr_2on2_1200', 
+    'mmr_2on2_1100', 
     'Rising Talent (2on2)', 
-    'Reach 1200 MMR in 2on2 mode',
+    'Reach 1100 MMR in 2on2 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 1200, "filters": {"gamemode": "2on2"}}',
+    '{"type": "threshold", "metric": "mmr", "target": 1100, "filters": {"gamemode": "2on2"}}',
     50,
     1,
     false,
@@ -895,13 +895,31 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'mmr_2on2_1300', 
+    'mmr_2on2_1200', 
     'Skilled Player (2on2)', 
+    'Reach 1200 MMR in 2on2 mode',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "mmr", "target": 1200, "filters": {"gamemode": "2on2"}}',
+    100,
+    1,
+    false,
+    false,
+    1,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_2on2_1100' AND kicker_id = 1)
+) ON CONFLICT (key, kicker_id) DO NOTHING;
+
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
+) VALUES (
+    'mmr_2on2_1300', 
+    'Expert (2on2)', 
     'Reach 1300 MMR in 2on2 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
     '{"type": "threshold", "metric": "mmr", "target": 1300, "filters": {"gamemode": "2on2"}}',
-    100,
+    200,
     1,
     false,
     false,
@@ -913,13 +931,13 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'mmr_2on2_1500', 
-    'Expert (2on2)', 
-    'Reach 1500 MMR in 2on2 mode',
+    'mmr_2on2_1400', 
+    'Elite (2on2)', 
+    'Reach 1400 MMR in 2on2 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 1500, "filters": {"gamemode": "2on2"}}',
-    200,
+    '{"type": "threshold", "metric": "mmr", "target": 1400, "filters": {"gamemode": "2on2"}}',
+    400,
     1,
     false,
     false,
@@ -931,36 +949,18 @@ INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
 ) VALUES (
-    'mmr_2on2_1750', 
-    'Elite (2on2)', 
-    'Reach 1750 MMR in 2on2 mode',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
-    'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 1750, "filters": {"gamemode": "2on2"}}',
-    400,
-    1,
-    false,
-    false,
-    1,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_2on2_1500' AND kicker_id = 1)
-) ON CONFLICT (key, kicker_id) DO NOTHING;
-
-INSERT INTO kopecht.achievement_definitions (
-    key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, kicker_id, parent_id
-) VALUES (
-    'mmr_2on2_2000', 
+    'mmr_2on2_1500', 
     'Grandmaster (2on2)', 
-    'Reach 2000 MMR in 2on2 mode',
+    'Reach 1500 MMR in 2on2 mode',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'skill' AND kicker_id = 1),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "mmr", "target": 2000, "filters": {"gamemode": "2on2"}}',
+    '{"type": "threshold", "metric": "mmr", "target": 1500, "filters": {"gamemode": "2on2"}}',
     1000,
     1,
     false,
     false,
     1,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_2on2_1750' AND kicker_id = 1)
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'mmr_2on2_1400' AND kicker_id = 1)
 ) ON CONFLICT (key, kicker_id) DO NOTHING;
 
 
