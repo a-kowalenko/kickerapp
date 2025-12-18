@@ -6,6 +6,7 @@ import { getPlayerAchievements } from "../../services/apiAchievements";
 import { useKicker } from "../../contexts/KickerContext";
 import { usePlayerName } from "./usePlayerName";
 import Spinner from "../../ui/Spinner";
+import AchievementsSummary from "../achievements/AchievementsSummary";
 import { media } from "../../utils/constants";
 
 const Container = styled.div`
@@ -19,51 +20,6 @@ const EmptyMessage = styled.p`
     font-size: 1.6rem;
     color: var(--tertiary-text-color);
     padding: 4rem 2rem;
-`;
-
-const SummaryCard = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3rem;
-    padding: 2rem;
-    background: linear-gradient(
-        135deg,
-        var(--color-brand-50) 0%,
-        var(--color-brand-100) 100%
-    );
-    border-radius: var(--border-radius-md);
-    border: 1px solid var(--color-brand-200);
-
-    ${media.mobile} {
-        flex-direction: column;
-        gap: 1.5rem;
-        padding: 1.5rem;
-    }
-`;
-
-const StatItem = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-`;
-
-const StatValue = styled.span`
-    font-size: 3rem;
-    font-weight: 700;
-    color: var(--color-brand-700);
-
-    ${media.mobile} {
-        font-size: 2.4rem;
-    }
-`;
-
-const StatLabel = styled.span`
-    font-size: 1.3rem;
-    color: var(--color-grey-600);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 `;
 
 const AchievementCard = styled.div`
@@ -248,16 +204,11 @@ function ProfileAchievements() {
 
     return (
         <Container>
-            <SummaryCard>
-                <StatItem>
-                    <StatValue>{totalUnlocked}</StatValue>
-                    <StatLabel>Achievements</StatLabel>
-                </StatItem>
-                <StatItem>
-                    <StatValue>{totalPoints}</StatValue>
-                    <StatLabel>Total Points</StatLabel>
-                </StatItem>
-            </SummaryCard>
+            <AchievementsSummary
+                totalPoints={totalPoints}
+                totalUnlocked={totalUnlocked}
+                totalAchievements={totalUnlocked}
+            />
 
             {Object.entries(groupedByCategory).map(
                 ([key, { name, icon, achievements: categoryAchievements }]) => (

@@ -4,17 +4,15 @@ import { media } from "../../utils/constants";
 
 const Container = styled.div`
     display: flex;
-    justify-content: space-between;
+    /* justify-content: space-between; */
     align-items: center;
     padding: 2rem 2.4rem;
-    background: linear-gradient(
-        135deg,
-        var(--color-brand-50) 0%,
-        var(--color-brand-100) 100%
-    );
-    border: 1px solid var(--color-brand-200);
+    background-color: var(--color-grey-0);
+    border: 1px solid var(--secondary-border-color);
     border-radius: var(--border-radius-md);
     margin-bottom: 2rem;
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
+    gap: 4rem;
 
     ${media.mobile} {
         flex-direction: column;
@@ -42,7 +40,7 @@ const Stat = styled.div`
 const StatValue = styled.span`
     font-size: 2.4rem;
     font-weight: 700;
-    color: var(--color-brand-700);
+    color: var(--primary-text-color);
 
     ${media.mobile} {
         font-size: 2rem;
@@ -51,7 +49,7 @@ const StatValue = styled.span`
 
 const StatLabel = styled.span`
     font-size: 1.2rem;
-    color: var(--color-brand-600);
+    color: var(--primary-text-color);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 `;
@@ -61,9 +59,9 @@ const PointsDisplay = styled.div`
     align-items: center;
     gap: 1rem;
     padding: 1.2rem 2rem;
-    background-color: var(--color-brand-600);
+    background-color: var(--primary-button-color);
     border-radius: var(--border-radius-md);
-    color: white;
+    color: var(--primary-button-color-text);
 
     & svg {
         width: 2.4rem;
@@ -93,21 +91,6 @@ function AchievementsSummary({
 
     return (
         <Container>
-            <StatsGroup>
-                <Stat>
-                    <StatValue>{totalUnlocked}</StatValue>
-                    <StatLabel>Unlocked</StatLabel>
-                </Stat>
-                <Stat>
-                    <StatValue>{totalAchievements}</StatValue>
-                    <StatLabel>Total</StatLabel>
-                </Stat>
-                <Stat>
-                    <StatValue>{completionPercent}%</StatValue>
-                    <StatLabel>Complete</StatLabel>
-                </Stat>
-            </StatsGroup>
-
             <PointsDisplay>
                 <HiOutlineTrophy />
                 <div
@@ -121,6 +104,18 @@ function AchievementsSummary({
                     <PointsLabel>Achievement Points</PointsLabel>
                 </div>
             </PointsDisplay>
+            <StatsGroup>
+                <Stat>
+                    <StatValue>
+                        {totalUnlocked} / {totalAchievements}
+                    </StatValue>
+                    <StatLabel>Unlocked</StatLabel>
+                </Stat>
+                <Stat>
+                    <StatValue>{completionPercent}%</StatValue>
+                    <StatLabel>Complete</StatLabel>
+                </Stat>
+            </StatsGroup>
         </Container>
     );
 }

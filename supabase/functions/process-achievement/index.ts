@@ -60,6 +60,16 @@ interface SeasonRecord {
     end_date: string | null;
 }
 
+interface PlayerAchievementRecord {
+    id: number;
+    player_id: number;
+    achievement_id: number;
+    unlocked_at: string;
+    times_completed: number;
+    season_id: number | null;
+    match_id: number | null;
+}
+
 interface AchievementDefinition {
     id: number;
     key: string;
@@ -180,6 +190,13 @@ serve(async (req) => {
                     payload as WebhookPayload & {
                         record: SeasonRecord;
                         old_record: SeasonRecord | null;
+                    }
+                );
+            case "player_achievements":
+                return await handleAchievementUnlocked(
+                    supabase,
+                    payload as WebhookPayload & {
+                        record: PlayerAchievementRecord;
                     }
                 );
             default:
@@ -647,6 +664,183 @@ async function handleSeasonEnded(
         success: true,
         event: "SEASON_ENDED",
         seasonId: season.id,
+        results,
+    });
+}
+
+// ============== ACHIEVEMENT UNLOCKED HANDLER ==============
+
+async function handleAchievementUnlocked(
+    supabase: any,
+    payload: WebhookPayload & {
+        record: PlayerAchievementRecord;
+    }
+): Promise<Response> {
+    // Only process INSERTs (new achievements)
+    if (payload.type !== "INSERT") {
+        return jsonResponse({ message: "Not an INSERT, skipping" });
+    }
+
+    const playerAchievement = payload.record;
+    const playerId = playerAchievement.player_id;
+    const unlockedAchievementId = playerAchievement.achievement_id;
+
+    console.log(
+        `Processing ACHIEVEMENT_UNLOCKED for player ${playerId}, achievement ${unlockedAchievementId}`
+    );
+
+    // First, get the achievement that was just unlocked to find the kicker_id
+    const { data: unlockedAchievement, error: unlockedError } = await supabase
+        .from("achievement_definitions")
+        .select("kicker_id")
+        .eq("id", unlockedAchievementId)
+        .single();
+
+    if (unlockedError || !unlockedAchievement) {
+        console.error("Error fetching unlocked achievement:", unlockedError);
+        return jsonResponse({ message: "Could not find unlocked achievement" });
+    }
+
+    const kickerId = unlockedAchievement.kicker_id;
+
+    // Get all ACHIEVEMENT_UNLOCKED achievements for this kicker
+    const { data: achievements, error: achievementsError } = await supabase
+        .from("achievement_definitions")
+        .select("*")
+        .eq("kicker_id", kickerId)
+        .eq("trigger_event", "ACHIEVEMENT_UNLOCKED");
+
+    if (achievementsError) {
+        console.error("Error fetching achievements:", achievementsError);
+        throw achievementsError;
+    }
+
+    if (!achievements || achievements.length === 0) {
+        return jsonResponse({
+            message: "No ACHIEVEMENT_UNLOCKED achievements to process",
+        });
+    }
+
+    console.log(
+        `Found ${achievements.length} ACHIEVEMENT_UNLOCKED achievements to evaluate`
+    );
+
+    // Count total achievements unlocked by this player
+    const { count: totalUnlocked, error: countError } = await supabase
+        .from("player_achievements")
+        .select("*", { count: "exact", head: true })
+        .eq("player_id", playerId);
+
+    if (countError) {
+        console.error("Error counting achievements:", countError);
+        throw countError;
+    }
+
+    console.log(
+        `Player ${playerId} has ${totalUnlocked} achievements unlocked`
+    );
+
+    // Get total achievement count for "all_achievements" metric
+    const { count: totalAchievements, error: totalError } = await supabase
+        .from("achievement_definitions")
+        .select("*", { count: "exact", head: true })
+        .eq("kicker_id", kickerId)
+        .neq("trigger_event", "ACHIEVEMENT_UNLOCKED"); // Don't count meta-achievements
+
+    if (totalError) {
+        console.error("Error counting total achievements:", totalError);
+        throw totalError;
+    }
+
+    console.log(`Total achievements for kicker: ${totalAchievements}`);
+
+    // Get already unlocked map for this player
+    const unlockedMap = await getUnlockedMap(supabase, [playerId]);
+
+    const results: Array<{
+        playerId: number;
+        achievementId: number;
+        action: string;
+    }> = [];
+
+    for (const achievement of achievements as AchievementDefinition[]) {
+        // Don't let meta-achievements trigger themselves
+        if (achievement.id === unlockedAchievementId) {
+            continue;
+        }
+
+        // Check if parent achievement is unlocked
+        if (achievement.parent_id) {
+            const parentKey = `${playerId}-${achievement.parent_id}`;
+            if (!unlockedMap.has(parentKey)) {
+                continue;
+            }
+        }
+
+        // Check if already unlocked
+        const alreadyUnlocked = unlockedMap.has(
+            `${playerId}-${achievement.id}`
+        );
+        if (alreadyUnlocked && !achievement.is_repeatable) {
+            continue;
+        }
+
+        // Evaluate condition
+        const condition = achievement.condition as AchievementCondition;
+        let conditionMet = false;
+        let increment = 1;
+
+        if (condition.metric === "achievements_unlocked") {
+            // Counter type: track total achievements
+            const target = condition.target || 0;
+            if (condition.type === "counter") {
+                // Always increment by 1 for each unlock
+                conditionMet = true;
+                increment = 1;
+            } else if (condition.type === "threshold") {
+                conditionMet = (totalUnlocked || 0) >= target;
+            }
+        } else if (condition.metric === "all_achievements") {
+            // Check if player has all non-meta achievements
+            // totalUnlocked - 1 because we don't count the current meta achievement being checked
+            // But we need to count achievements excluding ACHIEVEMENT_UNLOCKED trigger
+            const nonMetaUnlockedCount = totalUnlocked || 0;
+            conditionMet = nonMetaUnlockedCount >= (totalAchievements || 0);
+            console.log(
+                `Completionist check: ${nonMetaUnlockedCount} unlocked vs ${totalAchievements} total`
+            );
+        }
+
+        if (conditionMet) {
+            const result = await updateProgress(
+                supabase,
+                playerId,
+                achievement,
+                playerAchievement.season_id,
+                playerAchievement.match_id,
+                alreadyUnlocked,
+                increment
+            );
+            results.push({
+                playerId,
+                achievementId: achievement.id,
+                action: result,
+            });
+
+            if (result === "unlocked") {
+                unlockedMap.set(`${playerId}-${achievement.id}`, true);
+            }
+        }
+    }
+
+    console.log("ACHIEVEMENT_UNLOCKED processing results:", results);
+
+    return jsonResponse({
+        success: true,
+        event: "ACHIEVEMENT_UNLOCKED",
+        playerId,
+        unlockedAchievementId,
+        totalUnlocked,
         results,
     });
 }
