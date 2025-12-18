@@ -1136,7 +1136,7 @@ INSERT INTO kopecht.achievement_definitions (
     '{"type": "threshold", "metric": "season_rank", "target": 1}',
     500,
     1,
-    true,
+    false,
     false,
     1
 ) ON CONFLICT (key, kicker_id) DO NOTHING;
