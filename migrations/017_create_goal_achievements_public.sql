@@ -23,7 +23,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'bambini' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_1on1_10' AND kicker_id = 1)
 );
 
 -- Scharfschütze - 500 goals in 1on1
@@ -42,7 +42,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'torjaeger_1on1' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_1on1_100' AND kicker_id = 1)
 );
 
 -- Tormaschine - 1000 goals in 1on1
@@ -61,7 +61,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'scharfschuetze_1on1' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_1on1_500' AND kicker_id = 1)
 );
 
 -- Solo-Legende - 2500 goals in 1on1
@@ -80,7 +80,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'tormaschine_1on1' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_1on1_1000' AND kicker_id = 1)
 );
 
 -- Einzelkämpfer - 5000 goals in 1on1
@@ -99,7 +99,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'solo_legende' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_1on1_2500' AND kicker_id = 1)
 );
 
 -- ============================================
@@ -140,7 +140,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'teamplayer' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_2on2_10' AND kicker_id = 1)
 );
 
 -- Team-Kanone - 500 goals in 2on2
@@ -159,7 +159,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'doppelpacker' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_2on2_100' AND kicker_id = 1)
 );
 
 -- Duo-Dynamo - 1000 goals in 2on2
@@ -178,7 +178,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'team_kanone' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_2on2_500' AND kicker_id = 1)
 );
 
 -- Team-Legende - 2500 goals in 2on2
@@ -197,7 +197,7 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'duo_dynamo' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_2on2_1000' AND kicker_id = 1)
 );
 
 -- Duo-Gott - 5000 goals in 2on2
@@ -216,5 +216,5 @@ INSERT INTO public.achievement_definitions (
     false,
     false,
     1,
-    (SELECT id FROM public.achievement_definitions WHERE key = 'team_legende' AND kicker_id = 1)
+    (SELECT id FROM public.achievement_definitions WHERE key = 'goals_2on2_2500' AND kicker_id = 1)
 );
