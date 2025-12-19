@@ -928,8 +928,12 @@ BEGIN
       -- Ausführen des Queries und Speichern des Ergebnisses
       EXECUTE max_id_query INTO max_id_result;
       
-      -- Sequenz aktualisieren; Wenn keine IDs vorhanden, auf 1 setzen
-      EXECUTE 'SELECT setval(''' || 'kopecht.' || seq_name || ''', ' || max_id_result || ', true)';
+      -- Sequenz aktualisieren; Wenn keine IDs vorhanden, auf 1 setzen (false = nächster Wert ist 1)
+      IF max_id_result = 0 THEN
+        EXECUTE 'SELECT setval(''' || 'kopecht.' || seq_name || ''', 1, false)';
+      ELSE
+        EXECUTE 'SELECT setval(''' || 'kopecht.' || seq_name || ''', ' || max_id_result || ', true)';
+      END IF;
     END IF;
   END LOOP;
 

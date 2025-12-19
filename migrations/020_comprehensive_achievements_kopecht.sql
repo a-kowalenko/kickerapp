@@ -1123,23 +1123,6 @@ INSERT INTO kopecht.achievement_definitions (
     1
 ) ON CONFLICT (key, kicker_id) DO NOTHING;
 
--- Season Champion
-INSERT INTO kopecht.achievement_definitions (
-    key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, kicker_id
-) VALUES (
-    'season_champion', 
-    'Season Champion', 
-    'Finish a season in 1st place',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'season' AND kicker_id = 1),
-    'SEASON_ENDED',
-    '{"type": "threshold", "metric": "season_rank", "target": 1}',
-    500,
-    1,
-    false,
-    false,
-    1
-) ON CONFLICT (key, kicker_id) DO NOTHING;
 
 -- Undefeated Season
 INSERT INTO kopecht.achievement_definitions (

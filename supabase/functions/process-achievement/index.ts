@@ -96,6 +96,11 @@ interface AchievementCondition {
         opponent_mmr?: { min?: number; max?: number };
         duration_seconds?: { min?: number; max?: number };
         goal_type?: string;
+        final_score?: string; // e.g. "10-0", "10-9"
+        time_before?: string; // e.g. "09:00" - match must end before this time
+        time_after?: string; // e.g. "17:00" - match must end after this time
+        day_of_week?: string; // e.g. "wednesday"
+        both_scores?: number; // For own_goal_at_score when both teams have this score
     };
     streak_condition?: {
         result: "win" | "loss";
@@ -131,6 +136,9 @@ interface PlayerGoalContext {
     amount: number;
     secondsSinceMatchStart: number; // Added for early goal detection
     goalTimestamps?: number[]; // All goal timestamps in this match for goals_in_timeframe
+    scoreTeam1BeforeGoal: number; // Score before this goal was scored
+    scoreTeam2BeforeGoal: number;
+    playerTeam: 1 | 2; // Which team the player is on
 }
 
 interface MatchGoalStats {
@@ -394,14 +402,52 @@ async function handleGoalScored(
         `Found ${achievements.length} GOAL_SCORED achievements to evaluate`
     );
 
-    // Get the match to find the season_id and start time
+    // Get the match to find the season_id, start time, and player teams
     const { data: match } = await supabase
         .from("matches")
-        .select("season_id, created_at")
+        .select("season_id, created_at, player1, player2, player3, player4")
         .eq("id", goal.match_id)
         .single();
 
     const seasonId = match?.season_id || null;
+
+    // Determine which team the player is on
+    let playerTeam: 1 | 2 = 1;
+    if (match) {
+        if (
+            goal.player_id === match.player1 ||
+            goal.player_id === match.player3
+        ) {
+            playerTeam = 1;
+        } else if (
+            goal.player_id === match.player2 ||
+            goal.player_id === match.player4
+        ) {
+            playerTeam = 2;
+        }
+    }
+
+    // Calculate scores BEFORE this goal was scored
+    // The goal record contains the score AFTER the goal
+    let scoreTeam1BeforeGoal = goal.scoreTeam1;
+    let scoreTeam2BeforeGoal = goal.scoreTeam2;
+
+    // Adjust based on goal type and which team scored
+    if (goal.goal_type === "own_goal") {
+        // Own goal: goal goes to the opposing team
+        if (playerTeam === 1) {
+            scoreTeam2BeforeGoal -= goal.amount;
+        } else {
+            scoreTeam1BeforeGoal -= goal.amount;
+        }
+    } else {
+        // Standard goal: goes to the player's team
+        if (goal.team === 1) {
+            scoreTeam1BeforeGoal -= goal.amount;
+        } else {
+            scoreTeam2BeforeGoal -= goal.amount;
+        }
+    }
 
     // Calculate seconds since match start for early goal detection
     const goalTime = new Date(goal.created_at).getTime();
@@ -437,6 +483,9 @@ async function handleGoalScored(
         amount: goal.amount,
         secondsSinceMatchStart,
         goalTimestamps, // All goal timestamps in this match for this player
+        scoreTeam1BeforeGoal,
+        scoreTeam2BeforeGoal,
+        playerTeam,
     };
 
     // Get existing unlocked achievements
@@ -509,6 +558,54 @@ async function handleGoalScored(
         );
 
         if (conditionMet) {
+            // Special handling for own_goals_in_day - check actual count from DB
+            if (achievement.condition.metric === "own_goals_in_day") {
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                const { data: ownGoalsToday, error: countError } =
+                    await supabase
+                        .from("goals")
+                        .select("id", { count: "exact" })
+                        .eq("player_id", goal.player_id)
+                        .eq("kicker_id", goal.kicker_id)
+                        .eq("goal_type", "own_goal")
+                        .gte("created_at", todayStart.toISOString());
+
+                const ownGoalCount = ownGoalsToday?.length || 0;
+                const target = achievement.condition.target || 5;
+
+                console.log(
+                    `[own_goals_in_day] Player ${goal.player_id}: ${ownGoalCount} own goals today, target: ${target}`
+                );
+
+                if (ownGoalCount >= target && !alreadyUnlocked) {
+                    // Award the achievement directly
+                    const result = await awardAchievementDirectly(
+                        supabase,
+                        goal.player_id,
+                        achievement,
+                        seasonId,
+                        goal.match_id,
+                        alreadyUnlocked
+                    );
+                    results.push({
+                        playerId: goal.player_id,
+                        achievementId: achievement.id,
+                        action: result,
+                    });
+
+                    if (result === "unlocked") {
+                        unlockedMap.set(
+                            `${goal.player_id}-${achievement.id}`,
+                            true
+                        );
+                        newlyUnlockedInThisIteration.add(achievement.id);
+                    }
+                }
+                continue; // Skip normal progress update
+            }
+
             const result = await updateProgress(
                 supabase,
                 goal.player_id,
@@ -812,7 +909,7 @@ async function handleAchievementUnlocked(
         }
 
         if (conditionMet) {
-            const result = await updateProgress(
+            const result = await updateProgressWithAmount(
                 supabase,
                 playerId,
                 achievement,
@@ -1377,6 +1474,92 @@ function evaluateMatchCondition(
             return false;
     }
 
+    // Check final_score filter (e.g. "10-0", "10-9")
+    if (filters.final_score) {
+        const [winnerScore, loserScore] = filters.final_score
+            .split("-")
+            .map(Number);
+        const playerWon = ctx.isWinner;
+        const playerTeamScore =
+            ctx.team === 1 ? ctx.match.scoreTeam1 : ctx.match.scoreTeam2;
+        const opponentTeamScore =
+            ctx.team === 1 ? ctx.match.scoreTeam2 : ctx.match.scoreTeam1;
+
+        // Check if the score matches (winner score - loser score)
+        if (playerWon) {
+            if (
+                playerTeamScore !== winnerScore ||
+                opponentTeamScore !== loserScore
+            ) {
+                return false;
+            }
+        } else {
+            // If player lost, they can't match a winning score pattern
+            return false;
+        }
+    }
+
+    // Check time_before filter (match must have ended before this time of day)
+    if (filters.time_before) {
+        const matchEndTime = ctx.match.end_time
+            ? new Date(ctx.match.end_time)
+            : new Date();
+        const [targetHour, targetMin] = filters.time_before
+            .split(":")
+            .map(Number);
+        const matchHour = matchEndTime.getHours();
+        const matchMin = matchEndTime.getMinutes();
+
+        // Match must be before the target time
+        if (
+            matchHour > targetHour ||
+            (matchHour === targetHour && matchMin >= targetMin)
+        ) {
+            return false;
+        }
+    }
+
+    // Check time_after filter (match must have ended after this time of day)
+    if (filters.time_after) {
+        const matchEndTime = ctx.match.end_time
+            ? new Date(ctx.match.end_time)
+            : new Date();
+        const [targetHour, targetMin] = filters.time_after
+            .split(":")
+            .map(Number);
+        const matchHour = matchEndTime.getHours();
+        const matchMin = matchEndTime.getMinutes();
+
+        // Match must be after the target time
+        if (
+            matchHour < targetHour ||
+            (matchHour === targetHour && matchMin < targetMin)
+        ) {
+            return false;
+        }
+    }
+
+    // Check day_of_week filter
+    if (filters.day_of_week) {
+        const matchEndTime = ctx.match.end_time
+            ? new Date(ctx.match.end_time)
+            : new Date();
+        const dayNames = [
+            "sunday",
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+        ];
+        const matchDay = dayNames[matchEndTime.getDay()];
+
+        if (matchDay !== filters.day_of_week.toLowerCase()) {
+            return false;
+        }
+    }
+
     // For counter/threshold types with metrics
     if (condition.type === "counter" || condition.type === "threshold") {
         const metric = condition.metric;
@@ -1470,6 +1653,26 @@ function evaluateMatchCondition(
                 }
                 return false;
 
+            case "perfect_wins":
+                // Win with score 10-0 (counter version)
+                // The final_score filter should already be applied, so just check win
+                return ctx.isWinner;
+
+            case "matches_before_time":
+                // Play a match that ends before a certain time
+                // The time_before filter should already be applied, so just return true
+                return true;
+
+            case "matches_after_time":
+                // Play a match that ends after a certain time
+                // The time_after filter should already be applied, so just return true
+                return true;
+
+            case "matches_in_time_window":
+                // Play a match within a specific time window (day + time range)
+                // The day_of_week, time_after, time_before filters should already be applied
+                return true;
+
             default:
                 return true;
         }
@@ -1548,6 +1751,16 @@ function evaluateGoalCondition(
         return false;
     }
 
+    // Check both_scores filter (for own_goal at specific score like 0-0)
+    if (filters.both_scores !== undefined) {
+        if (
+            ctx.scoreTeam1BeforeGoal !== filters.both_scores ||
+            ctx.scoreTeam2BeforeGoal !== filters.both_scores
+        ) {
+            return false;
+        }
+    }
+
     // For goals, the metric should be "goals"
     if (condition.type === "counter" || condition.type === "threshold") {
         const metric = condition.metric;
@@ -1564,6 +1777,29 @@ function evaluateGoalCondition(
                     ctx.goalType !== "own_goal" &&
                     ctx.secondsSinceMatchStart <= target
                 );
+
+            case "first_blood_goals":
+                // First goal of the match (score was 0-0 before this goal)
+                // Must be a standard goal (not own goal)
+                return (
+                    ctx.goalType !== "own_goal" &&
+                    ctx.scoreTeam1BeforeGoal === 0 &&
+                    ctx.scoreTeam2BeforeGoal === 0
+                );
+
+            case "own_goal_at_score":
+                // Own goal at a specific score
+                // target is the player's team score before the own goal
+                if (ctx.goalType !== "own_goal") return false;
+                const playerTeamScoreBefore =
+                    ctx.playerTeam === 1
+                        ? ctx.scoreTeam1BeforeGoal
+                        : ctx.scoreTeam2BeforeGoal;
+                return playerTeamScoreBefore === target;
+
+            case "own_goals_in_day":
+                // This is tracked via counter - just check it's an own goal
+                return ctx.goalType === "own_goal";
 
             case "goals_in_timeframe":
                 // Check if player scored at least 'target' goals within 'timeframe_seconds'
