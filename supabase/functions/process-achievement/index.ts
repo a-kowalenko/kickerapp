@@ -101,6 +101,7 @@ interface AchievementCondition {
         time_after?: string; // e.g. "17:00" - match must end after this time
         day_of_week?: string; // e.g. "wednesday"
         both_scores?: number; // For own_goal_at_score when both teams have this score
+        opponent_score?: number; // For own_goal_at_score with specific opponent score
     };
     streak_condition?: {
         result: "win" | "loss";
