@@ -438,7 +438,7 @@ function AchievementForm({ achievement, categories, achievements, onClose }) {
                                 onChange={handleChange}
                             />
                             <Label htmlFor="isHidden">
-                                Hidden (only visible after unlock)
+                                Secret (only visible after unlock)
                             </Label>
                         </CheckboxRow>
 

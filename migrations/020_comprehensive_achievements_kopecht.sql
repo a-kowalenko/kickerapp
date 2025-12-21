@@ -57,7 +57,7 @@ ON CONFLICT (key, kicker_id) DO NOTHING;
 
 -- Hidden Category (for hidden/joke achievements)
 INSERT INTO kopecht.achievement_categories (key, name, description, icon, sort_order, kicker_id)
-VALUES ('hidden', 'Hidden', 'Secret achievements', '🔮', 99, 1)
+VALUES ('secret', 'Secret', 'Secret achievements', '🔮', 99, 1)
 ON CONFLICT (key, kicker_id) DO NOTHING;
 
 
@@ -1095,7 +1095,7 @@ INSERT INTO kopecht.achievement_definitions (
     'silent_partner', 
     'Silent Partner', 
     'Win a 2on2 match without scoring a single goal',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'MATCH_ENDED',
     '{"type": "threshold", "metric": "silent_win", "filters": {"gamemode": "2on2", "result": "win"}}',
     100,
@@ -1113,7 +1113,7 @@ INSERT INTO kopecht.achievement_definitions (
     'losing_streak_10', 
     'Persistence', 
     'Lose 10 matches in a row',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'MATCH_ENDED',
     '{"type": "streak", "streak_condition": {"result": "loss", "min_streak": 10}}',
     50,
@@ -1150,7 +1150,7 @@ INSERT INTO kopecht.achievement_definitions (
     'miracle_comeback', 
     'Miracle Comeback', 
     'Win a match after being down 0:9',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'MATCH_ENDED',
     '{"type": "threshold", "metric": "comeback", "target": 9, "filters": {"result": "win"}}',
     500,
@@ -1168,7 +1168,7 @@ INSERT INTO kopecht.achievement_definitions (
     'own_goal_hat_trick', 
     'Oops...', 
     'Score 3 own goals in a single match',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'MATCH_ENDED',
     '{"type": "threshold", "metric": "own_goals_in_match", "target": 3}',
     25,

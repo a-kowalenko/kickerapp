@@ -187,6 +187,18 @@ const HiddenBadge = styled.span`
     font-weight: 500;
 `;
 
+const ScopeBadge = styled.span`
+    font-size: 1rem;
+    padding: 0.2rem 0.6rem;
+    background-color: ${(props) =>
+        props.$isGlobal ? "var(--color-yellow-100)" : "var(--color-brand-100)"};
+    color: ${(props) =>
+        props.$isGlobal ? "var(--color-yellow-700)" : "var(--color-brand-700)"};
+    border-radius: var(--border-radius-sm);
+    text-transform: uppercase;
+    font-weight: 500;
+`;
+
 const UnlockedDate = styled.span`
     font-size: 1.2rem;
     color: var(--tertiary-text-color);
@@ -200,6 +212,7 @@ function AchievementCard({ achievement, compact = false }) {
         points,
         icon,
         is_hidden: isHidden,
+        is_season_specific: isSeasonSpecific,
         max_progress: maxProgress,
         currentProgress,
         isUnlocked,
@@ -241,13 +254,17 @@ function AchievementCard({ achievement, compact = false }) {
                             display: "flex",
                             alignItems: "center",
                             gap: "0.8rem",
+                            flexWrap: "wrap",
                         }}
                     >
                         <Name $isUnlocked={isUnlocked} $compact={compact}>
                             {name}
                         </Name>
                         {isHidden && !isUnlocked && (
-                            <HiddenBadge>Hidden</HiddenBadge>
+                            <HiddenBadge>Secret</HiddenBadge>
+                        )}
+                        {!compact && isSeasonSpecific === false && (
+                            <ScopeBadge $isGlobal={true}>All-Time</ScopeBadge>
                         )}
                     </div>
                     <Points $isUnlocked={isUnlocked}>
