@@ -1,11 +1,9 @@
 import { useQuery, useQueryClient } from "react-query";
 import { useEffect, useCallback } from "react";
-import { useKicker } from "../../contexts/KickerContext";
 import { getAchievementsWithProgress } from "../../services/apiAchievements";
 import supabase, { databaseSchema } from "../../services/supabase";
 
 export function useAchievementsWithProgress(playerId, seasonId = null) {
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
 
     const {
@@ -14,10 +12,9 @@ export function useAchievementsWithProgress(playerId, seasonId = null) {
         error,
         refetch,
     } = useQuery({
-        queryKey: ["achievementsWithProgress", playerId, kickerId, seasonId],
-        queryFn: () =>
-            getAchievementsWithProgress(playerId, kickerId, seasonId),
-        enabled: !!playerId && !!kickerId,
+        queryKey: ["achievementsWithProgress", playerId, seasonId],
+        queryFn: () => getAchievementsWithProgress(playerId, seasonId),
+        enabled: !!playerId,
     });
 
     // Memoized callback to avoid recreating on every render
@@ -35,7 +32,7 @@ export function useAchievementsWithProgress(playerId, seasonId = null) {
 
     // Subscribe to realtime progress updates
     useEffect(() => {
-        if (!playerId || !kickerId) return;
+        if (!playerId) return;
 
         // Create unique channel name
         const channelName = `achievement-progress-${playerId}-${Date.now()}`;
@@ -93,7 +90,7 @@ export function useAchievementsWithProgress(playerId, seasonId = null) {
             );
             supabase.removeChannel(channel);
         };
-    }, [playerId, kickerId, handleProgressUpdate]);
+    }, [playerId, handleProgressUpdate]);
 
     return { achievements, isLoading, error, refetch };
 }

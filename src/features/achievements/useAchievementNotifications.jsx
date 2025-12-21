@@ -2,14 +2,12 @@ import { useEffect, useState, useCallback } from "react";
 import { useQueryClient } from "react-query";
 import supabase, { databaseSchema } from "../../services/supabase";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
-import { useKicker } from "../../contexts/KickerContext";
 import { getAchievementDefinition } from "../../services/apiAchievements";
 
 const TOAST_DURATION = 6000; // 6 seconds
 
 function useAchievementNotifications() {
     const { data: player } = useOwnPlayer();
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
     const [toastQueue, setToastQueue] = useState([]);
     const [currentToast, setCurrentToast] = useState(null);
@@ -36,7 +34,7 @@ function useAchievementNotifications() {
 
     // Subscribe to player_achievements inserts
     useEffect(() => {
-        if (!player?.id || !kickerId) return;
+        if (!player?.id) return;
 
         const handleNewAchievement = async (payload) => {
             const { new: newAchievement } = payload;
@@ -97,7 +95,7 @@ function useAchievementNotifications() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [player?.id, kickerId, queryClient]);
+    }, [player?.id, queryClient]);
 
     return {
         currentToast,

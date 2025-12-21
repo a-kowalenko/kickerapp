@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "react-query";
-import { useKicker } from "../../contexts/KickerContext";
 import toast from "react-hot-toast";
 import {
     createAchievementDefinition,
@@ -8,15 +7,13 @@ import {
 } from "../../services/apiAchievements";
 
 export function useCreateAchievement() {
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
 
     const { mutate: createAchievement, isLoading } = useMutation({
-        mutationFn: (data) =>
-            createAchievementDefinition({ ...data, kickerId }),
+        mutationFn: (data) => createAchievementDefinition(data),
         onSuccess: () => {
             toast.success("Achievement created successfully");
-            queryClient.invalidateQueries(["achievementDefinitions", kickerId]);
+            queryClient.invalidateQueries(["achievementDefinitions"]);
         },
         onError: (error) => toast.error(error.message),
     });
@@ -25,7 +22,6 @@ export function useCreateAchievement() {
 }
 
 export function useUpdateAchievement() {
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
 
     const { mutate: updateAchievement, isLoading } = useMutation({
@@ -33,7 +29,7 @@ export function useUpdateAchievement() {
             updateAchievementDefinition(id, updates),
         onSuccess: () => {
             toast.success("Achievement updated successfully");
-            queryClient.invalidateQueries(["achievementDefinitions", kickerId]);
+            queryClient.invalidateQueries(["achievementDefinitions"]);
         },
         onError: (error) => toast.error(error.message),
     });
@@ -42,14 +38,13 @@ export function useUpdateAchievement() {
 }
 
 export function useDeleteAchievement() {
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
 
     const { mutate: deleteAchievement, isLoading } = useMutation({
         mutationFn: (id) => deleteAchievementDefinition(id),
         onSuccess: () => {
             toast.success("Achievement deleted successfully");
-            queryClient.invalidateQueries(["achievementDefinitions", kickerId]);
+            queryClient.invalidateQueries(["achievementDefinitions"]);
         },
         onError: (error) => toast.error(error.message),
     });

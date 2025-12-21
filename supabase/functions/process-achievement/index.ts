@@ -78,9 +78,9 @@ interface AchievementDefinition {
     condition: AchievementCondition;
     max_progress: number;
     is_repeatable: boolean;
+    is_season_specific: boolean;
     parent_id: number | null;
     season_id: number | null;
-    kicker_id: number;
     points: number;
 }
 
@@ -136,9 +136,15 @@ interface PlayerGoalContext {
     amount: number;
     secondsSinceMatchStart: number; // Added for early goal detection
     goalTimestamps?: number[]; // All goal timestamps in this match for goals_in_timeframe
-    scoreTeam1BeforeGoal: number; // Score before this goal was scored
+    scoreTeam1BeforeGoal: number; // Score before this goal was scored (primary calculation)
     scoreTeam2BeforeGoal: number;
     playerTeam: 1 | 2; // Which team the player is on
+    // For own goals when own team is at 0, there are two possible "before" states:
+    // Case 1: Own team was at 1, opponent unchanged
+    // Case 2: Own team was at 0, opponent had 1 less
+    ownGoalAmbiguous?: boolean; // True when own team score after = 0 (can't distinguish case 1 vs 2)
+    altScoreTeam1BeforeGoal?: number; // Alternative score (for Case 2)
+    altScoreTeam2BeforeGoal?: number;
 }
 
 interface MatchGoalStats {
@@ -240,11 +246,10 @@ async function handleMatchEnded(
 
     console.log(`Processing MATCH_ENDED achievements for match ${match.id}`);
 
-    // Get all MATCH_ENDED achievements for this kicker
+    // Get all MATCH_ENDED achievements (global - no kicker_id filter)
     const { data: achievements, error: achievementsError } = await supabase
         .from("achievement_definitions")
         .select("*")
-        .eq("kicker_id", match.kicker_id)
         .eq("trigger_event", "MATCH_ENDED");
 
     if (achievementsError) {
@@ -258,8 +263,23 @@ async function handleMatchEnded(
         });
     }
 
+    // Filter out season-specific achievements if match has no season_id
+    // Season-specific achievements should only be processed for matches within a season
+    const filteredAchievements = match.season_id
+        ? achievements
+        : achievements.filter(
+              (a: AchievementDefinition) => !a.is_season_specific
+          );
+
+    if (filteredAchievements.length === 0) {
+        return jsonResponse({
+            message:
+                "No applicable achievements (match has no season, skipping season-specific achievements)",
+        });
+    }
+
     console.log(
-        `Found ${achievements.length} MATCH_ENDED achievements to evaluate`
+        `Found ${filteredAchievements.length} MATCH_ENDED achievements to evaluate (filtered from ${achievements.length})`
     );
 
     // Get all players in this match
@@ -343,7 +363,7 @@ async function handleMatchEnded(
     const results = await processMatchAchievements(
         supabase,
         playerContexts,
-        achievements,
+        filteredAchievements,
         unlockedMap,
         match
     );
@@ -366,25 +386,45 @@ async function handleGoalScored(
 ): Promise<Response> {
     const goal = payload.record;
 
-    // Only process standard goals (not own goals, generated goals, or negative amounts)
-    if (goal.amount <= 0) {
-        return jsonResponse({ message: "Not a positive goal, skipping" });
-    }
-
     // Skip generated_goal - these are auto-generated and shouldn't trigger achievements
     if (goal.goal_type === "generated_goal") {
         return jsonResponse({ message: "Generated goal, skipping" });
     }
 
+    // Own goal system:
+    // - If own team > 0: own team loses 1 point (amount = -1)
+    // - If own team = 0: opponent team gains 1 point (amount = +1)
+    // Both cases are valid own goals and should be processed!
+    if (goal.goal_type === "own_goal") {
+        // Own goals can have amount = -1 (team loses point) OR amount = +1 (opponent gains point)
+        // Only skip if amount = 0 (removal/undo operation)
+        if (goal.amount === 0) {
+            return jsonResponse({ message: "Own goal removal/undo, skipping" });
+        }
+    } else {
+        // Standard goals should have positive amounts
+        if (goal.amount <= 0) {
+            return jsonResponse({ message: "Goal removal/undo, skipping" });
+        }
+    }
+
     console.log(
-        `Processing GOAL_SCORED achievements for goal ${goal.id}, player ${goal.player_id}`
+        `Processing GOAL_SCORED achievements for goal ${goal.id}, player ${goal.player_id}, type: ${goal.goal_type}, amount: ${goal.amount}`
     );
 
-    // Get all GOAL_SCORED achievements for this kicker
+    // Get the match to find the season_id, start time, and player teams
+    const { data: match } = await supabase
+        .from("matches")
+        .select("season_id, created_at, player1, player2, player3, player4")
+        .eq("id", goal.match_id)
+        .single();
+
+    const seasonId = match?.season_id || null;
+
+    // Get all GOAL_SCORED achievements (global - no kicker_id filter)
     const { data: achievements, error: achievementsError } = await supabase
         .from("achievement_definitions")
         .select("*")
-        .eq("kicker_id", goal.kicker_id)
         .eq("trigger_event", "GOAL_SCORED");
 
     if (achievementsError) {
@@ -398,18 +438,24 @@ async function handleGoalScored(
         });
     }
 
+    // Filter out season-specific achievements if match has no season_id
+    // Season-specific achievements should only be processed for matches within a season
+    const filteredAchievements = seasonId
+        ? achievements
+        : achievements.filter(
+              (a: AchievementDefinition) => !a.is_season_specific
+          );
+
+    if (filteredAchievements.length === 0) {
+        return jsonResponse({
+            message:
+                "No applicable achievements (match has no season, skipping season-specific achievements)",
+        });
+    }
+
     console.log(
-        `Found ${achievements.length} GOAL_SCORED achievements to evaluate`
+        `Found ${filteredAchievements.length} GOAL_SCORED achievements to evaluate (filtered from ${achievements.length})`
     );
-
-    // Get the match to find the season_id, start time, and player teams
-    const { data: match } = await supabase
-        .from("matches")
-        .select("season_id, created_at, player1, player2, player3, player4")
-        .eq("id", goal.match_id)
-        .single();
-
-    const seasonId = match?.season_id || null;
 
     // Determine which team the player is on
     let playerTeam: 1 | 2 = 1;
@@ -431,15 +477,42 @@ async function handleGoalScored(
     // The goal record contains the score AFTER the goal
     let scoreTeam1BeforeGoal = goal.scoreTeam1;
     let scoreTeam2BeforeGoal = goal.scoreTeam2;
+    let ownGoalAmbiguous = false;
+    let altScoreTeam1BeforeGoal: number | undefined;
+    let altScoreTeam2BeforeGoal: number | undefined;
 
     // Adjust based on goal type and which team scored
     if (goal.goal_type === "own_goal") {
-        // Own goal: goal goes to the opposing team
-        if (playerTeam === 1) {
-            scoreTeam2BeforeGoal -= goal.amount;
-        } else {
-            scoreTeam1BeforeGoal -= goal.amount;
+        // Own goal system:
+        // - If own team > 0: own team loses 1 point (Case 1, amount = -1)
+        // - If own team = 0: opponent team gains 1 point (Case 2, amount = +1)
+        //
+        // We can use the amount to determine which case:
+        // amount = -1 means own team lost a point (Case 1)
+        // amount = +1 means opponent gained a point (Case 2)
+
+        if (goal.amount < 0) {
+            // Case 1: Own team lost a point (amount = -1)
+            // Before: own team had current + 1
+            if (playerTeam === 1) {
+                scoreTeam1BeforeGoal = goal.scoreTeam1 + 1;
+                // scoreTeam2 unchanged
+            } else {
+                scoreTeam2BeforeGoal = goal.scoreTeam2 + 1;
+                // scoreTeam1 unchanged
+            }
+        } else if (goal.amount > 0) {
+            // Case 2: Opponent gained a point (amount = +1)
+            // Before: opponent had current - 1, own team unchanged at 0
+            if (playerTeam === 1) {
+                scoreTeam1BeforeGoal = 0; // Own team was at 0
+                scoreTeam2BeforeGoal = goal.scoreTeam2 - 1; // Opponent had 1 less
+            } else {
+                scoreTeam2BeforeGoal = 0; // Own team was at 0
+                scoreTeam1BeforeGoal = goal.scoreTeam1 - 1; // Opponent had 1 less
+            }
         }
+        // amount = 0 is already filtered out above
     } else {
         // Standard goal: goes to the player's team
         if (goal.team === 1) {
@@ -486,7 +559,31 @@ async function handleGoalScored(
         scoreTeam1BeforeGoal,
         scoreTeam2BeforeGoal,
         playerTeam,
+        ownGoalAmbiguous,
+        altScoreTeam1BeforeGoal,
+        altScoreTeam2BeforeGoal,
     };
+
+    // DEBUG: Log goal context for own goals
+    if (goal.goal_type === "own_goal") {
+        console.log(
+            `[DEBUG own_goal] Goal context:`,
+            JSON.stringify({
+                playerId: goalCtx.playerId,
+                goalType: goalCtx.goalType,
+                gamemode: goalCtx.gamemode,
+                playerTeam: goalCtx.playerTeam,
+                scoreTeam1BeforeGoal: goalCtx.scoreTeam1BeforeGoal,
+                scoreTeam2BeforeGoal: goalCtx.scoreTeam2BeforeGoal,
+                ownGoalAmbiguous: goalCtx.ownGoalAmbiguous,
+                altScoreTeam1BeforeGoal: goalCtx.altScoreTeam1BeforeGoal,
+                altScoreTeam2BeforeGoal: goalCtx.altScoreTeam2BeforeGoal,
+                goalScoreTeam1: goal.scoreTeam1,
+                goalScoreTeam2: goal.scoreTeam2,
+                goalAmount: goal.amount,
+            })
+        );
+    }
 
     // Get existing unlocked achievements
     const unlockedMap = await getUnlockedMap(supabase, [goal.player_id]);
@@ -500,7 +597,7 @@ async function handleGoalScored(
         action: string;
     }> = [];
 
-    for (const achievement of achievements as AchievementDefinition[]) {
+    for (const achievement of filteredAchievements as AchievementDefinition[]) {
         // Skip if season-specific and doesn't match
         if (achievement.season_id && achievement.season_id !== seasonId) {
             continue;
@@ -519,26 +616,31 @@ async function handleGoalScored(
                 continue;
             }
 
-            // If parent was JUST unlocked in this iteration, don't count this event for the child
-            // The child should start counting from the NEXT event
-            // But we DO need to initialize the child's progress with the parent's max_progress
+            // If parent was JUST unlocked in this iteration, initialize the child's progress
+            // with the parent's max_progress. The event that triggered the parent was already
+            // counted in parent's max_progress, so we should NOT count it again for the child.
             if (parentJustUnlocked) {
                 // Initialize child progress with parent's max_progress (carry over the count)
                 const parentAchievement = (
-                    achievements as AchievementDefinition[]
+                    filteredAchievements as AchievementDefinition[]
                 ).find((a) => a.id === achievement.parent_id);
                 if (parentAchievement) {
+                    // Determine season_id for the child achievement's progress
+                    const childProgressSeasonId = achievement.is_season_specific
+                        ? seasonId
+                        : null;
                     await initializeChainProgress(
                         supabase,
                         goal.player_id,
                         achievement.id,
-                        parentAchievement.max_progress
+                        parentAchievement.max_progress,
+                        childProgressSeasonId
                     );
                     console.log(
-                        `[Chain] Initialized child achievement ${achievement.id} with parent's max_progress: ${parentAchievement.max_progress}`
+                        `[Chain] Initialized child achievement ${achievement.id} with parent's max_progress: ${parentAchievement.max_progress}, season_id: ${childProgressSeasonId}`
                     );
                 }
-                // Skip counting this event for the child - it will count from next event
+                // Skip this event for the child - it was already counted in parent's progress
                 continue;
             }
         }
@@ -551,13 +653,85 @@ async function handleGoalScored(
             continue;
         }
 
+        // DEBUG: Log own_goal achievements being evaluated
+        if (
+            goal.goal_type === "own_goal" &&
+            achievement.condition.metric?.includes("own_goal")
+        ) {
+            console.log(
+                `[DEBUG own_goal] Evaluating achievement: ${achievement.key}`,
+                JSON.stringify({
+                    metric: achievement.condition.metric,
+                    target: achievement.condition.target,
+                    filters: achievement.condition.filters,
+                })
+            );
+        }
+
         // Evaluate goal condition
         const conditionMet = evaluateGoalCondition(
             achievement.condition,
             goalCtx
         );
 
+        // DEBUG: Log result for own_goal achievements
+        if (
+            goal.goal_type === "own_goal" &&
+            achievement.condition.metric?.includes("own_goal")
+        ) {
+            console.log(
+                `[DEBUG own_goal] ${achievement.key} conditionMet: ${conditionMet}`
+            );
+        }
+
         if (conditionMet) {
+            // Special handling for goals_in_day - check actual count from DB
+            if (achievement.condition.metric === "goals_in_day") {
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                const { data: goalsToday, error: countError } = await supabase
+                    .from("goals")
+                    .select("id", { count: "exact" })
+                    .eq("player_id", goal.player_id)
+                    .eq("kicker_id", goal.kicker_id)
+                    .neq("goal_type", "own_goal") // Only count regular goals, not own goals
+                    .gte("created_at", todayStart.toISOString());
+
+                const goalCount = goalsToday?.length || 0;
+                const target = achievement.condition.target || 25;
+
+                console.log(
+                    `[goals_in_day] Player ${goal.player_id}: ${goalCount} goals today, target: ${target}`
+                );
+
+                if (goalCount >= target && !alreadyUnlocked) {
+                    // Award the achievement directly
+                    const result = await awardAchievementDirectly(
+                        supabase,
+                        goal.player_id,
+                        achievement,
+                        seasonId,
+                        goal.match_id,
+                        alreadyUnlocked
+                    );
+                    results.push({
+                        playerId: goal.player_id,
+                        achievementId: achievement.id,
+                        action: result,
+                    });
+
+                    if (result === "unlocked") {
+                        unlockedMap.set(
+                            `${goal.player_id}-${achievement.id}`,
+                            true
+                        );
+                        newlyUnlockedInThisIteration.add(achievement.id);
+                    }
+                }
+                continue; // Skip normal progress update
+            }
+
             // Special handling for own_goals_in_day - check actual count from DB
             if (achievement.condition.metric === "own_goals_in_day") {
                 const todayStart = new Date();
@@ -659,11 +833,10 @@ async function handleSeasonEnded(
 
     console.log(`Processing SEASON_ENDED achievements for season ${season.id}`);
 
-    // Get all SEASON_ENDED achievements for this kicker
+    // Get all SEASON_ENDED achievements (global - no kicker_id filter)
     const { data: achievements, error: achievementsError } = await supabase
         .from("achievement_definitions")
         .select("*")
-        .eq("kicker_id", season.kicker_id)
         .eq("trigger_event", "SEASON_ENDED");
 
     if (achievementsError) {
@@ -786,10 +959,10 @@ async function handleAchievementUnlocked(
         `Processing ACHIEVEMENT_UNLOCKED for player ${playerId}, achievement ${unlockedAchievementId}`
     );
 
-    // First, get the achievement that was just unlocked to find the kicker_id
+    // First, get the achievement that was just unlocked to check if it's hidden
     const { data: unlockedAchievement, error: unlockedError } = await supabase
         .from("achievement_definitions")
-        .select("kicker_id")
+        .select("is_hidden")
         .eq("id", unlockedAchievementId)
         .single();
 
@@ -798,13 +971,12 @@ async function handleAchievementUnlocked(
         return jsonResponse({ message: "Could not find unlocked achievement" });
     }
 
-    const kickerId = unlockedAchievement.kicker_id;
+    const unlockedIsHidden = unlockedAchievement.is_hidden;
 
-    // Get all ACHIEVEMENT_UNLOCKED achievements for this kicker
+    // Get all ACHIEVEMENT_UNLOCKED achievements (global - no kicker_id filter)
     const { data: achievements, error: achievementsError } = await supabase
         .from("achievement_definitions")
         .select("*")
-        .eq("kicker_id", kickerId)
         .eq("trigger_event", "ACHIEVEMENT_UNLOCKED");
 
     if (achievementsError) {
@@ -837,11 +1009,10 @@ async function handleAchievementUnlocked(
         `Player ${playerId} has ${totalUnlocked} achievements unlocked`
     );
 
-    // Get total achievement count for "all_achievements" metric
+    // Get total achievement count for "all_achievements" metric (global - no kicker_id filter)
     const { count: totalAchievements, error: totalError } = await supabase
         .from("achievement_definitions")
         .select("*", { count: "exact", head: true })
-        .eq("kicker_id", kickerId)
         .neq("trigger_event", "ACHIEVEMENT_UNLOCKED"); // Don't count meta-achievements
 
     if (totalError) {
@@ -849,7 +1020,7 @@ async function handleAchievementUnlocked(
         throw totalError;
     }
 
-    console.log(`Total achievements for kicker: ${totalAchievements}`);
+    console.log(`Total achievements: ${totalAchievements}`);
 
     // Get already unlocked map for this player
     const unlockedMap = await getUnlockedMap(supabase, [playerId]);
@@ -897,6 +1068,34 @@ async function handleAchievementUnlocked(
             } else if (condition.type === "threshold") {
                 conditionMet = (totalUnlocked || 0) >= target;
             }
+        } else if (condition.metric === "secret_achievements_unlocked") {
+            // Counter type: track secret achievements unlocked
+            // Only increment if the unlocked achievement is secret
+            if (condition.type === "counter") {
+                if (unlockedIsHidden) {
+                    conditionMet = true;
+                    increment = 1;
+                    console.log(
+                        `[secret_achievements_unlocked] Secret achievement unlocked, incrementing Secret Finder`
+                    );
+                } else {
+                    console.log(
+                        `[secret_achievements_unlocked] Non-secret achievement unlocked, skipping`
+                    );
+                }
+            } else if (condition.type === "threshold") {
+                // Count total secret achievements unlocked by this player
+                const { data: hiddenUnlocked } = await supabase
+                    .from("player_achievements")
+                    .select(
+                        "achievement:achievement_definitions!inner(is_hidden)"
+                    )
+                    .eq("player_id", playerId);
+                const hiddenCount = (hiddenUnlocked || []).filter(
+                    (pa: any) => pa.achievement?.is_hidden
+                ).length;
+                conditionMet = hiddenCount >= (condition.target || 0);
+            }
         } else if (condition.metric === "all_achievements") {
             // Check if player has all non-meta achievements
             // totalUnlocked - 1 because we don't count the current meta achievement being checked
@@ -909,11 +1108,17 @@ async function handleAchievementUnlocked(
         }
 
         if (conditionMet) {
+            // For all-time meta-achievements (is_season_specific=false), use null for season_id
+            // For season-specific meta-achievements, use the triggering achievement's season_id
+            const progressSeasonId = achievement.is_season_specific
+                ? playerAchievement.season_id
+                : null;
+
             const result = await updateProgressWithAmount(
                 supabase,
                 playerId,
                 achievement,
-                playerAchievement.season_id,
+                progressSeasonId,
                 playerAchievement.match_id,
                 alreadyUnlocked,
                 increment
@@ -949,7 +1154,9 @@ async function getPlayerStreak(
     playerId: number,
     kickerId: number,
     gamemode: string | null,
-    streakType: "win" | "loss"
+    streakType: "win" | "loss",
+    seasonId: number | null = null,
+    isSeasonSpecific: boolean = true
 ): Promise<number> {
     // Build query for recent matches for this player, ordered by end_time desc
     let query = supabase
@@ -968,6 +1175,11 @@ async function getPlayerStreak(
     // Filter by gamemode if specified
     if (gamemode) {
         query = query.eq("gamemode", gamemode);
+    }
+
+    // Filter by season for season-specific achievements
+    if (isSeasonSpecific && seasonId) {
+        query = query.eq("season_id", seasonId);
     }
 
     const { data: matches, error } = await query;
@@ -1179,7 +1391,7 @@ async function processMatchAchievements(
     const streakAchievements = achievements.filter(
         (a) => a.condition.type === "streak"
     );
-    const playerStreaks = new Map<string, number>(); // "playerId-gamemode-streakType" -> streak count
+    const playerStreaks = new Map<string, number>(); // "playerId-gamemode-streakType-seasonSpecific" -> streak count
 
     if (streakAchievements.length > 0) {
         for (const playerCtx of playerContexts) {
@@ -1188,16 +1400,21 @@ async function processMatchAchievements(
                 const gamemode =
                     achievement.condition.filters?.gamemode || null;
                 if (streakCond) {
+                    // Include season-specificity in the key
                     const streakKey = `${playerCtx.playerId}-${
                         gamemode || "all"
-                    }-${streakCond.result}`;
+                    }-${streakCond.result}-${
+                        achievement.is_season_specific ? "season" : "alltime"
+                    }`;
                     if (!playerStreaks.has(streakKey)) {
                         const streak = await getPlayerStreak(
                             supabase,
                             playerCtx.playerId,
                             match.kicker_id,
                             gamemode,
-                            streakCond.result
+                            streakCond.result,
+                            match.season_id,
+                            achievement.is_season_specific
                         );
                         playerStreaks.set(streakKey, streak);
                     }
@@ -1230,22 +1447,30 @@ async function processMatchAchievements(
                 }
 
                 // If parent was JUST unlocked, initialize child's progress with parent's max_progress
+                // The event that triggered the parent was already counted in parent's max_progress,
+                // so we should NOT count it again for the child - just initialize and skip
                 if (parentJustUnlocked) {
                     const parentAchievement = achievements.find(
                         (a) => a.id === achievement.parent_id
                     );
                     if (parentAchievement) {
+                        // Determine season_id for the child achievement's progress
+                        const childProgressSeasonId =
+                            achievement.is_season_specific
+                                ? match.season_id
+                                : null;
                         await initializeChainProgress(
                             supabase,
                             playerCtx.playerId,
                             achievement.id,
-                            parentAchievement.max_progress
+                            parentAchievement.max_progress,
+                            childProgressSeasonId
                         );
                         console.log(
-                            `[Chain] Initialized child achievement ${achievement.id} with parent's max_progress: ${parentAchievement.max_progress}`
+                            `[Chain] Initialized child achievement ${achievement.id} with parent's max_progress: ${parentAchievement.max_progress}, season_id: ${childProgressSeasonId}`
                         );
                     }
-                    // Skip counting this event for the child - it will count from next event
+                    // Skip this event for the child - it was already counted in parent's progress
                     continue;
                 }
             }
@@ -1278,7 +1503,9 @@ async function processMatchAchievements(
                 if (streakCond) {
                     const streakKey = `${playerCtx.playerId}-${
                         achievementGamemode || "all"
-                    }-${streakCond.result}`;
+                    }-${streakCond.result}-${
+                        achievement.is_season_specific ? "season" : "alltime"
+                    }`;
                     const currentStreak = playerStreaks.get(streakKey) || 0;
 
                     console.log(
@@ -1314,10 +1541,84 @@ async function processMatchAchievements(
                 continue; // Skip normal condition evaluation for streaks
             }
 
+            // Special handling for unique_opponents_defeated - set absolute progress
+            if (achievement.condition.metric === "unique_opponents_defeated") {
+                const uniqueCount = await calculateUniqueOpponentsDefeated(
+                    supabase,
+                    playerCtx.playerId,
+                    match.kicker_id,
+                    match.season_id,
+                    achievement.is_season_specific,
+                    achievement.condition.filters?.gamemode || null
+                );
+
+                const result = await setProgressAbsolute(
+                    supabase,
+                    playerCtx.playerId,
+                    achievement,
+                    match.season_id,
+                    match.id,
+                    alreadyUnlocked,
+                    uniqueCount
+                );
+                results.push({
+                    playerId: playerCtx.playerId,
+                    achievementId: achievement.id,
+                    action: result,
+                });
+
+                if (result === "unlocked") {
+                    unlockedMap.set(
+                        `${playerCtx.playerId}-${achievement.id}`,
+                        true
+                    );
+                    newlyUnlockedInThisIteration.add(achievement.id);
+                }
+                continue;
+            }
+
+            // Special handling for unique_teammates_won_with - set absolute progress
+            if (achievement.condition.metric === "unique_teammates_won_with") {
+                const uniqueCount = await calculateUniqueTeammatesWonWith(
+                    supabase,
+                    playerCtx.playerId,
+                    match.kicker_id,
+                    match.season_id,
+                    achievement.is_season_specific
+                );
+
+                const result = await setProgressAbsolute(
+                    supabase,
+                    playerCtx.playerId,
+                    achievement,
+                    match.season_id,
+                    match.id,
+                    alreadyUnlocked,
+                    uniqueCount
+                );
+                results.push({
+                    playerId: playerCtx.playerId,
+                    achievementId: achievement.id,
+                    action: result,
+                });
+
+                if (result === "unlocked") {
+                    unlockedMap.set(
+                        `${playerCtx.playerId}-${achievement.id}`,
+                        true
+                    );
+                    newlyUnlockedInThisIteration.add(achievement.id);
+                }
+                continue;
+            }
+
             // Evaluate condition
-            const conditionMet = evaluateMatchCondition(
+            const conditionMet = await evaluateMatchCondition(
+                supabase,
                 achievement.condition,
-                playerCtx
+                playerCtx,
+                match,
+                achievement
             );
 
             if (conditionMet) {
@@ -1421,10 +1722,13 @@ async function awardAchievementDirectly(
 
 // ============== CONDITION EVALUATORS ==============
 
-function evaluateMatchCondition(
+async function evaluateMatchCondition(
+    supabase: any,
     condition: AchievementCondition,
-    ctx: PlayerMatchContext
-): boolean {
+    ctx: PlayerMatchContext,
+    match: MatchRecord,
+    achievement: AchievementDefinition
+): Promise<boolean> {
     const filters = condition.filters || {};
 
     // Check gamemode filter
@@ -1602,6 +1906,14 @@ function evaluateMatchCondition(
                 // For simplicity, use the MMR stored in match (which is post-match)
                 return ctx.ownMmr >= target;
 
+            case "mmr_below":
+                // Drop below MMR threshold (check MMR after match, which is stored in match)
+                // This is for the "Rock Bottom" achievement
+                console.log(
+                    `[mmr_below] Player ${ctx.playerId}: ownMmr=${ctx.ownMmr}, target=${target}`
+                );
+                return ctx.ownMmr < target;
+
             case "mmr_diff_win":
                 // Beat opponent(s) with higher MMR by at least target difference
                 const mmrDiff = ctx.opponentMmr - ctx.ownMmr;
@@ -1626,6 +1938,9 @@ function evaluateMatchCondition(
 
             case "own_goals_in_match":
                 // Score at least target own goals in a single match
+                console.log(
+                    `[own_goals_in_match] Player ${ctx.playerId}: ownGoals=${ctx.ownGoals}, target=${target}`
+                );
                 return ctx.ownGoals >= target;
 
             case "goals_in_timeframe":
@@ -1673,9 +1988,306 @@ function evaluateMatchCondition(
                 // The day_of_week, time_after, time_before filters should already be applied
                 return true;
 
+            case "matches_in_day": {
+                // Count matches played today
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                let matchQuery = supabase
+                    .from("matches")
+                    .select("id", { count: "exact", head: true })
+                    .eq("kicker_id", match.kicker_id)
+                    .eq("status", "ended")
+                    .or(
+                        `player1.eq.${ctx.playerId},player2.eq.${ctx.playerId},player3.eq.${ctx.playerId},player4.eq.${ctx.playerId}`
+                    )
+                    .gte("end_time", todayStart.toISOString());
+
+                // Filter by season for season-specific achievements
+                if (achievement.is_season_specific && match.season_id) {
+                    matchQuery = matchQuery.eq("season_id", match.season_id);
+                }
+
+                // Apply gamemode filter if specified
+                if (filters.gamemode) {
+                    matchQuery = matchQuery.eq("gamemode", filters.gamemode);
+                }
+
+                const { count: matchesToday } = await matchQuery;
+                console.log(
+                    `[matches_in_day] Player ${
+                        ctx.playerId
+                    }: ${matchesToday} matches today (target: ${target}, gamemode: ${
+                        filters.gamemode || "all"
+                    })`
+                );
+                return (matchesToday || 0) >= target;
+            }
+
+            case "playtime_in_day": {
+                // Sum playtime for matches today (in seconds)
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                let playtimeQuery = supabase
+                    .from("matches")
+                    .select("created_at, end_time")
+                    .eq("kicker_id", match.kicker_id)
+                    .eq("status", "ended")
+                    .or(
+                        `player1.eq.${ctx.playerId},player2.eq.${ctx.playerId},player3.eq.${ctx.playerId},player4.eq.${ctx.playerId}`
+                    )
+                    .gte("end_time", todayStart.toISOString());
+
+                if (achievement.is_season_specific && match.season_id) {
+                    playtimeQuery = playtimeQuery.eq(
+                        "season_id",
+                        match.season_id
+                    );
+                }
+
+                const { data: matchesToday } = await playtimeQuery;
+                let totalPlaytime = 0;
+                for (const m of matchesToday || []) {
+                    if (m.end_time && m.created_at) {
+                        const duration =
+                            new Date(m.end_time).getTime() -
+                            new Date(m.created_at).getTime();
+                        totalPlaytime += Math.floor(duration / 1000);
+                    }
+                }
+                console.log(
+                    `[playtime_in_day] Player ${ctx.playerId}: ${totalPlaytime}s today (target: ${target}s)`
+                );
+                return totalPlaytime >= target;
+            }
+
+            case "playtime_in_week": {
+                // Sum playtime for matches this week (since Monday 00:00)
+                const weekStart = new Date();
+                const day = weekStart.getDay();
+                const diff = day === 0 ? 6 : day - 1; // Monday is start of week
+                weekStart.setDate(weekStart.getDate() - diff);
+                weekStart.setHours(0, 0, 0, 0);
+
+                let playtimeQuery = supabase
+                    .from("matches")
+                    .select("created_at, end_time")
+                    .eq("kicker_id", match.kicker_id)
+                    .eq("status", "ended")
+                    .or(
+                        `player1.eq.${ctx.playerId},player2.eq.${ctx.playerId},player3.eq.${ctx.playerId},player4.eq.${ctx.playerId}`
+                    )
+                    .gte("end_time", weekStart.toISOString());
+
+                if (achievement.is_season_specific && match.season_id) {
+                    playtimeQuery = playtimeQuery.eq(
+                        "season_id",
+                        match.season_id
+                    );
+                }
+
+                const { data: matchesThisWeek } = await playtimeQuery;
+                let totalPlaytime = 0;
+                for (const m of matchesThisWeek || []) {
+                    if (m.end_time && m.created_at) {
+                        const duration =
+                            new Date(m.end_time).getTime() -
+                            new Date(m.created_at).getTime();
+                        totalPlaytime += Math.floor(duration / 1000);
+                    }
+                }
+                console.log(
+                    `[playtime_in_week] Player ${ctx.playerId}: ${totalPlaytime}s this week (target: ${target}s)`
+                );
+                return totalPlaytime >= target;
+            }
+
+            case "wins_in_day": {
+                // Count wins today
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                let winsQuery = supabase
+                    .from("matches")
+                    .select(
+                        "player1, player2, player3, player4, scoreTeam1, scoreTeam2"
+                    )
+                    .eq("kicker_id", match.kicker_id)
+                    .eq("status", "ended")
+                    .or(
+                        `player1.eq.${ctx.playerId},player2.eq.${ctx.playerId},player3.eq.${ctx.playerId},player4.eq.${ctx.playerId}`
+                    )
+                    .gte("end_time", todayStart.toISOString());
+
+                if (achievement.is_season_specific && match.season_id) {
+                    winsQuery = winsQuery.eq("season_id", match.season_id);
+                }
+
+                if (filters.gamemode) {
+                    winsQuery = winsQuery.eq("gamemode", filters.gamemode);
+                }
+
+                const { data: matchesToday } = await winsQuery;
+                let winsToday = 0;
+                for (const m of matchesToday || []) {
+                    const isTeam1 =
+                        m.player1 === ctx.playerId ||
+                        m.player3 === ctx.playerId;
+                    const won = isTeam1
+                        ? m.scoreTeam1 > m.scoreTeam2
+                        : m.scoreTeam2 > m.scoreTeam1;
+                    if (won) winsToday++;
+                }
+                console.log(
+                    `[wins_in_day] Player ${ctx.playerId}: ${winsToday} wins today (target: ${target})`
+                );
+                return winsToday >= target;
+            }
+
+            case "unique_opponents_defeated": {
+                // Count unique opponents defeated in wins
+                let opponentsQuery = supabase
+                    .from("matches")
+                    .select(
+                        "player1, player2, player3, player4, scoreTeam1, scoreTeam2"
+                    )
+                    .eq("kicker_id", match.kicker_id)
+                    .eq("status", "ended")
+                    .or(
+                        `player1.eq.${ctx.playerId},player2.eq.${ctx.playerId},player3.eq.${ctx.playerId},player4.eq.${ctx.playerId}`
+                    );
+
+                if (achievement.is_season_specific && match.season_id) {
+                    opponentsQuery = opponentsQuery.eq(
+                        "season_id",
+                        match.season_id
+                    );
+                }
+
+                if (filters.gamemode) {
+                    opponentsQuery = opponentsQuery.eq(
+                        "gamemode",
+                        filters.gamemode
+                    );
+                }
+
+                const { data: matches } = await opponentsQuery;
+                const uniqueOpponents = new Set<number>();
+                for (const m of matches || []) {
+                    const isTeam1 =
+                        m.player1 === ctx.playerId ||
+                        m.player3 === ctx.playerId;
+                    const won = isTeam1
+                        ? m.scoreTeam1 > m.scoreTeam2
+                        : m.scoreTeam2 > m.scoreTeam1;
+                    if (won) {
+                        // Add opponents to set
+                        if (isTeam1) {
+                            if (m.player2) uniqueOpponents.add(m.player2);
+                            if (m.player4) uniqueOpponents.add(m.player4);
+                        } else {
+                            if (m.player1) uniqueOpponents.add(m.player1);
+                            if (m.player3) uniqueOpponents.add(m.player3);
+                        }
+                    }
+                }
+                console.log(
+                    `[unique_opponents_defeated] Player ${ctx.playerId}: ${uniqueOpponents.size} unique opponents (target: ${target})`
+                );
+                return uniqueOpponents.size >= target;
+            }
+
+            case "unique_teammates_won_with": {
+                // Count unique teammates won with in 2on2 matches
+                let teammatesQuery = supabase
+                    .from("matches")
+                    .select(
+                        "player1, player2, player3, player4, scoreTeam1, scoreTeam2"
+                    )
+                    .eq("kicker_id", match.kicker_id)
+                    .eq("status", "ended")
+                    .eq("gamemode", "2on2")
+                    .or(
+                        `player1.eq.${ctx.playerId},player2.eq.${ctx.playerId},player3.eq.${ctx.playerId},player4.eq.${ctx.playerId}`
+                    );
+
+                if (achievement.is_season_specific && match.season_id) {
+                    teammatesQuery = teammatesQuery.eq(
+                        "season_id",
+                        match.season_id
+                    );
+                }
+
+                const { data: matches } = await teammatesQuery;
+                const uniqueTeammates = new Set<number>();
+                for (const m of matches || []) {
+                    const isTeam1 =
+                        m.player1 === ctx.playerId ||
+                        m.player3 === ctx.playerId;
+                    const won = isTeam1
+                        ? m.scoreTeam1 > m.scoreTeam2
+                        : m.scoreTeam2 > m.scoreTeam1;
+                    if (won) {
+                        // Add teammate to set
+                        if (isTeam1) {
+                            const teammate =
+                                m.player1 === ctx.playerId
+                                    ? m.player3
+                                    : m.player1;
+                            if (teammate) uniqueTeammates.add(teammate);
+                        } else {
+                            const teammate =
+                                m.player2 === ctx.playerId
+                                    ? m.player4
+                                    : m.player2;
+                            if (teammate) uniqueTeammates.add(teammate);
+                        }
+                    }
+                }
+                console.log(
+                    `[unique_teammates_won_with] Player ${ctx.playerId}: ${uniqueTeammates.size} unique teammates (target: ${target})`
+                );
+                return uniqueTeammates.size >= target;
+            }
+
             default:
-                return true;
+                console.warn(
+                    `[evaluateMatchCondition] Unknown metric: ${metric}`
+                );
+                return false;
         }
+    }
+
+    // For compound type - all sub-conditions must be met
+    if (condition.type === "compound") {
+        const subConditions = (condition as any).conditions || [];
+        for (const subCond of subConditions) {
+            // Create a sub-condition object with the compound's sub-condition data
+            const subCondition: AchievementCondition = {
+                type: "threshold",
+                metric: subCond.metric,
+                target: subCond.target,
+                filters: subCond.filters || {},
+            };
+            const subMet = await evaluateMatchCondition(
+                supabase,
+                subCondition,
+                ctx,
+                match,
+                achievement
+            );
+            if (!subMet) {
+                console.log(
+                    `[compound] Sub-condition ${subCond.metric} (target: ${subCond.target}) not met for player ${ctx.playerId}`
+                );
+                return false;
+            }
+        }
+        console.log(
+            `[compound] All sub-conditions met for player ${ctx.playerId}`
+        );
+        return true;
     }
 
     // For streak type
@@ -1697,22 +2309,30 @@ async function initializeChainProgress(
     supabase: any,
     playerId: number,
     achievementId: number,
-    initialProgress: number
+    initialProgress: number,
+    seasonId: number | null = null
 ): Promise<void> {
     try {
-        // Check if progress already exists
-        const { data: existing } = await supabase
+        // Build query with proper season_id handling
+        let query = supabase
             .from("player_achievement_progress")
             .select("current_progress")
             .eq("player_id", playerId)
-            .eq("achievement_id", achievementId)
-            .maybeSingle();
+            .eq("achievement_id", achievementId);
+
+        if (seasonId === null) {
+            query = query.is("season_id", null);
+        } else {
+            query = query.eq("season_id", seasonId);
+        }
+
+        const { data: existing } = await query.maybeSingle();
 
         if (existing) {
             // Progress exists - only update if current is less than initial
             // This prevents overwriting if player already had progress somehow
             if (existing.current_progress < initialProgress) {
-                await supabase
+                let updateQuery = supabase
                     .from("player_achievement_progress")
                     .update({
                         current_progress: initialProgress,
@@ -1720,6 +2340,14 @@ async function initializeChainProgress(
                     })
                     .eq("player_id", playerId)
                     .eq("achievement_id", achievementId);
+
+                if (seasonId === null) {
+                    updateQuery = updateQuery.is("season_id", null);
+                } else {
+                    updateQuery = updateQuery.eq("season_id", seasonId);
+                }
+
+                await updateQuery;
             }
         } else {
             // Create new progress record with initial progress
@@ -1727,6 +2355,7 @@ async function initializeChainProgress(
                 player_id: playerId,
                 achievement_id: achievementId,
                 current_progress: initialProgress,
+                season_id: seasonId,
                 updated_at: new Date().toISOString(),
             });
         }
@@ -1743,20 +2372,83 @@ function evaluateGoalCondition(
 
     // Check gamemode filter
     if (filters.gamemode && filters.gamemode !== ctx.gamemode) {
+        if (condition.metric?.includes("own_goal")) {
+            console.log(
+                `[DEBUG filter] Gamemode mismatch: filter=${filters.gamemode}, ctx=${ctx.gamemode}`
+            );
+        }
         return false;
     }
 
     // Check goal_type filter (standard, own_goal)
     if (filters.goal_type && filters.goal_type !== ctx.goalType) {
+        if (condition.metric?.includes("own_goal")) {
+            console.log(
+                `[DEBUG filter] Goal_type mismatch: filter=${filters.goal_type}, ctx=${ctx.goalType}`
+            );
+        }
         return false;
     }
 
     // Check both_scores filter (for own_goal at specific score like 0-0)
     if (filters.both_scores !== undefined) {
+        const primaryMatch =
+            ctx.scoreTeam1BeforeGoal === filters.both_scores &&
+            ctx.scoreTeam2BeforeGoal === filters.both_scores;
+
+        // Also check alternative scores if ambiguous
+        let altMatch = false;
         if (
-            ctx.scoreTeam1BeforeGoal !== filters.both_scores ||
-            ctx.scoreTeam2BeforeGoal !== filters.both_scores
+            ctx.ownGoalAmbiguous &&
+            ctx.altScoreTeam1BeforeGoal !== undefined &&
+            ctx.altScoreTeam2BeforeGoal !== undefined
         ) {
+            altMatch =
+                ctx.altScoreTeam1BeforeGoal === filters.both_scores &&
+                ctx.altScoreTeam2BeforeGoal === filters.both_scores;
+        }
+
+        if (!primaryMatch && !altMatch) {
+            if (condition.metric?.includes("own_goal")) {
+                console.log(
+                    `[DEBUG filter] Both_scores mismatch: filter=${filters.both_scores}, ` +
+                        `primary: team1=${ctx.scoreTeam1BeforeGoal}, team2=${ctx.scoreTeam2BeforeGoal}, ` +
+                        `alt: team1=${ctx.altScoreTeam1BeforeGoal}, team2=${ctx.altScoreTeam2BeforeGoal}`
+                );
+            }
+            return false;
+        }
+    }
+
+    // Check opponent_score filter (for own_goal when opponent is at specific score)
+    if (filters.opponent_score !== undefined) {
+        const opponentScoreBefore =
+            ctx.playerTeam === 1
+                ? ctx.scoreTeam2BeforeGoal
+                : ctx.scoreTeam1BeforeGoal;
+
+        // Also check alternative scores if ambiguous
+        let primaryMatch = opponentScoreBefore === filters.opponent_score;
+        let altMatch = false;
+        if (
+            ctx.ownGoalAmbiguous &&
+            ctx.altScoreTeam1BeforeGoal !== undefined &&
+            ctx.altScoreTeam2BeforeGoal !== undefined
+        ) {
+            const altOpponentScoreBefore =
+                ctx.playerTeam === 1
+                    ? ctx.altScoreTeam2BeforeGoal
+                    : ctx.altScoreTeam1BeforeGoal;
+            altMatch = altOpponentScoreBefore === filters.opponent_score;
+        }
+
+        if (!primaryMatch && !altMatch) {
+            if (condition.metric?.includes("own_goal")) {
+                console.log(
+                    `[DEBUG filter] Opponent_score mismatch: filter=${filters.opponent_score}, ` +
+                        `primary: opponent=${opponentScoreBefore}, ambiguous=${ctx.ownGoalAmbiguous}`
+                );
+            }
             return false;
         }
     }
@@ -1791,15 +2483,48 @@ function evaluateGoalCondition(
                 // Own goal at a specific score
                 // target is the player's team score before the own goal
                 if (ctx.goalType !== "own_goal") return false;
+
                 const playerTeamScoreBefore =
                     ctx.playerTeam === 1
                         ? ctx.scoreTeam1BeforeGoal
                         : ctx.scoreTeam2BeforeGoal;
-                return playerTeamScoreBefore === target;
+
+                // Check primary calculation
+                let primaryMatch = playerTeamScoreBefore === target;
+
+                // If ambiguous (own team at 0 after goal), also check alternative calculation
+                let altMatch = false;
+                if (
+                    ctx.ownGoalAmbiguous &&
+                    ctx.altScoreTeam1BeforeGoal !== undefined
+                ) {
+                    const altPlayerTeamScoreBefore =
+                        ctx.playerTeam === 1
+                            ? ctx.altScoreTeam1BeforeGoal
+                            : ctx.altScoreTeam2BeforeGoal;
+                    altMatch = altPlayerTeamScoreBefore === target;
+                }
+
+                console.log(
+                    `[own_goal_at_score] Player ${ctx.playerId} team ${ctx.playerTeam}: ` +
+                        `scoreTeam1Before=${ctx.scoreTeam1BeforeGoal}, scoreTeam2Before=${ctx.scoreTeam2BeforeGoal}, ` +
+                        `playerTeamScoreBefore=${playerTeamScoreBefore}, target=${target}, ` +
+                        `primaryMatch=${primaryMatch}, ambiguous=${ctx.ownGoalAmbiguous}, altMatch=${altMatch}`
+                );
+
+                return primaryMatch || altMatch;
+
+            case "own_goals":
+                // Counter for own goals (used for season/all-time own goal chains)
+                return ctx.goalType === "own_goal";
 
             case "own_goals_in_day":
                 // This is tracked via counter - just check it's an own goal
                 return ctx.goalType === "own_goal";
+
+            case "goals_in_day":
+                // This is handled by counting in DB - just check it's a regular goal
+                return ctx.goalType !== "own_goal";
 
             case "goals_in_timeframe":
                 // Check if player scored at least 'target' goals within 'timeframe_seconds'
@@ -1875,6 +2600,11 @@ async function updateProgress(
     matchId: number | null,
     alreadyUnlocked: boolean
 ): Promise<string> {
+    // Determine the season_id to use for progress tracking
+    // Season-specific achievements use the match's season_id
+    // Global achievements (is_season_specific = false) use null
+    const progressSeasonId = achievement.is_season_specific ? seasonId : null;
+
     // Try to use atomic RPC function first (prevents race conditions)
     try {
         const { data: result, error } = await supabase.rpc(
@@ -1882,8 +2612,8 @@ async function updateProgress(
             {
                 p_player_id: playerId,
                 p_achievement_id: achievement.id,
-                p_kicker_id: achievement.kicker_id,
                 p_increment: 1,
+                p_season_id: progressSeasonId,
             }
         );
 
@@ -1952,6 +2682,196 @@ async function updateProgress(
     );
 }
 
+// Set progress to an absolute value (for unique_opponents_defeated, unique_teammates_won_with)
+async function setProgressAbsolute(
+    supabase: any,
+    playerId: number,
+    achievement: AchievementDefinition,
+    seasonId: number | null,
+    matchId: number | null,
+    alreadyUnlocked: boolean,
+    absoluteValue: number
+): Promise<string> {
+    const progressSeasonId = achievement.is_season_specific ? seasonId : null;
+    const now = new Date().toISOString();
+
+    console.log(
+        `[setProgressAbsolute] Player ${playerId}, Achievement ${achievement.id}: Setting progress to ${absoluteValue}/${achievement.max_progress}`
+    );
+
+    // Check if progress record exists (handle NULL season_id explicitly)
+    let existingQuery = supabase
+        .from("player_achievement_progress")
+        .select("id, current_progress")
+        .eq("player_id", playerId)
+        .eq("achievement_id", achievement.id);
+
+    if (progressSeasonId === null) {
+        existingQuery = existingQuery.is("season_id", null);
+    } else {
+        existingQuery = existingQuery.eq("season_id", progressSeasonId);
+    }
+
+    const { data: existing } = await existingQuery.maybeSingle();
+
+    if (existing) {
+        // Update existing record
+        let updateQuery = supabase
+            .from("player_achievement_progress")
+            .update({
+                current_progress: absoluteValue,
+                updated_at: now,
+            })
+            .eq("id", existing.id);
+
+        const { error: updateError } = await updateQuery;
+        if (updateError) {
+            console.error("Error updating absolute progress:", updateError);
+            return "error";
+        }
+    } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+            .from("player_achievement_progress")
+            .insert({
+                player_id: playerId,
+                achievement_id: achievement.id,
+                current_progress: absoluteValue,
+                season_id: progressSeasonId,
+                updated_at: now,
+            });
+
+        if (insertError) {
+            console.error("Error inserting absolute progress:", insertError);
+            return "error";
+        }
+    }
+
+    // Check if completed
+    if (absoluteValue >= achievement.max_progress && !alreadyUnlocked) {
+        // Award achievement
+        const { error: awardError } = await supabase
+            .from("player_achievements")
+            .insert({
+                player_id: playerId,
+                achievement_id: achievement.id,
+                unlocked_at: now,
+                season_id: seasonId,
+                match_id: matchId,
+            });
+
+        if (awardError) {
+            console.error("Error awarding achievement:", awardError);
+            return "error";
+        }
+
+        console.log(
+            `Achievement ${achievement.id} awarded to player ${playerId}!`
+        );
+        return "unlocked";
+    }
+
+    return "progress_updated";
+}
+
+// Calculate unique opponents defeated
+async function calculateUniqueOpponentsDefeated(
+    supabase: any,
+    playerId: number,
+    kickerId: number,
+    seasonId: number | null,
+    isSeasonSpecific: boolean,
+    gamemode: string | null
+): Promise<number> {
+    let query = supabase
+        .from("matches")
+        .select("player1, player2, player3, player4, scoreTeam1, scoreTeam2")
+        .eq("kicker_id", kickerId)
+        .eq("status", "ended")
+        .or(
+            `player1.eq.${playerId},player2.eq.${playerId},player3.eq.${playerId},player4.eq.${playerId}`
+        );
+
+    if (isSeasonSpecific && seasonId) {
+        query = query.eq("season_id", seasonId);
+    }
+
+    if (gamemode) {
+        query = query.eq("gamemode", gamemode);
+    }
+
+    const { data: matches } = await query;
+    const uniqueOpponents = new Set<number>();
+
+    for (const m of matches || []) {
+        const isTeam1 = m.player1 === playerId || m.player3 === playerId;
+        const won = isTeam1
+            ? m.scoreTeam1 > m.scoreTeam2
+            : m.scoreTeam2 > m.scoreTeam1;
+        if (won) {
+            if (isTeam1) {
+                if (m.player2) uniqueOpponents.add(m.player2);
+                if (m.player4) uniqueOpponents.add(m.player4);
+            } else {
+                if (m.player1) uniqueOpponents.add(m.player1);
+                if (m.player3) uniqueOpponents.add(m.player3);
+            }
+        }
+    }
+
+    console.log(
+        `[calculateUniqueOpponentsDefeated] Player ${playerId}: ${uniqueOpponents.size} unique opponents`
+    );
+    return uniqueOpponents.size;
+}
+
+// Calculate unique teammates won with
+async function calculateUniqueTeammatesWonWith(
+    supabase: any,
+    playerId: number,
+    kickerId: number,
+    seasonId: number | null,
+    isSeasonSpecific: boolean
+): Promise<number> {
+    let query = supabase
+        .from("matches")
+        .select("player1, player2, player3, player4, scoreTeam1, scoreTeam2")
+        .eq("kicker_id", kickerId)
+        .eq("status", "ended")
+        .eq("gamemode", "2on2")
+        .or(
+            `player1.eq.${playerId},player2.eq.${playerId},player3.eq.${playerId},player4.eq.${playerId}`
+        );
+
+    if (isSeasonSpecific && seasonId) {
+        query = query.eq("season_id", seasonId);
+    }
+
+    const { data: matches } = await query;
+    const uniqueTeammates = new Set<number>();
+
+    for (const m of matches || []) {
+        const isTeam1 = m.player1 === playerId || m.player3 === playerId;
+        const won = isTeam1
+            ? m.scoreTeam1 > m.scoreTeam2
+            : m.scoreTeam2 > m.scoreTeam1;
+        if (won) {
+            if (isTeam1) {
+                const teammate = m.player1 === playerId ? m.player3 : m.player1;
+                if (teammate) uniqueTeammates.add(teammate);
+            } else {
+                const teammate = m.player2 === playerId ? m.player4 : m.player2;
+                if (teammate) uniqueTeammates.add(teammate);
+            }
+        }
+    }
+
+    console.log(
+        `[calculateUniqueTeammatesWonWith] Player ${playerId}: ${uniqueTeammates.size} unique teammates`
+    );
+    return uniqueTeammates.size;
+}
+
 // Update progress with custom increment amount (for playtime etc)
 async function updateProgressWithAmount(
     supabase: any,
@@ -1962,6 +2882,9 @@ async function updateProgressWithAmount(
     alreadyUnlocked: boolean,
     incrementAmount: number
 ): Promise<string> {
+    // Determine the season_id to use for progress tracking
+    const progressSeasonId = achievement.is_season_specific ? seasonId : null;
+
     // Try to use atomic RPC function first
     try {
         const { data: result, error } = await supabase.rpc(
@@ -1969,8 +2892,8 @@ async function updateProgressWithAmount(
             {
                 p_player_id: playerId,
                 p_achievement_id: achievement.id,
-                p_kicker_id: achievement.kicker_id,
                 p_increment: incrementAmount,
+                p_season_id: progressSeasonId,
             }
         );
 
@@ -2046,12 +2969,26 @@ async function updateProgressFallbackWithAmount(
     incrementAmount: number
 ): Promise<string> {
     try {
-        const { data: progressData } = await supabase
+        // For season-specific achievements, track progress per season
+        // For global achievements (is_season_specific = false), use season_id = null
+        const progressSeasonId = achievement.is_season_specific
+            ? seasonId
+            : null;
+
+        // Build query with season filter
+        let query = supabase
             .from("player_achievement_progress")
             .select("current_progress")
             .eq("player_id", playerId)
-            .eq("achievement_id", achievement.id)
-            .maybeSingle();
+            .eq("achievement_id", achievement.id);
+
+        if (progressSeasonId === null) {
+            query = query.is("season_id", null);
+        } else {
+            query = query.eq("season_id", progressSeasonId);
+        }
+
+        const { data: progressData } = await query.maybeSingle();
 
         const currentProgress = progressData?.current_progress || 0;
         const newProgress = Math.min(
@@ -2062,7 +2999,8 @@ async function updateProgressFallbackWithAmount(
         const now = new Date().toISOString();
 
         if (progressData) {
-            await supabase
+            // Update existing progress record
+            let updateQuery = supabase
                 .from("player_achievement_progress")
                 .update({
                     current_progress: newProgress,
@@ -2070,11 +3008,20 @@ async function updateProgressFallbackWithAmount(
                 })
                 .eq("player_id", playerId)
                 .eq("achievement_id", achievement.id);
+
+            if (progressSeasonId === null) {
+                updateQuery = updateQuery.is("season_id", null);
+            } else {
+                updateQuery = updateQuery.eq("season_id", progressSeasonId);
+            }
+
+            await updateQuery;
         } else {
             await supabase.from("player_achievement_progress").insert({
                 player_id: playerId,
                 achievement_id: achievement.id,
                 current_progress: newProgress,
+                season_id: progressSeasonId,
                 updated_at: now,
             });
         }
@@ -2098,11 +3045,20 @@ async function updateProgressFallbackWithAmount(
                     .eq("player_id", playerId)
                     .eq("achievement_id", achievement.id);
 
-                await supabase
+                // Reset progress for repeatable
+                let resetQuery = supabase
                     .from("player_achievement_progress")
                     .update({ current_progress: 0 })
                     .eq("player_id", playerId)
                     .eq("achievement_id", achievement.id);
+
+                if (progressSeasonId === null) {
+                    resetQuery = resetQuery.is("season_id", null);
+                } else {
+                    resetQuery = resetQuery.eq("season_id", progressSeasonId);
+                }
+
+                await resetQuery;
             } else if (!alreadyUnlocked) {
                 await supabase.from("player_achievements").insert({
                     player_id: playerId,
@@ -2131,13 +3087,27 @@ async function updateProgressFallback(
     alreadyUnlocked: boolean
 ): Promise<string> {
     try {
-        // Get current progress
-        const { data: progressData, error: selectError } = await supabase
+        // For season-specific achievements, track progress per season
+        // For global achievements (is_season_specific = false), use season_id = null
+        const progressSeasonId = achievement.is_season_specific
+            ? seasonId
+            : null;
+
+        // Get current progress with season filter
+        let query = supabase
             .from("player_achievement_progress")
             .select("current_progress")
             .eq("player_id", playerId)
-            .eq("achievement_id", achievement.id)
-            .maybeSingle();
+            .eq("achievement_id", achievement.id);
+
+        if (progressSeasonId === null) {
+            query = query.is("season_id", null);
+        } else {
+            query = query.eq("season_id", progressSeasonId);
+        }
+
+        const { data: progressData, error: selectError } =
+            await query.maybeSingle();
 
         if (selectError) {
             console.error("[Fallback] Error selecting progress:", selectError);
@@ -2150,7 +3120,7 @@ async function updateProgressFallback(
         );
 
         console.log(
-            `[Fallback] Player ${playerId}, Achievement ${achievement.id}: Progress ${currentProgress} -> ${newProgress}/${achievement.max_progress}`
+            `[Fallback] Player ${playerId}, Achievement ${achievement.id}: Progress ${currentProgress} -> ${newProgress}/${achievement.max_progress} (season: ${progressSeasonId})`
         );
 
         // Use INSERT or UPDATE based on whether record exists
@@ -2158,7 +3128,7 @@ async function updateProgressFallback(
 
         if (progressData) {
             // UPDATE existing record
-            const { error: updateError } = await supabase
+            let updateQuery = supabase
                 .from("player_achievement_progress")
                 .update({
                     current_progress: newProgress,
@@ -2166,6 +3136,14 @@ async function updateProgressFallback(
                 })
                 .eq("player_id", playerId)
                 .eq("achievement_id", achievement.id);
+
+            if (progressSeasonId === null) {
+                updateQuery = updateQuery.is("season_id", null);
+            } else {
+                updateQuery = updateQuery.eq("season_id", progressSeasonId);
+            }
+
+            const { error: updateError } = await updateQuery;
 
             if (updateError) {
                 console.error(
@@ -2175,14 +3153,14 @@ async function updateProgressFallback(
                 return "error";
             }
         } else {
-            // INSERT new record
-            // player_achievement_progress only has: id, player_id, achievement_id, current_progress, updated_at
+            // INSERT new record with season_id
             const { error: insertError } = await supabase
                 .from("player_achievement_progress")
                 .insert({
                     player_id: playerId,
                     achievement_id: achievement.id,
                     current_progress: newProgress,
+                    season_id: progressSeasonId,
                     updated_at: now,
                 });
 
@@ -2219,14 +3197,21 @@ async function updateProgressFallback(
                     .eq("achievement_id", achievement.id);
 
                 // Reset progress for repeatable
-                await supabase
+                let resetQuery = supabase
                     .from("player_achievement_progress")
                     .update({ current_progress: 0 })
                     .eq("player_id", playerId)
                     .eq("achievement_id", achievement.id);
+
+                if (progressSeasonId === null) {
+                    resetQuery = resetQuery.is("season_id", null);
+                } else {
+                    resetQuery = resetQuery.eq("season_id", progressSeasonId);
+                }
+
+                await resetQuery;
             } else if (!alreadyUnlocked) {
                 // Award achievement
-                // player_achievements columns: player_id, achievement_id, unlocked_at, times_completed, season_id, match_id
                 const { error: awardError } = await supabase
                     .from("player_achievements")
                     .insert({

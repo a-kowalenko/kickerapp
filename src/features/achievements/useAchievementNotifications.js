@@ -10,7 +10,7 @@ const TOAST_DURATION = 6000; // 6 seconds
 
 function useAchievementNotifications() {
     const { data: player } = useOwnPlayer();
-    const { currentKicker: kickerId } = useKicker();
+    const { currentKicker: kickerId } = useKicker(); // Still needed for channel subscription
     const queryClient = useQueryClient();
     const [toastQueue, setToastQueue] = useState([]);
     const [currentToast, setCurrentToast] = useState(null);
@@ -48,8 +48,8 @@ function useAchievementNotifications() {
                     newAchievement.achievement_id
                 );
 
-                // Check if the achievement belongs to this kicker
-                if (definition && definition.kicker_id === kickerId) {
+                // Achievements are now global - no kicker_id check needed
+                if (definition) {
                     // Get the player name for the toast
                     const playerData = await getPlayerById(
                         newAchievement.player_id

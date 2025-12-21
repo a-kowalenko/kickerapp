@@ -8,11 +8,10 @@ const PLAYER_ACHIEVEMENTS = "player_achievements";
 
 // ============== CATEGORIES ==============
 
-export async function getAchievementCategories(kickerId) {
+export async function getAchievementCategories() {
     const { data, error } = await supabase
         .from(ACHIEVEMENT_CATEGORIES)
         .select("*")
-        .eq("kicker_id", kickerId)
         .order("sort_order", { ascending: true });
 
     if (error) {
@@ -28,7 +27,6 @@ export async function createAchievementCategory({
     description,
     icon,
     sortOrder,
-    kickerId,
 }) {
     const { data, error } = await supabase
         .from(ACHIEVEMENT_CATEGORIES)
@@ -38,7 +36,6 @@ export async function createAchievementCategory({
             description,
             icon,
             sort_order: sortOrder,
-            kicker_id: kickerId,
         })
         .select()
         .single();
@@ -88,7 +85,7 @@ export async function deleteAchievementCategory(id) {
 
 // ============== DEFINITIONS ==============
 
-export async function getAchievementDefinitions(kickerId, seasonId = null) {
+export async function getAchievementDefinitions(seasonId = null) {
     let query = supabase
         .from(ACHIEVEMENT_DEFINITIONS)
         .select(
@@ -97,7 +94,6 @@ export async function getAchievementDefinitions(kickerId, seasonId = null) {
             category:${ACHIEVEMENT_CATEGORIES}(*)
         `
         )
-        .eq("kicker_id", kickerId)
         .order("sort_order", { ascending: true });
 
     if (seasonId) {
@@ -156,7 +152,6 @@ export async function createAchievementDefinition({
     seasonId,
     parentId,
     sortOrder,
-    kickerId,
 }) {
     const { data, error } = await supabase
         .from(ACHIEVEMENT_DEFINITIONS)
@@ -175,7 +170,6 @@ export async function createAchievementDefinition({
             season_id: seasonId || null,
             parent_id: parentId || null,
             sort_order: sortOrder || 0,
-            kicker_id: kickerId,
         })
         .select(
             `
@@ -249,11 +243,19 @@ export async function deleteAchievementDefinition(id) {
 
 // ============== PLAYER PROGRESS ==============
 
-export async function getPlayerProgress(playerId) {
-    const { data, error } = await supabase
+export async function getPlayerProgress(playerId, seasonId = null) {
+    // Get progress for both season-specific (with season_id) and global (null season_id)
+    let query = supabase
         .from(PLAYER_ACHIEVEMENT_PROGRESS)
         .select("*")
         .eq("player_id", playerId);
+
+    // For season-specific progress, get records matching the season OR null (global)
+    if (seasonId) {
+        query = query.or(`season_id.eq.${seasonId},season_id.is.null`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         throw new Error(error.message);
@@ -264,11 +266,7 @@ export async function getPlayerProgress(playerId) {
 
 // ============== PLAYER ACHIEVEMENTS ==============
 
-export async function getPlayerAchievements(
-    playerId,
-    kickerId,
-    seasonId = null
-) {
+export async function getPlayerAchievements(playerId, seasonId = null) {
     let query = supabase
         .from(PLAYER_ACHIEVEMENTS)
         .select(
@@ -322,24 +320,33 @@ export async function getPlayerAchievementsSummary(playerId) {
 
 // ============== COMBINED QUERIES ==============
 
-export async function getAchievementsWithProgress(
-    playerId,
-    kickerId,
-    seasonId = null
-) {
-    // Get all definitions
-    const definitions = await getAchievementDefinitions(kickerId, seasonId);
+export async function getAchievementsWithProgress(playerId, seasonId = null) {
+    // Get all definitions (global - no kicker_id filter)
+    const definitions = await getAchievementDefinitions(seasonId);
 
-    // Get player's progress
-    const progress = await getPlayerProgress(playerId);
+    // Get player's progress (season-specific and global)
+    const progress = await getPlayerProgress(playerId, seasonId);
 
     // Get player's unlocked achievements
-    const unlocked = await getPlayerAchievements(playerId, kickerId, seasonId);
+    const unlocked = await getPlayerAchievements(playerId, seasonId);
 
     // Create lookup maps
-    const progressMap = new Map(
-        progress.map((p) => [p.achievement_id, p.current_progress])
-    );
+    // For progress, prefer season-specific progress over global for the same achievement
+    const progressMap = new Map();
+    for (const p of progress) {
+        const key = p.achievement_id;
+        const existing = progressMap.get(key);
+        // If no existing entry, or this entry is for the current season (more specific), use it
+        if (
+            !existing ||
+            (p.season_id === seasonId && existing.season_id !== seasonId)
+        ) {
+            progressMap.set(key, p.current_progress);
+        } else if (!existing) {
+            progressMap.set(key, p.current_progress);
+        }
+    }
+
     const unlockedMap = new Map(unlocked.map((u) => [u.achievement_id, u]));
 
     // Build chain information - find which achievements have children
@@ -383,7 +390,7 @@ export async function getAchievementsWithProgress(
 }
 
 // Get the next achievement in a chain (for WoW-style display)
-export async function getNextInChain(achievementId, kickerId) {
+export async function getNextInChain(achievementId) {
     const { data, error } = await supabase
         .from(ACHIEVEMENT_DEFINITIONS)
         .select(
@@ -393,7 +400,6 @@ export async function getNextInChain(achievementId, kickerId) {
         `
         )
         .eq("parent_id", achievementId)
-        .eq("kicker_id", kickerId)
         .single();
 
     if (error && error.code !== "PGRST116") {

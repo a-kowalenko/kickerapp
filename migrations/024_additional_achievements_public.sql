@@ -195,7 +195,7 @@ INSERT INTO public.achievement_definitions (
 
 
 -- ============================================
--- GOALS ACHIEVEMENTS - Own Goal Hidden
+-- GOALS ACHIEVEMENTS - Own Goal Secret
 -- ============================================
 
 -- Score an own goal at 0-0 (1on1)
@@ -206,7 +206,7 @@ INSERT INTO public.achievement_definitions (
     'own_goal_at_0_1on1', 
     'False Start (1on1)', 
     'Score an own goal when the score is 0-0 in a 1on1 match',
-    (SELECT id FROM public.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM public.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'GOAL_SCORED',
     '{"type": "threshold", "metric": "own_goal_at_score", "target": 0, "filters": {"gamemode": "1on1", "goal_type": "own_goal", "both_scores": 0}}',
     25,
@@ -224,7 +224,7 @@ INSERT INTO public.achievement_definitions (
     'own_goal_at_0_2on2', 
     'False Start (2on2)', 
     'Score an own goal when the score is 0-0 in a 2on2 match',
-    (SELECT id FROM public.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM public.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'GOAL_SCORED',
     '{"type": "threshold", "metric": "own_goal_at_score", "target": 0, "filters": {"gamemode": "2on2", "goal_type": "own_goal", "both_scores": 0}}',
     25,
@@ -242,7 +242,7 @@ INSERT INTO public.achievement_definitions (
     'own_goals_5_in_day', 
     'Wrong Direction Day', 
     'Score 5 own goals in a single day',
-    (SELECT id FROM public.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM public.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "own_goals_in_day", "target": 5, "filters": {"goal_type": "own_goal"}}',
     50,

@@ -48,8 +48,23 @@ function AchievementsOverview() {
     // Filter achievements based on URL params
     const categoryFilter = searchParams.get("category") || "all";
     const statusFilter = searchParams.get("status") || "all";
+    const scopeFilter = searchParams.get("scope") || "season";
 
     const filteredAchievements = (achievements || []).filter((achievement) => {
+        // Scope filter - filter by is_season_specific
+        if (
+            scopeFilter === "season" &&
+            achievement.is_season_specific === false
+        ) {
+            return false;
+        }
+        if (
+            scopeFilter === "alltime" &&
+            achievement.is_season_specific === true
+        ) {
+            return false;
+        }
+
         // Category filter
         if (
             categoryFilter !== "all" &&

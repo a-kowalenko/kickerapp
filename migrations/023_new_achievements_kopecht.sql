@@ -479,19 +479,19 @@ UPDATE kopecht.achievement_definitions
 SET parent_id = (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievement_hunter_50' AND kicker_id = 1)
 WHERE key = 'completionist' AND kicker_id = 1;
 
--- Unlock 3 hidden achievements
+-- Unlock 3 secret achievements
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, kicker_id
 ) VALUES (
     'secret_finder', 
     'Secret Finder', 
-    'Unlock 3 hidden achievements',
+    'Unlock 5 secret achievements',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta' AND kicker_id = 1),
     'ACHIEVEMENT_UNLOCKED',
-    '{"type": "counter", "metric": "hidden_achievements_unlocked", "target": 3}',
+    '{"type": "counter", "metric": "secret_achievements_unlocked", "target": 5}',
     150,
-    3,
+    5,
     false,
     false,
     1
@@ -551,7 +551,7 @@ INSERT INTO kopecht.achievement_definitions (
     'own_goal_at_9_1on1', 
     'So Close... (1on1)', 
     'Score an own goal when you are at 9-X in a 1on1 match',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'GOAL_SCORED',
     '{"type": "threshold", "metric": "own_goal_at_score", "target": 9, "filters": {"gamemode": "1on1", "goal_type": "own_goal"}}',
     25,
@@ -569,7 +569,7 @@ INSERT INTO kopecht.achievement_definitions (
     'own_goal_at_9_2on2', 
     'So Close... (2on2)', 
     'Score an own goal when your team is at 9-X in a 2on2 match',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'GOAL_SCORED',
     '{"type": "threshold", "metric": "own_goal_at_score", "target": 9, "filters": {"gamemode": "2on2", "goal_type": "own_goal"}}',
     25,
@@ -587,7 +587,7 @@ INSERT INTO kopecht.achievement_definitions (
     'own_goal_at_1_1on1', 
     'Adding Insult to Injury (1on1)', 
     'Score an own goal when you are at 1-X in a 1on1 match',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'GOAL_SCORED',
     '{"type": "threshold", "metric": "own_goal_at_score", "target": 1, "filters": {"gamemode": "1on1", "goal_type": "own_goal"}}',
     25,
@@ -605,7 +605,7 @@ INSERT INTO kopecht.achievement_definitions (
     'own_goal_at_1_2on2', 
     'Adding Insult to Injury (2on2)', 
     'Score an own goal when your team is at 1-X in a 2on2 match',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'hidden' AND kicker_id = 1),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret' AND kicker_id = 1),
     'GOAL_SCORED',
     '{"type": "threshold", "metric": "own_goal_at_score", "target": 1, "filters": {"gamemode": "2on2", "goal_type": "own_goal"}}',
     25,

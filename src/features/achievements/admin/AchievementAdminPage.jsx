@@ -326,7 +326,7 @@ function AchievementAdminPage() {
                                     <Td>
                                         {achievement.is_hidden && (
                                             <Badge $variant="warning">
-                                                Hidden
+                                                Secret
                                             </Badge>
                                         )}{" "}
                                         {achievement.is_repeatable && (

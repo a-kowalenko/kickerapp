@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "react-query";
-import { useKicker } from "../../contexts/KickerContext";
 import toast from "react-hot-toast";
 import {
     createAchievementCategory,
@@ -8,14 +7,13 @@ import {
 } from "../../services/apiAchievements";
 
 export function useCreateCategory() {
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
 
     const { mutate: createCategory, isLoading } = useMutation({
-        mutationFn: (data) => createAchievementCategory({ ...data, kickerId }),
+        mutationFn: (data) => createAchievementCategory(data),
         onSuccess: () => {
             toast.success("Category created successfully");
-            queryClient.invalidateQueries(["achievementCategories", kickerId]);
+            queryClient.invalidateQueries(["achievementCategories"]);
         },
         onError: (error) => toast.error(error.message),
     });
@@ -24,7 +22,6 @@ export function useCreateCategory() {
 }
 
 export function useUpdateCategory() {
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
 
     const { mutate: updateCategory, isLoading } = useMutation({
@@ -32,7 +29,7 @@ export function useUpdateCategory() {
             updateAchievementCategory(id, updates),
         onSuccess: () => {
             toast.success("Category updated successfully");
-            queryClient.invalidateQueries(["achievementCategories", kickerId]);
+            queryClient.invalidateQueries(["achievementCategories"]);
         },
         onError: (error) => toast.error(error.message),
     });
@@ -41,14 +38,13 @@ export function useUpdateCategory() {
 }
 
 export function useDeleteCategory() {
-    const { currentKicker: kickerId } = useKicker();
     const queryClient = useQueryClient();
 
     const { mutate: deleteCategory, isLoading } = useMutation({
         mutationFn: (id) => deleteAchievementCategory(id),
         onSuccess: () => {
             toast.success("Category deleted successfully");
-            queryClient.invalidateQueries(["achievementCategories", kickerId]);
+            queryClient.invalidateQueries(["achievementCategories"]);
         },
         onError: (error) => toast.error(error.message),
     });
