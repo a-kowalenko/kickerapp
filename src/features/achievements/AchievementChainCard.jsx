@@ -9,6 +9,8 @@ import {
     HiChevronUp,
 } from "react-icons/hi2";
 import { media } from "../../utils/constants";
+import { useAchievementReward } from "./usePlayerRewards";
+import RewardBadge from "./RewardBadge";
 
 const fadeIn = keyframes`
     from {
@@ -402,6 +404,63 @@ const ChainItemPoints = styled.span`
     }
 `;
 
+const ChainItemRewardWrapper = styled.div`
+    margin-top: 0.4rem;
+`;
+
+// Sub-component for each chain item that fetches its own reward
+function ChainItem({ achievement, index, currentAchievementId }) {
+    const { reward } = useAchievementReward(achievement.key);
+    const isCurrent = achievement.id === currentAchievementId;
+    const isFuture = !achievement.isUnlocked && !isCurrent;
+
+    return (
+        <ChainItemRow
+            $isUnlocked={achievement.isUnlocked}
+            $isCurrent={isCurrent}
+            $isFuture={isFuture}
+        >
+            <ChainItemIcon
+                $isUnlocked={achievement.isUnlocked}
+                $isCurrent={isCurrent}
+                $isFuture={isFuture}
+            >
+                {achievement.isUnlocked ? (
+                    <HiCheck />
+                ) : isFuture ? (
+                    <HiLockClosed />
+                ) : (
+                    index + 1
+                )}
+            </ChainItemIcon>
+            <ChainItemContent>
+                <ChainItemName
+                    $isUnlocked={achievement.isUnlocked}
+                    $isCurrent={isCurrent}
+                    $isFuture={isFuture}
+                >
+                    {achievement.name}
+                </ChainItemName>
+                <ChainItemDesc $isFuture={isFuture}>
+                    {achievement.description}
+                </ChainItemDesc>
+                {reward && (
+                    <ChainItemRewardWrapper>
+                        <RewardBadge reward={reward} />
+                    </ChainItemRewardWrapper>
+                )}
+            </ChainItemContent>
+            <ChainItemPoints
+                $isUnlocked={achievement.isUnlocked}
+                $isFuture={isFuture}
+            >
+                <HiOutlineTrophy />
+                {achievement.points}
+            </ChainItemPoints>
+        </ChainItemRow>
+    );
+}
+
 function AchievementChainCard({ chain, currentAchievementId }) {
     // Debug: Log the chain data
     console.log("AchievementChainCard - chain:", chain);
@@ -415,6 +474,15 @@ function AchievementChainCard({ chain, currentAchievementId }) {
     const containerRef = useRef(null);
     const dropdownRef = useRef(null);
     const rafRef = useRef(null);
+
+    // Find the current achievement to display
+    const currentAchievement =
+        chain.find((a) => a.id === currentAchievementId) || chain[0];
+
+    // Fetch reward only for the CURRENT achievement in the chain
+    const { reward: currentReward } = useAchievementReward(
+        currentAchievement?.key
+    );
 
     // Update dropdown position using requestAnimationFrame for smooth updates
     useEffect(() => {
@@ -465,9 +533,6 @@ function AchievementChainCard({ chain, currentAchievementId }) {
         setIsExpanded(false);
     };
 
-    // Find the current achievement to display
-    const currentAchievement =
-        chain.find((a) => a.id === currentAchievementId) || chain[0];
     const unlockedCount = chain.filter((a) => a.isUnlocked).length;
     const totalPoints = chain.reduce((sum, a) => sum + (a.points || 0), 0);
     const earnedPoints = chain
@@ -505,55 +570,14 @@ function AchievementChainCard({ chain, currentAchievementId }) {
                             Points)
                         </ChainTitle>
                         <ChainList>
-                            {chain.map((achievement, index) => {
-                                const isCurrent =
-                                    achievement.id === currentAchievementId;
-                                const isFuture =
-                                    !achievement.isUnlocked && !isCurrent;
-                                return (
-                                    <ChainItemRow
-                                        key={achievement.id}
-                                        $isUnlocked={achievement.isUnlocked}
-                                        $isCurrent={isCurrent}
-                                        $isFuture={isFuture}
-                                    >
-                                        <ChainItemIcon
-                                            $isUnlocked={achievement.isUnlocked}
-                                            $isCurrent={isCurrent}
-                                            $isFuture={isFuture}
-                                        >
-                                            {achievement.isUnlocked ? (
-                                                <HiCheck />
-                                            ) : isFuture ? (
-                                                <HiLockClosed />
-                                            ) : (
-                                                index + 1
-                                            )}
-                                        </ChainItemIcon>
-                                        <ChainItemContent>
-                                            <ChainItemName
-                                                $isUnlocked={
-                                                    achievement.isUnlocked
-                                                }
-                                                $isCurrent={isCurrent}
-                                                $isFuture={isFuture}
-                                            >
-                                                {achievement.name}
-                                            </ChainItemName>
-                                            <ChainItemDesc $isFuture={isFuture}>
-                                                {achievement.description}
-                                            </ChainItemDesc>
-                                        </ChainItemContent>
-                                        <ChainItemPoints
-                                            $isUnlocked={achievement.isUnlocked}
-                                            $isFuture={isFuture}
-                                        >
-                                            <HiOutlineTrophy />
-                                            {achievement.points}
-                                        </ChainItemPoints>
-                                    </ChainItemRow>
-                                );
-                            })}
+                            {chain.map((achievement, index) => (
+                                <ChainItem
+                                    key={achievement.id}
+                                    achievement={achievement}
+                                    index={index}
+                                    currentAchievementId={currentAchievementId}
+                                />
+                            ))}
                         </ChainList>
                     </ExpandedSection>
                 </DropdownOverlay>
@@ -584,7 +608,19 @@ function AchievementChainCard({ chain, currentAchievementId }) {
                 <Content>
                     <Header>
                         <div>
-                            <Name $isUnlocked={isUnlocked}>{name}</Name>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.8rem",
+                                    flexWrap: "wrap",
+                                }}
+                            >
+                                <Name $isUnlocked={isUnlocked}>{name}</Name>
+                                {currentReward && (
+                                    <RewardBadge reward={currentReward} />
+                                )}
+                            </div>
                             <ChainIndicator>
                                 <ChainBadge>
                                     🔗 {unlockedCount}/{chain.length}

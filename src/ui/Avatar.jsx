@@ -182,28 +182,57 @@ const normalizeStatus = (status) => {
 };
 
 /* ----------------------------------------
+   Frame Overlay (für Reward-Rahmen)
+   - Rendert über dem Avatar-Bild
+   - Nimmt URL von reward_definitions.display_value
+----------------------------------------- */
+const FrameOverlay = styled.div`
+    position: absolute;
+    top: -10%;
+    bottom: -10%;
+    left: -10%;
+    right: -10%;
+    z-index: 12;
+    background-image: url(${(props) => props.$frameUrl});
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    pointer-events: none;
+`;
+
+/* ----------------------------------------
    Öffentliche Avatar-Komponente
    Props:
-   - player: object - Player-Objekt mit avatar und status (optional)
+   - player: object - Player-Objekt mit avatar, status und rewards (optional)
    - src: string - Avatar-URL (optional wenn player übergeben)
    - $status: string | string[] - Status-Effekte (optional wenn player übergeben)
    - $size: 'xs' | 'small' | 'medium' | 'large' | 'huge'
    - $cursor: 'pointer' | 'none'
+   - $frameUrl: string - URL für den Rahmen (Reward-Frame)
    - ...rest: alle anderen img-Props (alt, etc.)
    
-   Priorität: Explizite Props (src, $status) überschreiben player-Werte
+   Priorität: Explizite Props (src, $status, $frameUrl) überschreiben player-Werte
+   
+   Player-Objekt kann enthalten:
+   - avatar: string - Avatar URL
+   - status: string | string[] - Status-Effekte
+   - rewards: { frame: { display_value: string } } - Selected rewards
 ----------------------------------------- */
 const Avatar = ({
     player,
     src,
     $status = "onFire",
     $size = "large",
+    $frameUrl,
     $cursor = "none",
     ...props
 }) => {
     // Werte aus player-Objekt extrahieren, explizite Props haben Priorität
     const avatarSrc = src ?? player?.avatar;
     const status = $status ?? player?.status;
+
+    // Frame URL: explizite Prop > player.rewards.frame.display_value
+    const frameUrl = $frameUrl ?? player?.rewards?.frame?.display_value;
 
     const statusArray = normalizeStatus(status);
     const opacity = OPACITY_BY_SIZE[$size] || 1;
@@ -256,6 +285,7 @@ const Avatar = ({
                 $cursor={$cursor}
                 {...props}
             />
+            {frameUrl && <FrameOverlay $frameUrl={frameUrl} />}
         </AvatarWrapper>
     );
 };

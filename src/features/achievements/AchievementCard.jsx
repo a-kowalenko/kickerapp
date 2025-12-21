@@ -1,6 +1,9 @@
 import styled from "styled-components";
 import { HiOutlineTrophy, HiLockClosed, HiCheck } from "react-icons/hi2";
 import { media } from "../../utils/constants";
+import { useAchievementReward } from "./usePlayerRewards";
+import RewardBadge from "./RewardBadge";
+import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 
 const Card = styled.div`
     display: flex;
@@ -207,6 +210,7 @@ const UnlockedDate = styled.span`
 
 function AchievementCard({ achievement, compact = false }) {
     const {
+        key,
         name,
         description,
         points,
@@ -220,6 +224,9 @@ function AchievementCard({ achievement, compact = false }) {
         unlockedAt,
         progressPercent,
     } = achievement;
+
+    // Fetch reward linked to this achievement
+    const { reward } = useAchievementReward(key);
 
     const showProgress = maxProgress > 1 && !isUnlocked && !compact;
     const displayIcon = icon || "🏆";
@@ -266,6 +273,7 @@ function AchievementCard({ achievement, compact = false }) {
                         {!compact && isSeasonSpecific === false && (
                             <ScopeBadge $isGlobal={true}>All-Time</ScopeBadge>
                         )}
+                        {!compact && reward && <RewardBadge reward={reward} />}
                     </div>
                     <Points $isUnlocked={isUnlocked}>
                         <HiOutlineTrophy />

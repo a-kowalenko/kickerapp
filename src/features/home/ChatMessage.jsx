@@ -12,6 +12,7 @@ import {
 } from "react-icons/hi2";
 import { Link } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
+import PlayerNameWithTitle from "../../ui/PlayerNameWithTitle";
 import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
@@ -615,7 +616,11 @@ function ChatMessage({
                             to={`/user/${message.player?.name}/profile`}
                             $isWhisper={isWhisper}
                         >
-                            {message.player?.name}
+                            <PlayerNameWithTitle
+                                asText
+                                name={message.player?.name}
+                                playerId={message.player_id}
+                            />
                         </AuthorName>
                         {isWhisper && (
                             <WhisperLabel>

@@ -4,6 +4,7 @@ import {
     HiOutlinePlus,
     HiOutlinePencil,
     HiOutlineTrash,
+    HiOutlineSparkles,
 } from "react-icons/hi2";
 import Heading from "../../../ui/Heading";
 import Button from "../../../ui/Button";
@@ -12,10 +13,13 @@ import { useAchievementDefinitions } from "../useAchievementDefinitions";
 import { useAchievementCategories } from "../useAchievementCategories";
 import { useDeleteAchievement } from "../useAchievementMutations";
 import { useDeleteCategory } from "../useCategoryMutations";
+import { useRewardDefinitions } from "../usePlayerRewards";
+import { useDeleteReward } from "../useRewardMutations";
 import { useKickerInfo } from "../../../hooks/useKickerInfo";
 import { useUser } from "../../authentication/useUser";
 import AchievementForm from "./AchievementForm";
 import CategoryForm from "./CategoryForm";
+import RewardForm from "./RewardForm";
 
 const StyledAdmin = styled.div`
     display: flex;
@@ -120,13 +124,55 @@ const Badge = styled.span`
             ? "var(--color-green-100)"
             : props.$variant === "warning"
             ? "var(--color-yellow-100)"
+            : props.$variant === "info"
+            ? "var(--color-brand-100)"
             : "var(--color-grey-100)"};
     color: ${(props) =>
         props.$variant === "success"
             ? "var(--color-green-700)"
             : props.$variant === "warning"
             ? "var(--color-yellow-700)"
+            : props.$variant === "info"
+            ? "var(--color-brand-700)"
             : "var(--color-grey-700)"};
+`;
+
+const TabContainer = styled.div`
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 2.4rem;
+    border-bottom: 2px solid var(--color-grey-200);
+    padding-bottom: 0.4rem;
+`;
+
+const Tab = styled.button`
+    padding: 1rem 2rem;
+    font-size: 1.4rem;
+    font-weight: 500;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: ${(props) =>
+        props.$active
+            ? "var(--color-brand-600)"
+            : "var(--secondary-text-color)"};
+    border-bottom: 2px solid
+        ${(props) => (props.$active ? "var(--color-brand-600)" : "transparent")};
+    margin-bottom: -6px;
+    transition: all 0.2s ease;
+
+    &:hover {
+        color: var(--color-brand-600);
+    }
+
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+
+    & svg {
+        width: 1.8rem;
+        height: 1.8rem;
+    }
 `;
 
 function AchievementAdminPage() {
@@ -136,21 +182,27 @@ function AchievementAdminPage() {
         useAchievementDefinitions();
     const { categories, isLoading: isLoadingCategories } =
         useAchievementCategories();
+    const { rewards, isLoading: isLoadingRewards } = useRewardDefinitions();
     const { deleteAchievement, isLoading: isDeletingAchievement } =
         useDeleteAchievement();
     const { deleteCategory, isLoading: isDeletingCategory } =
         useDeleteCategory();
+    const { deleteReward, isLoading: isDeletingReward } = useDeleteReward();
 
+    const [activeTab, setActiveTab] = useState("achievements");
     const [showAchievementForm, setShowAchievementForm] = useState(false);
     const [showCategoryForm, setShowCategoryForm] = useState(false);
+    const [showRewardForm, setShowRewardForm] = useState(false);
     const [editingAchievement, setEditingAchievement] = useState(null);
     const [editingCategory, setEditingCategory] = useState(null);
+    const [editingReward, setEditingReward] = useState(null);
 
     const isLoading =
         isLoadingKicker ||
         isLoadingUser ||
         isLoadingDefinitions ||
-        isLoadingCategories;
+        isLoadingCategories ||
+        isLoadingRewards;
     const isAdmin = kickerData?.admin === user?.id;
 
     if (isLoading) {
@@ -176,6 +228,11 @@ function AchievementAdminPage() {
         setShowCategoryForm(true);
     };
 
+    const handleEditReward = (reward) => {
+        setEditingReward(reward);
+        setShowRewardForm(true);
+    };
+
     const handleDeleteAchievement = (id) => {
         if (
             window.confirm("Are you sure you want to delete this achievement?")
@@ -194,6 +251,12 @@ function AchievementAdminPage() {
         }
     };
 
+    const handleDeleteReward = (id) => {
+        if (window.confirm("Are you sure you want to delete this reward?")) {
+            deleteReward(id);
+        }
+    };
+
     const handleCloseAchievementForm = () => {
         setShowAchievementForm(false);
         setEditingAchievement(null);
@@ -204,171 +267,320 @@ function AchievementAdminPage() {
         setEditingCategory(null);
     };
 
+    const handleCloseRewardForm = () => {
+        setShowRewardForm(false);
+        setEditingReward(null);
+    };
+
     return (
         <StyledAdmin>
             <Heading as="h1" type="page" hasBackBtn={true}>
                 Achievement Admin
             </Heading>
 
-            {/* Categories Section */}
-            <Section>
-                <SectionHeader>
-                    <SectionTitle>Categories</SectionTitle>
-                    <Button
-                        $size="small"
-                        onClick={() => setShowCategoryForm(true)}
-                    >
-                        <HiOutlinePlus /> Add Category
-                    </Button>
-                </SectionHeader>
+            <TabContainer>
+                <Tab
+                    $active={activeTab === "achievements"}
+                    onClick={() => setActiveTab("achievements")}
+                >
+                    🏆 Achievements
+                </Tab>
+                <Tab
+                    $active={activeTab === "rewards"}
+                    onClick={() => setActiveTab("rewards")}
+                >
+                    <HiOutlineSparkles /> Rewards
+                </Tab>
+            </TabContainer>
 
-                {categories && categories.length > 0 ? (
-                    <Table>
-                        <thead>
-                            <tr>
-                                <Th>Icon</Th>
-                                <Th>Key</Th>
-                                <Th>Name</Th>
-                                <Th>Order</Th>
-                                <Th>Actions</Th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {categories.map((category) => (
-                                <tr key={category.id}>
-                                    <Td>{category.icon || "📋"}</Td>
-                                    <Td>
-                                        <code>{category.key}</code>
-                                    </Td>
-                                    <Td>{category.name}</Td>
-                                    <Td>{category.sort_order}</Td>
-                                    <Td>
-                                        <Actions>
-                                            <IconButton
-                                                onClick={() =>
-                                                    handleEditCategory(category)
-                                                }
-                                            >
-                                                <HiOutlinePencil />
-                                            </IconButton>
-                                            <IconButton
-                                                className="delete"
-                                                onClick={() =>
-                                                    handleDeleteCategory(
-                                                        category.id
-                                                    )
-                                                }
-                                                disabled={isDeletingCategory}
-                                            >
-                                                <HiOutlineTrash />
-                                            </IconButton>
-                                        </Actions>
-                                    </Td>
+            {activeTab === "achievements" && (
+                <>
+                    {/* Categories Section */}
+                    <Section>
+                        <SectionHeader>
+                            <SectionTitle>Categories</SectionTitle>
+                            <Button
+                                $size="small"
+                                onClick={() => setShowCategoryForm(true)}
+                            >
+                                <HiOutlinePlus /> Add Category
+                            </Button>
+                        </SectionHeader>
+
+                        {categories && categories.length > 0 ? (
+                            <Table>
+                                <thead>
+                                    <tr>
+                                        <Th>Icon</Th>
+                                        <Th>Key</Th>
+                                        <Th>Name</Th>
+                                        <Th>Order</Th>
+                                        <Th>Actions</Th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {categories.map((category) => (
+                                        <tr key={category.id}>
+                                            <Td>{category.icon || "📋"}</Td>
+                                            <Td>
+                                                <code>{category.key}</code>
+                                            </Td>
+                                            <Td>{category.name}</Td>
+                                            <Td>{category.sort_order}</Td>
+                                            <Td>
+                                                <Actions>
+                                                    <IconButton
+                                                        onClick={() =>
+                                                            handleEditCategory(
+                                                                category
+                                                            )
+                                                        }
+                                                    >
+                                                        <HiOutlinePencil />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        className="delete"
+                                                        onClick={() =>
+                                                            handleDeleteCategory(
+                                                                category.id
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            isDeletingCategory
+                                                        }
+                                                    >
+                                                        <HiOutlineTrash />
+                                                    </IconButton>
+                                                </Actions>
+                                            </Td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        ) : (
+                            <NoData>
+                                No categories yet. Create one to get started!
+                            </NoData>
+                        )}
+                    </Section>
+
+                    {/* Achievements Section */}
+                    <Section>
+                        <SectionHeader>
+                            <SectionTitle>Achievements</SectionTitle>
+                            <Button
+                                $size="small"
+                                onClick={() => setShowAchievementForm(true)}
+                                disabled={
+                                    !categories || categories.length === 0
+                                }
+                            >
+                                <HiOutlinePlus /> Add Achievement
+                            </Button>
+                        </SectionHeader>
+
+                        {!categories || categories.length === 0 ? (
+                            <NoData>
+                                Create a category first before adding
+                                achievements.
+                            </NoData>
+                        ) : definitions && definitions.length > 0 ? (
+                            <Table>
+                                <thead>
+                                    <tr>
+                                        <Th>Icon</Th>
+                                        <Th>Key</Th>
+                                        <Th>Name</Th>
+                                        <Th>Category</Th>
+                                        <Th>Trigger</Th>
+                                        <Th>Points</Th>
+                                        <Th>Progress</Th>
+                                        <Th>Flags</Th>
+                                        <Th>Actions</Th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {definitions.map((achievement) => (
+                                        <tr key={achievement.id}>
+                                            <Td>{achievement.icon || "🏆"}</Td>
+                                            <Td>
+                                                <code>{achievement.key}</code>
+                                            </Td>
+                                            <Td>{achievement.name}</Td>
+                                            <Td>
+                                                {achievement.category?.name}
+                                            </Td>
+                                            <Td>
+                                                <Badge>
+                                                    {achievement.trigger_event}
+                                                </Badge>
+                                            </Td>
+                                            <Td>{achievement.points}</Td>
+                                            <Td>{achievement.max_progress}</Td>
+                                            <Td>
+                                                {achievement.is_hidden && (
+                                                    <Badge $variant="warning">
+                                                        Secret
+                                                    </Badge>
+                                                )}{" "}
+                                                {achievement.is_repeatable && (
+                                                    <Badge $variant="success">
+                                                        Repeatable
+                                                    </Badge>
+                                                )}
+                                            </Td>
+                                            <Td>
+                                                <Actions>
+                                                    <IconButton
+                                                        onClick={() =>
+                                                            handleEditAchievement(
+                                                                achievement
+                                                            )
+                                                        }
+                                                    >
+                                                        <HiOutlinePencil />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        className="delete"
+                                                        onClick={() =>
+                                                            handleDeleteAchievement(
+                                                                achievement.id
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            isDeletingAchievement
+                                                        }
+                                                    >
+                                                        <HiOutlineTrash />
+                                                    </IconButton>
+                                                </Actions>
+                                            </Td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        ) : (
+                            <NoData>
+                                No achievements yet. Create one to get started!
+                            </NoData>
+                        )}
+                    </Section>
+                </>
+            )}
+
+            {activeTab === "rewards" && (
+                <Section>
+                    <SectionHeader>
+                        <SectionTitle>Rewards</SectionTitle>
+                        <Button
+                            $size="small"
+                            onClick={() => setShowRewardForm(true)}
+                        >
+                            <HiOutlinePlus /> Add Reward
+                        </Button>
+                    </SectionHeader>
+
+                    {rewards && rewards.length > 0 ? (
+                        <Table>
+                            <thead>
+                                <tr>
+                                    <Th>Icon</Th>
+                                    <Th>Key</Th>
+                                    <Th>Name</Th>
+                                    <Th>Type</Th>
+                                    <Th>Value</Th>
+                                    <Th>Achievement</Th>
+                                    <Th>Order</Th>
+                                    <Th>Actions</Th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
-                ) : (
-                    <NoData>
-                        No categories yet. Create one to get started!
-                    </NoData>
-                )}
-            </Section>
-
-            {/* Achievements Section */}
-            <Section>
-                <SectionHeader>
-                    <SectionTitle>Achievements</SectionTitle>
-                    <Button
-                        $size="small"
-                        onClick={() => setShowAchievementForm(true)}
-                        disabled={!categories || categories.length === 0}
-                    >
-                        <HiOutlinePlus /> Add Achievement
-                    </Button>
-                </SectionHeader>
-
-                {!categories || categories.length === 0 ? (
-                    <NoData>
-                        Create a category first before adding achievements.
-                    </NoData>
-                ) : definitions && definitions.length > 0 ? (
-                    <Table>
-                        <thead>
-                            <tr>
-                                <Th>Icon</Th>
-                                <Th>Key</Th>
-                                <Th>Name</Th>
-                                <Th>Category</Th>
-                                <Th>Trigger</Th>
-                                <Th>Points</Th>
-                                <Th>Progress</Th>
-                                <Th>Flags</Th>
-                                <Th>Actions</Th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {definitions.map((achievement) => (
-                                <tr key={achievement.id}>
-                                    <Td>{achievement.icon || "🏆"}</Td>
-                                    <Td>
-                                        <code>{achievement.key}</code>
-                                    </Td>
-                                    <Td>{achievement.name}</Td>
-                                    <Td>{achievement.category?.name}</Td>
-                                    <Td>
-                                        <Badge>
-                                            {achievement.trigger_event}
-                                        </Badge>
-                                    </Td>
-                                    <Td>{achievement.points}</Td>
-                                    <Td>{achievement.max_progress}</Td>
-                                    <Td>
-                                        {achievement.is_hidden && (
-                                            <Badge $variant="warning">
-                                                Secret
-                                            </Badge>
-                                        )}{" "}
-                                        {achievement.is_repeatable && (
-                                            <Badge $variant="success">
-                                                Repeatable
-                                            </Badge>
-                                        )}
-                                    </Td>
-                                    <Td>
-                                        <Actions>
-                                            <IconButton
-                                                onClick={() =>
-                                                    handleEditAchievement(
-                                                        achievement
-                                                    )
+                            </thead>
+                            <tbody>
+                                {rewards.map((reward) => (
+                                    <tr key={reward.id}>
+                                        <Td>{reward.icon || "🎁"}</Td>
+                                        <Td>
+                                            <code>{reward.key}</code>
+                                        </Td>
+                                        <Td>{reward.name}</Td>
+                                        <Td>
+                                            <Badge
+                                                $variant={
+                                                    reward.type === "title"
+                                                        ? "info"
+                                                        : reward.type ===
+                                                          "frame"
+                                                        ? "success"
+                                                        : "default"
                                                 }
                                             >
-                                                <HiOutlinePencil />
-                                            </IconButton>
-                                            <IconButton
-                                                className="delete"
-                                                onClick={() =>
-                                                    handleDeleteAchievement(
-                                                        achievement.id
-                                                    )
-                                                }
-                                                disabled={isDeletingAchievement}
-                                            >
-                                                <HiOutlineTrash />
-                                            </IconButton>
-                                        </Actions>
-                                    </Td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </Table>
-                ) : (
-                    <NoData>
-                        No achievements yet. Create one to get started!
-                    </NoData>
-                )}
-            </Section>
+                                                {reward.type}
+                                            </Badge>
+                                        </Td>
+                                        <Td>
+                                            <code>{reward.display_value}</code>
+                                            {reward.type === "title" &&
+                                                reward.display_position && (
+                                                    <Badge
+                                                        style={{
+                                                            marginLeft:
+                                                                "0.4rem",
+                                                        }}
+                                                    >
+                                                        {
+                                                            reward.display_position
+                                                        }
+                                                    </Badge>
+                                                )}
+                                        </Td>
+                                        <Td>
+                                            {reward.achievement_key ? (
+                                                <code>
+                                                    {reward.achievement_key}
+                                                </code>
+                                            ) : (
+                                                <span
+                                                    style={{
+                                                        color: "var(--tertiary-text-color)",
+                                                    }}
+                                                >
+                                                    —
+                                                </span>
+                                            )}
+                                        </Td>
+                                        <Td>{reward.sort_order}</Td>
+                                        <Td>
+                                            <Actions>
+                                                <IconButton
+                                                    onClick={() =>
+                                                        handleEditReward(reward)
+                                                    }
+                                                >
+                                                    <HiOutlinePencil />
+                                                </IconButton>
+                                                <IconButton
+                                                    className="delete"
+                                                    onClick={() =>
+                                                        handleDeleteReward(
+                                                            reward.id
+                                                        )
+                                                    }
+                                                    disabled={isDeletingReward}
+                                                >
+                                                    <HiOutlineTrash />
+                                                </IconButton>
+                                            </Actions>
+                                        </Td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    ) : (
+                        <NoData>
+                            No rewards yet. Create one to get started!
+                        </NoData>
+                    )}
+                </Section>
+            )}
 
             {/* Forms/Modals */}
             {showCategoryForm && (
@@ -384,6 +596,14 @@ function AchievementAdminPage() {
                     categories={categories}
                     achievements={definitions}
                     onClose={handleCloseAchievementForm}
+                />
+            )}
+
+            {showRewardForm && (
+                <RewardForm
+                    reward={editingReward}
+                    achievements={definitions}
+                    onClose={handleCloseRewardForm}
                 />
             )}
         </StyledAdmin>

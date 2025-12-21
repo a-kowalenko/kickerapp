@@ -8,6 +8,7 @@ import AchievementsSummary from "./AchievementsSummary";
 import AchievementsFilterRow from "./AchievementsFilterRow";
 import AchievementsList from "./AchievementsList";
 import AchievementAdminPage from "./admin/AchievementAdminPage";
+import RewardsOverview from "./RewardsOverview";
 import { useAchievementsWithProgress } from "./useAchievementsWithProgress";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useSelectedSeason } from "../seasons/useSelectedSeason";
@@ -151,6 +152,11 @@ function AchievementsPage() {
             path: "/achievements/overview",
             label: "Overview",
             component: <AchievementsOverview />,
+        },
+        {
+            path: "/achievements/rewards",
+            label: "Rewards",
+            component: <RewardsOverview />,
         },
     ];
 
