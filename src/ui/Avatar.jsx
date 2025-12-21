@@ -611,7 +611,7 @@ const STATUS_EFFECTS = {
         asset: null,
         zIndex: 2,
         cssEffect: "underdog",
-        color: "rgba(255, 200, 100, 0.5)",
+        color: "rgba(255, 100, 121, 0.5)",
         sizeConfig: {
             xs: {
                 scale: 1.0,

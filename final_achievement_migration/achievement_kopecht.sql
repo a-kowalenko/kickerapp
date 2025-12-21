@@ -4601,3 +4601,487 @@ COMMENT ON COLUMN kopecht.season_rankings.bounty_claimed IS 'Total bounty claime
 COMMENT ON COLUMN kopecht.season_rankings.bounty_claimed_2on2 IS 'Total bounty claimed in 2on2 this season';
 COMMENT ON COLUMN kopecht.player_history.bounty_claimed IS 'Bounty claimed in 1on1 on this date';
 COMMENT ON COLUMN kopecht.player_history.bounty_claimed_2on2 IS 'Bounty claimed in 2on2 on this date';
+
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PART 14: Fix Bounty Calculation
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- Migration: Fix bounty calculation - only add bounty when crossing thresholds
+-- Schema: kopecht
+-- 
+-- BUG: Previously, bounty was calculated as `bounty_per_streak * (streak - 2)` 
+-- which meant bounty increased on EVERY win after streak 3.
+--
+-- FIX: Bounty should only be ADDED when crossing specific thresholds:
+-- - 3rd win: +4 (warming_up)
+-- - 5th win: +6 (hot_streak)  
+-- - 7th win: +8 (on_fire)
+-- - 10th win: +12 (legendary)
+--
+-- Example: Player wins 6 times in a row
+-- - After 3rd win: bounty = 4
+-- - After 4th win: bounty = 4 (no change)
+-- - After 5th win: bounty = 4 + 6 = 10
+-- - After 6th win: bounty = 10 (no change)
+
+SET search_path TO kopecht;
+
+-- Drop existing function first (return type changed)
+DROP FUNCTION IF EXISTS kopecht.update_player_status_after_match(BIGINT, BIGINT, TEXT, BOOLEAN, INT, INT, INT);
+
+CREATE OR REPLACE FUNCTION kopecht.update_player_status_after_match(
+    p_player_id BIGINT,
+    p_match_id BIGINT,
+    p_gamemode TEXT,
+    p_is_winner BOOLEAN,
+    p_score_diff INT,
+    p_own_mmr INT,
+    p_opponent_mmr INT
+)
+RETURNS TABLE (
+    bounty_claimed INT,
+    bounty_victim_id BIGINT,
+    new_status TEXT[],
+    streak INT,
+    bounty_gained INT,
+    old_streak INT
+) AS $$
+DECLARE
+    v_current_streak INT;
+    v_new_streak INT;
+    v_current_bounty INT;
+    v_new_bounty INT;
+    v_threshold_bounty INT;
+    v_bounty_gained INT := 0;
+    v_active_statuses TEXT[];
+    v_bounty_to_claim INT := 0;
+    v_bounty_victim BIGINT := NULL;
+    v_opponent_status RECORD;
+    v_status_def RECORD;
+    v_month TEXT;
+    v_was_on_loss_streak BOOLEAN := FALSE;
+    v_loss_streak_before INT := 0;
+BEGIN
+    -- Get current month for monthly events
+    v_month := TO_CHAR(NOW(), 'YYYY-MM');
+    
+    -- Get or create player status record
+    INSERT INTO kopecht.player_status (player_id, gamemode, current_streak, current_bounty, active_statuses)
+    VALUES (p_player_id, p_gamemode, 0, 0, '{}')
+    ON CONFLICT (player_id, gamemode) DO NOTHING;
+    
+    -- Get current status
+    SELECT current_streak, current_bounty, active_statuses
+    INTO v_current_streak, v_current_bounty, v_active_statuses
+    FROM kopecht.player_status
+    WHERE player_id = p_player_id AND gamemode = p_gamemode;
+    
+    -- Track if player was on a loss streak (for comeback detection)
+    IF v_current_streak < 0 THEN
+        v_was_on_loss_streak := TRUE;
+        v_loss_streak_before := ABS(v_current_streak);
+    END IF;
+    
+    -- Calculate new streak
+    IF p_is_winner THEN
+        IF v_current_streak >= 0 THEN
+            v_new_streak := v_current_streak + 1;
+        ELSE
+            v_new_streak := 1;  -- Reset from loss streak
+        END IF;
+    ELSE
+        IF v_current_streak <= 0 THEN
+            v_new_streak := v_current_streak - 1;
+        ELSE
+            v_new_streak := -1;  -- Reset from win streak
+        END IF;
+    END IF;
+    
+    -- ============================================
+    -- FIXED BOUNTY CALCULATION
+    -- Only add bounty when crossing a threshold
+    -- ============================================
+    IF p_is_winner AND v_new_streak >= 3 THEN
+        -- Keep existing bounty as base (or 0 if coming from loss streak)
+        IF v_current_streak >= 0 THEN
+            v_new_bounty := v_current_bounty;
+        ELSE
+            v_new_bounty := 0;
+        END IF;
+        
+        -- Check if we just crossed a threshold (3, 5, 7, or 10)
+        -- Only add bounty if v_new_streak matches a threshold AND v_current_streak was below it
+        SELECT bounty_per_streak INTO v_threshold_bounty
+        FROM kopecht.status_definitions
+        WHERE type = 'streak' 
+          AND (condition->>'streak_type') = 'win'
+          AND (condition->>'min_streak')::int = v_new_streak
+          AND v_current_streak < v_new_streak;  -- Must have just crossed this threshold
+        
+        -- Add threshold bounty if we crossed one
+        IF v_threshold_bounty IS NOT NULL AND v_threshold_bounty > 0 THEN
+            v_new_bounty := v_new_bounty + v_threshold_bounty;
+            v_bounty_gained := v_threshold_bounty;  -- Track how much bounty was just gained
+        END IF;
+    ELSE
+        -- Not on a win streak of 3+, bounty is 0
+        v_new_bounty := 0;
+    END IF;
+    
+    -- Check if we need to claim bounty from opponent (if we won and broke their streak)
+    IF p_is_winner THEN
+        FOR v_opponent_status IN
+            SELECT ps.player_id, ps.current_streak, ps.current_bounty
+            FROM kopecht.player_status ps
+            JOIN kopecht.matches m ON m.id = p_match_id
+            WHERE ps.gamemode = p_gamemode
+              AND ps.current_streak >= 3
+              AND ps.player_id != p_player_id
+              AND (
+                  (p_gamemode = '1on1' AND ps.player_id IN (m.player1, m.player2))
+                  OR
+                  (p_gamemode = '2on2' AND ps.player_id IN (m.player1, m.player2, m.player3, m.player4))
+              )
+        LOOP
+            v_bounty_to_claim := v_bounty_to_claim + v_opponent_status.current_bounty;
+            v_bounty_victim := v_opponent_status.player_id;
+            
+            INSERT INTO kopecht.bounty_history (claimer_id, victim_id, match_id, gamemode, streak_broken, bounty_amount)
+            VALUES (p_player_id, v_opponent_status.player_id, p_match_id, p_gamemode, v_opponent_status.current_streak, v_opponent_status.current_bounty);
+        END LOOP;
+    END IF;
+    
+    -- Determine active statuses based on new streak
+    v_active_statuses := '{}';
+    
+    FOR v_status_def IN
+        SELECT key, condition
+        FROM kopecht.status_definitions
+        WHERE type = 'streak'
+        ORDER BY priority DESC
+    LOOP
+        IF (v_status_def.condition->>'streak_type') = 'win' AND v_new_streak >= (v_status_def.condition->>'min_streak')::int THEN
+            v_active_statuses := array_append(v_active_statuses, v_status_def.key);
+        ELSIF (v_status_def.condition->>'streak_type') = 'loss' AND v_new_streak <= -(v_status_def.condition->>'min_streak')::int THEN
+            v_active_statuses := array_append(v_active_statuses, v_status_def.key);
+        END IF;
+    END LOOP;
+    
+    -- Check for special events
+    
+    -- Comeback King: Won after 5+ loss streak
+    IF p_is_winner AND v_was_on_loss_streak AND v_loss_streak_before >= 5 THEN
+        v_active_statuses := array_append(v_active_statuses, 'comeback_king');
+        
+        INSERT INTO kopecht.player_monthly_status (player_id, gamemode, month, comeback_count)
+        VALUES (p_player_id, p_gamemode, v_month, 1)
+        ON CONFLICT (player_id, gamemode, month)
+        DO UPDATE SET comeback_count = kopecht.player_monthly_status.comeback_count + 1, updated_at = NOW();
+    END IF;
+    
+    -- Underdog: Beat opponent with 200+ higher MMR
+    IF p_is_winner AND (p_opponent_mmr - p_own_mmr) >= 200 THEN
+        v_active_statuses := array_append(v_active_statuses, 'underdog');
+        
+        INSERT INTO kopecht.player_monthly_status (player_id, gamemode, month, underdog_count)
+        VALUES (p_player_id, p_gamemode, v_month, 1)
+        ON CONFLICT (player_id, gamemode, month)
+        DO UPDATE SET underdog_count = kopecht.player_monthly_status.underdog_count + 1, updated_at = NOW();
+    END IF;
+    
+    -- Dominator: 10-0 win
+    IF p_is_winner AND p_score_diff = 10 THEN
+        v_active_statuses := array_append(v_active_statuses, 'dominator');
+        
+        INSERT INTO kopecht.player_monthly_status (player_id, gamemode, month, dominator_count)
+        VALUES (p_player_id, p_gamemode, v_month, 1)
+        ON CONFLICT (player_id, gamemode, month)
+        DO UPDATE SET dominator_count = kopecht.player_monthly_status.dominator_count + 1, updated_at = NOW();
+    END IF;
+    
+    -- Humiliated: 0-10 loss
+    IF NOT p_is_winner AND p_score_diff = -10 THEN
+        v_active_statuses := array_append(v_active_statuses, 'humiliated');
+        
+        INSERT INTO kopecht.player_monthly_status (player_id, gamemode, month, humiliated_count)
+        VALUES (p_player_id, p_gamemode, v_month, 1)
+        ON CONFLICT (player_id, gamemode, month)
+        DO UPDATE SET humiliated_count = kopecht.player_monthly_status.humiliated_count + 1, updated_at = NOW();
+    END IF;
+    
+    -- Update player status
+    UPDATE kopecht.player_status
+    SET current_streak = v_new_streak,
+        current_bounty = v_new_bounty,
+        active_statuses = v_active_statuses,
+        last_match_id = p_match_id,
+        updated_at = NOW()
+    WHERE player_id = p_player_id AND gamemode = p_gamemode;
+    
+    -- Return results
+    bounty_claimed := v_bounty_to_claim;
+    bounty_victim_id := v_bounty_victim;
+    new_status := v_active_statuses;
+    streak := v_new_streak;
+    bounty_gained := v_bounty_gained;
+    old_streak := v_current_streak;
+    
+    RETURN NEXT;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION kopecht.update_player_status_after_match(BIGINT, BIGINT, TEXT, BOOLEAN, INT, INT, INT) TO authenticated;
+GRANT EXECUTE ON FUNCTION kopecht.update_player_status_after_match(BIGINT, BIGINT, TEXT, BOOLEAN, INT, INT, INT) TO service_role;
+
+
+
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PART 15: Bounty Achievements
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- Migration: Add bounty-related achievements and secret achievements
+-- Schema: kopecht
+-- Note: Bounty achievements are placed under 'streaks' category
+
+SET search_path TO kopecht;
+
+-- ============================================
+-- BOUNTY HUNTER ACHIEVEMENTS (under streaks category)
+-- Beat players who have a bounty on their head
+-- ============================================
+
+-- Bounty Hunter I - Beat 1 player with bounty
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'bounty_hunter_1', 
+    'Bounty Hunter', 
+    'Defeat a player with a bounty on their head', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"min_count": 1}',
+    10,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Bounty Hunter II - Beat 5 players with bounty
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, parent_id
+) VALUES (
+    'bounty_hunter_5', 
+    'Bounty Hunter II', 
+    'Defeat 5 players with a bounty on their head', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"min_count": 5}',
+    25,
+    5,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_hunter_1')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Bounty Hunter III - Beat 25 players with bounty
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, parent_id
+) VALUES (
+    'bounty_hunter_25', 
+    'Bounty Hunter III', 
+    'Defeat 25 players with a bounty on their head', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"min_count": 25}',
+    50,
+    25,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_hunter_5')
+) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- WANTED ACHIEVEMENT
+-- Become wanted (reach 3 win streak)
+-- ============================================
+
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'wanted_1', 
+    'Wanted!', 
+    'Reach a 3 win streak and become a target', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'win_streak',
+    '{"min_streak": 3}',
+    10,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- BOUNTY COLLECTED (cumulative)
+-- Collect bounty from other players
+-- ============================================
+
+-- Collect 50 bounty total
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'bounty_collected_50', 
+    'Small Catch', 
+    'Collect a total of 50 bounty', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"cumulative_bounty": 50}',
+    15,
+    50,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Collect 100 bounty total
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, parent_id
+) VALUES (
+    'bounty_collected_100', 
+    'Big Catch', 
+    'Collect a total of 100 bounty', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"cumulative_bounty": 100}',
+    30,
+    100,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_collected_50')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Collect 250 bounty total
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, parent_id
+) VALUES (
+    'bounty_collected_250', 
+    'Legendary Hunter', 
+    'Collect a total of 250 bounty', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"cumulative_bounty": 250}',
+    50,
+    250,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_collected_100')
+) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- BOUNTY ACCUMULATED (cumulative)
+-- Track total bounty value accumulated on your head over time
+-- ============================================
+
+-- Accumulate 25 bounty total
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'bounty_earned_25', 
+    'Prize Winner', 
+    'Accumulate a total of 25 bounty on your head', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_gained',
+    '{"cumulative_bounty": 25}',
+    10,
+    25,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Accumulate 75 bounty total
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, parent_id
+) VALUES (
+    'bounty_earned_75', 
+    'Most Wanted', 
+    'Accumulate a total of 75 bounty on your head', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_gained',
+    '{"cumulative_bounty": 75}',
+    25,
+    75,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_earned_25')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Accumulate 150 bounty total
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, parent_id
+) VALUES (
+    'bounty_earned_150', 
+    'Public Enemy', 
+    'Accumulate a total of 150 bounty on your head', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_gained',
+    '{"cumulative_bounty": 150}',
+    50,
+    150,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_earned_75')
+) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- SECRET ACHIEVEMENTS (is_hidden = true)
+-- ============================================
+
+-- Humiliation 1on1 - Lose 0-10
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'humiliation_1on1', 
+    'Totally Embarrassed', 
+    'Lose a 1on1 match 0-10', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret'),
+    'match_end',
+    '{"gamemode": "1on1", "score_self": 0, "score_opponent": 10, "is_winner": false}',
+    5,
+    1,
+    true,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Humiliation 2on2 - Lose 0-10
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'humiliation_2on2', 
+    'Team Embarrassment', 
+    'Lose a 2on2 match 0-10', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret'),
+    'match_end',
+    '{"gamemode": "2on2", "score_self": 0, "score_opponent": 10, "is_winner": false}',
+    5,
+    1,
+    true,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+
+
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PART 16:
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+

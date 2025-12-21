@@ -379,12 +379,21 @@ async function handleMatchEnded(
     );
     console.log("Player status update results:", statusResults);
 
+    // ============== PROCESS BOUNTY & STREAK ACHIEVEMENTS ==============
+    const bountyAchievementResults = await processBountyAchievements(
+        supabase,
+        match,
+        statusResults
+    );
+    console.log("Bounty achievement results:", bountyAchievementResults);
+
     return jsonResponse({
         success: true,
         event: "MATCH_ENDED",
         matchId: match.id,
         results,
         statusResults,
+        bountyAchievementResults,
     });
 }
 
@@ -3259,10 +3268,12 @@ interface PlayerStatusResult {
     playerId: number;
     gamemode: string;
     newStreak: number;
+    oldStreak: number;
     newBounty: number;
     activeStatuses: string[];
     bountyClaimed: number;
     bountyVictimId: number | null;
+    bountyGained: number;
 }
 
 /**
@@ -3353,16 +3364,25 @@ async function updatePlayerStatusesAfterMatch(
                     playerId: ctx.playerId,
                     gamemode: match.gamemode,
                     newStreak: result.streak,
+                    oldStreak: result.old_streak || 0,
                     newBounty: 0, // Bounty is calculated in the RPC
                     activeStatuses: result.new_status || [],
                     bountyClaimed: result.bounty_claimed || 0,
                     bountyVictimId: result.bounty_victim_id || null,
+                    bountyGained: result.bounty_gained || 0,
                 });
 
                 // Log bounty claims
                 if (result.bounty_claimed > 0) {
                     console.log(
                         `🎯 Player ${ctx.playerId} claimed ${result.bounty_claimed} MMR bounty from player ${result.bounty_victim_id}!`
+                    );
+                }
+
+                // Log bounty gained
+                if (result.bounty_gained > 0) {
+                    console.log(
+                        `💰 Player ${ctx.playerId} gained ${result.bounty_gained} bounty (streak: ${result.streak})`
                     );
                 }
 
@@ -3379,6 +3399,314 @@ async function updatePlayerStatusesAfterMatch(
                 `Unexpected error updating status for player ${ctx.playerId}:`,
                 err
             );
+        }
+    }
+
+    return results;
+}
+
+// ============== BOUNTY & STREAK ACHIEVEMENT PROCESSING ==============
+
+interface BountyAchievementResult {
+    playerId: number;
+    achievementKey: string;
+    action: "progress_updated" | "unlocked" | "skipped";
+    newProgress?: number;
+}
+
+/**
+ * Process bounty-related and streak achievements after player statuses are updated
+ * Handles trigger events: bounty_claimed, bounty_gained, win_streak
+ */
+async function processBountyAchievements(
+    supabase: any,
+    match: MatchRecord,
+    statusResults: PlayerStatusResult[]
+): Promise<BountyAchievementResult[]> {
+    const results: BountyAchievementResult[] = [];
+    const seasonId = match.season_id || null;
+
+    // Get all bounty-related achievements
+    const { data: bountyAchievements, error: achievementsError } =
+        await supabase
+            .from("achievement_definitions")
+            .select("*")
+            .in("trigger_event", [
+                "bounty_claimed",
+                "bounty_gained",
+                "win_streak",
+            ]);
+
+    if (achievementsError) {
+        console.error("Error fetching bounty achievements:", achievementsError);
+        return results;
+    }
+
+    if (!bountyAchievements || bountyAchievements.length === 0) {
+        console.log("No bounty/streak achievements defined");
+        return results;
+    }
+
+    console.log(
+        `Found ${bountyAchievements.length} bounty/streak achievements to evaluate`
+    );
+
+    // Get player IDs from status results
+    const playerIds = statusResults.map((r) => r.playerId);
+
+    // Get existing unlocked achievements for all players
+    const unlockedMap = await getUnlockedMap(supabase, playerIds);
+
+    // Process each player's status result
+    for (const statusResult of statusResults) {
+        const playerId = statusResult.playerId;
+
+        // Track newly unlocked in this iteration for chain logic
+        const newlyUnlockedInThisIteration = new Set<number>();
+
+        for (const achievement of bountyAchievements as AchievementDefinition[]) {
+            // Skip if season-specific and doesn't match
+            if (achievement.season_id && achievement.season_id !== seasonId) {
+                continue;
+            }
+
+            // Check if already unlocked (and not repeatable)
+            const alreadyUnlocked = unlockedMap.has(
+                `${playerId}-${achievement.id}`
+            );
+            if (alreadyUnlocked && !achievement.is_repeatable) {
+                continue;
+            }
+
+            // Check if parent achievement is unlocked (chain logic)
+            if (achievement.parent_id) {
+                const parentKey = `${playerId}-${achievement.parent_id}`;
+                const parentWasAlreadyUnlocked = unlockedMap.has(parentKey);
+                const parentJustUnlocked = newlyUnlockedInThisIteration.has(
+                    achievement.parent_id
+                );
+
+                if (!parentWasAlreadyUnlocked && !parentJustUnlocked) {
+                    continue;
+                }
+
+                // Initialize child progress if parent just unlocked
+                if (parentJustUnlocked) {
+                    const parentAchievement = (
+                        bountyAchievements as AchievementDefinition[]
+                    ).find((a) => a.id === achievement.parent_id);
+                    if (parentAchievement) {
+                        const childProgressSeasonId =
+                            achievement.is_season_specific ? seasonId : null;
+                        await initializeChainProgress(
+                            supabase,
+                            playerId,
+                            achievement.id,
+                            parentAchievement.max_progress,
+                            childProgressSeasonId
+                        );
+                        console.log(
+                            `[BountyChain] Initialized child ${achievement.key} with parent's max_progress: ${parentAchievement.max_progress}`
+                        );
+                    }
+                    continue; // Skip this event for the child
+                }
+            }
+
+            let shouldProgress = false;
+            let progressAmount = 0;
+
+            // Evaluate based on trigger event
+            switch (achievement.trigger_event) {
+                case "bounty_claimed":
+                    // Player claimed bounty from another player
+                    if (statusResult.bountyClaimed > 0) {
+                        const condition = achievement.condition as any;
+
+                        if (condition.min_count) {
+                            // Count-based: "Defeat X players with bounty"
+                            shouldProgress = true;
+                            progressAmount = 1; // Each bounty claim counts as 1
+                        } else if (condition.cumulative_bounty) {
+                            // Cumulative: "Collect total of X bounty"
+                            shouldProgress = true;
+                            progressAmount = statusResult.bountyClaimed;
+                        }
+                    }
+                    break;
+
+                case "bounty_gained":
+                    // Player gained bounty on their head (crossed a threshold)
+                    if (statusResult.bountyGained > 0) {
+                        const condition = achievement.condition as any;
+
+                        if (condition.cumulative_bounty) {
+                            // Cumulative: "Accumulate total of X bounty on your head"
+                            shouldProgress = true;
+                            progressAmount = statusResult.bountyGained;
+                        }
+                    }
+                    break;
+
+                case "win_streak":
+                    // Player reached a certain win streak
+                    if (statusResult.newStreak >= 3) {
+                        const condition = achievement.condition as any;
+                        const minStreak = condition.min_streak || 3;
+
+                        // Check if player just crossed this streak threshold
+                        if (
+                            statusResult.newStreak >= minStreak &&
+                            statusResult.oldStreak < minStreak
+                        ) {
+                            shouldProgress = true;
+                            progressAmount = 1; // Binary: reached the streak or not
+                        }
+                    }
+                    break;
+            }
+
+            if (shouldProgress && progressAmount > 0) {
+                // Get current progress
+                const progressSeasonId = achievement.is_season_specific
+                    ? seasonId
+                    : null;
+                let progressQuery = supabase
+                    .from("player_achievement_progress")
+                    .select("current_progress")
+                    .eq("player_id", playerId)
+                    .eq("achievement_id", achievement.id);
+
+                if (progressSeasonId === null) {
+                    progressQuery = progressQuery.is("season_id", null);
+                } else {
+                    progressQuery = progressQuery.eq(
+                        "season_id",
+                        progressSeasonId
+                    );
+                }
+
+                const { data: progressData } = await progressQuery.single();
+                const currentProgress = progressData?.current_progress || 0;
+                const newProgress = currentProgress + progressAmount;
+
+                // Update or insert progress
+                const { error: upsertError } = await supabase
+                    .from("player_achievement_progress")
+                    .upsert(
+                        {
+                            player_id: playerId,
+                            achievement_id: achievement.id,
+                            current_progress: newProgress,
+                            season_id: progressSeasonId,
+                            updated_at: new Date().toISOString(),
+                        },
+                        {
+                            onConflict:
+                                progressSeasonId === null
+                                    ? "player_id,achievement_id,season_id"
+                                    : "player_id,achievement_id,season_id",
+                        }
+                    );
+
+                if (upsertError) {
+                    console.error(
+                        `Error updating progress for ${achievement.key}:`,
+                        upsertError
+                    );
+                    continue;
+                }
+
+                console.log(
+                    `[Bounty] ${achievement.key}: Player ${playerId} progress ${currentProgress} -> ${newProgress} / ${achievement.max_progress}`
+                );
+
+                // Check if achievement is now complete
+                if (newProgress >= achievement.max_progress) {
+                    const now = new Date().toISOString();
+
+                    if (achievement.is_repeatable && alreadyUnlocked) {
+                        // Increment times_completed for repeatable
+                        const { data: existingAchievement } = await supabase
+                            .from("player_achievements")
+                            .select("times_completed")
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id)
+                            .single();
+
+                        await supabase
+                            .from("player_achievements")
+                            .update({
+                                times_completed:
+                                    (existingAchievement?.times_completed ||
+                                        1) + 1,
+                            })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+
+                        // Reset progress for repeatable
+                        let resetQuery = supabase
+                            .from("player_achievement_progress")
+                            .update({ current_progress: 0 })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+
+                        if (progressSeasonId === null) {
+                            resetQuery = resetQuery.is("season_id", null);
+                        } else {
+                            resetQuery = resetQuery.eq(
+                                "season_id",
+                                progressSeasonId
+                            );
+                        }
+
+                        await resetQuery;
+
+                        results.push({
+                            playerId,
+                            achievementKey: achievement.key,
+                            action: "unlocked",
+                            newProgress: 0,
+                        });
+                    } else if (!alreadyUnlocked) {
+                        // Award achievement
+                        const { error: awardError } = await supabase
+                            .from("player_achievements")
+                            .insert({
+                                player_id: playerId,
+                                achievement_id: achievement.id,
+                                unlocked_at: now,
+                                season_id: seasonId,
+                                match_id: match.id,
+                            });
+
+                        if (awardError) {
+                            console.error(
+                                `Error awarding ${achievement.key}:`,
+                                awardError
+                            );
+                        } else {
+                            console.log(
+                                `🏆 [Bounty] Achievement ${achievement.key} unlocked for player ${playerId}!`
+                            );
+                            newlyUnlockedInThisIteration.add(achievement.id);
+                            results.push({
+                                playerId,
+                                achievementKey: achievement.key,
+                                action: "unlocked",
+                                newProgress,
+                            });
+                        }
+                    }
+                } else {
+                    results.push({
+                        playerId,
+                        achievementKey: achievement.key,
+                        action: "progress_updated",
+                        newProgress,
+                    });
+                }
+            }
         }
     }
 
