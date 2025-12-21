@@ -20,7 +20,7 @@ const SIZE_CONFIG = {
         overlayInset: -8, // Wie weit das Overlay übersteht
         overlayOffset: { top: 3, left: 3, bottom: 2, right: 0 }, // Feintuning
         frameInset: -6,
-        showEffects: false, // Bei xs keine Effekte anzeigen
+        showEffects: true, // Bei xs keine Effekte anzeigen
     },
     small: {
         size: 3.4,
@@ -53,6 +53,49 @@ const SIZE_CONFIG = {
 };
 
 /* ----------------------------------------
+   Default Size Config für Status Effects
+   Wird verwendet wenn kein spezifischer sizeConfig vorhanden ist
+   
+   Jede Größe hat: scale, top, bottom, left, right, visible
+----------------------------------------- */
+const DEFAULT_EFFECT_SIZE_CONFIG = {
+    xs: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: false },
+    small: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
+    medium: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
+    large: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
+    huge: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
+};
+
+/* ----------------------------------------
+   Helper: Berechnet finale Position für einen Effekt
+   Kombiniert SIZE_CONFIG mit effect-spezifischem sizeConfig
+   
+   @param avatarSize: 'xs' | 'small' | 'medium' | 'large' | 'huge'
+   @param effect: STATUS_EFFECTS[key] Objekt
+   @returns { top, bottom, left, right, visible, scale }
+----------------------------------------- */
+const getEffectPosition = (avatarSize, effect) => {
+    const baseSizeConfig = SIZE_CONFIG[avatarSize] || SIZE_CONFIG.large;
+    const effectSizeConfig =
+        effect?.sizeConfig?.[avatarSize] ||
+        DEFAULT_EFFECT_SIZE_CONFIG[avatarSize] ||
+        DEFAULT_EFFECT_SIZE_CONFIG.large;
+
+    // Verwende effect.scale als Fallback wenn sizeConfig.scale nicht definiert
+    const scale = effectSizeConfig.scale ?? effect?.scale ?? 1;
+    const baseInset = baseSizeConfig.overlayInset * scale;
+
+    return {
+        top: baseInset + (effectSizeConfig.top ?? 0),
+        bottom: baseInset + (effectSizeConfig.bottom ?? 0),
+        left: baseInset + (effectSizeConfig.left ?? 0),
+        right: baseInset + (effectSizeConfig.right ?? 0),
+        visible: effectSizeConfig.visible ?? true,
+        scale,
+    };
+};
+
+/* ----------------------------------------
    Status Effect Konfiguration
    
    Mapping von status_definitions.asset_key zu visuellen Effekten
@@ -60,9 +103,11 @@ const SIZE_CONFIG = {
    type: 'gif' | 'sprite' | 'css'
    asset: importiertes Asset (null = CSS-basiert oder nicht vorhanden)
    zIndex: Layering-Reihenfolge (höher = weiter vorne)
-   scale: Skalierungsfaktor für das Overlay (1 = normal)
+   scale: Skalierungsfaktor für das Overlay (1 = normal) - LEGACY, wird von sizeConfig überschrieben
    cssEffect: CSS-Klasse für animierte Effekte (wenn type='css')
    color: Farbe für CSS-basierte Effekte
+   sizeConfig: Per-Size Konfiguration { xs, small, medium, large, huge }
+               Jede Size hat: { scale, top, bottom, left, right, visible }
 ----------------------------------------- */
 const STATUS_EFFECTS = {
     // ============== WIN STREAK STATUSES ==============
@@ -70,33 +115,197 @@ const STATUS_EFFECTS = {
         type: "css",
         asset: null,
         zIndex: 11,
-        scale: 1.0,
         cssEffect: "warming",
         color: "rgba(255, 200, 100, 0.5)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     hotStreak: {
         type: "gif",
         asset: OnFireGif,
         zIndex: 11,
-        scale: 1.4, // Feuer sollte größer sein
         cssEffect: "hot",
         color: "rgba(255, 100, 50, 0.6)",
+        sizeConfig: {
+            xs: {
+                scale: 6,
+                top: 4,
+                bottom: 0,
+                left: 4,
+                right: 0,
+                visible: true,
+            },
+            small: {
+                scale: 4.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 2.7,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.3,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: -4,
+                visible: true,
+            },
+            huge: {
+                scale: 3.4,
+                top: 2,
+                bottom: 0,
+                left: 4,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     onFire: {
         type: "gif",
         asset: OnFireGif,
         zIndex: 11,
-        scale: 1.6, // Noch größer
         cssEffect: "fire",
         color: "rgba(255, 50, 0, 0.7)",
+        sizeConfig: {
+            xs: {
+                scale: 1.4,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.5,
+                top: 5,
+                bottom: 0,
+                left: -8,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.6,
+                top: 5,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.6,
+                top: 5,
+                bottom: 2,
+                left: 5,
+                right: 2,
+                visible: true,
+            },
+            huge: {
+                scale: 1.7,
+                top: 3,
+                bottom: 1,
+                left: 3,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     legendary: {
         type: "gif",
         asset: OnFireGif, // TODO: Eigenes goldenes Feuer-Asset
         zIndex: 11,
-        scale: 1.8,
         cssEffect: "legendary",
         color: "rgba(255, 215, 0, 0.8)",
+        sizeConfig: {
+            xs: {
+                scale: 1.6,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.7,
+                top: 5,
+                bottom: 0,
+                left: -8,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.8,
+                top: 5,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.8,
+                top: 5,
+                bottom: 2,
+                left: 5,
+                right: 2,
+                visible: true,
+            },
+            huge: {
+                scale: 1.9,
+                top: 3,
+                bottom: 1,
+                left: 3,
+                right: 0,
+                visible: true,
+            },
+        },
     },
 
     // ============== LOSS STREAK STATUSES ==============
@@ -104,25 +313,148 @@ const STATUS_EFFECTS = {
         type: "gif",
         asset: IceCold,
         zIndex: 11,
-        scale: 0.5,
         cssEffect: "cold",
         color: "rgba(100, 180, 255, 0.4)",
+        sizeConfig: {
+            xs: {
+                scale: 0.4,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 0.45,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 0.55,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     iceCold: {
         type: "gif",
         asset: IceCold,
         zIndex: 11,
-        scale: 0.5,
         cssEffect: "ice",
         color: "rgba(50, 150, 255, 0.6)",
+        sizeConfig: {
+            xs: {
+                scale: 0.45,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 0.55,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     frozen: {
         type: "gif",
         asset: IceCold,
         zIndex: 11,
-        scale: 0.5,
         cssEffect: "frozen",
         color: "rgba(0, 100, 255, 0.7)",
+        sizeConfig: {
+            xs: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 0.5,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 0.55,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
 
     // ============== EVENT STATUSES ==============
@@ -130,42 +462,247 @@ const STATUS_EFFECTS = {
         type: "css",
         asset: null,
         zIndex: 1,
-        scale: 1.0,
         cssEffect: "humiliated",
         color: "rgba(128, 128, 128, 0.5)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     dominator: {
         type: "sprite",
         asset: RedThunder,
         zIndex: 3,
-        scale: 1.2,
         cssEffect: "dominator",
         color: "rgba(255, 50, 50, 0.6)",
         spriteDuration: "0.5s",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: -5,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.2,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.2,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.3,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     comeback: {
         type: "css",
         asset: null,
         zIndex: 2,
-        scale: 1.1,
         cssEffect: "comeback",
         color: "rgba(100, 255, 150, 0.5)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     underdog: {
         type: "css",
         asset: null,
         zIndex: 2,
-        scale: 1.05,
         cssEffect: "underdog",
         color: "rgba(255, 200, 100, 0.5)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     giantSlayer: {
         type: "css",
         asset: null,
         zIndex: 3,
-        scale: 1.15,
         cssEffect: "slayer",
         color: "rgba(200, 50, 255, 0.6)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.2,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
 
     // ============== LEGACY/OTHER STATUSES ==============
@@ -173,49 +710,295 @@ const STATUS_EFFECTS = {
         type: "sprite",
         asset: null,
         zIndex: 3,
-        scale: 1.1,
         cssEffect: "champion",
         color: "rgba(255, 215, 0, 0.6)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     elite: {
         type: "sprite",
         asset: null,
         zIndex: 2,
-        scale: 1.1,
         cssEffect: "elite",
         color: "rgba(200, 150, 255, 0.5)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     grandmaster: {
         type: "sprite",
         asset: null,
         zIndex: 2,
-        scale: 1.15,
         cssEffect: "grandmaster",
         color: "rgba(255, 100, 100, 0.6)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.2,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     speedDemon: {
         type: "gif",
         asset: null,
         zIndex: 1,
-        scale: 1.1,
         cssEffect: "speed",
         color: "rgba(255, 255, 100, 0.5)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     veteran: {
         type: "sprite",
         asset: null,
         zIndex: 2,
-        scale: 1.05,
         cssEffect: "veteran",
         color: "rgba(150, 150, 150, 0.5)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
     mvp: {
         type: "sprite",
         asset: null,
         zIndex: 3,
-        scale: 1.1,
         cssEffect: "mvp",
         color: "rgba(255, 215, 0, 0.6)",
+        sizeConfig: {
+            xs: {
+                scale: 1.0,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: false,
+            },
+            small: {
+                scale: 1.05,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            medium: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            large: {
+                scale: 1.1,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+            huge: {
+                scale: 1.15,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                visible: true,
+            },
+        },
     },
 };
 
@@ -422,26 +1205,18 @@ const CssGlowOverlay = styled.div`
 
 /* ----------------------------------------
    Status Overlay (für GIF Assets)
-   - Skaliert basierend auf Avatar-Größe und Effect-Scale
+   - Position wird von außen über $position Prop übergeben
+   - $position: { top, bottom, left, right } in %
 ----------------------------------------- */
 const StatusOverlay = styled.div`
     position: absolute;
     z-index: ${(props) => props.$zIndex || 0};
 
-    /* Berechne Position basierend auf Größe und Scale */
-    ${(props) => {
-        const sizeConfig = SIZE_CONFIG[props.$avatarSize] || SIZE_CONFIG.large;
-        const scale = props.$scale || 1;
-        const baseInset = sizeConfig.overlayInset * scale;
-        const offset = sizeConfig.overlayOffset;
-
-        return css`
-            top: calc(${baseInset}% + ${offset.top}%);
-            bottom: calc(${baseInset}% + ${offset.bottom}%);
-            left: calc(${baseInset}% + ${offset.left}%);
-            right: calc(${baseInset}% + ${offset.right}%);
-        `;
-    }}
+    /* Position über $position Prop */
+    top: ${(props) => props.$position?.top ?? 0}%;
+    bottom: ${(props) => props.$position?.bottom ?? 0}%;
+    left: ${(props) => props.$position?.left ?? 0}%;
+    right: ${(props) => props.$position?.right ?? 0}%;
 
     background-image: url(${(props) => props.$asset});
     background-repeat: no-repeat;
@@ -459,26 +1234,17 @@ const StatusOverlay = styled.div`
 /* ----------------------------------------
    Sprite Overlay (für animierte Sprite-Sheets)
    - 2 columns, 3 rows = 6 frames
-   - Skaliert basierend auf Avatar-Größe
+   - Position wird von außen über $position Prop übergeben
 ----------------------------------------- */
 const SpriteOverlay = styled.div`
     position: absolute;
     z-index: ${(props) => props.$zIndex || 0};
 
-    /* Berechne Position basierend auf Größe und Scale */
-    ${(props) => {
-        const sizeConfig = SIZE_CONFIG[props.$avatarSize] || SIZE_CONFIG.large;
-        const scale = props.$scale || 1;
-        const baseInset = sizeConfig.overlayInset * scale;
-        const offset = sizeConfig.overlayOffset;
-
-        return css`
-            top: calc(${baseInset}% + ${offset.top}%);
-            bottom: calc(${baseInset}% + ${offset.bottom}%);
-            left: calc(${baseInset}% + ${offset.left}%);
-            right: calc(${baseInset}% + ${offset.right}%);
-        `;
-    }}
+    /* Position über $position Prop */
+    top: ${(props) => props.$position?.top ?? 0}%;
+    bottom: ${(props) => props.$position?.bottom ?? 0}%;
+    left: ${(props) => props.$position?.left ?? 0}%;
+    right: ${(props) => props.$position?.right ?? 0}%;
 
     background-image: url(${(props) => props.$asset});
     background-repeat: no-repeat;
@@ -609,10 +1375,6 @@ const Avatar = ({
         status = player?.status;
     }
 
-    if (player?.name === "Andy") {
-        console.log("status", status);
-    }
-
     // Frame URL: explizite Prop > player.rewards.frame.display_value
     const frameUrl = $frameUrl ?? player?.rewards?.frame?.display_value;
 
@@ -639,6 +1401,14 @@ const Avatar = ({
                           return null;
                       }
 
+                      // Berechne Position für diesen spezifischen Effekt bei dieser Größe
+                      const position = getEffectPosition($size, effect);
+
+                      // Prüfe ob Effekt bei dieser Größe sichtbar sein soll
+                      if (!position.visible) {
+                          return null;
+                      }
+
                       // Wenn Asset vorhanden
                       if (effect.asset) {
                           // Sprite: Animiertes Sprite-Sheet (2 columns, 3 rows)
@@ -648,8 +1418,7 @@ const Avatar = ({
                                       key={statusKey}
                                       $asset={effect.asset}
                                       $zIndex={effect.zIndex}
-                                      $scale={effect.scale}
-                                      $avatarSize={$size}
+                                      $position={position}
                                       $opacity={opacity}
                                       $duration={
                                           effect.spriteDuration || "0.6s"
@@ -664,8 +1433,7 @@ const Avatar = ({
                                   key={statusKey}
                                   $asset={effect.asset}
                                   $zIndex={effect.zIndex}
-                                  $scale={effect.scale}
-                                  $avatarSize={$size}
+                                  $position={position}
                                   $opacity={opacity}
                               />
                           );
@@ -705,4 +1473,11 @@ const Avatar = ({
     );
 };
 
+// Exports für StatusDisplaySettings und andere Komponenten
+export {
+    STATUS_EFFECTS,
+    DEFAULT_EFFECT_SIZE_CONFIG,
+    getEffectPosition,
+    SIZE_CONFIG,
+};
 export default Avatar;

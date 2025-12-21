@@ -10,17 +10,26 @@ function StatsTable({ userId }) {
     const { data: playtimeData, isLoading: isLoadingPlaytime } = usePlaytime();
     const { isDesktop, isTablet, isMobile } = useWindowWidth();
     const columns = isDesktop
-        ? "1fr 1fr 1fr 1fr 1fr 1fr 1fr"
+        ? "1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr"
         : isTablet
-          ? "1.3fr 0.7fr 0.7fr 0.7fr 1fr 0.7fr 1fr"
-          : "0.8fr 0.4fr 0.4fr 0.4fr 0.6fr 0.7fr 1fr";
+        ? "1.3fr 0.7fr 0.7fr 0.7fr 1fr 0.7fr 0.7fr 1fr"
+        : "0.8fr 0.4fr 0.4fr 0.4fr 0.6fr 0.7fr 0.5fr 1fr";
 
     const isLoading = isLoadingPlaytime || isLoadingStats;
 
     let data;
 
     if (!isLoading && stats) {
-        const { wins, losses, mmr, wins2on2, losses2on2, mmr2on2 } = stats;
+        const {
+            wins,
+            losses,
+            mmr,
+            wins2on2,
+            losses2on2,
+            mmr2on2,
+            bounty_claimed,
+            bounty_claimed_2on2,
+        } = stats;
         const { playtimeSolo, playtimeDuo, playtimeOverall } = playtimeData || {
             playtimeSolo: 0,
             playtimeDuo: 0,
@@ -33,6 +42,7 @@ function StatsTable({ userId }) {
             losses,
             total: wins + losses,
             mmr,
+            bounty: bounty_claimed || 0,
             playtime: playtimeSolo,
         };
         const stats2on2 = {
@@ -41,6 +51,7 @@ function StatsTable({ userId }) {
             losses: losses2on2,
             total: wins2on2 + losses2on2,
             mmr: mmr2on2,
+            bounty: bounty_claimed_2on2 || 0,
             playtime: playtimeDuo,
         };
         const statsOverall = {
@@ -49,6 +60,7 @@ function StatsTable({ userId }) {
             losses: losses + losses2on2,
             total: wins + wins2on2 + losses + losses2on2,
             mmr: null,
+            bounty: (bounty_claimed || 0) + (bounty_claimed_2on2 || 0),
             playtime: playtimeOverall,
         };
 
@@ -64,6 +76,7 @@ function StatsTable({ userId }) {
                 <div>{isMobile ? "T" : "Total"}</div>
                 <div>{isMobile ? "Win%" : "Winrate"}</div>
                 <div>MMR</div>
+                <div>💰</div>
                 <div>Playtime</div>
             </Table.Header>
             {isLoading ? (
@@ -82,7 +95,7 @@ function StatsTable({ userId }) {
 }
 
 function StatsRow({ stats }) {
-    const { gamemode, wins, losses, total, mmr, playtime } = stats;
+    const { gamemode, wins, losses, total, mmr, bounty, playtime } = stats;
     const winrate = wins > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : 0;
 
     return (
@@ -104,6 +117,9 @@ function StatsRow({ stats }) {
             </div>
             <div>
                 <span>{mmr}</span>
+            </div>
+            <div>
+                <span>{bounty}</span>
             </div>
             <div>
                 <span>{formatTimeInHoursAndMinutes(playtime)}</span>

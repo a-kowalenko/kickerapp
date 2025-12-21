@@ -312,7 +312,10 @@ export function usePlayerStatusForAvatar(playerId) {
         useStatusDisplayConfig();
 
     // Combine active statuses from ALL gamemodes (1on1 and 2on2)
-    const allActiveStatuses = [];
+    // Note: active_statuses from DB use snake_case keys (e.g., 'hot_streak')
+    // but displayConfig uses camelCase asset_keys (e.g., 'hotStreak')
+    const allActiveStatusKeys = []; // snake_case keys from DB
+    const allActiveAssetKeys = []; // camelCase asset_keys for filtering
     const seenStatuses = new Set();
 
     for (const gamemodeStatus of statuses || []) {
@@ -320,26 +323,33 @@ export function usePlayerStatusForAvatar(playerId) {
             // Avoid duplicates (same status in both gamemodes)
             if (!seenStatuses.has(statusKey)) {
                 seenStatuses.add(statusKey);
-                allActiveStatuses.push(statusKey);
+                allActiveStatusKeys.push(statusKey);
+                // Convert to asset_key for filtering (displayConfig uses asset_keys)
+                const assetKey = statusMap[statusKey]?.asset_key;
+                if (assetKey) {
+                    allActiveAssetKeys.push(assetKey);
+                }
             }
         }
     }
 
     // Filter statuses based on display rules from DB config
+    // Uses asset_keys (camelCase) to match displayConfig
     const displayableStatuses = filterDisplayableStatuses(
-        allActiveStatuses,
+        allActiveAssetKeys,
         displayConfig
     );
 
-    // Convert to asset keys for Avatar component
-    const statusAssets = displayableStatuses
-        .map((key) => statusMap[key]?.asset_key)
-        .filter(Boolean);
+    // displayableStatuses are already asset_keys, so use directly
+    const statusAssets = displayableStatuses;
 
     // Get the highest priority status for primary display
-    const primaryStatusKey = displayableStatuses[0];
-    const primaryStatusDef = primaryStatusKey
-        ? statusMap[primaryStatusKey]
+    // displayableStatuses[0] is an asset_key, need to find the definition by asset_key
+    const primaryAssetKey = displayableStatuses[0];
+    const primaryStatusDef = primaryAssetKey
+        ? Object.values(statusMap).find(
+              (def) => def.asset_key === primaryAssetKey
+          )
         : null;
 
     // Calculate combined bounty from all gamemodes
@@ -360,8 +370,8 @@ export function usePlayerStatusForAvatar(playerId) {
         statuses,
 
         // Combined data
-        allActiveStatuses,
-        displayableStatuses,
+        allActiveStatuses: allActiveStatusKeys, // snake_case keys from DB
+        displayableStatuses, // camelCase asset_keys after filtering
         totalBounty,
         bestStreak,
 

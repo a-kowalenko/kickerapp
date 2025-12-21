@@ -73,6 +73,12 @@ const TeamContainer = styled.div`
     }
 `;
 
+const BountyBadge = styled.span`
+    color: var(--color-yellow-600);
+    font-size: 1.2rem;
+    margin-left: 0.4rem;
+`;
+
 const GameModeContainer = styled.div`
     display: flex;
     justify-content: center;
@@ -125,6 +131,15 @@ function MatchesRow({ match }) {
                         <span>
                             ({match.mmrPlayer1}){team1Won ? "+" : ""}
                             {match.mmrChangeTeam1}
+                            {team1Won && match.bounty_team1 > 0 && (
+                                <BountyBadge>
+                                    +
+                                    {player3
+                                        ? Math.floor(match.bounty_team1 / 2)
+                                        : match.bounty_team1}
+                                    💰
+                                </BountyBadge>
+                            )}
                         </span>
                     )}
                     {isDesktop && (
@@ -144,6 +159,11 @@ function MatchesRow({ match }) {
                             <span>
                                 ({match.mmrPlayer3}){team1Won ? "+" : ""}
                                 {match.mmrChangeTeam1}
+                                {team1Won && match.bounty_team1 > 0 && (
+                                    <BountyBadge>
+                                        +{Math.floor(match.bounty_team1 / 2)}💰
+                                    </BountyBadge>
+                                )}
                             </span>
                         )}
                         {isDesktop && (
@@ -181,6 +201,15 @@ function MatchesRow({ match }) {
                         <span>
                             ({match.mmrPlayer2}){team1Won ? "" : "+"}
                             {match.mmrChangeTeam2}
+                            {!team1Won && match.bounty_team2 > 0 && (
+                                <BountyBadge>
+                                    +
+                                    {player4
+                                        ? Math.floor(match.bounty_team2 / 2)
+                                        : match.bounty_team2}
+                                    💰
+                                </BountyBadge>
+                            )}
                         </span>
                     )}
                 </PlayerName>
@@ -200,6 +229,11 @@ function MatchesRow({ match }) {
                             <span>
                                 ({match.mmrPlayer4}){team1Won ? "" : "+"}
                                 {match.mmrChangeTeam2}
+                                {!team1Won && match.bounty_team2 > 0 && (
+                                    <BountyBadge>
+                                        +{Math.floor(match.bounty_team2 / 2)}💰
+                                    </BountyBadge>
+                                )}
                             </span>
                         )}
                     </PlayerName>
