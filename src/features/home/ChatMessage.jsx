@@ -601,6 +601,8 @@ function ChatMessage({
             {!isGrouped && (
                 <Link to={`/user/${message.player?.name}/profile`}>
                     <Avatar
+                        player={message.player}
+                        showStatus={true}
                         $size="small"
                         src={message.player?.avatar || DEFAULT_AVATAR}
                         alt={message.player?.name}

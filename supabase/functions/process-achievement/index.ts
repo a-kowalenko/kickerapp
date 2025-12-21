@@ -371,11 +371,20 @@ async function handleMatchEnded(
 
     console.log("MATCH_ENDED processing results:", results);
 
+    // ============== UPDATE PLAYER STATUS & BOUNTIES ==============
+    const statusResults = await updatePlayerStatusesAfterMatch(
+        supabase,
+        match,
+        playerContexts
+    );
+    console.log("Player status update results:", statusResults);
+
     return jsonResponse({
         success: true,
         event: "MATCH_ENDED",
         matchId: match.id,
         results,
+        statusResults,
     });
 }
 
@@ -3242,4 +3251,136 @@ async function updateProgressFallback(
         console.error("[Fallback] Unexpected error:", err);
         return "error";
     }
+}
+
+// ============== PLAYER STATUS & BOUNTY SYSTEM ==============
+
+interface PlayerStatusResult {
+    playerId: number;
+    gamemode: string;
+    newStreak: number;
+    newBounty: number;
+    activeStatuses: string[];
+    bountyClaimed: number;
+    bountyVictimId: number | null;
+}
+
+/**
+ * Updates player statuses after a match ends
+ * Handles streak tracking, bounty calculation, and status effects
+ */
+async function updatePlayerStatusesAfterMatch(
+    supabase: any,
+    match: MatchRecord,
+    playerContexts: PlayerMatchContext[]
+): Promise<PlayerStatusResult[]> {
+    const results: PlayerStatusResult[] = [];
+
+    for (const ctx of playerContexts) {
+        try {
+            // Calculate score difference from player's perspective
+            const isTeam1 = ctx.team === 1;
+            const ownScore = isTeam1 ? match.scoreTeam1 : match.scoreTeam2;
+            const oppScore = isTeam1 ? match.scoreTeam2 : match.scoreTeam1;
+            const scoreDiff = ctx.isWinner
+                ? ownScore - oppScore
+                : (oppScore - ownScore) * -1;
+
+            // Get opponent MMR (average for 2on2)
+            let ownMmr = 0;
+            let oppMmr = 0;
+
+            if (match.gamemode === "1on1") {
+                if (isTeam1) {
+                    ownMmr = match.mmrPlayer1 || 1000;
+                    oppMmr = match.mmrPlayer2 || 1000;
+                } else {
+                    ownMmr = match.mmrPlayer2 || 1000;
+                    oppMmr = match.mmrPlayer1 || 1000;
+                }
+            } else {
+                // 2on2: average MMR of teams
+                if (isTeam1) {
+                    ownMmr = Math.round(
+                        ((match.mmrPlayer1 || 1000) +
+                            (match.mmrPlayer3 || 1000)) /
+                            2
+                    );
+                    oppMmr = Math.round(
+                        ((match.mmrPlayer2 || 1000) +
+                            (match.mmrPlayer4 || 1000)) /
+                            2
+                    );
+                } else {
+                    ownMmr = Math.round(
+                        ((match.mmrPlayer2 || 1000) +
+                            (match.mmrPlayer4 || 1000)) /
+                            2
+                    );
+                    oppMmr = Math.round(
+                        ((match.mmrPlayer1 || 1000) +
+                            (match.mmrPlayer3 || 1000)) /
+                            2
+                    );
+                }
+            }
+
+            // Call the RPC function to update player status
+            const { data, error } = await supabase.rpc(
+                "update_player_status_after_match",
+                {
+                    p_player_id: ctx.playerId,
+                    p_match_id: match.id,
+                    p_gamemode: match.gamemode,
+                    p_is_winner: ctx.isWinner,
+                    p_score_diff: scoreDiff,
+                    p_own_mmr: ownMmr,
+                    p_opponent_mmr: oppMmr,
+                }
+            );
+
+            if (error) {
+                console.error(
+                    `Error updating status for player ${ctx.playerId}:`,
+                    error
+                );
+                continue;
+            }
+
+            const result = data?.[0];
+            if (result) {
+                results.push({
+                    playerId: ctx.playerId,
+                    gamemode: match.gamemode,
+                    newStreak: result.streak,
+                    newBounty: 0, // Bounty is calculated in the RPC
+                    activeStatuses: result.new_status || [],
+                    bountyClaimed: result.bounty_claimed || 0,
+                    bountyVictimId: result.bounty_victim_id || null,
+                });
+
+                // Log bounty claims
+                if (result.bounty_claimed > 0) {
+                    console.log(
+                        `🎯 Player ${ctx.playerId} claimed ${result.bounty_claimed} MMR bounty from player ${result.bounty_victim_id}!`
+                    );
+                }
+
+                // Log significant streak changes
+                if (Math.abs(result.streak) >= 3) {
+                    const streakType = result.streak > 0 ? "🔥 Win" : "❄️ Loss";
+                    console.log(
+                        `${streakType} streak: Player ${ctx.playerId} is now at ${result.streak} (${match.gamemode})`
+                    );
+                }
+            }
+        } catch (err) {
+            console.error(
+                `Unexpected error updating status for player ${ctx.playerId}:`,
+                err
+            );
+        }
+    }
+
+    return results;
 }
