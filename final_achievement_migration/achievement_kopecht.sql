@@ -1237,34 +1237,34 @@ INSERT INTO kopecht.achievement_definitions (
     false
 ) ON CONFLICT (key) DO NOTHING;
 
--- Momentum Shift (1on1) - Score 5 goals in a row while behind 3-5 goals
+-- Momentum Shift (1on1) - Score 5 goals in a row after being behind 3+ goals
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable
 ) VALUES (
     'momentum_shift_1on1', 
     'Momentum Shift (1on1)', 
-    'Score 5 goals in a row while behind 3-5 goals in 1on1',
+    'Score 5 goals in a row after being behind 3+ goals in 1on1',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "team_streak_from_deficit", "target": 5, "deficit_min": 3, "deficit_max": 5, "filters": {"gamemode": "1on1"}}',
+    '{"type": "threshold", "metric": "team_streak_from_deficit", "target": 5, "deficit_min": 3, "filters": {"gamemode": "1on1"}}',
     175,
     1,
     false,
     false
 ) ON CONFLICT (key) DO NOTHING;
 
--- Momentum Shift (2on2) - Score 5 team goals in a row while behind 3-5 goals
+-- Momentum Shift (2on2) - Score 5 team goals in a row after being behind 3+ goals
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable
 ) VALUES (
     'momentum_shift_2on2', 
     'Momentum Shift (2on2)', 
-    'Score 5 team goals in a row while behind 3-5 goals in 2on2',
+    'Score 5 team goals in a row after being behind 3+ goals in 2on2',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "team_streak_from_deficit", "target": 5, "deficit_min": 3, "deficit_max": 5, "filters": {"gamemode": "2on2"}}',
+    '{"type": "threshold", "metric": "team_streak_from_deficit", "target": 5, "deficit_min": 3, "filters": {"gamemode": "2on2"}}',
     175,
     1,
     false,

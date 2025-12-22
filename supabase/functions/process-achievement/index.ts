@@ -341,17 +341,24 @@ async function handleMatchEnded(
     // Track if opponent scored after max deficit (for perfect comeback)
     let opponentScoredAfterMaxDeficitTeam1 = false;
     let opponentScoredAfterMaxDeficitTeam2 = false;
-    // Score history for reverse sweep detection
+    // Score history for reverse sweep detection - track score AFTER each goal
     const scoreHistory: { team1: number; team2: number }[] = [];
 
     let goalIndex = 0;
+    let prevScoreTeam1 = 0;
+    let prevScoreTeam2 = 0;
+
     for (const goal of matchGoals || []) {
         // Skip generated_goal - these are auto-generated and shouldn't count for achievements
         if (goal.goal_type === "generated_goal") {
             continue;
         }
 
-        // Track score history for pattern matching
+        // Calculate deficit BEFORE this goal was scored
+        const deficitTeam1Before = prevScoreTeam2 - prevScoreTeam1;
+        const deficitTeam2Before = prevScoreTeam1 - prevScoreTeam2;
+
+        // Track score history for pattern matching (score AFTER goal)
         scoreHistory.push({ team1: goal.scoreTeam1, team2: goal.scoreTeam2 });
 
         if (!goalStats[goal.player_id]) {
@@ -371,36 +378,46 @@ async function handleMatchEnded(
             );
         }
 
-        // Track max deficit for comeback achievements
-        const deficitTeam1 = goal.scoreTeam2 - goal.scoreTeam1;
-        const deficitTeam2 = goal.scoreTeam1 - goal.scoreTeam2;
+        // Track max deficit for comeback achievements (using score AFTER goal)
+        const deficitTeam1After = goal.scoreTeam2 - goal.scoreTeam1;
+        const deficitTeam2After = goal.scoreTeam1 - goal.scoreTeam2;
 
-        // Update max deficit and track the goal index
-        if (deficitTeam1 > maxDeficitTeam1) {
-            maxDeficitTeam1 = deficitTeam1;
+        // Update max deficit when opponent scores (deficit increases)
+        if (deficitTeam1After > maxDeficitTeam1) {
+            maxDeficitTeam1 = deficitTeam1After;
             maxDeficitTeam1GoalIndex = goalIndex;
             opponentScoredAfterMaxDeficitTeam1 = false; // Reset - new max deficit reached
         }
-        if (deficitTeam2 > maxDeficitTeam2) {
-            maxDeficitTeam2 = deficitTeam2;
+        if (deficitTeam2After > maxDeficitTeam2) {
+            maxDeficitTeam2 = deficitTeam2After;
             maxDeficitTeam2GoalIndex = goalIndex;
             opponentScoredAfterMaxDeficitTeam2 = false; // Reset - new max deficit reached
         }
 
         // Track if opponent scores after max deficit was reached
+        // For Team1: opponent is Team2, so check if goal.team === 2 and it's not an own goal by Team1
         if (
             maxDeficitTeam1GoalIndex >= 0 &&
-            goalIndex > maxDeficitTeam1GoalIndex &&
-            goal.team === 2
+            goalIndex > maxDeficitTeam1GoalIndex
         ) {
-            opponentScoredAfterMaxDeficitTeam1 = true;
+            // Team2 scores a regular goal OR Team1 scores an own goal
+            if (
+                (goal.team === 2 && goal.goal_type !== "own_goal") ||
+                (goal.team === 1 && goal.goal_type === "own_goal")
+            ) {
+                opponentScoredAfterMaxDeficitTeam1 = true;
+            }
         }
         if (
             maxDeficitTeam2GoalIndex >= 0 &&
-            goalIndex > maxDeficitTeam2GoalIndex &&
-            goal.team === 1
+            goalIndex > maxDeficitTeam2GoalIndex
         ) {
-            opponentScoredAfterMaxDeficitTeam2 = true;
+            if (
+                (goal.team === 1 && goal.goal_type !== "own_goal") ||
+                (goal.team === 2 && goal.goal_type === "own_goal")
+            ) {
+                opponentScoredAfterMaxDeficitTeam2 = true;
+            }
         }
 
         // Track goals per player after max deficit for comeback calculations
@@ -425,50 +442,65 @@ async function handleMatchEnded(
             }
         }
 
-        // Track team goal streaks while behind 3-5 goals (for Momentum Shift)
+        // Track team goal streaks while behind at least 3 goals (for Momentum Shift)
+        // Use deficit BEFORE the goal to check if team was behind when starting the streak
+        // Once a streak starts (deficit >= 3), it continues until opponent scores
         // Team 1 streak tracking
-        if (deficitTeam1 >= 3 && deficitTeam1 <= 5) {
-            if (goal.team === 1 && goal.goal_type !== "own_goal") {
-                if (team1StreakWhileBehind === 0) {
-                    currentDeficitAtTeam1StreakStart = deficitTeam1;
-                }
+        if (goal.team === 1 && goal.goal_type !== "own_goal") {
+            // Team 1 scores a regular goal
+            if (team1StreakWhileBehind === 0 && deficitTeam1Before >= 3) {
+                // Start a new streak only if we're behind by 3+
+                currentDeficitAtTeam1StreakStart = deficitTeam1Before;
+                team1StreakWhileBehind = 1;
+            } else if (team1StreakWhileBehind > 0) {
+                // Continue existing streak (regardless of current deficit)
                 team1StreakWhileBehind++;
-                if (team1StreakWhileBehind > maxTeam1StreakWhileBehind) {
-                    maxTeam1StreakWhileBehind = team1StreakWhileBehind;
-                    deficitAtTeam1StreakStart =
-                        currentDeficitAtTeam1StreakStart;
-                }
-            } else if (goal.team === 2) {
-                team1StreakWhileBehind = 0; // Reset streak on opponent goal
             }
-        } else {
-            // Not behind 3-5, reset current streak but keep max
-            team1StreakWhileBehind = 0;
+            // Update max if current is higher
+            if (team1StreakWhileBehind > maxTeam1StreakWhileBehind) {
+                maxTeam1StreakWhileBehind = team1StreakWhileBehind;
+                deficitAtTeam1StreakStart = currentDeficitAtTeam1StreakStart;
+            }
+        } else if (
+            (goal.team === 2 && goal.goal_type !== "own_goal") ||
+            (goal.team === 1 && goal.goal_type === "own_goal")
+        ) {
+            // Opponent scores (either Team2 regular goal or Team1 own goal)
+            team1StreakWhileBehind = 0; // Reset streak
         }
 
         // Team 2 streak tracking
-        if (deficitTeam2 >= 3 && deficitTeam2 <= 5) {
-            if (goal.team === 2 && goal.goal_type !== "own_goal") {
-                if (team2StreakWhileBehind === 0) {
-                    currentDeficitAtTeam2StreakStart = deficitTeam2;
-                }
+        if (goal.team === 2 && goal.goal_type !== "own_goal") {
+            // Team 2 scores a regular goal
+            if (team2StreakWhileBehind === 0 && deficitTeam2Before >= 3) {
+                // Start a new streak only if we're behind by 3+
+                currentDeficitAtTeam2StreakStart = deficitTeam2Before;
+                team2StreakWhileBehind = 1;
+            } else if (team2StreakWhileBehind > 0) {
+                // Continue existing streak (regardless of current deficit)
                 team2StreakWhileBehind++;
-                if (team2StreakWhileBehind > maxTeam2StreakWhileBehind) {
-                    maxTeam2StreakWhileBehind = team2StreakWhileBehind;
-                    deficitAtTeam2StreakStart =
-                        currentDeficitAtTeam2StreakStart;
-                }
-            } else if (goal.team === 1) {
-                team2StreakWhileBehind = 0; // Reset streak on opponent goal
             }
-        } else {
-            team2StreakWhileBehind = 0;
+            // Update max if current is higher
+            if (team2StreakWhileBehind > maxTeam2StreakWhileBehind) {
+                maxTeam2StreakWhileBehind = team2StreakWhileBehind;
+                deficitAtTeam2StreakStart = currentDeficitAtTeam2StreakStart;
+            }
+        } else if (
+            (goal.team === 1 && goal.goal_type !== "own_goal") ||
+            (goal.team === 2 && goal.goal_type === "own_goal")
+        ) {
+            // Opponent scores (either Team1 regular goal or Team2 own goal)
+            team2StreakWhileBehind = 0; // Reset streak
         }
 
+        // Update previous scores for next iteration
+        prevScoreTeam1 = goal.scoreTeam1;
+        prevScoreTeam2 = goal.scoreTeam2;
         goalIndex++;
     }
 
     // Calculate reverse sweep pattern (exact 0:5 -> 10:5)
+    // Check if at any point the score was 0:5 (for team1) or 5:0 (for team2)
     const isReverseSweepTeam1 =
         team1Won &&
         match.scoreTeam1 === 10 &&
@@ -2146,16 +2178,14 @@ async function evaluateMatchCondition(
                 return ctx.isWinner && ctx.isReverseSweep;
 
             case "team_streak_from_deficit":
-                // Score at least target goals in a row while behind 3-5 goals
+                // Score at least target goals in a row after being behind by deficit_min goals
                 const deficitMin = condition.deficit_min || 3;
-                const deficitMax = condition.deficit_max || 5;
                 console.log(
-                    `[team_streak_from_deficit] Player ${ctx.playerId}: maxTeamStreakWhileBehind=${ctx.maxTeamStreakWhileBehind}, deficitAtStreakStart=${ctx.deficitAtStreakStart}, target=${target}, deficitRange=${deficitMin}-${deficitMax}`
+                    `[team_streak_from_deficit] Player ${ctx.playerId}: maxTeamStreakWhileBehind=${ctx.maxTeamStreakWhileBehind}, deficitAtStreakStart=${ctx.deficitAtStreakStart}, target=${target}, deficitMin=${deficitMin}`
                 );
                 return (
                     ctx.maxTeamStreakWhileBehind >= target &&
-                    ctx.deficitAtStreakStart >= deficitMin &&
-                    ctx.deficitAtStreakStart <= deficitMax
+                    ctx.deficitAtStreakStart >= deficitMin
                 );
 
             case "solo_comeback":
