@@ -1152,6 +1152,142 @@ INSERT INTO kopecht.achievement_definitions (
     false
 ) ON CONFLICT (key) DO NOTHING;
 
+-- Perfect Comeback (1on1) - Win after 5+ deficit without opponent scoring after
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'perfect_comeback_1on1', 
+    'Perfect Comeback (1on1)', 
+    'Win a 1on1 after being down 5+ goals without opponent scoring another point',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "perfect_comeback", "target": 5, "filters": {"gamemode": "1on1", "result": "win"}}',
+    200,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Perfect Comeback (2on2) - Win after 5+ deficit without opponent scoring after
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'perfect_comeback_2on2', 
+    'Perfect Comeback (2on2)', 
+    'Win a 2on2 after being down 5+ goals without opponent scoring another point',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "perfect_comeback", "target": 5, "filters": {"gamemode": "2on2", "result": "win"}}',
+    200,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Reverse Sweep (1on1) - Exact 0:5 to 10:5 win
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'reverse_sweep_1on1', 
+    'Reverse Sweep (1on1)', 
+    'Win a 1on1 exactly 10:5 after being down 0:5',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "reverse_sweep", "target": 1, "filters": {"gamemode": "1on1", "result": "win"}}',
+    300,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Reverse Sweep (2on2) - Exact 0:5 to 10:5 win
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'reverse_sweep_2on2', 
+    'Reverse Sweep (2on2)', 
+    'Win a 2on2 exactly 10:5 after being down 0:5',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "reverse_sweep", "target": 1, "filters": {"gamemode": "2on2", "result": "win"}}',
+    300,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Comeback Specialist - Win 10x after being down 5+ goals
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'comeback_specialist', 
+    'Comeback Specialist', 
+    'Win 10 matches after being down 5+ goals',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "counter", "metric": "comeback", "target": 5, "filters": {"result": "win"}}',
+    250,
+    10,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Momentum Shift (1on1) - Score 5 goals in a row while behind 3-5 goals
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'momentum_shift_1on1', 
+    'Momentum Shift (1on1)', 
+    'Score 5 goals in a row while behind 3-5 goals in 1on1',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "team_streak_from_deficit", "target": 5, "deficit_min": 3, "deficit_max": 5, "filters": {"gamemode": "1on1"}}',
+    175,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Momentum Shift (2on2) - Score 5 team goals in a row while behind 3-5 goals
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'momentum_shift_2on2', 
+    'Momentum Shift (2on2)', 
+    'Score 5 team goals in a row while behind 3-5 goals in 2on2',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "team_streak_from_deficit", "target": 5, "deficit_min": 3, "deficit_max": 5, "filters": {"gamemode": "2on2"}}',
+    175,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- On My Back - Score all comeback goals yourself in 2on2 after 3+ deficit
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable
+) VALUES (
+    'on_my_back', 
+    'On My Back', 
+    'Score all comeback goals yourself in a 2on2 win after being down 3+ goals',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'comeback'),
+    'MATCH_ENDED',
+    '{"type": "threshold", "metric": "solo_comeback", "target": 3, "filters": {"gamemode": "2on2", "result": "win"}}',
+    250,
+    1,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
 
 -- ============================================
 -- MMR ACHIEVEMENTS (1on1)
@@ -4018,6 +4154,8 @@ INSERT INTO kopecht.status_definitions (key, name, description, type, condition,
 -- RPC: Update player status after match
 -- Called from match-ended flow
 -- ============================================
+DROP FUNCTION IF EXISTS kopecht.update_player_status_after_match(BIGINT, BIGINT, TEXT, BOOLEAN, INT, INT, INT);
+
 CREATE OR REPLACE FUNCTION kopecht.update_player_status_after_match(
     p_player_id BIGINT,
     p_match_id BIGINT,

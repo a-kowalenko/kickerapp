@@ -126,6 +126,13 @@ interface PlayerMatchContext {
     ownGoals: number; // Own goals by this player
     maxDeficit: number; // Maximum score deficit during match (for comeback)
     goalTimestamps: number[]; // Timestamps of goals scored by this player (for goals_in_timeframe)
+    // New comeback tracking fields
+    perfectComebackDeficit: number; // Largest deficit from which team won without conceding after
+    isReverseSweep: boolean; // Exact 0:5 -> 10:5 win pattern
+    maxTeamStreakWhileBehind: number; // Longest team goal streak while behind 3-5 goals
+    deficitAtStreakStart: number; // Deficit when the max streak started
+    comebackGoalsSelf: number; // Goals scored by this player after max deficit was reached
+    comebackGoalsTotal: number; // Total team goals after max deficit was reached
 }
 
 interface PlayerGoalContext {
@@ -316,11 +323,36 @@ async function handleMatchEnded(
     let maxDeficitTeam1 = 0; // Max deficit team1 faced (scoreTeam2 - scoreTeam1 when team2 was ahead)
     let maxDeficitTeam2 = 0; // Max deficit team2 faced
 
+    // New comeback tracking variables
+    let maxDeficitTeam1GoalIndex = -1; // Goal index where team1 reached max deficit
+    let maxDeficitTeam2GoalIndex = -1; // Goal index where team2 reached max deficit
+    let team1StreakWhileBehind = 0; // Current goal streak for team1 while behind
+    let team2StreakWhileBehind = 0; // Current goal streak for team2 while behind
+    let maxTeam1StreakWhileBehind = 0; // Max streak for team1 while behind 3-5
+    let maxTeam2StreakWhileBehind = 0; // Max streak for team2 while behind 3-5
+    let deficitAtTeam1StreakStart = 0; // Deficit when team1's max streak started
+    let deficitAtTeam2StreakStart = 0; // Deficit when team2's max streak started
+    let currentDeficitAtTeam1StreakStart = 0; // Deficit at start of current team1 streak
+    let currentDeficitAtTeam2StreakStart = 0; // Deficit at start of current team2 streak
+    // Track goals per player after max deficit for "On My Back" achievement
+    const comebackGoalsPerPlayer: {
+        [playerId: number]: { team1: number; team2: number };
+    } = {};
+    // Track if opponent scored after max deficit (for perfect comeback)
+    let opponentScoredAfterMaxDeficitTeam1 = false;
+    let opponentScoredAfterMaxDeficitTeam2 = false;
+    // Score history for reverse sweep detection
+    const scoreHistory: { team1: number; team2: number }[] = [];
+
+    let goalIndex = 0;
     for (const goal of matchGoals || []) {
         // Skip generated_goal - these are auto-generated and shouldn't count for achievements
         if (goal.goal_type === "generated_goal") {
             continue;
         }
+
+        // Track score history for pattern matching
+        scoreHistory.push({ team1: goal.scoreTeam1, team2: goal.scoreTeam2 });
 
         if (!goalStats[goal.player_id]) {
             goalStats[goal.player_id] = {
@@ -342,9 +374,129 @@ async function handleMatchEnded(
         // Track max deficit for comeback achievements
         const deficitTeam1 = goal.scoreTeam2 - goal.scoreTeam1;
         const deficitTeam2 = goal.scoreTeam1 - goal.scoreTeam2;
-        if (deficitTeam1 > maxDeficitTeam1) maxDeficitTeam1 = deficitTeam1;
-        if (deficitTeam2 > maxDeficitTeam2) maxDeficitTeam2 = deficitTeam2;
+
+        // Update max deficit and track the goal index
+        if (deficitTeam1 > maxDeficitTeam1) {
+            maxDeficitTeam1 = deficitTeam1;
+            maxDeficitTeam1GoalIndex = goalIndex;
+            opponentScoredAfterMaxDeficitTeam1 = false; // Reset - new max deficit reached
+        }
+        if (deficitTeam2 > maxDeficitTeam2) {
+            maxDeficitTeam2 = deficitTeam2;
+            maxDeficitTeam2GoalIndex = goalIndex;
+            opponentScoredAfterMaxDeficitTeam2 = false; // Reset - new max deficit reached
+        }
+
+        // Track if opponent scores after max deficit was reached
+        if (
+            maxDeficitTeam1GoalIndex >= 0 &&
+            goalIndex > maxDeficitTeam1GoalIndex &&
+            goal.team === 2
+        ) {
+            opponentScoredAfterMaxDeficitTeam1 = true;
+        }
+        if (
+            maxDeficitTeam2GoalIndex >= 0 &&
+            goalIndex > maxDeficitTeam2GoalIndex &&
+            goal.team === 1
+        ) {
+            opponentScoredAfterMaxDeficitTeam2 = true;
+        }
+
+        // Track goals per player after max deficit for comeback calculations
+        if (!comebackGoalsPerPlayer[goal.player_id]) {
+            comebackGoalsPerPlayer[goal.player_id] = { team1: 0, team2: 0 };
+        }
+        // Only count standard goals (not own goals) for comeback tracking
+        if (goal.goal_type !== "own_goal") {
+            if (
+                maxDeficitTeam1GoalIndex >= 0 &&
+                goalIndex > maxDeficitTeam1GoalIndex &&
+                goal.team === 1
+            ) {
+                comebackGoalsPerPlayer[goal.player_id].team1++;
+            }
+            if (
+                maxDeficitTeam2GoalIndex >= 0 &&
+                goalIndex > maxDeficitTeam2GoalIndex &&
+                goal.team === 2
+            ) {
+                comebackGoalsPerPlayer[goal.player_id].team2++;
+            }
+        }
+
+        // Track team goal streaks while behind 3-5 goals (for Momentum Shift)
+        // Team 1 streak tracking
+        if (deficitTeam1 >= 3 && deficitTeam1 <= 5) {
+            if (goal.team === 1 && goal.goal_type !== "own_goal") {
+                if (team1StreakWhileBehind === 0) {
+                    currentDeficitAtTeam1StreakStart = deficitTeam1;
+                }
+                team1StreakWhileBehind++;
+                if (team1StreakWhileBehind > maxTeam1StreakWhileBehind) {
+                    maxTeam1StreakWhileBehind = team1StreakWhileBehind;
+                    deficitAtTeam1StreakStart =
+                        currentDeficitAtTeam1StreakStart;
+                }
+            } else if (goal.team === 2) {
+                team1StreakWhileBehind = 0; // Reset streak on opponent goal
+            }
+        } else {
+            // Not behind 3-5, reset current streak but keep max
+            team1StreakWhileBehind = 0;
+        }
+
+        // Team 2 streak tracking
+        if (deficitTeam2 >= 3 && deficitTeam2 <= 5) {
+            if (goal.team === 2 && goal.goal_type !== "own_goal") {
+                if (team2StreakWhileBehind === 0) {
+                    currentDeficitAtTeam2StreakStart = deficitTeam2;
+                }
+                team2StreakWhileBehind++;
+                if (team2StreakWhileBehind > maxTeam2StreakWhileBehind) {
+                    maxTeam2StreakWhileBehind = team2StreakWhileBehind;
+                    deficitAtTeam2StreakStart =
+                        currentDeficitAtTeam2StreakStart;
+                }
+            } else if (goal.team === 1) {
+                team2StreakWhileBehind = 0; // Reset streak on opponent goal
+            }
+        } else {
+            team2StreakWhileBehind = 0;
+        }
+
+        goalIndex++;
     }
+
+    // Calculate reverse sweep pattern (exact 0:5 -> 10:5)
+    const isReverseSweepTeam1 =
+        team1Won &&
+        match.scoreTeam1 === 10 &&
+        match.scoreTeam2 === 5 &&
+        scoreHistory.some((s) => s.team1 === 0 && s.team2 === 5);
+    const isReverseSweepTeam2 =
+        !team1Won &&
+        match.scoreTeam2 === 10 &&
+        match.scoreTeam1 === 5 &&
+        scoreHistory.some((s) => s.team2 === 0 && s.team1 === 5);
+
+    // Calculate perfect comeback deficit (won after deficit without conceding)
+    const perfectComebackDeficitTeam1 =
+        team1Won && !opponentScoredAfterMaxDeficitTeam1 && maxDeficitTeam1 >= 5
+            ? maxDeficitTeam1
+            : 0;
+    const perfectComebackDeficitTeam2 =
+        !team1Won && !opponentScoredAfterMaxDeficitTeam2 && maxDeficitTeam2 >= 5
+            ? maxDeficitTeam2
+            : 0;
+
+    // Calculate total comeback goals per team (for "On My Back" calculation)
+    const comebackGoalsTotalTeam1 = Object.values(
+        comebackGoalsPerPlayer
+    ).reduce((sum, p) => sum + p.team1, 0);
+    const comebackGoalsTotalTeam2 = Object.values(
+        comebackGoalsPerPlayer
+    ).reduce((sum, p) => sum + p.team2, 0);
 
     // Build context for each player
     const playerContexts: PlayerMatchContext[] = buildPlayerMatchContexts(
@@ -354,7 +506,21 @@ async function handleMatchEnded(
         durationSeconds,
         goalStats,
         maxDeficitTeam1,
-        maxDeficitTeam2
+        maxDeficitTeam2,
+        // New comeback tracking data
+        {
+            perfectComebackDeficitTeam1,
+            perfectComebackDeficitTeam2,
+            isReverseSweepTeam1,
+            isReverseSweepTeam2,
+            maxTeam1StreakWhileBehind,
+            maxTeam2StreakWhileBehind,
+            deficitAtTeam1StreakStart,
+            deficitAtTeam2StreakStart,
+            comebackGoalsPerPlayer,
+            comebackGoalsTotalTeam1,
+            comebackGoalsTotalTeam2,
+        }
     );
 
     // Get existing unlocked achievements for all players
@@ -1250,6 +1416,23 @@ function jsonResponse(data: any, status = 200): Response {
     });
 }
 
+// Type for comeback tracking data passed to buildPlayerMatchContexts
+interface ComebackTrackingData {
+    perfectComebackDeficitTeam1: number;
+    perfectComebackDeficitTeam2: number;
+    isReverseSweepTeam1: boolean;
+    isReverseSweepTeam2: boolean;
+    maxTeam1StreakWhileBehind: number;
+    maxTeam2StreakWhileBehind: number;
+    deficitAtTeam1StreakStart: number;
+    deficitAtTeam2StreakStart: number;
+    comebackGoalsPerPlayer: {
+        [playerId: number]: { team1: number; team2: number };
+    };
+    comebackGoalsTotalTeam1: number;
+    comebackGoalsTotalTeam2: number;
+}
+
 function buildPlayerMatchContexts(
     match: MatchRecord,
     team1Won: boolean,
@@ -1257,7 +1440,8 @@ function buildPlayerMatchContexts(
     durationSeconds: number,
     goalStats: MatchGoalStats,
     maxDeficitTeam1: number,
-    maxDeficitTeam2: number
+    maxDeficitTeam2: number,
+    comebackData: ComebackTrackingData
 ): PlayerMatchContext[] {
     const contexts: PlayerMatchContext[] = [];
 
@@ -1304,6 +1488,14 @@ function buildPlayerMatchContexts(
         ownGoals: goalStats[match.player1]?.ownGoals || 0,
         maxDeficit: maxDeficitTeam1,
         goalTimestamps: goalStats[match.player1]?.goalTimestamps || [],
+        // New comeback fields
+        perfectComebackDeficit: comebackData.perfectComebackDeficitTeam1,
+        isReverseSweep: comebackData.isReverseSweepTeam1,
+        maxTeamStreakWhileBehind: comebackData.maxTeam1StreakWhileBehind,
+        deficitAtStreakStart: comebackData.deficitAtTeam1StreakStart,
+        comebackGoalsSelf:
+            comebackData.comebackGoalsPerPlayer[match.player1]?.team1 || 0,
+        comebackGoalsTotal: comebackData.comebackGoalsTotalTeam1,
     });
 
     // Player 2 (Team 2)
@@ -1324,6 +1516,14 @@ function buildPlayerMatchContexts(
         ownGoals: goalStats[match.player2]?.ownGoals || 0,
         maxDeficit: maxDeficitTeam2,
         goalTimestamps: goalStats[match.player2]?.goalTimestamps || [],
+        // New comeback fields
+        perfectComebackDeficit: comebackData.perfectComebackDeficitTeam2,
+        isReverseSweep: comebackData.isReverseSweepTeam2,
+        maxTeamStreakWhileBehind: comebackData.maxTeam2StreakWhileBehind,
+        deficitAtStreakStart: comebackData.deficitAtTeam2StreakStart,
+        comebackGoalsSelf:
+            comebackData.comebackGoalsPerPlayer[match.player2]?.team2 || 0,
+        comebackGoalsTotal: comebackData.comebackGoalsTotalTeam2,
     });
 
     // Player 3 (Team 1) if exists
@@ -1345,6 +1545,14 @@ function buildPlayerMatchContexts(
             ownGoals: goalStats[match.player3]?.ownGoals || 0,
             maxDeficit: maxDeficitTeam1,
             goalTimestamps: goalStats[match.player3]?.goalTimestamps || [],
+            // New comeback fields
+            perfectComebackDeficit: comebackData.perfectComebackDeficitTeam1,
+            isReverseSweep: comebackData.isReverseSweepTeam1,
+            maxTeamStreakWhileBehind: comebackData.maxTeam1StreakWhileBehind,
+            deficitAtStreakStart: comebackData.deficitAtTeam1StreakStart,
+            comebackGoalsSelf:
+                comebackData.comebackGoalsPerPlayer[match.player3]?.team1 || 0,
+            comebackGoalsTotal: comebackData.comebackGoalsTotalTeam1,
         });
     }
 
@@ -1367,6 +1575,14 @@ function buildPlayerMatchContexts(
             ownGoals: goalStats[match.player4]?.ownGoals || 0,
             maxDeficit: maxDeficitTeam2,
             goalTimestamps: goalStats[match.player4]?.goalTimestamps || [],
+            // New comeback fields
+            perfectComebackDeficit: comebackData.perfectComebackDeficitTeam2,
+            isReverseSweep: comebackData.isReverseSweepTeam2,
+            maxTeamStreakWhileBehind: comebackData.maxTeam2StreakWhileBehind,
+            deficitAtStreakStart: comebackData.deficitAtTeam2StreakStart,
+            comebackGoalsSelf:
+                comebackData.comebackGoalsPerPlayer[match.player4]?.team2 || 0,
+            comebackGoalsTotal: comebackData.comebackGoalsTotalTeam2,
         });
     }
 
@@ -1914,6 +2130,46 @@ async function evaluateMatchCondition(
             case "comeback":
                 // Win after being down by at least target points
                 return ctx.isWinner && ctx.maxDeficit >= target;
+
+            case "perfect_comeback":
+                // Win after being down by at least target points without opponent scoring after max deficit
+                console.log(
+                    `[perfect_comeback] Player ${ctx.playerId}: isWinner=${ctx.isWinner}, perfectComebackDeficit=${ctx.perfectComebackDeficit}, target=${target}`
+                );
+                return ctx.isWinner && ctx.perfectComebackDeficit >= target;
+
+            case "reverse_sweep":
+                // Exact 0:5 -> 10:5 win pattern
+                console.log(
+                    `[reverse_sweep] Player ${ctx.playerId}: isWinner=${ctx.isWinner}, isReverseSweep=${ctx.isReverseSweep}`
+                );
+                return ctx.isWinner && ctx.isReverseSweep;
+
+            case "team_streak_from_deficit":
+                // Score at least target goals in a row while behind 3-5 goals
+                const deficitMin = condition.deficit_min || 3;
+                const deficitMax = condition.deficit_max || 5;
+                console.log(
+                    `[team_streak_from_deficit] Player ${ctx.playerId}: maxTeamStreakWhileBehind=${ctx.maxTeamStreakWhileBehind}, deficitAtStreakStart=${ctx.deficitAtStreakStart}, target=${target}, deficitRange=${deficitMin}-${deficitMax}`
+                );
+                return (
+                    ctx.maxTeamStreakWhileBehind >= target &&
+                    ctx.deficitAtStreakStart >= deficitMin &&
+                    ctx.deficitAtStreakStart <= deficitMax
+                );
+
+            case "solo_comeback":
+                // Score ALL comeback goals yourself after being down by at least target points (2on2 only)
+                console.log(
+                    `[solo_comeback] Player ${ctx.playerId}: isWinner=${ctx.isWinner}, maxDeficit=${ctx.maxDeficit}, comebackGoalsSelf=${ctx.comebackGoalsSelf}, comebackGoalsTotal=${ctx.comebackGoalsTotal}, gamemode=${ctx.gamemode}`
+                );
+                return (
+                    ctx.isWinner &&
+                    ctx.gamemode === "2on2" &&
+                    ctx.maxDeficit >= target &&
+                    ctx.comebackGoalsTotal > 0 &&
+                    ctx.comebackGoalsSelf === ctx.comebackGoalsTotal
+                );
 
             case "mmr":
                 // Reach MMR threshold (check new MMR after match)
