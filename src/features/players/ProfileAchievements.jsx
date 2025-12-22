@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useQuery } from "react-query";
 import { HiOutlineTrophy, HiCheck } from "react-icons/hi2";
 import { getPlayerAchievements } from "../../services/apiAchievements";
-import { useKicker } from "../../contexts/KickerContext";
+import { useSelectedSeason } from "../seasons/useSelectedSeason";
 import { usePlayerName } from "./usePlayerName";
 import { useAchievementsWithProgress } from "../achievements/useAchievementsWithProgress";
 import Spinner from "../../ui/Spinner";
@@ -155,14 +155,21 @@ const CategoryAchievements = styled.div`
 
 function ProfileAchievements() {
     const { userId } = useParams();
-    const { currentKicker: kickerId } = useKicker();
+    const { seasonValue } = useSelectedSeason();
     const { player, isLoading: isLoadingPlayer } = usePlayerName(userId);
 
+    const seasonId =
+        seasonValue &&
+        seasonValue !== "all-time" &&
+        seasonValue !== "off-season"
+            ? seasonValue
+            : null;
+
     const { data: achievements, isLoading: isLoadingAchievements } = useQuery(
-        ["profileAchievements", player?.id, kickerId],
-        () => getPlayerAchievements(player.id, kickerId),
+        ["profileAchievements", player?.id, seasonId],
+        () => getPlayerAchievements(player.id, seasonId),
         {
-            enabled: !!player?.id && !!kickerId,
+            enabled: !!player?.id,
         }
     );
 

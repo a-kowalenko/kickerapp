@@ -1151,7 +1151,7 @@ async function handleSeasonEnded(
     // Get all players who participated in this season (from season_end_history or rankings)
     const { data: seasonPlayers } = await supabase
         .from("season_end_history")
-        .select("player_id, mmr, wins, losses, rank")
+        .select("player_id, mmr, wins, losses, rank, gamemode")
         .eq("season_id", season.id)
         .eq("kicker_id", season.kicker_id);
 
@@ -1162,6 +1162,51 @@ async function handleSeasonEnded(
     const playerIds = seasonPlayers.map((p: any) => p.player_id);
     const unlockedMap = await getUnlockedMap(supabase, playerIds);
 
+    // Fetch historical data for all-time season achievements
+    // Get champion count (rank 1) and podium count (rank 1-3) for each player per gamemode
+    const { data: historicalData } = await supabase
+        .from("season_end_history")
+        .select("player_id, rank, gamemode, wins, losses")
+        .eq("kicker_id", season.kicker_id)
+        .in("player_id", playerIds);
+
+    // Build lookup for champion/podium counts per player per gamemode
+    const playerHistoryMap = new Map<
+        string,
+        { champion_count: number; podium_count: number }
+    >();
+    for (const record of historicalData || []) {
+        const key = `${record.player_id}-${record.gamemode}`;
+        if (!playerHistoryMap.has(key)) {
+            playerHistoryMap.set(key, { champion_count: 0, podium_count: 0 });
+        }
+        const stats = playerHistoryMap.get(key)!;
+        if (record.rank === 1) {
+            stats.champion_count++;
+            stats.podium_count++;
+        } else if (record.rank <= 3) {
+            stats.podium_count++;
+        }
+    }
+
+    // Find last place players (per gamemode) with minimum 10 matches
+    const lastPlaceByGamemode = new Map<
+        string,
+        { player_id: number; rank: number; total_matches: number }
+    >();
+    for (const player of seasonPlayers) {
+        const key = player.gamemode;
+        const totalMatches = (player.wins || 0) + (player.losses || 0);
+        const current = lastPlaceByGamemode.get(key);
+        if (!current || player.rank > current.rank) {
+            lastPlaceByGamemode.set(key, {
+                player_id: player.player_id,
+                rank: player.rank,
+                total_matches: totalMatches,
+            });
+        }
+    }
+
     const results: Array<{
         playerId: number;
         achievementId: number;
@@ -1169,9 +1214,51 @@ async function handleSeasonEnded(
     }> = [];
 
     for (const playerData of seasonPlayers) {
+        // Enrich playerData with historical stats
+        const historyKey = `${playerData.player_id}-${playerData.gamemode}`;
+        const historicalStats = playerHistoryMap.get(historyKey) || {
+            champion_count: 0,
+            podium_count: 0,
+        };
+
+        // Check if this player is last place in their gamemode (with min 10 matches)
+        const lastPlace = lastPlaceByGamemode.get(playerData.gamemode);
+        const totalMatches = (playerData.wins || 0) + (playerData.losses || 0);
+        const isLast =
+            lastPlace &&
+            lastPlace.player_id === playerData.player_id &&
+            totalMatches >= 10;
+
+        // Create enriched player data object
+        const enrichedPlayerData = {
+            ...playerData,
+            champion_count: historicalStats.champion_count,
+            podium_count: historicalStats.podium_count,
+            is_last: isLast,
+            total_matches: totalMatches,
+        };
+
+        console.log(
+            `[SEASON_ENDED] Player ${playerData.player_id} gamemode ${playerData.gamemode}: ` +
+                `rank=${playerData.rank}, champion_count=${historicalStats.champion_count}, ` +
+                `podium_count=${historicalStats.podium_count}, is_last=${isLast}`
+        );
+
         for (const achievement of achievements as AchievementDefinition[]) {
             // Skip if season-specific and doesn't match
             if (achievement.season_id && achievement.season_id !== season.id) {
+                continue;
+            }
+
+            // Check gamemode filter if specified
+            const condition = achievement.condition as AchievementCondition;
+            const filters = (condition as any).filters || {};
+            if (filters.gamemode && filters.gamemode !== playerData.gamemode) {
+                continue;
+            }
+
+            // Check minimum matches filter for last place achievement
+            if (filters.min_matches && totalMatches < filters.min_matches) {
                 continue;
             }
 
@@ -1191,10 +1278,10 @@ async function handleSeasonEnded(
                 continue;
             }
 
-            // Evaluate season condition
+            // Evaluate season condition with enriched data
             const conditionMet = evaluateSeasonCondition(
                 achievement.condition,
-                playerData
+                enrichedPlayerData
             );
 
             if (conditionMet) {
@@ -1389,6 +1476,41 @@ async function handleAchievementUnlocked(
                     (pa: any) => pa.achievement?.is_hidden
                 ).length;
                 conditionMet = hiddenCount >= (condition.target || 0);
+            }
+        } else if (condition.metric === "achievement_points") {
+            // Counter type: track total achievement points earned
+            // Get the points of the achievement that was just unlocked
+            const { data: unlockedAchievementData } = await supabase
+                .from("achievement_definitions")
+                .select("points")
+                .eq("id", unlockedAchievementId)
+                .single();
+
+            const pointsEarned = unlockedAchievementData?.points || 0;
+
+            if (condition.type === "counter") {
+                // Increment by the points of the unlocked achievement
+                conditionMet = pointsEarned > 0;
+                increment = pointsEarned;
+                console.log(
+                    `[achievement_points] Achievement unlocked with ${pointsEarned} points`
+                );
+            } else if (condition.type === "threshold") {
+                // Sum all points earned by this player
+                const { data: allPlayerAchievements } = await supabase
+                    .from("player_achievements")
+                    .select("achievement:achievement_definitions(points)")
+                    .eq("player_id", playerId);
+
+                const totalPoints = (allPlayerAchievements || []).reduce(
+                    (sum: number, pa: any) =>
+                        sum + (pa.achievement?.points || 0),
+                    0
+                );
+                conditionMet = totalPoints >= (condition.target || 0);
+                console.log(
+                    `[achievement_points] Player has ${totalPoints} total points`
+                );
             }
         } else if (condition.metric === "all_achievements") {
             // Check if player has all non-meta achievements
@@ -2965,6 +3087,7 @@ function evaluateSeasonCondition(
     if (condition.type === "threshold") {
         const metric = condition.metric;
         const target = condition.target || 0;
+        const comparison = (condition as any).comparison || "gte";
 
         switch (metric) {
             case "mmr":
@@ -2977,8 +3100,36 @@ function evaluateSeasonCondition(
             case "matches":
                 return playerData.wins + playerData.losses >= target;
             case "season_rank":
-                // Rank 1 means first place
+                // Support different comparisons for rank
+                if (comparison === "eq") return playerData.rank === target;
+                if (comparison === "lte") return playerData.rank <= target;
+                if (comparison === "gte") return playerData.rank >= target;
                 return playerData.rank === target;
+            case "season_champion_count":
+                // Check how many times player has been champion (rank 1)
+                // This is set dynamically in handleSeasonEnded
+                return (playerData.champion_count || 0) >= target;
+            case "season_podium_count":
+                // Check how many times player has been on podium (rank 1-3)
+                // This is set dynamically in handleSeasonEnded
+                return (playerData.podium_count || 0) >= target;
+            case "season_last":
+                // Check if player is last place with minimum matches
+                // This is set dynamically in handleSeasonEnded
+                return playerData.is_last === true;
+            default:
+                return true;
+        }
+    } else if (condition.type === "counter") {
+        // Counter type: track cumulative progress over multiple seasons
+        const metric = condition.metric;
+
+        switch (metric) {
+            case "season_champion_count":
+            case "season_podium_count":
+                // For counter types, we always return true if player meets the current criteria
+                // The progress is incremented in handleSeasonEnded
+                return true;
             default:
                 return true;
         }
@@ -3951,7 +4102,7 @@ async function processBountyAchievements(
                     : null;
                 let progressQuery = supabase
                     .from("player_achievement_progress")
-                    .select("current_progress")
+                    .select("id, current_progress")
                     .eq("player_id", playerId)
                     .eq("achievement_id", achievement.id);
 
@@ -3968,24 +4119,32 @@ async function processBountyAchievements(
                 const currentProgress = progressData?.current_progress || 0;
                 const newProgress = currentProgress + progressAmount;
 
-                // Update or insert progress
-                const { error: upsertError } = await supabase
-                    .from("player_achievement_progress")
-                    .upsert(
-                        {
+                // Update existing or insert new progress record
+                // Using explicit insert/update instead of upsert to handle NULL season_id correctly
+                let upsertError = null;
+                if (progressData?.id) {
+                    // Update existing record
+                    const { error } = await supabase
+                        .from("player_achievement_progress")
+                        .update({
+                            current_progress: newProgress,
+                            updated_at: new Date().toISOString(),
+                        })
+                        .eq("id", progressData.id);
+                    upsertError = error;
+                } else {
+                    // Insert new record
+                    const { error } = await supabase
+                        .from("player_achievement_progress")
+                        .insert({
                             player_id: playerId,
                             achievement_id: achievement.id,
                             current_progress: newProgress,
                             season_id: progressSeasonId,
                             updated_at: new Date().toISOString(),
-                        },
-                        {
-                            onConflict:
-                                progressSeasonId === null
-                                    ? "player_id,achievement_id,season_id"
-                                    : "player_id,achievement_id,season_id",
-                        }
-                    );
+                        });
+                    upsertError = error;
+                }
 
                 if (upsertError) {
                     console.error(

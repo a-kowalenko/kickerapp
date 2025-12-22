@@ -45,8 +45,10 @@ CREATE TABLE IF NOT EXISTS kopecht.player_achievement_progress (
     player_id BIGINT NOT NULL REFERENCES kopecht.player(id) ON DELETE CASCADE,
     achievement_id BIGINT NOT NULL REFERENCES kopecht.achievement_definitions(id) ON DELETE CASCADE,
     current_progress INT NOT NULL DEFAULT 0,
+    season_id BIGINT REFERENCES kopecht.seasons(id) ON DELETE SET NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT player_achievement_progress_unique UNIQUE (player_id, achievement_id)
+    -- season_id = NULL for global achievements, season_id = X for season-specific
+    CONSTRAINT player_achievement_progress_unique UNIQUE (player_id, achievement_id, season_id)
 );
 
 -- 4. Player Achievements (unlocked achievements)
@@ -68,6 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_achievement_definitions_parent ON kopecht.achieve
 CREATE INDEX IF NOT EXISTS idx_achievement_definitions_season ON kopecht.achievement_definitions(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_achievement_progress_player ON kopecht.player_achievement_progress(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_achievement_progress_achievement ON kopecht.player_achievement_progress(achievement_id);
+CREATE INDEX IF NOT EXISTS idx_player_achievement_progress_season ON kopecht.player_achievement_progress(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_achievements_player ON kopecht.player_achievements(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_achievements_achievement ON kopecht.player_achievements(achievement_id);
 CREATE INDEX IF NOT EXISTS idx_player_achievements_season ON kopecht.player_achievements(season_id);
@@ -2918,17 +2921,11 @@ ON kopecht.player_achievement_progress(season_id);
 
 -- ============================================
 -- 3. Set is_season_specific = false for global achievements
--- Global achievements: Meta category, Season category
+-- Only specific achievements are global, not entire categories
 -- ============================================
 
--- Meta achievements are global (track all-time achievement count)
-UPDATE kopecht.achievement_definitions 
-SET is_season_specific = false 
-WHERE category_id IN (
-    SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'
-);
-
--- Season achievements are global (podium, champion - they're inherently season-based but tracked globally)
+-- Season achievements that track all-time stats are global
+-- (podium, champion - they track across seasons but the TRIGGER happens per season)
 UPDATE kopecht.achievement_definitions 
 SET is_season_specific = false 
 WHERE category_id IN (
@@ -4168,14 +4165,17 @@ CREATE OR REPLACE FUNCTION kopecht.update_player_status_after_match(
 RETURNS TABLE (
     bounty_claimed INT,
     bounty_victim_id BIGINT,
+    bounty_gained INT,
     new_status TEXT[],
-    streak INT
+    streak INT,
+    old_streak INT
 ) AS $$
 DECLARE
     v_current_streak INT;
     v_new_streak INT;
     v_current_bounty INT;
     v_new_bounty INT;
+    v_bounty_gained INT := 0;
     v_active_statuses TEXT[];
     v_bounty_to_claim INT := 0;
     v_bounty_victim BIGINT := NULL;
@@ -4194,10 +4194,10 @@ BEGIN
     ON CONFLICT (player_id, gamemode) DO NOTHING;
     
     -- Get current status
-    SELECT current_streak, current_bounty, active_statuses
+    SELECT ps.current_streak, ps.current_bounty, ps.active_statuses
     INTO v_current_streak, v_current_bounty, v_active_statuses
-    FROM kopecht.player_status
-    WHERE player_id = p_player_id AND gamemode = p_gamemode;
+    FROM kopecht.player_status ps
+    WHERE ps.player_id = p_player_id AND ps.gamemode = p_gamemode;
     
     -- Track if player was on a loss streak (for comeback detection)
     IF v_current_streak < 0 THEN
@@ -4324,6 +4324,11 @@ BEGIN
         DO UPDATE SET humiliated_count = kopecht.player_monthly_status.humiliated_count + 1, updated_at = NOW();
     END IF;
     
+    -- Calculate bounty gained this match (difference from previous bounty)
+    IF v_new_bounty > v_current_bounty THEN
+        v_bounty_gained := v_new_bounty - v_current_bounty;
+    END IF;
+    
     -- Update player status
     UPDATE kopecht.player_status
     SET current_streak = v_new_streak,
@@ -4336,8 +4341,10 @@ BEGIN
     -- Return results
     bounty_claimed := v_bounty_to_claim;
     bounty_victim_id := v_bounty_victim;
+    bounty_gained := v_bounty_gained;
     new_status := v_active_statuses;
     streak := v_new_streak;
+    old_streak := v_current_streak;
     
     RETURN NEXT;
 END;
@@ -5180,6 +5187,125 @@ INSERT INTO kopecht.achievement_definitions (
 ) ON CONFLICT (key) DO NOTHING;
 
 -- ============================================
+-- GLOBAL BOUNTY ACHIEVEMENTS (cross-season)
+-- These track cumulative progress across all seasons
+-- ============================================
+
+-- GLOBAL: Accumulate bounty on head (100/250/500)
+-- Root achievement: 100 bounty
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'bounty_earned_100_global', 
+    'Rising Threat', 
+    'Accumulate a total of 100 bounty on your head (all-time)', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_gained',
+    '{"cumulative_bounty": 100}',
+    20,
+    100,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- 250 bounty (chain from 100)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'bounty_earned_250_global', 
+    'High Value Target', 
+    'Accumulate a total of 250 bounty on your head (all-time)', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_gained',
+    '{"cumulative_bounty": 250}',
+    40,
+    250,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_earned_100_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- 500 bounty (chain from 250)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'bounty_earned_500_global', 
+    'Walking Goldmine', 
+    'Accumulate a total of 500 bounty on your head (all-time)', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_gained',
+    '{"cumulative_bounty": 500}',
+    75,
+    500,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_earned_250_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- GLOBAL: Collect bounty from others (150/300/600)
+-- Root achievement: 150 bounty
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'bounty_collected_150_global', 
+    'Headhunter', 
+    'Collect a total of 150 bounty from other players (all-time)', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"cumulative_bounty": 150}',
+    25,
+    150,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- 300 bounty (chain from 150)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'bounty_collected_300_global', 
+    'Professional Hunter', 
+    'Collect a total of 300 bounty from other players (all-time)', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"cumulative_bounty": 300}',
+    50,
+    300,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_collected_150_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- 600 bounty (chain from 300)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'bounty_collected_600_global', 
+    'Master Bounty Hunter', 
+    'Collect a total of 600 bounty from other players (all-time)', 
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'streaks'),
+    'bounty_claimed',
+    '{"cumulative_bounty": 600}',
+    100,
+    600,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'bounty_collected_300_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
 -- SECRET ACHIEVEMENTS (is_hidden = true)
 -- ============================================
 
@@ -5220,6 +5346,381 @@ INSERT INTO kopecht.achievement_definitions (
 
 
 -- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- PART 16:
+-- PART 16: NEW META ACHIEVEMENTS (Season-Specific and Global)
 -- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+SET search_path TO kopecht;
+
+-- ============================================
+-- SEASON-SPECIFIC META ACHIEVEMENTS
+-- These track per-season progress
+-- ============================================
+
+-- Secret Finder 10 (season) - child of secret_finder
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'secret_finder_10',
+    'Secret Seeker',
+    'Unlock 10 hidden achievements this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "secret_achievements_unlocked", "target": 10}',
+    200,
+    10,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'secret_finder')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Achievement Points 5000 (season)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'achievement_points_5000',
+    'Point Collector',
+    'Earn 5000 achievement points this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievement_points", "target": 5000}',
+    150,
+    5000,
+    false,
+    false,
+    true
+) ON CONFLICT (key) DO NOTHING;
+
+-- Achievement Points 10000 (season)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'achievement_points_10000',
+    'Point Hoarder',
+    'Earn 10000 achievement points this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievement_points", "target": 10000}',
+    250,
+    10000,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievement_points_5000')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Achievement Points 25000 (season)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'achievement_points_25000',
+    'Point Master',
+    'Earn 25000 achievement points this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievement_points", "target": 25000}',
+    500,
+    25000,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievement_points_10000')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Update completionist condition to target 150 achievements
+UPDATE kopecht.achievement_definitions 
+SET condition = '{"type": "threshold", "metric": "achievements_unlocked", "target": 150}'::jsonb,
+    max_progress = 150,
+    description = 'Unlock 150 achievements'
+WHERE key = 'completionist';
+
+-- ============================================
+-- GLOBAL META ACHIEVEMENTS (All-Time)
+-- These track all-time progress across all seasons
+-- This is a SEPARATE chain from the season-specific meta achievements
+-- ============================================
+
+-- Achievement Hunter 100 (global) - START of global chain (no parent)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'achievements_100_global',
+    'Century Achiever',
+    'Unlock 100 achievements (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievements_unlocked", "target": 100}',
+    300,
+    100,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO UPDATE SET parent_id = NULL;
+
+-- Achievement Hunter 250 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'achievements_250_global',
+    'Achievement Legend',
+    'Unlock 250 achievements (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievements_unlocked", "target": 250}',
+    500,
+    250,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievements_100_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Achievement Hunter 500 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'achievements_500_global',
+    'Achievement God',
+    'Unlock 500 achievements (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievements_unlocked", "target": 500}',
+    1000,
+    500,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievements_250_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Achievement Points 15000 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'achievement_points_15000_global',
+    'Global Point Collector',
+    'Earn 15000 achievement points (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievement_points", "target": 15000}',
+    200,
+    15000,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Achievement Points 50000 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'achievement_points_50000_global',
+    'Global Point Hoarder',
+    'Earn 50000 achievement points (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievement_points", "target": 50000}',
+    400,
+    50000,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievement_points_15000_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Achievement Points 100000 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'achievement_points_100000_global',
+    'Global Point Legend',
+    'Earn 100000 achievement points (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "achievement_points", "target": 100000}',
+    750,
+    100000,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievement_points_50000_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Secret Finder 10 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'secrets_10_global',
+    'Global Secret Seeker',
+    'Unlock 10 hidden achievements (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "secret_achievements_unlocked", "target": 10}',
+    200,
+    10,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Secret Finder 25 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'secrets_25_global',
+    'Global Secret Hunter',
+    'Unlock 25 hidden achievements (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "secret_achievements_unlocked", "target": 25}',
+    350,
+    25,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'secrets_10_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Secret Finder 50 (global)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'secrets_50_global',
+    'Global Secret Master',
+    'Unlock 50 hidden achievements (all-time)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "secret_achievements_unlocked", "target": 50}',
+    500,
+    50,
+    false,
+    false,
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'secrets_25_global')
+) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- ALL-TIME SEASON ACHIEVEMENTS
+-- Dynasty and Podium tracking across all seasons
+-- ============================================
+
+-- Dynasty 1on1 - Win 3 seasons
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'season_champion_3x_1on1',
+    'Dynasty (1on1)',
+    'Win 3 1on1 seasons',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'season'),
+    'SEASON_ENDED',
+    '{"type": "threshold", "metric": "season_champion_count", "target": 3, "filters": {"gamemode": "1on1"}}',
+    500,
+    3,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Dynasty 2on2 - Win 3 seasons
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'season_champion_3x_2on2',
+    'Dynasty (2on2)',
+    'Win 3 2on2 seasons',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'season'),
+    'SEASON_ENDED',
+    '{"type": "threshold", "metric": "season_champion_count", "target": 3, "filters": {"gamemode": "2on2"}}',
+    500,
+    3,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Podium Regular 1on1 - Top 3 in 5 seasons
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'season_podium_5x_1on1',
+    'Podium Regular (1on1)',
+    'Finish in top 3 in 5 1on1 seasons',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'season'),
+    'SEASON_ENDED',
+    '{"type": "threshold", "metric": "season_podium_count", "target": 5, "filters": {"gamemode": "1on1"}}',
+    400,
+    5,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Podium Regular 2on2 - Top 3 in 5 seasons
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'season_podium_5x_2on2',
+    'Podium Regular (2on2)',
+    'Finish in top 3 in 5 2on2 seasons',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'season'),
+    'SEASON_ENDED',
+    '{"type": "threshold", "metric": "season_podium_count", "target": 5, "filters": {"gamemode": "2on2"}}',
+    400,
+    5,
+    false,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Rock Bottom 1on1 - Last place with min 10 matches (SECRET)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'season_last_1on1',
+    'Rock Bottom (1on1)',
+    'Finish last place in a 1on1 season (min. 10 matches)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret'),
+    'SEASON_ENDED',
+    '{"type": "threshold", "metric": "season_last", "target": 1, "filters": {"gamemode": "1on1", "min_matches": 10}}',
+    10,
+    1,
+    true,
+    false,
+    true
+) ON CONFLICT (key) DO NOTHING;
+
+-- Rock Bottom 2on2 - Last place with min 10 matches (SECRET)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition,
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'season_last_2on2',
+    'Rock Bottom (2on2)',
+    'Finish last place in a 2on2 season (min. 10 matches)',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'secret'),
+    'SEASON_ENDED',
+    '{"type": "threshold", "metric": "season_last", "target": 1, "filters": {"gamemode": "2on2", "min_matches": 10}}',
+    10,
+    1,
+    true,
+    false,
+    true
+) ON CONFLICT (key) DO NOTHING;

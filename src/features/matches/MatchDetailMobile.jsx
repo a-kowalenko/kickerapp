@@ -358,6 +358,10 @@ function MatchDetailMobile({ match, timer }) {
     }
 
     function handleEndMatch() {
+        if (isEnded) {
+            return;
+        }
+
         if (match.scoreTeam1 === 0 && match.scoreTeam2 === 0) {
             toast.error("Atleast one team must have a score above 0");
             return;

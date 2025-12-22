@@ -237,6 +237,10 @@ function MatchDetail() {
     }
 
     function handleEndMatch() {
+        if (match?.status !== "active") {
+            return;
+        }
+
         if (score1 === "" || score2 === "") {
             toast.error("Score is missing");
             return;
