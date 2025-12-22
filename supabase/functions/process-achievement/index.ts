@@ -89,6 +89,7 @@ interface AchievementCondition {
     metric?: string;
     target?: number;
     timeframe_seconds?: number; // For goals_in_timeframe
+    deficit_min?: number; // For team_streak_from_deficit (Momentum Shift)
     filters?: {
         gamemode?: string;
         result?: "win" | "loss";
@@ -153,6 +154,9 @@ interface PlayerGoalContext {
     ownGoalAmbiguous?: boolean; // True when own team score after = 0 (can't distinguish case 1 vs 2)
     altScoreTeam1BeforeGoal?: number; // Alternative score (for Case 2)
     altScoreTeam2BeforeGoal?: number;
+    // For team_streak_from_deficit (Momentum Shift achievement)
+    currentTeamStreakWhileBehind?: number; // Current team goal streak while behind
+    deficitAtCurrentStreakStart?: number; // Deficit when the current streak started
 }
 
 interface MatchGoalStats {
@@ -763,6 +767,77 @@ async function handleGoalScored(
         new Date(g.created_at).getTime()
     );
 
+    // Calculate team streak while behind for Momentum Shift achievement
+    // Get ALL goals in this match to calculate the streak
+    const { data: allMatchGoals } = await supabase
+        .from("goals")
+        .select(
+            "player_id, goal_type, team, scoreTeam1, scoreTeam2, created_at"
+        )
+        .eq("match_id", goal.match_id)
+        .order("created_at", { ascending: true });
+
+    let currentTeamStreakWhileBehind = 0;
+    let deficitAtCurrentStreakStart = 0;
+
+    if (allMatchGoals && allMatchGoals.length > 0) {
+        let teamStreak = 0;
+        let deficitAtStreakStart = 0;
+        let currentDeficitAtStreakStart = 0;
+        let prevScoreTeam1 = 0;
+        let prevScoreTeam2 = 0;
+
+        for (const g of allMatchGoals) {
+            // Skip generated goals
+            if (g.goal_type === "generated_goal") continue;
+
+            // Calculate deficit BEFORE this goal was scored
+            const deficitPlayerTeamBefore =
+                playerTeam === 1
+                    ? prevScoreTeam2 - prevScoreTeam1
+                    : prevScoreTeam1 - prevScoreTeam2;
+
+            // Check if player's team scored (standard goal for player's team or own goal from opponent)
+            const playerTeamScored =
+                (g.team === playerTeam && g.goal_type !== "own_goal") ||
+                (g.team !== playerTeam && g.goal_type === "own_goal");
+
+            // Check if opponent scored
+            const opponentScored =
+                (g.team !== playerTeam && g.goal_type !== "own_goal") ||
+                (g.team === playerTeam && g.goal_type === "own_goal");
+
+            if (playerTeamScored) {
+                if (teamStreak === 0 && deficitPlayerTeamBefore >= 3) {
+                    // Start a new streak only if we're behind by 3+
+                    currentDeficitAtStreakStart = deficitPlayerTeamBefore;
+                    teamStreak = 1;
+                } else if (teamStreak > 0) {
+                    // Continue existing streak
+                    teamStreak++;
+                }
+                // Update max if current is higher
+                if (teamStreak > currentTeamStreakWhileBehind) {
+                    currentTeamStreakWhileBehind = teamStreak;
+                    deficitAtCurrentStreakStart = currentDeficitAtStreakStart;
+                }
+            } else if (opponentScored) {
+                // Opponent scores - reset streak
+                teamStreak = 0;
+            }
+
+            // Update previous scores
+            prevScoreTeam1 = g.scoreTeam1;
+            prevScoreTeam2 = g.scoreTeam2;
+        }
+
+        console.log(
+            `[team_streak_from_deficit] Player ${goal.player_id} team ${playerTeam}: ` +
+                `currentTeamStreakWhileBehind=${currentTeamStreakWhileBehind}, ` +
+                `deficitAtCurrentStreakStart=${deficitAtCurrentStreakStart}`
+        );
+    }
+
     // Build context for this goal
     const goalCtx: PlayerGoalContext = {
         playerId: goal.player_id,
@@ -779,6 +854,8 @@ async function handleGoalScored(
         ownGoalAmbiguous,
         altScoreTeam1BeforeGoal,
         altScoreTeam2BeforeGoal,
+        currentTeamStreakWhileBehind,
+        deficitAtCurrentStreakStart,
     };
 
     // DEBUG: Log goal context for own goals
@@ -2856,6 +2933,21 @@ function evaluateGoalCondition(
                     }
                 }
                 return false;
+
+            case "team_streak_from_deficit":
+                // Score at least target goals in a row after being behind by deficit_min goals
+                // This is for Momentum Shift achievements
+                const deficitMin = condition.deficit_min || 3;
+                console.log(
+                    `[team_streak_from_deficit GOAL] Player ${ctx.playerId}: ` +
+                        `currentTeamStreakWhileBehind=${ctx.currentTeamStreakWhileBehind}, ` +
+                        `deficitAtCurrentStreakStart=${ctx.deficitAtCurrentStreakStart}, ` +
+                        `target=${target}, deficitMin=${deficitMin}`
+                );
+                return (
+                    (ctx.currentTeamStreakWhileBehind || 0) >= target &&
+                    (ctx.deficitAtCurrentStreakStart || 0) >= deficitMin
+                );
 
             default:
                 return true;
