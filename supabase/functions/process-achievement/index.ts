@@ -2041,9 +2041,8 @@ async function processMatchAchievements(
                     continue;
                 }
 
-                // If parent was JUST unlocked, initialize child's progress with parent's max_progress
-                // The event that triggered the parent was already counted in parent's max_progress,
-                // so we should NOT count it again for the child - just initialize and skip
+                // If parent was JUST unlocked, initialize child's progress with parent's actual progress
+                // This ensures we don't lose any overflow (e.g., bounty 30 when threshold is 25)
                 if (parentJustUnlocked) {
                     const parentAchievement = achievements.find(
                         (a) => a.id === achievement.parent_id
@@ -2054,15 +2053,42 @@ async function processMatchAchievements(
                             achievement.is_season_specific
                                 ? match.season_id
                                 : null;
+
+                        // Get actual progress from parent (may be higher than max_progress)
+                        let actualProgress = parentAchievement.max_progress;
+                        let parentProgressQuery = supabase
+                            .from("player_achievement_progress")
+                            .select("current_progress")
+                            .eq("player_id", playerCtx.playerId)
+                            .eq("achievement_id", parentAchievement.id);
+
+                        if (childProgressSeasonId === null) {
+                            parentProgressQuery = parentProgressQuery.is(
+                                "season_id",
+                                null
+                            );
+                        } else {
+                            parentProgressQuery = parentProgressQuery.eq(
+                                "season_id",
+                                childProgressSeasonId
+                            );
+                        }
+
+                        const { data: parentProgress } =
+                            await parentProgressQuery.maybeSingle();
+                        if (parentProgress?.current_progress) {
+                            actualProgress = parentProgress.current_progress;
+                        }
+
                         await initializeChainProgress(
                             supabase,
                             playerCtx.playerId,
                             achievement.id,
-                            parentAchievement.max_progress,
+                            actualProgress,
                             childProgressSeasonId
                         );
                         console.log(
-                            `[Chain] Initialized child achievement ${achievement.id} with parent's max_progress: ${parentAchievement.max_progress}, season_id: ${childProgressSeasonId}`
+                            `[Chain] Initialized child achievement ${achievement.id} with actual progress: ${actualProgress}, season_id: ${childProgressSeasonId}`
                         );
                     }
                     // Skip this event for the child - it was already counted in parent's progress
@@ -2107,9 +2133,25 @@ async function processMatchAchievements(
                         `[Streak] Player ${playerCtx.playerId}, achievement ${achievement.key}: currentStreak=${currentStreak}, min_streak=${streakCond.min_streak}`
                     );
 
-                    // Check if current streak meets the requirement
-                    if (currentStreak >= streakCond.min_streak) {
-                        // Directly award the achievement (threshold type, max_progress = 1)
+                    // Always update progress to show current streak (even for already unlocked achievements)
+                    const progressSeasonId = achievement.is_season_specific
+                        ? match.season_id
+                        : null;
+                    await setStreakProgress(
+                        supabase,
+                        playerCtx.playerId,
+                        achievement.id,
+                        currentStreak,
+                        streakCond.min_streak, // max_progress = the streak target
+                        progressSeasonId
+                    );
+
+                    // Check if current streak meets the requirement and not already unlocked
+                    if (
+                        currentStreak >= streakCond.min_streak &&
+                        !alreadyUnlocked
+                    ) {
+                        // Award the achievement
                         const result = await awardAchievementDirectly(
                             supabase,
                             playerCtx.playerId,
@@ -2405,6 +2447,15 @@ async function evaluateMatchCondition(
         }
     }
 
+    // Check team_score filter (player's team must have exactly this score)
+    if (filters.team_score) {
+        const playerTeamScore =
+            ctx.team === 1 ? ctx.match.scoreTeam1 : ctx.match.scoreTeam2;
+        if (playerTeamScore !== filters.team_score) {
+            return false;
+        }
+    }
+
     // Check time_before filter (match must have ended before this time of day)
     if (filters.time_before) {
         const matchEndTime = ctx.match.end_time
@@ -2582,6 +2633,25 @@ async function evaluateMatchCondition(
                     `[own_goals_in_match] Player ${ctx.playerId}: ownGoals=${ctx.ownGoals}, target=${target}`
                 );
                 return ctx.ownGoals >= target;
+
+            case "goals_in_match": {
+                // Score goals in a match with comparison support (eq, gte, lte)
+                const comparison = condition.comparison || "gte";
+                const playerGoals = ctx.playerGoals;
+                console.log(
+                    `[goals_in_match] Player ${ctx.playerId}: playerGoals=${playerGoals}, target=${target}, comparison=${comparison}`
+                );
+                switch (comparison) {
+                    case "eq":
+                        return playerGoals === target;
+                    case "gte":
+                        return playerGoals >= target;
+                    case "lte":
+                        return playerGoals <= target;
+                    default:
+                        return playerGoals >= target;
+                }
+            }
 
             case "goals_in_timeframe":
                 // Check if player scored at least 'target' goals within 'timeframe_seconds'
@@ -3001,6 +3071,52 @@ async function initializeChainProgress(
         }
     } catch (error) {
         console.error("Error initializing chain progress:", error);
+    }
+}
+
+/**
+ * Sets streak progress absolutely (not incrementally)
+ * Used for win streak achievements where progress = current streak
+ */
+async function setStreakProgress(
+    supabase: any,
+    playerId: number,
+    achievementId: number,
+    currentStreak: number,
+    maxProgress: number,
+    seasonId: number | null
+): Promise<void> {
+    const progress = Math.min(Math.max(0, currentStreak), maxProgress);
+    const now = new Date().toISOString();
+
+    try {
+        // Try to update existing record
+        let updateQuery = supabase
+            .from("player_achievement_progress")
+            .update({ current_progress: progress, updated_at: now })
+            .eq("player_id", playerId)
+            .eq("achievement_id", achievementId);
+
+        if (seasonId === null) {
+            updateQuery = updateQuery.is("season_id", null);
+        } else {
+            updateQuery = updateQuery.eq("season_id", seasonId);
+        }
+
+        const { data: updated } = await updateQuery.select();
+
+        if (!updated || updated.length === 0) {
+            // No existing record, insert new one
+            await supabase.from("player_achievement_progress").insert({
+                player_id: playerId,
+                achievement_id: achievementId,
+                current_progress: progress,
+                season_id: seasonId,
+                updated_at: now,
+            });
+        }
+    } catch (error) {
+        console.error("Error setting streak progress:", error);
     }
 }
 
@@ -4247,15 +4363,49 @@ async function processBountyAchievements(
                     if (parentAchievement) {
                         const childProgressSeasonId =
                             achievement.is_season_specific ? seasonId : null;
+
+                        // For bounty achievements, use the actual accumulated progress
+                        // not just the parent's max_progress (to not lose overflow)
+                        let actualProgress = parentAchievement.max_progress;
+
+                        // Get the actual current progress from the parent
+                        let parentProgressQuery = supabase
+                            .from("player_achievement_progress")
+                            .select("current_progress")
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", parentAchievement.id);
+
+                        if (childProgressSeasonId === null) {
+                            parentProgressQuery = parentProgressQuery.is(
+                                "season_id",
+                                null
+                            );
+                        } else {
+                            parentProgressQuery = parentProgressQuery.eq(
+                                "season_id",
+                                childProgressSeasonId
+                            );
+                        }
+
+                        const { data: parentProgress } =
+                            await parentProgressQuery.maybeSingle();
+                        if (parentProgress?.current_progress) {
+                            // Use the actual progress (which includes overflow)
+                            actualProgress = parentProgress.current_progress;
+                            console.log(
+                                `[BountyChain] Found parent actual progress: ${actualProgress} (vs max: ${parentAchievement.max_progress})`
+                            );
+                        }
+
                         await initializeChainProgress(
                             supabase,
                             playerId,
                             achievement.id,
-                            parentAchievement.max_progress,
+                            actualProgress,
                             childProgressSeasonId
                         );
                         console.log(
-                            `[BountyChain] Initialized child ${achievement.key} with parent's max_progress: ${parentAchievement.max_progress}`
+                            `[BountyChain] Initialized child ${achievement.key} with actual progress: ${actualProgress}`
                         );
                     }
                     continue; // Skip this event for the child
