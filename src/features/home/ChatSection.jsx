@@ -32,7 +32,7 @@ const ChatContainer = styled.div`
     border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
 
     ${media.tablet} {
-        height: 50rem;
+        height: 80rem;
     }
 `;
 

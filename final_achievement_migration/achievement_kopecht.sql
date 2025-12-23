@@ -5697,8 +5697,9 @@ INSERT INTO kopecht.reward_definitions (key, name, description, type, display_po
 ON CONFLICT (key) DO NOTHING;
 
 -- Update completionist condition to target 150 achievements
+-- FIX: Changed from "threshold" to "counter" so progress increments properly (like other achievement_hunter achievements)
 UPDATE kopecht.achievement_definitions 
-SET condition = '{"type": "threshold", "metric": "achievements_unlocked", "target": 150}'::jsonb,
+SET condition = '{"type": "counter", "metric": "achievements_unlocked", "target": 150}'::jsonb,
     max_progress = 150,
     description = 'Unlock 150 achievements'
 WHERE key = 'completionist';
@@ -6263,6 +6264,7 @@ ON kopecht.bounty_history(claimer_id, victim_id, match_id);
 
 -- Update the bounty function to properly handle 2on2 bounty claims
 -- Both winners should get credit for bounties from LOSING team opponents only
+-- FIX: Split bounty between winners in 2on2 (each gets half, not full amount)
 DROP FUNCTION IF EXISTS kopecht.update_player_status_after_match(BIGINT, BIGINT, TEXT, BOOLEAN, INT, INT, INT);
 
 CREATE OR REPLACE FUNCTION kopecht.update_player_status_after_match(
@@ -6297,6 +6299,7 @@ DECLARE
     v_month TEXT;
     v_was_on_loss_streak BOOLEAN := FALSE;
     v_loss_streak_before INT := 0;
+    v_winner_count INT := 1;
 BEGIN
     -- Get current month for monthly events
     v_month := TO_CHAR(NOW(), 'YYYY-MM');
@@ -6396,6 +6399,31 @@ BEGIN
             VALUES (p_player_id, v_opponent_status.player_id, p_match_id, p_gamemode, v_opponent_status.current_streak, v_opponent_status.current_bounty)
             ON CONFLICT (claimer_id, victim_id, match_id) DO NOTHING;
         END LOOP;
+        
+        -- FIX: Split bounty between winners in 2on2 matches
+        -- Each winner gets their share (half in 2on2, full in 1on1/2on1)
+        IF p_gamemode = '2on2' AND v_bounty_to_claim > 0 THEN
+            -- Count the number of winners on the winning team
+            SELECT 
+                CASE 
+                    WHEN m."scoreTeam1" > m."scoreTeam2" THEN
+                        (CASE WHEN m.player1 IS NOT NULL THEN 1 ELSE 0 END) +
+                        (CASE WHEN m.player3 IS NOT NULL THEN 1 ELSE 0 END)
+                    ELSE
+                        (CASE WHEN m.player2 IS NOT NULL THEN 1 ELSE 0 END) +
+                        (CASE WHEN m.player4 IS NOT NULL THEN 1 ELSE 0 END)
+                END INTO v_winner_count
+            FROM kopecht.matches m
+            WHERE m.id = p_match_id;
+            
+            -- Safety check: ensure at least 1 winner
+            IF v_winner_count IS NULL OR v_winner_count < 1 THEN
+                v_winner_count := 2;  -- Default to 2 for 2on2
+            END IF;
+            
+            -- Split the bounty among winners (integer division)
+            v_bounty_to_claim := v_bounty_to_claim / v_winner_count;
+        END IF;
     END IF;
     
     -- Determine active statuses based on new streak

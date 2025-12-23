@@ -1,13 +1,13 @@
-🏆	goals_1on1_10	Bambini	Goals	GOAL_SCORED	50	10		
-🏆	goals_1on1_50	Striker	Goals	GOAL_SCORED	75	50		
-🏆	goals_1on1_100	Tryharder	Goals	GOAL_SCORED	100	100		
-🏆	goals_1on1_250	Sniper	Goals	GOAL_SCORED	150	250		
+✅🏆	goals_1on1_10	Bambini	Goals	GOAL_SCORED	50	10		
+✅🏆	goals_1on1_50	Striker	Goals	GOAL_SCORED	75	50		
+✅🏆	goals_1on1_100	Tryharder	Goals	GOAL_SCORED	100	100		
+✅🏆	goals_1on1_250	Sniper	Goals	GOAL_SCORED	150	250		
 🏆	goals_1on1_alltime_500	Goal Machine	Goals	GOAL_SCORED	250	500		
 🏆	goals_1on1_alltime_1000	Solo Legend	Goals	GOAL_SCORED	500	1000		
 🏆	goals_1on1_alltime_2500	Einzelkämpfer	Goals	GOAL_SCORED	1000	2500		
 🏆	goals_1on1_alltime_5000	Solo God	Goals	GOAL_SCORED	2000	5000		
-🏆	goals_2on2_10	Teamplayer	Goals	GOAL_SCORED	50	10		
-🏆	goals_2on2_50	Team Striker	Goals	GOAL_SCORED	75	50		
+✅🏆	goals_2on2_10	Teamplayer	Goals	GOAL_SCORED	50	10		
+✅🏆	goals_2on2_50	Team Striker	Goals	GOAL_SCORED	75	50		
 🏆	goals_2on2_100	Double Striker	Goals	GOAL_SCORED	100	100		
 🏆	goals_2on2_250	Team Cannon	Goals	GOAL_SCORED	150	250		
 🏆	goals_2on2_alltime_500	Duo Dynamo	Goals	GOAL_SCORED	250	500		
@@ -17,29 +17,29 @@
 ✅🏆	quick_start_1on1	Quick Start (1on1)	Speed	GOAL_SCORED	50	1		
 🏆	quick_start_2on2	Quick Start (2on2)	Speed	GOAL_SCORED	50	1		
 ✅🏆	hat_trick_speed_1on1	Speed Demon (1on1)	Speed	GOAL_SCORED	100	1		
-🏆	hat_trick_speed_2on2	Speed Demon (2on2)	Speed	GOAL_SCORED	100	1		
+✅🏆	hat_trick_speed_2on2	Speed Demon (2on2)	Speed	GOAL_SCORED	100	1		
 ✅🏆	blitzkrieg_1on1	Blitzkrieg (1on1)	Speed	MATCH_ENDED	75	1		
-🏆	blitzkrieg_2on2	Blitzkrieg (2on2)	Speed	MATCH_ENDED	75	1		
-🏆	matches_1on1_10	Getting Started (1on1)	Matches	MATCH_ENDED	25	10		
+✅🏆	blitzkrieg_2on2	Blitzkrieg (2on2)	Speed	MATCH_ENDED	75	1		
+✅🏆	matches_1on1_10	Getting Started (1on1)	Matches	MATCH_ENDED	25	10		
 🏆	matches_1on1_50	Regular Player (1on1)	Matches	MATCH_ENDED	50	50		
 🏆	matches_1on1_100	Centurion (1on1)	Matches	MATCH_ENDED	100	100		
 🏆	matches_1on1_250	Veteran (1on1)	Matches	MATCH_ENDED	200	250		
 🏆	matches_1on1_500	Dedicated (1on1)	Matches	MATCH_ENDED	400	500		
 🏆	matches_1on1_1000	Legend (1on1)	Matches	MATCH_ENDED	1000	1000		
-🏆	matches_2on2_10	Getting Started (2on2)	Matches	MATCH_ENDED	25	10		
+✅🏆	matches_2on2_10	Getting Started (2on2)	Matches	MATCH_ENDED	25	10		
 🏆	matches_2on2_50	Regular Player (2on2)	Matches	MATCH_ENDED	50	50		
 🏆	matches_2on2_100	Centurion (2on2)	Matches	MATCH_ENDED	100	100		
 🏆	matches_2on2_250	Veteran (2on2)	Matches	MATCH_ENDED	200	250		
 🏆	matches_2on2_500	Dedicated (2on2)	Matches	MATCH_ENDED	400	500		
 🏆	matches_2on2_1000	Legend (2on2)	Matches	MATCH_ENDED	1000	1000		
-🏆	wins_1on1_10	First Victories (1on1)	Victories	MATCH_ENDED	25	10		
-🏆	wins_1on1_25	Rising Star (1on1)	Victories	MATCH_ENDED	50	25		
+✅🏆	wins_1on1_10	First Victories (1on1)	Victories	MATCH_ENDED	25	10		
+✅🏆	wins_1on1_25	Rising Star (1on1)	Victories	MATCH_ENDED	50	25		
 🏆	wins_1on1_50	Winner (1on1)	Victories	MATCH_ENDED	75	50		
 🏆	wins_1on1_100	Champion (1on1)	Victories	MATCH_ENDED	150	100		
 🏆	wins_1on1_250	Dominator (1on1)	Victories	MATCH_ENDED	300	250		
 🏆	wins_1on1_500	Master (1on1)	Victories	MATCH_ENDED	500	500		
 🏆	wins_1on1_1000	Unstoppable (1on1)	Victories	MATCH_ENDED	1500	1000		
-🏆	wins_2on2_10	First Victories (2on2)	Victories	MATCH_ENDED	25	10		
+✅🏆	wins_2on2_10	First Victories (2on2)	Victories	MATCH_ENDED	25	10		
 🏆	wins_2on2_25	Rising Star (2on2)	Victories	MATCH_ENDED	50	25		
 🏆	wins_2on2_50	Winner (2on2)	Victories	MATCH_ENDED	75	50		
 🏆	wins_2on2_100	Champion (2on2)	Victories	MATCH_ENDED	150	100		
@@ -47,28 +47,28 @@
 🏆	wins_2on2_500	Master (2on2)	Victories	MATCH_ENDED	500	500		
 🏆	wins_2on2_1000	Unstoppable (2on2)	Victories	MATCH_ENDED	1500	1000		
 ✅🏆	perfect_win_1on1	Flawless Victory (1on1)	Victories	MATCH_ENDED	100	1		
-🏆	perfect_win_2on2	Flawless Victory (2on2)	Victories	MATCH_ENDED	100	1		
-🏆	win_streak_5_1on1	Hot Streak (1on1)	Streaks	MATCH_ENDED	100	1		
-🏆	win_streak_5_2on2	Hot Streak (2on2)	Streaks	MATCH_ENDED	100	1		
+✅🏆	perfect_win_2on2	Flawless Victory (2on2)	Victories	MATCH_ENDED	100	1		
+✅🏆	win_streak_5_1on1	Hot Streak (1on1)	Streaks	MATCH_ENDED	100	1		
+✅🏆	win_streak_5_2on2	Hot Streak (2on2)	Streaks	MATCH_ENDED	100	1		
 🏆	bounty_earned_150	Public Enemy	Streaks	bounty_gained	50	150		
-🏆	comeback_5_1on1	Never Give Up (1on1)	Comebacks	MATCH_ENDED	150	1		
-🏆	comeback_5_2on2	Never Give Up (2on2)	Comebacks	MATCH_ENDED	150	1		
-🏆	perfect_comeback_1on1	Perfect Comeback (1on1)	Comebacks	MATCH_ENDED	200	1		
-🏆	perfect_comeback_2on2	Perfect Comeback (2on2)	Comebacks	MATCH_ENDED	200	1		
-🏆	reverse_sweep_1on1	Reverse Sweep (1on1)	Comebacks	MATCH_ENDED	300	1		
-🏆	reverse_sweep_2on2	Reverse Sweep (2on2)	Comebacks	MATCH_ENDED	300	1		
-🏆	comeback_specialist	Comeback Specialist	Comebacks	MATCH_ENDED	250	10		
-🏆	momentum_shift_1on1	Momentum Shift (1on1)	Comebacks	GOAL_SCORED	175	1		
-🏆	momentum_shift_2on2	Momentum Shift (2on2)	Comebacks	GOAL_SCORED	175	1		
-🏆	on_my_back	On My Back	Comebacks	MATCH_ENDED	250	1		
-🏆	mmr_1on1_1100	Rising Talent (1on1)	Skill	MATCH_ENDED	50	1		
-🏆	mmr_1on1_1200	Skilled Player (1on1)	Skill	MATCH_ENDED	100	1		
-🏆	mmr_1on1_1300	Expert (1on1)	Skill	MATCH_ENDED	200	1		
-🏆	mmr_1on1_1400	Elite (1on1)	Skill	MATCH_ENDED	400	1		
+✅🏆	comeback_5_1on1	Never Give Up (1on1)	Comebacks	MATCH_ENDED	150	1		
+✅🏆	comeback_5_2on2	Never Give Up (2on2)	Comebacks	MATCH_ENDED	150	1		
+✅🏆	perfect_comeback_1on1	Perfect Comeback (1on1)	Comebacks	MATCH_ENDED	200	1		
+✅🏆	perfect_comeback_2on2	Perfect Comeback (2on2)	Comebacks	MATCH_ENDED	200	1		
+✅🏆	reverse_sweep_1on1	Reverse Sweep (1on1)	Comebacks	MATCH_ENDED	300	1		
+✅🏆	reverse_sweep_2on2	Reverse Sweep (2on2)	Comebacks	MATCH_ENDED	300	1		
+✅🏆	comeback_specialist	Comeback Specialist	Comebacks	MATCH_ENDED	250	10		
+✅🏆	momentum_shift_1on1	Momentum Shift (1on1)	Comebacks	GOAL_SCORED	175	1		
+✅🏆	momentum_shift_2on2	Momentum Shift (2on2)	Comebacks	GOAL_SCORED	175	1		
+✅🏆	on_my_back	On My Back	Comebacks	MATCH_ENDED	250	1		
+✅🏆	mmr_1on1_1100	Rising Talent (1on1)	Skill	MATCH_ENDED	50	1		
+✅🏆	mmr_1on1_1200	Skilled Player (1on1)	Skill	MATCH_ENDED	100	1		
+✅🏆	mmr_1on1_1300	Expert (1on1)	Skill	MATCH_ENDED	200	1		
+✅🏆	mmr_1on1_1400	Elite (1on1)	Skill	MATCH_ENDED	400	1		
 🏆	mmr_1on1_1500	Grandmaster (1on1)	Skill	MATCH_ENDED	1000	1		
-🏆	mmr_2on2_1100	Rising Talent (2on2)	Skill	MATCH_ENDED	50	1		
-🏆	mmr_2on2_1200	Skilled Player (2on2)	Skill	MATCH_ENDED	100	1		
-🏆	mmr_2on2_1300	Expert (2on2)	Skill	MATCH_ENDED	200	1		
+✅🏆	mmr_2on2_1100	Rising Talent (2on2)	Skill	MATCH_ENDED	50	1		
+✅🏆	mmr_2on2_1200	Skilled Player (2on2)	Skill	MATCH_ENDED	100	1		
+✅🏆	mmr_2on2_1300	Expert (2on2)	Skill	MATCH_ENDED	200	1		
 🏆	mmr_2on2_1400	Elite (2on2)	Skill	MATCH_ENDED	400	1		
 🏆	mmr_2on2_1500	Grandmaster (2on2)	Skill	MATCH_ENDED	1000	1		
 🏆	giant_slayer_1on1	Giant Slayer (1on1)	Skill	MATCH_ENDED	100	1		
@@ -76,66 +76,66 @@
 🏆	playtime_8h	Time Flies	Playtime	MATCH_ENDED	50	28800		
 🏆	playtime_16h	Dedicated Player	Playtime	MATCH_ENDED	100	57600		
 🏆	playtime_24h	Full Day	Playtime	MATCH_ENDED	200	86400		
-🏆	carry_2on2	The Carry	Teamwork	MATCH_ENDED	150	1		
-🏆	silent_partner	Silent Partner	Secret	MATCH_ENDED	100	1	Secret	
-🏆	losing_streak_10	Persistence	Secret	MATCH_ENDED	50	1	Secret	
-🏆	miracle_comeback	Miracle Comeback	Secret	MATCH_ENDED	500	1	Secret	
-🏆	own_goal_hat_trick	Oops...	Secret	MATCH_ENDED	25	1	Secret	
-🏆	achievement_hunter_25	Achievement Hunter	Meta	ACHIEVEMENT_UNLOCKED	100	25		
+✅🏆	carry_2on2	The Carry	Teamwork	MATCH_ENDED	150	1		
+✅🏆	silent_partner	Silent Partner	Secret	MATCH_ENDED	100	1	Secret	
+✅🏆	losing_streak_10	Persistence	Secret	MATCH_ENDED	50	1	Secret	
+✅🏆	miracle_comeback	Miracle Comeback	Secret	MATCH_ENDED	500	1	Secret	
+✅🏆	own_goal_hat_trick	Oops...	Secret	MATCH_ENDED	25	1	Secret	
+✅🏆	achievement_hunter_25	Achievement Hunter	Meta	ACHIEVEMENT_UNLOCKED	100	25		
 🏆	playtime_1h_day	Dedicated Player	Playtime	MATCH_ENDED	75	1		
 🏆	playtime_3h_week	Weekly Warrior	Playtime	MATCH_ENDED	100	1		
 ✅🏆	beat_5_different_players_1on1	Variety is Key	Victories	MATCH_ENDED	75	5		
-🏆	win_5_different_teammates_2on2	Team Player	Victories	MATCH_ENDED	75	5		
-🏆	wins_5_in_day	Unstoppable Day	Victories	MATCH_ENDED	100	1		
-🏆	win_10_9	Nail Biter	Victories	MATCH_ENDED	75	1		
-🏆	matches_5_in_day	Marathon Session	Matches	MATCH_ENDED	50	1		
-🏆	matches_5_1on1_in_day	Solo Grinder	Matches	MATCH_ENDED	50	1		
-🏆	matches_5_2on2_in_day	Team Grinder	Matches	MATCH_ENDED	50	1		
-🏆	matches_mixed_day	All-Rounder	Matches	MATCH_ENDED	75	1		
-🏆	win_streak_10_1on1	On Fire (1on1)	Streaks	MATCH_ENDED	200	1		
-🏆	win_streak_15_1on1	Unstoppable (1on1)	Streaks	MATCH_ENDED	300	1		
-🏆	win_streak_10_2on2	On Fire (2on2)	Streaks	MATCH_ENDED	200	1		
+✅🏆	win_5_different_teammates_2on2	Team Player	Victories	MATCH_ENDED	75	5		
+✅🏆	wins_5_in_day	Unstoppable Day	Victories	MATCH_ENDED	100	1		
+✅🏆	win_10_9	Nail Biter	Victories	MATCH_ENDED	75	1		
+✅🏆	matches_5_in_day	Marathon Session	Matches	MATCH_ENDED	50	1		
+✅🏆	matches_5_1on1_in_day	Solo Grinder	Matches	MATCH_ENDED	50	1		
+✅🏆	matches_5_2on2_in_day	Team Grinder	Matches	MATCH_ENDED	50	1		
+✅🏆	matches_mixed_day	All-Rounder	Matches	MATCH_ENDED	75	1		
+✅🏆	win_streak_10_1on1	On Fire (1on1)	Streaks	MATCH_ENDED	200	1		
+✅🏆	win_streak_15_1on1	Unstoppable (1on1)	Streaks	MATCH_ENDED	300	1		
+✅🏆	win_streak_10_2on2	On Fire (2on2)	Streaks	MATCH_ENDED	200	1		
 🏆	win_streak_15_2on2	Unstoppable (2on2)	Streaks	MATCH_ENDED	300	1		
-🏆	streak_breaker_1on1	Streak Breaker (1on1)	Streaks	MATCH_ENDED	100	1		
-🏆	streak_breaker_2on2	Streak Breaker (2on2)	Streaks	MATCH_ENDED	100	1		
-🏆	goals_25_in_day	Sharpshooter	Goals	GOAL_SCORED	75	1		
-🏆	goals_42_in_day	Goal Machine	Goals	GOAL_SCORED	150	1		
-🏆	goals_50_in_day	Unstoppable Scorer	Goals	GOAL_SCORED	250	1		
-🏆	achievement_hunter_50	Achievement Collector	Meta	ACHIEVEMENT_UNLOCKED	200	50		
-🏆	secret_finder	Secret Finder	Meta	ACHIEVEMENT_UNLOCKED	150	5		
+✅🏆	streak_breaker_1on1	Streak Breaker (1on1)	Streaks	MATCH_ENDED	100	1		
+✅🏆	streak_breaker_2on2	Streak Breaker (2on2)	Streaks	MATCH_ENDED	100	1		
+✅🏆	goals_25_in_day	Sharpshooter	Goals	GOAL_SCORED	75	1		
+✅🏆	goals_42_in_day	Goal Machine	Goals	GOAL_SCORED	150	1		
+✅🏆	goals_50_in_day	Unstoppable Scorer	Goals	GOAL_SCORED	250	1		
+✅🏆	achievement_hunter_50	Achievement Collector	Meta	ACHIEVEMENT_UNLOCKED	200	50		
+✅🏆	secret_finder	Secret Finder	Meta	ACHIEVEMENT_UNLOCKED	150	5		
 ✅🏆	title_collector_1	Title Unlocked	Meta	ACHIEVEMENT_UNLOCKED	50	1		
-🏆	title_collector_5	Title Collector	Meta	ACHIEVEMENT_UNLOCKED	100	5		
+✅🏆	title_collector_5	Title Collector	Meta	ACHIEVEMENT_UNLOCKED	100	5		
 🏆	title_collector_10	Title Hoarder	Meta	ACHIEVEMENT_UNLOCKED	200	10		
 🏆	title_collector_15	Title Master	Meta	ACHIEVEMENT_UNLOCKED	300	15		
-🏆	frame_collector_1	Frame Unlocked	Meta	ACHIEVEMENT_UNLOCKED	50	1		
+✅🏆	frame_collector_1	Frame Unlocked	Meta	ACHIEVEMENT_UNLOCKED	50	1		
 🏆	frame_collector_5	Frame Collector	Meta	ACHIEVEMENT_UNLOCKED	150	5		
-🏆	perfect_teamwork	Perfect Teamwork	Teamwork	MATCH_ENDED	100	1		
-🏆	carry_9_goals	Heavy Lifter	Teamwork	MATCH_ENDED	150	1		
-🏆	own_goal_at_9_1on1	So Close... (1on1)	Secret	GOAL_SCORED	25	1	Secret	
-🏆	own_goal_at_9_2on2	So Close... (2on2)	Secret	GOAL_SCORED	25	1	Secret	
-🏆	own_goal_at_1_1on1	Adding Insult to Injury (1on1)	Secret	GOAL_SCORED	25	1	Secret	
-🏆	own_goal_at_1_2on2	Adding Insult to Injury (2on2)	Secret	GOAL_SCORED	25	1	Secret	
-🏆	first_blood_10_1on1	First Blood Initiate (1on1)	Goals	GOAL_SCORED	50	10		
+✅🏆	perfect_teamwork	Perfect Teamwork	Teamwork	MATCH_ENDED	100	1		
+✅🏆	carry_9_goals	Heavy Lifter	Teamwork	MATCH_ENDED	150	1		
+✅🏆	own_goal_at_9_1on1	So Close... (1on1)	Secret	GOAL_SCORED	25	1	Secret	
+✅🏆	own_goal_at_9_2on2	So Close... (2on2)	Secret	GOAL_SCORED	25	1	Secret	
+✅🏆	own_goal_at_1_1on1	Adding Insult to Injury (1on1)	Secret	GOAL_SCORED	25	1	Secret	
+✅🏆	own_goal_at_1_2on2	Adding Insult to Injury (2on2)	Secret	GOAL_SCORED	25	1	Secret	
+✅🏆	first_blood_10_1on1	First Blood Initiate (1on1)	Goals	GOAL_SCORED	50	10		
 🏆	first_blood_25_1on1	First Blood Apprentice (1on1)	Goals	GOAL_SCORED	100	25		
 🏆	first_blood_100_1on1	First Blood Expert (1on1)	Goals	GOAL_SCORED	200	100		
 🏆	first_blood_250_1on1	First Blood Master (1on1)	Goals	GOAL_SCORED	350	250		
 🏆	first_blood_500_1on1	First Blood Legend (1on1)	Goals	GOAL_SCORED	500	500		
-🏆	first_blood_10_2on2	First Blood Initiate (2on2)	Goals	GOAL_SCORED	50	10		
+✅🏆	first_blood_10_2on2	First Blood Initiate (2on2)	Goals	GOAL_SCORED	50	10		
 🏆	first_blood_25_2on2	First Blood Apprentice (2on2)	Goals	GOAL_SCORED	100	25		
 🏆	first_blood_100_2on2	First Blood Expert (2on2)	Goals	GOAL_SCORED	200	100		
 🏆	first_blood_250_2on2	First Blood Master (2on2)	Goals	GOAL_SCORED	350	250		
 🏆	first_blood_500_2on2	First Blood Legend (2on2)	Goals	GOAL_SCORED	500	500		
-🏆	own_goal_at_0_1on1	False Start (1on1)	Secret	GOAL_SCORED	25	1	Secret	
-🏆	own_goal_at_0_2on2	False Start (2on2)	Secret	GOAL_SCORED	25	1	Secret	
-🏆	own_goals_5_in_day	Wrong Direction Day	Secret	GOAL_SCORED	50	5	Secret	
-🏆	perfect_wins_5	Flawless Victory	Victories	MATCH_ENDED	150	5		
-🏆	perfect_wins_10	Domination Expert	Victories	MATCH_ENDED	300	10		
+✅🏆	own_goal_at_0_1on1	False Start (1on1)	Secret	GOAL_SCORED	25	1	Secret	
+✅🏆	own_goal_at_0_2on2	False Start (2on2)	Secret	GOAL_SCORED	25	1	Secret	
+✅🏆	own_goals_5_in_day	Wrong Direction Day	Secret	GOAL_SCORED	50	5	Secret	
+✅🏆	perfect_wins_5	Flawless Victory	Victories	MATCH_ENDED	150	5		
+✅🏆	perfect_wins_10	Domination Expert	Victories	MATCH_ENDED	300	10		
 🏆	early_bird_1	Early Bird	Playtime	MATCH_ENDED	25	1		
 🏆	early_bird_10	Morning Enthusiast	Playtime	MATCH_ENDED	75	10		
 🏆	early_bird_25	Dawn Champion	Playtime	MATCH_ENDED	150	25		
-🏆	night_owl_1	Evening Player	Playtime	MATCH_ENDED	25	1		
-🏆	night_owl_10	Night Owl	Playtime	MATCH_ENDED	75	10		
-🏆	night_owl_25	Twilight Master	Playtime	MATCH_ENDED	150	25		
+✅🏆	night_owl_1	Evening Player	Playtime	MATCH_ENDED	25	1		
+✅🏆	night_owl_10	Night Owl	Playtime	MATCH_ENDED	75	10		
+✅🏆	night_owl_25	Twilight Master	Playtime	MATCH_ENDED	150	25		
 🏆	after_meeting_party_10	After Meeting Rookie	Matches	MATCH_ENDED	75	10		
 🏆	after_meeting_party_25	After Meeting Regular	Matches	MATCH_ENDED	150	25		
 🏆	after_meeting_party_50	After Meeting Legend	Matches	MATCH_ENDED	300	50		
@@ -155,7 +155,7 @@
 🏆	playtime_100h_alltime	Dedicated	Playtime	MATCH_ENDED	400	360000		
 🏆	playtime_250h_alltime	Obsessed	Playtime	MATCH_ENDED	600	900000		
 🏆	playtime_500h_alltime	No Life	Playtime	MATCH_ENDED	1000	1800000	Secret	
-🏆	own_goals_season_10	Butterfingers (Season)	Secret	GOAL_SCORED	25	10	Secret	
+✅🏆	own_goals_season_10	Butterfingers (Season)	Secret	GOAL_SCORED	25	10	Secret	
 🏆	own_goals_season_25	Wrong Way Warrior (Season)	Secret	GOAL_SCORED	50	25	Secret	
 🏆	own_goals_season_50	Self-Saboteur (Season)	Secret	GOAL_SCORED	100	50	Secret	
 🏆	own_goals_season_100	Own Goal Legend (Season)	Secret	GOAL_SCORED	200	100	Secret	
@@ -165,18 +165,18 @@
 🏆	own_goals_alltime_500	The Anti-Striker	Secret	GOAL_SCORED	500	500	Secret	
 🏆	mmr_below_700_1on1	Rock Bottom (1on1)	Secret	MATCH_ENDED	10	1	Secret	
 🏆	mmr_below_700_2on2	Rock Bottom (2on2)	Secret	MATCH_ENDED	10	1	Secret	
-🏆	final_nail_1on1	Final Nail (1on1)	Secret	GOAL_SCORED	50	1	Secret	
+✅🏆	final_nail_1on1	Final Nail (1on1)	Secret	GOAL_SCORED	50	1	Secret	
 🏆	final_nail_2on2	Final Nail (2on2)	Secret	GOAL_SCORED	50	1	Secret	
-🏆	bounty_hunter_1	Bounty Hunter	Streaks	bounty_claimed	10	1		
-🏆	bounty_hunter_5	Bounty Hunter II	Streaks	bounty_claimed	25	5		
+✅🏆	bounty_hunter_1	Bounty Hunter	Streaks	bounty_claimed	10	1		
+✅🏆	bounty_hunter_5	Bounty Hunter II	Streaks	bounty_claimed	25	5		
 🏆	bounty_hunter_25	Bounty Hunter III	Streaks	bounty_claimed	50	25		
-🏆	wanted_1	Wanted!	Streaks	win_streak	10	1		
-🏆	bounty_collected_50	Small Catch	Streaks	bounty_claimed	15	50		
+✅🏆	wanted_1	Wanted!	Streaks	win_streak	10	1		
+✅🏆	bounty_collected_50	Small Catch	Streaks	bounty_claimed	15	50		
 🏆	bounty_collected_100	Big Catch	Streaks	bounty_claimed	30	100		
 🏆	bounty_collected_250	Legendary Hunter	Streaks	bounty_claimed	50	250		
-🏆	bounty_earned_25	Prize Winner	Streaks	bounty_gained	10	25		
-🏆	bounty_earned_75	Most Wanted	Streaks	bounty_gained	25	75		
-🏆	bounty_earned_100_global	Rising Threat	Streaks	bounty_gained	20	100		
+✅🏆	bounty_earned_25	Prize Winner	Streaks	bounty_gained	10	25		
+✅🏆	bounty_earned_75	Most Wanted	Streaks	bounty_gained	25	75		
+✅🏆	bounty_earned_100_global	Rising Threat	Streaks	bounty_gained	20	100		
 🏆	bounty_earned_250_global	High Value Target	Streaks	bounty_gained	40	250		
 🏆	bounty_earned_500_global	Walking Goldmine	Streaks	bounty_gained	75	500		
 🏆	bounty_collected_150_global	Headhunter	Streaks	bounty_claimed	25	150		
@@ -184,9 +184,9 @@
 🏆	bounty_collected_600_global	Master Bounty Hunter	Streaks	bounty_claimed	100	600		
 🏆	humiliation_1on1	Totally Embarrassed	Secret	match_end	5	1	Secret	
 🏆	humiliation_2on2	Team Embarrassment	Secret	match_end	5	1	Secret	
-🏆	secret_finder_10	Secret Seeker	Meta	ACHIEVEMENT_UNLOCKED	200	10		
-🏆	achievement_points_5000	Point Collector	Meta	ACHIEVEMENT_UNLOCKED	150	5000		
-🏆	achievement_points_10000	Point Hoarder	Meta	ACHIEVEMENT_UNLOCKED	250	10000		
+✅🏆	secret_finder_10	Secret Seeker	Meta	ACHIEVEMENT_UNLOCKED	200	10		
+✅🏆	achievement_points_5000	Point Collector	Meta	ACHIEVEMENT_UNLOCKED	150	5000		
+✅🏆	achievement_points_10000	Point Hoarder	Meta	ACHIEVEMENT_UNLOCKED	250	10000		
 🏆	achievement_points_25000	Point Master	Meta	ACHIEVEMENT_UNLOCKED	500	25000		
 🏆	completionist	Completionist	Meta	ACHIEVEMENT_UNLOCKED	1000	150		
 🏆	achievements_100_global	Century Achiever	Meta	ACHIEVEMENT_UNLOCKED	300	100		
@@ -195,7 +195,7 @@
 🏆	achievement_points_15000_global	Global Point Collector	Meta	ACHIEVEMENT_UNLOCKED	200	15000		
 🏆	achievement_points_50000_global	Global Point Hoarder	Meta	ACHIEVEMENT_UNLOCKED	400	50000		
 🏆	achievement_points_100000_global	Global Point Legend	Meta	ACHIEVEMENT_UNLOCKED	750	100000		
-🏆	secrets_10_global	Global Secret Seeker	Meta	ACHIEVEMENT_UNLOCKED	200	10		
+✅🏆	secrets_10_global	Global Secret Seeker	Meta	ACHIEVEMENT_UNLOCKED	200	10		
 🏆	secrets_25_global	Global Secret Hunter	Meta	ACHIEVEMENT_UNLOCKED	350	25		
 🏆	secrets_50_global	Global Secret Master	Meta	ACHIEVEMENT_UNLOCKED	500	50		
 🏆	season_champion_3x_1on1	Dynasty (1on1)	Season	SEASON_ENDED	500	3		
