@@ -1512,6 +1512,122 @@ async function handleAchievementUnlocked(
                     `[achievement_points] Player has ${totalPoints} total points`
                 );
             }
+        } else if (condition.metric === "titles_unlocked") {
+            // Counter type: track titles unlocked
+            // Check if the just-unlocked achievement grants a title reward
+            const { data: unlockedAchievementKey } = await supabase
+                .from("achievement_definitions")
+                .select("key")
+                .eq("id", unlockedAchievementId)
+                .single();
+
+            if (condition.type === "counter") {
+                const { data: titleReward } = await supabase
+                    .from("reward_definitions")
+                    .select("id")
+                    .eq("achievement_key", unlockedAchievementKey?.key)
+                    .eq("type", "title")
+                    .single();
+
+                if (titleReward) {
+                    conditionMet = true;
+                    increment = 1;
+                    console.log(
+                        `[titles_unlocked] Title unlocked for achievement ${unlockedAchievementKey?.key}, incrementing`
+                    );
+                } else {
+                    console.log(
+                        `[titles_unlocked] No title reward for this achievement, skipping`
+                    );
+                }
+            } else if (condition.type === "threshold") {
+                // Count total titles the player has unlocked
+                const { data: allTitleRewards } = await supabase
+                    .from("reward_definitions")
+                    .select("achievement_key")
+                    .eq("type", "title")
+                    .not("achievement_key", "is", null);
+
+                // Get all achievement keys the player has unlocked
+                const { data: playerUnlockedAchievements } = await supabase
+                    .from("player_achievements")
+                    .select("achievement:achievement_definitions(key)")
+                    .eq("player_id", playerId);
+
+                const unlockedKeys = new Set(
+                    (playerUnlockedAchievements || []).map(
+                        (pa: any) => pa.achievement?.key
+                    )
+                );
+
+                const titlesCount = (allTitleRewards || []).filter(
+                    (reward: any) => unlockedKeys.has(reward.achievement_key)
+                ).length;
+
+                conditionMet = titlesCount >= (condition.target || 0);
+                console.log(
+                    `[titles_unlocked] Player has ${titlesCount} titles unlocked`
+                );
+            }
+        } else if (condition.metric === "frames_unlocked") {
+            // Counter type: track frames unlocked
+            // Check if the just-unlocked achievement grants a frame reward
+            const { data: unlockedAchievementKeyForFrame } = await supabase
+                .from("achievement_definitions")
+                .select("key")
+                .eq("id", unlockedAchievementId)
+                .single();
+
+            if (condition.type === "counter") {
+                const { data: frameReward } = await supabase
+                    .from("reward_definitions")
+                    .select("id")
+                    .eq("achievement_key", unlockedAchievementKeyForFrame?.key)
+                    .eq("type", "frame")
+                    .single();
+
+                if (frameReward) {
+                    conditionMet = true;
+                    increment = 1;
+                    console.log(
+                        `[frames_unlocked] Frame unlocked for achievement ${unlockedAchievementKeyForFrame?.key}, incrementing`
+                    );
+                } else {
+                    console.log(
+                        `[frames_unlocked] No frame reward for this achievement, skipping`
+                    );
+                }
+            } else if (condition.type === "threshold") {
+                // Count total frames the player has unlocked
+                const { data: allFrameRewards } = await supabase
+                    .from("reward_definitions")
+                    .select("achievement_key")
+                    .eq("type", "frame")
+                    .not("achievement_key", "is", null);
+
+                // Get all achievement keys the player has unlocked
+                const { data: playerUnlockedAchievementsForFrames } =
+                    await supabase
+                        .from("player_achievements")
+                        .select("achievement:achievement_definitions(key)")
+                        .eq("player_id", playerId);
+
+                const unlockedKeysForFrames = new Set(
+                    (playerUnlockedAchievementsForFrames || []).map(
+                        (pa: any) => pa.achievement?.key
+                    )
+                );
+
+                const framesCount = (allFrameRewards || []).filter(
+                    (reward: any) =>
+                        unlockedKeysForFrames.has(reward.achievement_key)
+                ).length;
+
+                conditionMet = framesCount >= (condition.target || 0);
+                console.log(
+                    `[frames_unlocked] Player has ${framesCount} frames unlocked`
+                );
+            }
         } else if (condition.metric === "all_achievements") {
             // Check if player has all non-meta achievements
             // totalUnlocked - 1 because we don't count the current meta achievement being checked

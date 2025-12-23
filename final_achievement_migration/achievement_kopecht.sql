@@ -250,42 +250,67 @@ VALUES ('secret', 'Secret', 'Secret achievements', '🔮', 99)
 ON CONFLICT (key) DO NOTHING;
 
 
+-- ============================================
+-- PRE-REQUISITE: Add is_season_specific column before inserting achievements that use it
+-- ============================================
+ALTER TABLE kopecht.achievement_definitions 
+ADD COLUMN IF NOT EXISTS is_season_specific BOOLEAN NOT NULL DEFAULT true;
+
+
 -- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- PART 3: INSERT ACHIEVEMENTS
 -- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- Bambini - 10 goals in 1on1
+
+-- ============================================
+-- 1ON1 GOAL ACHIEVEMENTS - SEASON-SPECIFIC (10/50/100/250)
+-- These reset each season and track progress within the current season
+-- ============================================
+
+-- Bambini - 10 goals in 1on1 (season-specific)
 INSERT INTO kopecht.achievement_definitions (
-    key, 
-    name, 
-    description, 
-    category_id, 
-    trigger_event, 
-    condition, 
-    points, 
-    max_progress, 
-    is_hidden,
-    is_repeatable
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
 ) VALUES (
     'goals_1on1_10', 
     'Bambini', 
-    'Score 10 goals in 1on1 matches',
+    'Score 10 goals in 1on1 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 10, "filters": {"gamemode": "1on1"}}',
     50,
     10,
     false,
-    false
+    false,
+    true
 );
 
--- Torjäger - 100 goals in 1on1
+-- Striker - 50 goals in 1on1 (season-specific, chain from goals_1on1_10)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'goals_1on1_50', 
+    'Striker', 
+    'Score 50 goals in 1on1 matches this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
+    'GOAL_SCORED',
+    '{"type": "counter", "metric": "goals", "target": 50, "filters": {"gamemode": "1on1"}}',
+    75,
+    50,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_10')
+);
+
+-- Tryharder - 100 goals in 1on1 (season-specific, chain from goals_1on1_50)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
     'goals_1on1_100', 
     'Tryharder', 
-    'Score 100 goals in 1on1 matches',
+    'Score 100 goals in 1on1 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 100, "filters": {"gamemode": "1on1"}}',
@@ -293,17 +318,42 @@ INSERT INTO kopecht.achievement_definitions (
     100,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_10')
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_50')
 );
 
--- Scharfschütze - 500 goals in 1on1
+-- Sniper - 250 goals in 1on1 (season-specific, chain from goals_1on1_100)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_1on1_500', 
+    'goals_1on1_250', 
     'Sniper', 
-    'Score 500 goals in 1on1 matches',
+    'Score 250 goals in 1on1 matches this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
+    'GOAL_SCORED',
+    '{"type": "counter", "metric": "goals", "target": 250, "filters": {"gamemode": "1on1"}}',
+    150,
+    250,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_100')
+);
+
+-- ============================================
+-- 1ON1 GOAL ACHIEVEMENTS - CROSS-SEASON / ALL-TIME (500/1000/2500/5000)
+-- These track progress across all seasons
+-- ============================================
+
+-- Goal Machine - 500 goals in 1on1 all-time (cross-season, independent chain)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'goals_1on1_alltime_500', 
+    'Goal Machine', 
+    'Score 500 goals in 1on1 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 500, "filters": {"gamemode": "1on1"}}',
@@ -311,17 +361,17 @@ INSERT INTO kopecht.achievement_definitions (
     500,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_100')
+    false
 );
 
--- Tormaschine - 1000 goals in 1on1
+-- Solo Legend - 1000 goals in 1on1 all-time (cross-season, chain from goals_1on1_alltime_500)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_1on1_1000', 
-    'Goal Machine', 
-    'Score 1000 goals in 1on1 matches',
+    'goals_1on1_alltime_1000', 
+    'Solo Legend', 
+    'Score 1000 goals in 1on1 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 1000, "filters": {"gamemode": "1on1"}}',
@@ -329,17 +379,18 @@ INSERT INTO kopecht.achievement_definitions (
     1000,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_500')
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_alltime_500')
 );
 
--- Solo-Legende - 2500 goals in 1on1
+-- Einzelkämpfer - 2500 goals in 1on1 all-time (cross-season, chain from goals_1on1_alltime_1000)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_1on1_2500', 
-    'Solo Legend', 
-    'Score 2500 goals in 1on1 matches',
+    'goals_1on1_alltime_2500', 
+    'Einzelkämpfer', 
+    'Score 2500 goals in 1on1 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 2500, "filters": {"gamemode": "1on1"}}',
@@ -347,17 +398,18 @@ INSERT INTO kopecht.achievement_definitions (
     2500,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_1000')
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_alltime_1000')
 );
 
--- Einzelkämpfer - 5000 goals in 1on1
+-- Solo God - 5000 goals in 1on1 all-time (cross-season, chain from goals_1on1_alltime_2500)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_1on1_5000', 
-    'Einzelkämpfer', 
-    'Score 5000 goals in 1on1 matches',
+    'goals_1on1_alltime_5000', 
+    'Solo God', 
+    'Score 5000 goals in 1on1 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 5000, "filters": {"gamemode": "1on1"}}',
@@ -365,38 +417,60 @@ INSERT INTO kopecht.achievement_definitions (
     5000,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_2500')
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1on1_alltime_2500')
 );
 
 -- ============================================
--- 2ON2 GOAL ACHIEVEMENTS
+-- 2ON2 GOAL ACHIEVEMENTS - SEASON-SPECIFIC (10/50/100/250)
+-- These reset each season and track progress within the current season
 -- ============================================
 
--- Teamplayer - 10 goals in 2on2
+-- Teamplayer - 10 goals in 2on2 (season-specific)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
 ) VALUES (
     'goals_2on2_10', 
     'Teamplayer', 
-    'Score 10 goals in 2on2 matches',
+    'Score 10 goals in 2on2 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 10, "filters": {"gamemode": "2on2"}}',
     50,
     10,
     false,
-    false
+    false,
+    true
 );
 
--- Doppelpacker - 100 goals in 2on2
+-- Team Striker - 50 goals in 2on2 (season-specific, chain from goals_2on2_10)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'goals_2on2_50', 
+    'Team Striker', 
+    'Score 50 goals in 2on2 matches this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
+    'GOAL_SCORED',
+    '{"type": "counter", "metric": "goals", "target": 50, "filters": {"gamemode": "2on2"}}',
+    75,
+    50,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_10')
+);
+
+-- Double Striker - 100 goals in 2on2 (season-specific, chain from goals_2on2_50)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
     'goals_2on2_100', 
     'Double Striker', 
-    'Score 100 goals in 2on2 matches',
+    'Score 100 goals in 2on2 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 100, "filters": {"gamemode": "2on2"}}',
@@ -404,17 +478,42 @@ INSERT INTO kopecht.achievement_definitions (
     100,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_10')
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_50')
 );
 
--- Team-Kanone - 500 goals in 2on2
+-- Team Cannon - 250 goals in 2on2 (season-specific, chain from goals_2on2_100)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_2on2_500', 
+    'goals_2on2_250', 
     'Team Cannon', 
-    'Score 500 goals in 2on2 matches',
+    'Score 250 goals in 2on2 matches this season',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
+    'GOAL_SCORED',
+    '{"type": "counter", "metric": "goals", "target": 250, "filters": {"gamemode": "2on2"}}',
+    150,
+    250,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_100')
+);
+
+-- ============================================
+-- 2ON2 GOAL ACHIEVEMENTS - CROSS-SEASON / ALL-TIME (500/1000/2500/5000)
+-- These track progress across all seasons
+-- ============================================
+
+-- Duo Dynamo - 500 goals in 2on2 all-time (cross-season, independent chain)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'goals_2on2_alltime_500', 
+    'Duo Dynamo', 
+    'Score 500 goals in 2on2 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 500, "filters": {"gamemode": "2on2"}}',
@@ -422,17 +521,17 @@ INSERT INTO kopecht.achievement_definitions (
     500,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_100')
+    false
 );
 
--- Duo-Dynamo - 1000 goals in 2on2
+-- Team Legend - 1000 goals in 2on2 all-time (cross-season, chain from goals_2on2_alltime_500)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_2on2_1000', 
-    'Duo Dynamo', 
-    'Score 1000 goals in 2on2 matches',
+    'goals_2on2_alltime_1000', 
+    'Team Legend', 
+    'Score 1000 goals in 2on2 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 1000, "filters": {"gamemode": "2on2"}}',
@@ -440,17 +539,18 @@ INSERT INTO kopecht.achievement_definitions (
     1000,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_500')
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_alltime_500')
 );
 
--- Team-Legende - 2500 goals in 2on2
+-- Duo Master - 2500 goals in 2on2 all-time (cross-season, chain from goals_2on2_alltime_1000)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_2on2_2500', 
-    'Team Legend', 
-    'Score 2500 goals in 2on2 matches',
+    'goals_2on2_alltime_2500', 
+    'Duo Master', 
+    'Score 2500 goals in 2on2 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 2500, "filters": {"gamemode": "2on2"}}',
@@ -458,17 +558,18 @@ INSERT INTO kopecht.achievement_definitions (
     2500,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_1000')
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_alltime_1000')
 );
 
--- Duo-Gott - 5000 goals in 2on2
+-- Duo God - 5000 goals in 2on2 all-time (cross-season, chain from goals_2on2_alltime_2500)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable, parent_id
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
-    'goals_2on2_5000', 
+    'goals_2on2_alltime_5000', 
     'Duo God', 
-    'Score 5000 goals in 2on2 matches',
+    'Score 5000 goals in 2on2 matches across all seasons',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
     '{"type": "counter", "metric": "goals", "target": 5000, "filters": {"gamemode": "2on2"}}',
@@ -476,7 +577,8 @@ INSERT INTO kopecht.achievement_definitions (
     5000,
     false,
     false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_2500')
+    false,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_alltime_2500')
 );
 
 -- ============================================
@@ -2181,6 +2283,126 @@ INSERT INTO kopecht.achievement_definitions (
     false
 ) ON CONFLICT (key) DO NOTHING;
 
+-- ============================================
+-- TITLE COLLECTOR ACHIEVEMENTS (Season-Specific)
+-- ============================================
+
+-- Unlock 1 title
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'title_collector_1', 
+    'Title Unlocked', 
+    'Unlock your first title',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "titles_unlocked", "target": 1}',
+    50,
+    1,
+    false,
+    false,
+    true
+) ON CONFLICT (key) DO NOTHING;
+
+-- Unlock 5 titles (chain from title_collector_1)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'title_collector_5', 
+    'Title Collector', 
+    'Unlock 5 titles',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "titles_unlocked", "target": 5}',
+    100,
+    5,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'title_collector_1')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Unlock 10 titles (chain from title_collector_5)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'title_collector_10', 
+    'Title Hoarder', 
+    'Unlock 10 titles',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "titles_unlocked", "target": 10}',
+    200,
+    10,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'title_collector_5')
+) ON CONFLICT (key) DO NOTHING;
+
+-- Unlock 15 titles (chain from title_collector_10)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'title_collector_15', 
+    'Title Master', 
+    'Unlock 15 titles',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "titles_unlocked", "target": 15}',
+    300,
+    15,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'title_collector_10')
+) ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- FRAME COLLECTOR ACHIEVEMENTS (Season-Specific)
+-- ============================================
+
+-- Unlock 1 frame
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'frame_collector_1', 
+    'Frame Unlocked', 
+    'Unlock your first avatar frame',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "frames_unlocked", "target": 1}',
+    50,
+    1,
+    false,
+    false,
+    true
+) ON CONFLICT (key) DO NOTHING;
+
+-- Unlock 5 frames (chain from frame_collector_1)
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
+) VALUES (
+    'frame_collector_5', 
+    'Frame Collector', 
+    'Unlock 5 avatar frames',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'meta'),
+    'ACHIEVEMENT_UNLOCKED',
+    '{"type": "counter", "metric": "frames_unlocked", "target": 5}',
+    150,
+    5,
+    false,
+    false,
+    true,
+    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'frame_collector_1')
+) ON CONFLICT (key) DO NOTHING;
+
 
 -- ============================================
 -- TEAMWORK ACHIEVEMENTS
@@ -2938,9 +3160,9 @@ WHERE category_id IN (
 -- ============================================
 
 -- Create 'alltime' category (global - no kicker_id)
-INSERT INTO kopecht.achievement_categories (key, name, description, icon, sort_order)
-VALUES ('alltime', 'All-Time', 'Achievements that track your entire career across all seasons', '🌟', 100)
-ON CONFLICT (key) DO NOTHING;
+-- INSERT INTO kopecht.achievement_categories (key, name, description, icon, sort_order)
+-- VALUES ('alltime', 'All-Time', 'Achievements that track your entire career across all seasons', '🌟', 100)
+-- ON CONFLICT (key) DO NOTHING;
 
 -- ============================================
 -- ALL-TIME MATCHES ACHIEVEMENTS
@@ -2954,7 +3176,7 @@ INSERT INTO kopecht.achievement_definitions (
     'matches_500_alltime_1on1',
     'Veteran (1on1)',
     'Play 500 1on1 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'matches'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "matches", "target": 500, "filters": {"gamemode": "1on1"}}',
     300,
@@ -2973,7 +3195,7 @@ INSERT INTO kopecht.achievement_definitions (
     'matches_1000_alltime_1on1',
     'Legend (1on1)',
     'Play 1000 1on1 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'matches'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "matches", "target": 1000, "filters": {"gamemode": "1on1"}}',
     500,
@@ -2992,7 +3214,7 @@ INSERT INTO kopecht.achievement_definitions (
     'matches_500_alltime_2on2',
     'Veteran (2on2)',
     'Play 500 2on2 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'matches'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "matches", "target": 500, "filters": {"gamemode": "2on2"}}',
     300,
@@ -3011,7 +3233,7 @@ INSERT INTO kopecht.achievement_definitions (
     'matches_1000_alltime_2on2',
     'Legend (2on2)',
     'Play 1000 2on2 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'matches'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "matches", "target": 1000, "filters": {"gamemode": "2on2"}}',
     500,
@@ -3034,7 +3256,7 @@ INSERT INTO kopecht.achievement_definitions (
     'wins_500_alltime_1on1',
     'Champion Soul (1on1)',
     'Win 500 1on1 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'wins'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "wins", "target": 500, "filters": {"gamemode": "1on1"}}',
     400,
@@ -3053,7 +3275,7 @@ INSERT INTO kopecht.achievement_definitions (
     'wins_1000_alltime_1on1',
     'Immortal (1on1)',
     'Win 1000 1on1 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'wins'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "wins", "target": 1000, "filters": {"gamemode": "1on1"}}',
     750,
@@ -3072,7 +3294,7 @@ INSERT INTO kopecht.achievement_definitions (
     'wins_500_alltime_2on2',
     'Champion Soul (2on2)',
     'Win 500 2on2 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'wins'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "wins", "target": 500, "filters": {"gamemode": "2on2"}}',
     400,
@@ -3091,7 +3313,7 @@ INSERT INTO kopecht.achievement_definitions (
     'wins_1000_alltime_2on2',
     'Immortal (2on2)',
     'Win 1000 2on2 matches across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'wins'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "wins", "target": 1000, "filters": {"gamemode": "2on2"}}',
     750,
@@ -3102,67 +3324,7 @@ INSERT INTO kopecht.achievement_definitions (
     (SELECT id FROM kopecht.achievement_definitions WHERE key = 'wins_500_alltime_2on2')
 ) ON CONFLICT (key) DO NOTHING;
 
--- ============================================
--- ALL-TIME GOALS ACHIEVEMENTS
--- ============================================
 
--- 1000 Goals All-Time
-INSERT INTO kopecht.achievement_definitions (
-    key, name, description, category_id, trigger_event, condition,
-    points, max_progress, is_hidden, is_repeatable, is_season_specific
-) VALUES (
-    'goals_1000_alltime',
-    'Thousand Strikes',
-    'Score 1000 goals across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
-    'GOAL_SCORED',
-    '{"type": "counter", "metric": "goals", "target": 1000}',
-    500,
-    1000,
-    false,
-    false,
-    false
-) ON CONFLICT (key) DO NOTHING;
-
--- 2500 Goals All-Time
-INSERT INTO kopecht.achievement_definitions (
-    key, name, description, category_id, trigger_event, condition,
-    points, max_progress, is_hidden, is_repeatable, is_season_specific,
-    parent_id
-) VALUES (
-    'goals_2500_alltime',
-    'Goal Machine',
-    'Score 2500 goals across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
-    'GOAL_SCORED',
-    '{"type": "counter", "metric": "goals", "target": 2500}',
-    750,
-    2500,
-    false,
-    false,
-    false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_1000_alltime')
-) ON CONFLICT (key) DO NOTHING;
-
--- 5000 Goals All-Time
-INSERT INTO kopecht.achievement_definitions (
-    key, name, description, category_id, trigger_event, condition,
-    points, max_progress, is_hidden, is_repeatable, is_season_specific,
-    parent_id
-) VALUES (
-    'goals_5000_alltime',
-    'Living Legend',
-    'Score 5000 goals across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
-    'GOAL_SCORED',
-    '{"type": "counter", "metric": "goals", "target": 5000}',
-    1000,
-    5000,
-    false,
-    false,
-    false,
-    (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2500_alltime')
-) ON CONFLICT (key) DO NOTHING;
 
 -- ============================================
 -- ALL-TIME PLAYTIME ACHIEVEMENTS
@@ -3176,7 +3338,7 @@ INSERT INTO kopecht.achievement_definitions (
     'playtime_100h_alltime',
     'Dedicated',
     'Play for 100 hours across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'playtime'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "playtime_seconds", "target": 360000}',
     400,
@@ -3195,7 +3357,7 @@ INSERT INTO kopecht.achievement_definitions (
     'playtime_250h_alltime',
     'Obsessed',
     'Play for 250 hours across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'playtime'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "playtime_seconds", "target": 900000}',
     600,
@@ -3215,7 +3377,7 @@ INSERT INTO kopecht.achievement_definitions (
     'playtime_500h_alltime',
     'No Life',
     'Play for 500 hours across all seasons',
-    (SELECT id FROM kopecht.achievement_categories WHERE key = 'alltime'),
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'playtime'),
     'MATCH_ENDED',
     '{"type": "counter", "metric": "playtime_seconds", "target": 1800000}',
     1000,
@@ -3949,6 +4111,24 @@ INSERT INTO kopecht.reward_definitions (key, name, description, type, display_po
 
 -- Final nail - scoring own goal at 1-9
 ('title_final_nail', 'Final Nail', 'Master of unfortunate timing', 'title', 'suffix', 'the Final Nail', 'final_nail_1on1', '⚰️', 110)
+
+ON CONFLICT (key) DO NOTHING;
+
+-- Avatar Frames
+INSERT INTO kopecht.reward_definitions (key, name, description, type, display_position, display_value, achievement_key, icon, sort_order) VALUES
+-- Domination Expert frame (10 perfect 10-0 wins)
+('frame_domination', 'Domination Frame', 'A prestigious frame for dominant players', 'frame', NULL, 'domination_frame', 'perfect_wins_10', '🖼️', 200),
+
+-- Grandmaster frames (1500 MMR)
+('frame_grandmaster_1on1', 'Grandmaster Frame (1on1)', 'An elite frame for 1on1 grandmasters', 'frame', NULL, 'grandmaster_1on1_frame', 'mmr_1on1_1500', '🖼️', 210),
+('frame_grandmaster_2on2', 'Grandmaster Frame (2on2)', 'An elite frame for 2on2 grandmasters', 'frame', NULL, 'grandmaster_2on2_frame', 'mmr_2on2_1500', '🖼️', 220),
+
+-- Unstoppable frames (15 win streak)
+('frame_unstoppable_1on1', 'Unstoppable Frame (1on1)', 'For those who cannot be stopped in 1on1', 'frame', NULL, 'unstoppable_1on1_frame', 'win_streak_15_1on1', '🖼️', 230),
+('frame_unstoppable_2on2', 'Unstoppable Frame (2on2)', 'For those who cannot be stopped in 2on2', 'frame', NULL, 'unstoppable_2on2_frame', 'win_streak_15_2on2', '🖼️', 240),
+
+-- Completionist frame (unlock all achievements)
+('frame_completionist', 'Completionist Frame', 'The ultimate frame for achievement hunters', 'frame', NULL, 'completionist_frame', 'completionist', '🖼️', 250)
 
 ON CONFLICT (key) DO NOTHING;
 
@@ -5430,6 +5610,11 @@ INSERT INTO kopecht.achievement_definitions (
     true,
     (SELECT id FROM kopecht.achievement_definitions WHERE key = 'achievement_points_10000')
 ) ON CONFLICT (key) DO NOTHING;
+
+-- Point Master frame (25000 achievement points) - inserted here because achievement_points_25000 must exist first
+INSERT INTO kopecht.reward_definitions (key, name, description, type, display_position, display_value, achievement_key, icon, sort_order) VALUES
+('frame_point_master', 'Point Master Frame', 'A frame for dedicated point collectors', 'frame', NULL, 'point_master_frame', 'achievement_points_25000', '🖼️', 260)
+ON CONFLICT (key) DO NOTHING;
 
 -- Update completionist condition to target 150 achievements
 UPDATE kopecht.achievement_definitions 
