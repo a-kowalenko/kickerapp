@@ -979,6 +979,19 @@ async function handleGoalScored(
         }
 
         if (conditionMet) {
+            // Skip counter-based goals/own_goals achievements - these are handled by database trigger
+            // The trigger is more reliable as it runs synchronously on every INSERT
+            if (
+                achievement.condition.type === "counter" &&
+                (achievement.condition.metric === "goals" ||
+                    achievement.condition.metric === "own_goals")
+            ) {
+                console.log(
+                    `[Trigger] Skipping ${achievement.key} - handled by database trigger`
+                );
+                continue;
+            }
+
             // Special handling for goals_in_day - check actual count from DB
             if (achievement.condition.metric === "goals_in_day") {
                 const todayStart = new Date();
@@ -2283,6 +2296,13 @@ async function awardAchievementDirectly(
         });
 
     if (awardError) {
+        // Duplicate key error is expected when multiple requests try to award same achievement
+        if (awardError.code === "23505") {
+            console.log(
+                `[Award] Achievement ${achievement.id} already awarded to player ${playerId} (concurrent request)`
+            );
+            return "already_unlocked";
+        }
         console.error("Error awarding achievement:", awardError);
         return "error";
     }
@@ -3270,72 +3290,102 @@ async function updateProgress(
     const progressSeasonId = achievement.is_season_specific ? seasonId : null;
 
     // Try to use atomic RPC function first (prevents race conditions)
-    try {
-        const { data: result, error } = await supabase.rpc(
-            "increment_achievement_progress",
-            {
-                p_player_id: playerId,
-                p_achievement_id: achievement.id,
-                p_increment: 1,
-                p_season_id: progressSeasonId,
-            }
-        );
+    // Retry up to 3 times before falling back
+    const MAX_RETRIES = 3;
+    let lastError: any = null;
 
-        if (!error && result && result.length > 0) {
-            const progressResult = result[0];
-            console.log(
-                `[RPC] Player ${playerId}, Achievement ${achievement.id}: Progress ${progressResult.new_progress}/${progressResult.max_progress}, Completed: ${progressResult.is_completed}`
-            );
-
-            if (progressResult.is_completed) {
-                // Handle repeatable or update with match/season info
-                if (alreadyUnlocked && achievement.is_repeatable) {
-                    const { data: existingAchievement } = await supabase
-                        .from("player_achievements")
-                        .select("times_completed")
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id)
-                        .single();
-
-                    await supabase
-                        .from("player_achievements")
-                        .update({
-                            times_completed:
-                                (existingAchievement?.times_completed || 1) + 1,
-                        })
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id);
-
-                    // Reset progress for repeatable
-                    await supabase
-                        .from("player_achievement_progress")
-                        .update({ current_progress: 0 })
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id);
-                } else if (matchId || seasonId) {
-                    await supabase
-                        .from("player_achievements")
-                        .update({ match_id: matchId, season_id: seasonId })
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const { data: result, error } = await supabase.rpc(
+                "increment_achievement_progress",
+                {
+                    p_player_id: playerId,
+                    p_achievement_id: achievement.id,
+                    p_increment: 1,
+                    p_season_id: progressSeasonId,
                 }
-                return "unlocked";
-            }
-            return "progress_updated";
-        }
-
-        // If RPC failed, log and fall through to fallback
-        if (error) {
-            console.warn(
-                "RPC increment_achievement_progress failed, using fallback:",
-                error.message
             );
+
+            if (!error && result && result.length > 0) {
+                const progressResult = result[0];
+                console.log(
+                    `[RPC] Player ${playerId}, Achievement ${achievement.id}: Progress ${progressResult.new_progress}/${progressResult.max_progress}, Completed: ${progressResult.is_completed}`
+                );
+
+                if (progressResult.is_completed) {
+                    // Handle repeatable or update with match/season info
+                    if (alreadyUnlocked && achievement.is_repeatable) {
+                        const { data: existingAchievement } = await supabase
+                            .from("player_achievements")
+                            .select("times_completed")
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id)
+                            .single();
+
+                        await supabase
+                            .from("player_achievements")
+                            .update({
+                                times_completed:
+                                    (existingAchievement?.times_completed ||
+                                        1) + 1,
+                            })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+
+                        // Reset progress for repeatable
+                        await supabase
+                            .from("player_achievement_progress")
+                            .update({ current_progress: 0 })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+                    } else if (matchId || seasonId) {
+                        await supabase
+                            .from("player_achievements")
+                            .update({ match_id: matchId, season_id: seasonId })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+                    }
+                    return "unlocked";
+                }
+                return "progress_updated";
+            }
+
+            // If RPC failed, log and retry
+            if (error) {
+                lastError = error;
+                console.warn(
+                    `RPC increment_achievement_progress failed (attempt ${attempt}/${MAX_RETRIES}):`,
+                    error.message
+                );
+                if (attempt < MAX_RETRIES) {
+                    // Small delay before retry (exponential backoff)
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, 50 * attempt)
+                    );
+                    continue;
+                }
+            }
+        } catch (rpcError) {
+            lastError = rpcError;
+            console.warn(
+                `RPC exception (attempt ${attempt}/${MAX_RETRIES}):`,
+                rpcError
+            );
+            if (attempt < MAX_RETRIES) {
+                await new Promise((resolve) =>
+                    setTimeout(resolve, 50 * attempt)
+                );
+                continue;
+            }
         }
-    } catch (rpcError) {
-        console.warn("RPC exception, using fallback:", rpcError);
     }
 
-    // Fallback: Use traditional upsert (less safe for concurrent updates)
+    console.warn(
+        "All RPC attempts failed, using atomic fallback. Last error:",
+        lastError
+    );
+
+    // Fallback: Use atomic upsert (safe for concurrent updates)
     return await updateProgressFallback(
         supabase,
         playerId,
@@ -3550,68 +3600,100 @@ async function updateProgressWithAmount(
     const progressSeasonId = achievement.is_season_specific ? seasonId : null;
 
     // Try to use atomic RPC function first
-    try {
-        const { data: result, error } = await supabase.rpc(
-            "increment_achievement_progress",
-            {
-                p_player_id: playerId,
-                p_achievement_id: achievement.id,
-                p_increment: incrementAmount,
-                p_season_id: progressSeasonId,
-            }
-        );
+    // Retry up to 3 times before falling back
+    const MAX_RETRIES = 3;
+    let lastError: any = null;
 
-        if (!error && result && result.length > 0) {
-            const progressResult = result[0];
-            console.log(
-                `[RPC] Player ${playerId}, Achievement ${achievement.id}: Progress ${progressResult.new_progress}/${progressResult.max_progress}, Completed: ${progressResult.is_completed}`
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const { data: result, error } = await supabase.rpc(
+                "increment_achievement_progress",
+                {
+                    p_player_id: playerId,
+                    p_achievement_id: achievement.id,
+                    p_increment: incrementAmount,
+                    p_season_id: progressSeasonId,
+                }
             );
 
-            if (progressResult.is_completed) {
-                // Handle repeatable or update with match/season info
-                if (alreadyUnlocked && achievement.is_repeatable) {
-                    const { data: existingAchievement } = await supabase
-                        .from("player_achievements")
-                        .select("times_completed")
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id)
-                        .single();
+            if (!error && result && result.length > 0) {
+                const progressResult = result[0];
+                console.log(
+                    `[RPC] Player ${playerId}, Achievement ${achievement.id}: Progress ${progressResult.new_progress}/${progressResult.max_progress}, Completed: ${progressResult.is_completed}`
+                );
 
-                    await supabase
-                        .from("player_achievements")
-                        .update({
-                            times_completed:
-                                (existingAchievement?.times_completed || 1) + 1,
-                        })
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id);
+                if (progressResult.is_completed) {
+                    // Handle repeatable or update with match/season info
+                    if (alreadyUnlocked && achievement.is_repeatable) {
+                        const { data: existingAchievement } = await supabase
+                            .from("player_achievements")
+                            .select("times_completed")
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id)
+                            .single();
 
-                    // Reset progress for repeatable
-                    await supabase
-                        .from("player_achievement_progress")
-                        .update({ current_progress: 0 })
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id);
-                } else if (matchId || seasonId) {
-                    await supabase
-                        .from("player_achievements")
-                        .update({ match_id: matchId, season_id: seasonId })
-                        .eq("player_id", playerId)
-                        .eq("achievement_id", achievement.id);
+                        await supabase
+                            .from("player_achievements")
+                            .update({
+                                times_completed:
+                                    (existingAchievement?.times_completed ||
+                                        1) + 1,
+                            })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+
+                        // Reset progress for repeatable
+                        await supabase
+                            .from("player_achievement_progress")
+                            .update({ current_progress: 0 })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+                    } else if (matchId || seasonId) {
+                        await supabase
+                            .from("player_achievements")
+                            .update({ match_id: matchId, season_id: seasonId })
+                            .eq("player_id", playerId)
+                            .eq("achievement_id", achievement.id);
+                    }
+                    return "unlocked";
                 }
-                return "unlocked";
+                return "progress_updated";
             }
-            return "progress_updated";
-        }
 
-        if (error) {
-            console.warn("RPC failed, using fallback:", error.message);
+            if (error) {
+                lastError = error;
+                console.warn(
+                    `RPC increment_achievement_progress failed (attempt ${attempt}/${MAX_RETRIES}):`,
+                    error.message
+                );
+                if (attempt < MAX_RETRIES) {
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, 50 * attempt)
+                    );
+                    continue;
+                }
+            }
+        } catch (rpcError) {
+            lastError = rpcError;
+            console.warn(
+                `RPC exception (attempt ${attempt}/${MAX_RETRIES}):`,
+                rpcError
+            );
+            if (attempt < MAX_RETRIES) {
+                await new Promise((resolve) =>
+                    setTimeout(resolve, 50 * attempt)
+                );
+                continue;
+            }
         }
-    } catch (rpcError) {
-        console.warn("RPC exception, using fallback:", rpcError);
     }
 
-    // Fallback
+    console.warn(
+        "All RPC attempts failed, using atomic fallback. Last error:",
+        lastError
+    );
+
+    // Fallback: Use atomic upsert
     return await updateProgressFallbackWithAmount(
         supabase,
         playerId,
@@ -3639,56 +3721,41 @@ async function updateProgressFallbackWithAmount(
             ? seasonId
             : null;
 
-        // Build query with season filter
-        let query = supabase
-            .from("player_achievement_progress")
-            .select("current_progress")
-            .eq("player_id", playerId)
-            .eq("achievement_id", achievement.id);
-
-        if (progressSeasonId === null) {
-            query = query.is("season_id", null);
-        } else {
-            query = query.eq("season_id", progressSeasonId);
-        }
-
-        const { data: progressData } = await query.maybeSingle();
-
-        const currentProgress = progressData?.current_progress || 0;
-        const newProgress = Math.min(
-            currentProgress + incrementAmount,
-            achievement.max_progress
-        );
-
         const now = new Date().toISOString();
 
-        if (progressData) {
-            // Update existing progress record
-            let updateQuery = supabase
-                .from("player_achievement_progress")
-                .update({
-                    current_progress: newProgress,
-                    updated_at: now,
-                })
-                .eq("player_id", playerId)
-                .eq("achievement_id", achievement.id);
-
-            if (progressSeasonId === null) {
-                updateQuery = updateQuery.is("season_id", null);
-            } else {
-                updateQuery = updateQuery.eq("season_id", progressSeasonId);
+        // Use atomic upsert with raw SQL to prevent race conditions
+        const { data: upsertResult, error: upsertError } = await supabase.rpc(
+            "atomic_increment_progress",
+            {
+                p_player_id: playerId,
+                p_achievement_id: achievement.id,
+                p_increment: incrementAmount,
+                p_max_progress: achievement.max_progress,
+                p_season_id: progressSeasonId,
             }
+        );
 
-            await updateQuery;
-        } else {
-            await supabase.from("player_achievement_progress").insert({
-                player_id: playerId,
-                achievement_id: achievement.id,
-                current_progress: newProgress,
-                season_id: progressSeasonId,
-                updated_at: now,
-            });
+        if (upsertError) {
+            console.error(
+                "[FallbackWithAmount] Atomic upsert RPC failed:",
+                upsertError.message
+            );
+            // Last resort: try direct upsert (may still have race condition but better than nothing)
+            return await updateProgressLastResort(
+                supabase,
+                playerId,
+                achievement,
+                seasonId,
+                matchId,
+                alreadyUnlocked,
+                incrementAmount
+            );
         }
+
+        const newProgress = upsertResult?.[0]?.new_progress ?? 0;
+        console.log(
+            `[FallbackWithAmount Atomic] Player ${playerId}, Achievement ${achievement.id}: Progress -> ${newProgress}/${achievement.max_progress} (season: ${progressSeasonId})`
+        );
 
         // Check if completed
         if (newProgress >= achievement.max_progress) {
@@ -3724,6 +3791,7 @@ async function updateProgressFallbackWithAmount(
 
                 await resetQuery;
             } else if (!alreadyUnlocked) {
+                const now = new Date().toISOString();
                 await supabase.from("player_achievements").insert({
                     player_id: playerId,
                     achievement_id: achievement.id,
@@ -3737,7 +3805,7 @@ async function updateProgressFallbackWithAmount(
 
         return "progress_updated";
     } catch (err) {
-        console.error("[Fallback] Unexpected error:", err);
+        console.error("[FallbackWithAmount] Unexpected error:", err);
         return "error";
     }
 }
@@ -3757,88 +3825,41 @@ async function updateProgressFallback(
             ? seasonId
             : null;
 
-        // Get current progress with season filter
-        let query = supabase
-            .from("player_achievement_progress")
-            .select("current_progress")
-            .eq("player_id", playerId)
-            .eq("achievement_id", achievement.id);
-
-        if (progressSeasonId === null) {
-            query = query.is("season_id", null);
-        } else {
-            query = query.eq("season_id", progressSeasonId);
-        }
-
-        const { data: progressData, error: selectError } =
-            await query.maybeSingle();
-
-        if (selectError) {
-            console.error("[Fallback] Error selecting progress:", selectError);
-        }
-
-        const currentProgress = progressData?.current_progress || 0;
-        const newProgress = Math.min(
-            currentProgress + 1,
-            achievement.max_progress
-        );
-
-        console.log(
-            `[Fallback] Player ${playerId}, Achievement ${achievement.id}: Progress ${currentProgress} -> ${newProgress}/${achievement.max_progress} (season: ${progressSeasonId})`
-        );
-
-        // Use INSERT or UPDATE based on whether record exists
         const now = new Date().toISOString();
 
-        if (progressData) {
-            // UPDATE existing record
-            let updateQuery = supabase
-                .from("player_achievement_progress")
-                .update({
-                    current_progress: newProgress,
-                    updated_at: now,
-                })
-                .eq("player_id", playerId)
-                .eq("achievement_id", achievement.id);
-
-            if (progressSeasonId === null) {
-                updateQuery = updateQuery.is("season_id", null);
-            } else {
-                updateQuery = updateQuery.eq("season_id", progressSeasonId);
+        // Use atomic upsert with raw SQL to prevent race conditions
+        // This increments progress atomically using ON CONFLICT DO UPDATE
+        const { data: upsertResult, error: upsertError } = await supabase.rpc(
+            "atomic_increment_progress",
+            {
+                p_player_id: playerId,
+                p_achievement_id: achievement.id,
+                p_increment: 1,
+                p_max_progress: achievement.max_progress,
+                p_season_id: progressSeasonId,
             }
+        );
 
-            const { error: updateError } = await updateQuery;
-
-            if (updateError) {
-                console.error(
-                    "[Fallback] Error updating progress:",
-                    updateError
-                );
-                return "error";
-            }
-        } else {
-            // INSERT new record with season_id
-            const { error: insertError } = await supabase
-                .from("player_achievement_progress")
-                .insert({
-                    player_id: playerId,
-                    achievement_id: achievement.id,
-                    current_progress: newProgress,
-                    season_id: progressSeasonId,
-                    updated_at: now,
-                });
-
-            if (insertError) {
-                console.error(
-                    "[Fallback] Error inserting progress:",
-                    insertError
-                );
-                return "error";
-            }
+        if (upsertError) {
+            console.error(
+                "[Fallback] Atomic upsert RPC failed:",
+                upsertError.message
+            );
+            // Last resort: try direct upsert (may still have race condition but better than nothing)
+            return await updateProgressLastResort(
+                supabase,
+                playerId,
+                achievement,
+                seasonId,
+                matchId,
+                alreadyUnlocked,
+                1
+            );
         }
 
+        const newProgress = upsertResult?.[0]?.new_progress ?? 0;
         console.log(
-            `[Fallback] Successfully updated progress to ${newProgress}`
+            `[Fallback Atomic] Player ${playerId}, Achievement ${achievement.id}: Progress -> ${newProgress}/${achievement.max_progress} (season: ${progressSeasonId})`
         );
 
         // Check if completed
@@ -3903,6 +3924,89 @@ async function updateProgressFallback(
         return "progress_updated";
     } catch (err) {
         console.error("[Fallback] Unexpected error:", err);
+        return "error";
+    }
+}
+
+// Last resort fallback when both RPC methods fail - uses upsert but may have race conditions
+async function updateProgressLastResort(
+    supabase: any,
+    playerId: number,
+    achievement: AchievementDefinition,
+    seasonId: number | null,
+    matchId: number | null,
+    alreadyUnlocked: boolean,
+    incrementAmount: number
+): Promise<string> {
+    try {
+        const progressSeasonId = achievement.is_season_specific
+            ? seasonId
+            : null;
+        const now = new Date().toISOString();
+
+        console.warn(
+            `[LastResort] Using non-atomic fallback for player ${playerId}, achievement ${achievement.id}`
+        );
+
+        // Get current progress
+        let query = supabase
+            .from("player_achievement_progress")
+            .select("current_progress")
+            .eq("player_id", playerId)
+            .eq("achievement_id", achievement.id);
+
+        if (progressSeasonId === null) {
+            query = query.is("season_id", null);
+        } else {
+            query = query.eq("season_id", progressSeasonId);
+        }
+
+        const { data: progressData } = await query.maybeSingle();
+        const currentProgress = progressData?.current_progress || 0;
+        const newProgress = Math.min(
+            currentProgress + incrementAmount,
+            achievement.max_progress
+        );
+
+        if (progressData) {
+            let updateQuery = supabase
+                .from("player_achievement_progress")
+                .update({ current_progress: newProgress, updated_at: now })
+                .eq("player_id", playerId)
+                .eq("achievement_id", achievement.id);
+
+            if (progressSeasonId === null) {
+                updateQuery = updateQuery.is("season_id", null);
+            } else {
+                updateQuery = updateQuery.eq("season_id", progressSeasonId);
+            }
+
+            await updateQuery;
+        } else {
+            await supabase.from("player_achievement_progress").insert({
+                player_id: playerId,
+                achievement_id: achievement.id,
+                current_progress: newProgress,
+                season_id: progressSeasonId,
+                updated_at: now,
+            });
+        }
+
+        // Check if completed
+        if (newProgress >= achievement.max_progress && !alreadyUnlocked) {
+            await supabase.from("player_achievements").insert({
+                player_id: playerId,
+                achievement_id: achievement.id,
+                unlocked_at: now,
+                season_id: seasonId,
+                match_id: matchId,
+            });
+            return "unlocked";
+        }
+
+        return "progress_updated";
+    } catch (err) {
+        console.error("[LastResort] Error:", err);
         return "error";
     }
 }

@@ -129,25 +129,9 @@ function AchievementsList({ achievements, groupByCategory = true }) {
     // Build chains from ALL achievements first (to keep chains complete)
     // Then filter out chains that shouldn't be visible
 
-    // Debug: Log achievements received
-    console.log("AchievementsList - total achievements:", achievements.length);
-    console.log(
-        "AchievementsList - achievements with parent_id:",
-        achievements.filter((a) => a.parent_id).length
-    );
-
     if (!groupByCategory) {
         // Build chains from all achievements
         const allChains = buildChains(achievements);
-        // Debug: Log chains built
-        console.log(
-            "AchievementsList - allChains:",
-            allChains.map((c) => ({
-                length: c.length,
-                names: c.map((a) => a.name),
-                ids: c.map((a) => a.id),
-            }))
-        );
 
         // Filter to only visible chains
         const chains = allChains.filter((chain) => isChainVisible(chain));
@@ -207,15 +191,6 @@ function AchievementsList({ achievements, groupByCategory = true }) {
                 ({ category, achievements: categoryAchievements }) => {
                     // Build chains within this category (from all achievements)
                     const allChains = buildChains(categoryAchievements);
-                    // Debug: Log chains built for each category
-                    console.log(
-                        `AchievementsList - Category "${category.name}" allChains:`,
-                        allChains.map((c) => ({
-                            length: c.length,
-                            names: c.map((a) => a.name),
-                            ids: c.map((a) => a.id),
-                        }))
-                    );
 
                     // Filter to only visible chains
                     const chains = allChains.filter((chain) =>

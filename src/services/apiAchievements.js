@@ -102,15 +102,6 @@ export async function getAchievementDefinitions(seasonId = null) {
 
     const { data, error } = await query;
 
-    // Debug: Log raw data from database
-    console.log("getAchievementDefinitions - raw data count:", data?.length);
-    console.log(
-        "getAchievementDefinitions - items with parent_id:",
-        data
-            ?.filter((d) => d.parent_id)
-            .map((d) => ({ id: d.id, name: d.name, parent_id: d.parent_id }))
-    );
-
     if (error) {
         throw new Error(error.message);
     }

@@ -20,7 +20,6 @@ export function useAchievementsWithProgress(playerId, seasonId = null) {
     // Memoized callback to avoid recreating on every render
     const handleProgressUpdate = useCallback(
         (payload) => {
-            console.log("Achievement progress update received:", payload);
             // Invalidate queries to refresh data
             queryClient.invalidateQueries({
                 queryKey: ["achievementsWithProgress"],

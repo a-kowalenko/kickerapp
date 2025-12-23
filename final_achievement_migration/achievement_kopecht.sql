@@ -3397,169 +3397,13 @@ CREATE INDEX IF NOT EXISTS idx_matches_season_id ON kopecht.matches(season_id);
 
 
 -- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- PART 8: FIX INCREMENT PROGRESS SEASON
--- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- Fix increment_achievement_progress function to handle NULL season_id correctly
--- The previous ON CONFLICT clause doesn't work with NULL values in PostgreSQL
--- This update uses explicit SELECT + INSERT/UPDATE logic instead
-
--- Drop old function with kicker_id parameter (if exists) to avoid ambiguity
-DROP FUNCTION IF EXISTS kopecht.increment_achievement_progress(BIGINT, BIGINT, BIGINT, INTEGER, BIGINT);
-
-CREATE OR REPLACE FUNCTION kopecht.increment_achievement_progress(
-    p_player_id BIGINT,
-    p_achievement_id BIGINT,
-    p_increment INTEGER DEFAULT 1,
-    p_season_id BIGINT DEFAULT NULL
-)
-RETURNS TABLE (
-    new_progress INTEGER,
-    max_progress INTEGER,
-    is_completed BOOLEAN
-) AS $$
-DECLARE
-    v_max_progress INTEGER;
-    v_new_progress INTEGER;
-    v_current_progress INTEGER;
-    v_is_completed BOOLEAN := FALSE;
-    v_is_season_specific BOOLEAN;
-    v_progress_season_id BIGINT;
-    v_existing_id BIGINT;
-BEGIN
-    -- Get max_progress and is_season_specific from achievement definition (global - no kicker_id filter)
-    SELECT ad.max_progress, COALESCE(ad.is_season_specific, true) 
-    INTO v_max_progress, v_is_season_specific
-    FROM kopecht.achievement_definitions ad
-    WHERE ad.id = p_achievement_id;
-    
-    IF v_max_progress IS NULL THEN
-        RAISE EXCEPTION 'Achievement not found: %', p_achievement_id;
-    END IF;
-
-    -- Determine the season_id for progress tracking
-    -- Season-specific achievements use the provided season_id
-    -- Global achievements (is_season_specific = false) use NULL
-    IF v_is_season_specific THEN
-        v_progress_season_id := p_season_id;
-    ELSE
-        v_progress_season_id := NULL;
-    END IF;
-
-    -- Check if progress record exists (handle NULL season_id explicitly)
-    IF v_progress_season_id IS NULL THEN
-        SELECT id, current_progress INTO v_existing_id, v_current_progress
-        FROM kopecht.player_achievement_progress
-        WHERE player_id = p_player_id 
-          AND achievement_id = p_achievement_id
-          AND season_id IS NULL
-        FOR UPDATE;
-    ELSE
-        SELECT id, current_progress INTO v_existing_id, v_current_progress
-        FROM kopecht.player_achievement_progress
-        WHERE player_id = p_player_id 
-          AND achievement_id = p_achievement_id
-          AND season_id = v_progress_season_id
-        FOR UPDATE;
-    END IF;
-
-    IF v_existing_id IS NOT NULL THEN
-        -- Update existing record
-        v_new_progress := LEAST(v_current_progress + p_increment, v_max_progress);
-        
-        UPDATE kopecht.player_achievement_progress
-        SET current_progress = v_new_progress,
-            updated_at = NOW()
-        WHERE id = v_existing_id;
-    ELSE
-        -- Insert new record
-        v_new_progress := LEAST(p_increment, v_max_progress);
-        
-        INSERT INTO kopecht.player_achievement_progress (
-            player_id, 
-            achievement_id, 
-            current_progress,
-            season_id,
-            updated_at
-        )
-        VALUES (
-            p_player_id, 
-            p_achievement_id, 
-            v_new_progress,
-            v_progress_season_id,
-            NOW()
-        );
-    END IF;
-
-    -- Check if achievement is now completed
-    IF v_new_progress >= v_max_progress THEN
-        -- Try to award the achievement
-        -- Use explicit check for NULL season_id
-        IF p_season_id IS NULL THEN
-            -- Check if achievement already awarded (for all-time achievements)
-            IF NOT EXISTS (
-                SELECT 1 FROM kopecht.player_achievements
-                WHERE player_id = p_player_id 
-                  AND achievement_id = p_achievement_id
-                  AND season_id IS NULL
-            ) THEN
-                INSERT INTO kopecht.player_achievements (
-                    player_id, 
-                    achievement_id, 
-                    unlocked_at,
-                    season_id
-                )
-                VALUES (
-                    p_player_id, 
-                    p_achievement_id, 
-                    NOW(),
-                    NULL
-                );
-                v_is_completed := TRUE;
-            END IF;
-        ELSE
-            -- Check if achievement already awarded for this season
-            IF NOT EXISTS (
-                SELECT 1 FROM kopecht.player_achievements
-                WHERE player_id = p_player_id 
-                  AND achievement_id = p_achievement_id
-                  AND season_id = p_season_id
-            ) THEN
-                INSERT INTO kopecht.player_achievements (
-                    player_id, 
-                    achievement_id, 
-                    unlocked_at,
-                    season_id
-                )
-                VALUES (
-                    p_player_id, 
-                    p_achievement_id, 
-                    NOW(),
-                    p_season_id
-                );
-                v_is_completed := TRUE;
-            END IF;
-        END IF;
-    END IF;
-
-    RETURN QUERY SELECT v_new_progress, v_max_progress, v_is_completed;
-END;
-$$ LANGUAGE plpgsql;
-
--- Grant execute permission
-GRANT EXECUTE ON FUNCTION kopecht.increment_achievement_progress TO authenticated;
-GRANT EXECUTE ON FUNCTION kopecht.increment_achievement_progress TO service_role;
-
-
-
--- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- PART 9: FIX PROGRESS UNIQUE CONSTRAINT
+-- PART 8: FIX PROGRESS UNIQUE CONSTRAINT (moved before function that uses it)
 -- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- Fix unique constraint for player_achievement_progress to handle NULL season_id correctly
 -- PostgreSQL doesn't consider NULL = NULL, so we need two partial indexes
 
 -- First, clean up any existing duplicate rows where season_id IS NULL
--- Keep the row with the highest current_progress (or most recent updated_at if tied)
 DELETE FROM kopecht.player_achievement_progress a
 USING kopecht.player_achievement_progress b
 WHERE a.season_id IS NULL
@@ -3571,7 +3415,6 @@ WHERE a.season_id IS NULL
        OR (a.current_progress = b.current_progress AND a.updated_at < b.updated_at)
        OR (a.current_progress = b.current_progress AND a.updated_at = b.updated_at));
 
--- Also handle the case where we keep the one with higher progress even if it has lower id
 DELETE FROM kopecht.player_achievement_progress a
 USING kopecht.player_achievement_progress b
 WHERE a.season_id IS NULL
@@ -3596,6 +3439,231 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_player_achievement_progress_unique_no_seas
 ON kopecht.player_achievement_progress (player_id, achievement_id) 
 WHERE season_id IS NULL;
 
+
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PART 9: FIX INCREMENT PROGRESS FUNCTION (uses loop with retry for 100% race-condition safety)
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Uses a loop that retries UPDATE/INSERT until it succeeds
+-- This is the most robust pattern for concurrent upserts in PostgreSQL
+
+-- Drop old function with kicker_id parameter (if exists) to avoid ambiguity
+DROP FUNCTION IF EXISTS kopecht.increment_achievement_progress(BIGINT, BIGINT, BIGINT, INTEGER, BIGINT);
+
+CREATE OR REPLACE FUNCTION kopecht.increment_achievement_progress(
+    p_player_id BIGINT,
+    p_achievement_id BIGINT,
+    p_increment INTEGER DEFAULT 1,
+    p_season_id BIGINT DEFAULT NULL
+)
+RETURNS TABLE (
+    new_progress INTEGER,
+    max_progress INTEGER,
+    is_completed BOOLEAN
+) AS $$
+DECLARE
+    v_max_progress INTEGER;
+    v_new_progress INTEGER;
+    v_is_completed BOOLEAN := FALSE;
+    v_is_season_specific BOOLEAN;
+    v_progress_season_id BIGINT;
+BEGIN
+    -- Get max_progress and is_season_specific from achievement definition
+    SELECT ad.max_progress, COALESCE(ad.is_season_specific, true) 
+    INTO v_max_progress, v_is_season_specific
+    FROM kopecht.achievement_definitions ad
+    WHERE ad.id = p_achievement_id;
+    
+    IF v_max_progress IS NULL THEN
+        RAISE EXCEPTION 'Achievement not found: %', p_achievement_id;
+    END IF;
+
+    -- Determine the season_id for progress tracking
+    IF v_is_season_specific THEN
+        v_progress_season_id := p_season_id;
+    ELSE
+        v_progress_season_id := NULL;
+    END IF;
+
+    -- LOOP-BASED UPSERT: Most robust pattern for concurrent updates
+    -- Keeps retrying until UPDATE or INSERT succeeds
+    LOOP
+        -- Step 1: Try UPDATE first (works if record exists)
+        IF v_progress_season_id IS NULL THEN
+            UPDATE kopecht.player_achievement_progress
+            SET current_progress = LEAST(current_progress + p_increment, v_max_progress),
+                updated_at = NOW()
+            WHERE player_id = p_player_id 
+              AND achievement_id = p_achievement_id
+              AND season_id IS NULL
+            RETURNING current_progress INTO v_new_progress;
+        ELSE
+            UPDATE kopecht.player_achievement_progress
+            SET current_progress = LEAST(current_progress + p_increment, v_max_progress),
+                updated_at = NOW()
+            WHERE player_id = p_player_id 
+              AND achievement_id = p_achievement_id
+              AND season_id = v_progress_season_id
+            RETURNING current_progress INTO v_new_progress;
+        END IF;
+
+        -- If UPDATE succeeded, exit loop
+        IF FOUND THEN
+            EXIT;
+        END IF;
+
+        -- Step 2: UPDATE didn't find a row, try INSERT
+        BEGIN
+            v_new_progress := LEAST(p_increment, v_max_progress);
+            
+            INSERT INTO kopecht.player_achievement_progress (
+                player_id, 
+                achievement_id, 
+                current_progress,
+                season_id,
+                updated_at
+            )
+            VALUES (
+                p_player_id, 
+                p_achievement_id, 
+                v_new_progress,
+                v_progress_season_id,
+                NOW()
+            );
+            -- INSERT succeeded, exit loop
+            EXIT;
+        EXCEPTION WHEN unique_violation THEN
+            -- Another transaction inserted first, loop back and UPDATE
+            -- This is the key: we LOOP BACK instead of trying to UPDATE here
+            NULL;
+        END;
+    END LOOP;
+
+    -- Check if achievement is now completed
+    IF v_new_progress >= v_max_progress THEN
+        BEGIN
+            IF v_progress_season_id IS NULL THEN
+                INSERT INTO kopecht.player_achievements (
+                    player_id, achievement_id, unlocked_at, season_id
+                ) 
+                SELECT p_player_id, p_achievement_id, NOW(), NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM kopecht.player_achievements
+                    WHERE player_id = p_player_id 
+                      AND achievement_id = p_achievement_id
+                      AND season_id IS NULL
+                );
+            ELSE
+                INSERT INTO kopecht.player_achievements (
+                    player_id, achievement_id, unlocked_at, season_id
+                )
+                SELECT p_player_id, p_achievement_id, NOW(), p_season_id
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM kopecht.player_achievements
+                    WHERE player_id = p_player_id 
+                      AND achievement_id = p_achievement_id
+                      AND season_id = p_season_id
+                );
+            END IF;
+            
+            IF FOUND THEN
+                v_is_completed := TRUE;
+            END IF;
+        EXCEPTION WHEN unique_violation THEN
+            -- Achievement already awarded by another concurrent request
+            v_is_completed := FALSE;
+        END;
+    END IF;
+
+    RETURN QUERY SELECT v_new_progress, v_max_progress, v_is_completed;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION kopecht.increment_achievement_progress TO authenticated;
+GRANT EXECUTE ON FUNCTION kopecht.increment_achievement_progress TO service_role;
+
+
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PART 9b: ATOMIC INCREMENT PROGRESS FALLBACK FUNCTION
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Fallback function using loop with retry pattern for 100% race-condition safety
+
+CREATE OR REPLACE FUNCTION kopecht.atomic_increment_progress(
+    p_player_id BIGINT,
+    p_achievement_id BIGINT,
+    p_increment INTEGER DEFAULT 1,
+    p_max_progress INTEGER DEFAULT 1,
+    p_season_id BIGINT DEFAULT NULL
+)
+RETURNS TABLE (
+    new_progress INTEGER
+) AS $$
+DECLARE
+    v_new_progress INTEGER;
+BEGIN
+    -- LOOP-BASED UPSERT: Most robust pattern for concurrent updates
+    LOOP
+        -- Step 1: Try UPDATE first
+        IF p_season_id IS NULL THEN
+            UPDATE kopecht.player_achievement_progress
+            SET current_progress = LEAST(current_progress + p_increment, p_max_progress),
+                updated_at = NOW()
+            WHERE player_id = p_player_id 
+              AND achievement_id = p_achievement_id
+              AND season_id IS NULL
+            RETURNING current_progress INTO v_new_progress;
+        ELSE
+            UPDATE kopecht.player_achievement_progress
+            SET current_progress = LEAST(current_progress + p_increment, p_max_progress),
+                updated_at = NOW()
+            WHERE player_id = p_player_id 
+              AND achievement_id = p_achievement_id
+              AND season_id = p_season_id
+            RETURNING current_progress INTO v_new_progress;
+        END IF;
+
+        -- If UPDATE succeeded, exit loop
+        IF FOUND THEN
+            EXIT;
+        END IF;
+
+        -- Step 2: Try INSERT
+        BEGIN
+            v_new_progress := LEAST(p_increment, p_max_progress);
+            
+            INSERT INTO kopecht.player_achievement_progress (
+                player_id, 
+                achievement_id, 
+                current_progress,
+                season_id,
+                updated_at
+            )
+            VALUES (
+                p_player_id, 
+                p_achievement_id, 
+                v_new_progress,
+                p_season_id,
+                NOW()
+            );
+            EXIT;
+        EXCEPTION WHEN unique_violation THEN
+            -- Loop back and try UPDATE again
+            NULL;
+        END;
+    END LOOP;
+
+    RETURN QUERY SELECT v_new_progress;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION kopecht.atomic_increment_progress TO authenticated;
+GRANT EXECUTE ON FUNCTION kopecht.atomic_increment_progress TO service_role;
+
+
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PART 10: OWN GOALS ACHIEVEMENTS (was PART 9 continued)
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- ============================================
 -- OWN GOALS ACHIEVEMENTS - Season-Specific Chain (10/25/50/100)
@@ -5909,3 +5977,249 @@ INSERT INTO kopecht.achievement_definitions (
     false,
     true
 ) ON CONFLICT (key) DO NOTHING;
+
+
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- PART 11: GOAL INSERT TRIGGER FOR RELIABLE ACHIEVEMENT PROGRESS
+-- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- This trigger fires on every goal INSERT and updates counter-based achievements
+-- directly in the database, bypassing the webhook which can drop events under load.
+-- The webhook is still used for complex achievements, but simple counters are handled here.
+
+-- Drop existing trigger and function if they exist
+DROP TRIGGER IF EXISTS trg_goal_achievement_progress ON kopecht.goals;
+DROP FUNCTION IF EXISTS kopecht.handle_goal_achievement_progress();
+
+-- Create the trigger function
+CREATE OR REPLACE FUNCTION kopecht.handle_goal_achievement_progress()
+RETURNS TRIGGER 
+SECURITY DEFINER
+SET search_path = kopecht
+AS $$
+DECLARE
+    v_season_id BIGINT;
+    v_achievement RECORD;
+    v_gamemode_filter TEXT;
+    v_goal_type_filter TEXT;
+    v_progress_season_id BIGINT;
+    v_new_progress INTEGER;
+    v_max_progress INTEGER;
+    v_parent_max_progress INTEGER;
+    v_current_progress INTEGER;
+    v_just_unlocked_ids BIGINT[] := ARRAY[]::BIGINT[];
+BEGIN
+    -- Skip goal removals/undos
+    IF NEW.amount <= 0 AND NEW.goal_type != 'own_goal' THEN
+        RETURN NEW;
+    END IF;
+    
+    -- Skip own goal removals (amount = 0)
+    IF NEW.goal_type = 'own_goal' AND NEW.amount = 0 THEN
+        RETURN NEW;
+    END IF;
+    
+    -- Get season_id from the match
+    SELECT m.season_id INTO v_season_id
+    FROM kopecht.matches m
+    WHERE m.id = NEW.match_id;
+    
+    -- Process all counter-based GOAL_SCORED achievements
+    -- ORDER BY parent_id NULLS FIRST ensures parents are processed before children
+    FOR v_achievement IN 
+        SELECT ad.id, ad.key, ad.max_progress, ad.is_season_specific, ad.condition, ad.parent_id
+        FROM kopecht.achievement_definitions ad
+        WHERE ad.trigger_event = 'GOAL_SCORED'
+          AND ad.condition->>'type' = 'counter'
+          AND ad.condition->>'metric' IN ('goals', 'own_goals')
+        ORDER BY ad.parent_id NULLS FIRST, ad.id
+    LOOP
+        -- Extract filters from condition
+        v_gamemode_filter := v_achievement.condition->'filters'->>'gamemode';
+        v_goal_type_filter := v_achievement.condition->'filters'->>'goal_type';
+        
+        -- Check gamemode filter
+        IF v_gamemode_filter IS NOT NULL AND v_gamemode_filter != NEW.gamemode THEN
+            CONTINUE;
+        END IF;
+        
+        -- Check goal_type filter
+        IF v_goal_type_filter IS NOT NULL THEN
+            IF v_goal_type_filter = 'own_goal' AND NEW.goal_type != 'own_goal' THEN
+                CONTINUE;
+            END IF;
+            IF v_goal_type_filter != 'own_goal' AND NEW.goal_type = 'own_goal' THEN
+                CONTINUE;
+            END IF;
+        ELSE
+            -- No goal_type filter means standard goals only (not own goals)
+            IF NEW.goal_type = 'own_goal' THEN
+                CONTINUE;
+            END IF;
+        END IF;
+        
+        -- Skip season-specific achievements if match has no season
+        IF v_achievement.is_season_specific AND v_season_id IS NULL THEN
+            CONTINUE;
+        END IF;
+        
+        -- Determine progress season_id
+        IF v_achievement.is_season_specific THEN
+            v_progress_season_id := v_season_id;
+        ELSE
+            v_progress_season_id := NULL;
+        END IF;
+        
+        -- Check if achievement is already unlocked (skip if not repeatable)
+        IF EXISTS (
+            SELECT 1 FROM kopecht.player_achievements pa
+            WHERE pa.player_id = NEW.player_id
+              AND pa.achievement_id = v_achievement.id
+              AND (
+                  (v_progress_season_id IS NULL AND pa.season_id IS NULL) OR
+                  (pa.season_id = v_progress_season_id)
+              )
+        ) THEN
+            CONTINUE;
+        END IF;
+        
+        -- Check parent achievement (chain logic)
+        IF v_achievement.parent_id IS NOT NULL THEN
+            -- Check if parent was JUST unlocked in this trigger execution
+            IF v_achievement.parent_id = ANY(v_just_unlocked_ids) THEN
+                -- Parent just unlocked! Initialize child with parent's max_progress
+                -- Don't count this goal again - parent already counted it
+                SELECT ad.max_progress INTO v_parent_max_progress
+                FROM kopecht.achievement_definitions ad
+                WHERE ad.id = v_achievement.parent_id;
+                
+                -- Initialize child progress with parent's max_progress
+                v_max_progress := v_achievement.max_progress;
+                v_new_progress := LEAST(v_parent_max_progress, v_max_progress);
+                
+                -- Insert the initialized progress
+                BEGIN
+                    INSERT INTO kopecht.player_achievement_progress (
+                        player_id, achievement_id, current_progress, season_id, updated_at
+                    ) VALUES (
+                        NEW.player_id, v_achievement.id, v_new_progress, v_progress_season_id, NOW()
+                    );
+                EXCEPTION WHEN unique_violation THEN
+                    -- Already exists, update it
+                    IF v_progress_season_id IS NULL THEN
+                        UPDATE kopecht.player_achievement_progress
+                        SET current_progress = GREATEST(current_progress, v_new_progress),
+                            updated_at = NOW()
+                        WHERE player_id = NEW.player_id 
+                          AND achievement_id = v_achievement.id
+                          AND season_id IS NULL;
+                    ELSE
+                        UPDATE kopecht.player_achievement_progress
+                        SET current_progress = GREATEST(current_progress, v_new_progress),
+                            updated_at = NOW()
+                        WHERE player_id = NEW.player_id 
+                          AND achievement_id = v_achievement.id
+                          AND season_id = v_progress_season_id;
+                    END IF;
+                END;
+                
+                -- Check if child is also completed
+                IF v_new_progress >= v_max_progress THEN
+                    BEGIN
+                        INSERT INTO kopecht.player_achievements (
+                            player_id, achievement_id, unlocked_at, season_id, match_id
+                        ) VALUES (
+                            NEW.player_id, v_achievement.id, NOW(), v_progress_season_id, NEW.match_id
+                        );
+                        v_just_unlocked_ids := array_append(v_just_unlocked_ids, v_achievement.id);
+                    EXCEPTION WHEN unique_violation THEN
+                        NULL;
+                    END;
+                END IF;
+                
+                CONTINUE; -- Skip normal increment for this achievement
+            END IF;
+            
+            -- Parent was not just unlocked - check if it was previously unlocked
+            IF NOT EXISTS (
+                SELECT 1 FROM kopecht.player_achievements pa
+                WHERE pa.player_id = NEW.player_id
+                  AND pa.achievement_id = v_achievement.parent_id
+            ) THEN
+                CONTINUE; -- Parent not unlocked, skip this child
+            END IF;
+        END IF;
+        
+        -- Get max_progress
+        v_max_progress := v_achievement.max_progress;
+        
+        -- Increment progress using loop-based upsert pattern
+        LOOP
+            -- Try UPDATE first
+            IF v_progress_season_id IS NULL THEN
+                UPDATE kopecht.player_achievement_progress
+                SET current_progress = LEAST(current_progress + 1, v_max_progress),
+                    updated_at = NOW()
+                WHERE player_id = NEW.player_id 
+                  AND achievement_id = v_achievement.id
+                  AND season_id IS NULL
+                RETURNING current_progress INTO v_new_progress;
+            ELSE
+                UPDATE kopecht.player_achievement_progress
+                SET current_progress = LEAST(current_progress + 1, v_max_progress),
+                    updated_at = NOW()
+                WHERE player_id = NEW.player_id 
+                  AND achievement_id = v_achievement.id
+                  AND season_id = v_progress_season_id
+                RETURNING current_progress INTO v_new_progress;
+            END IF;
+            
+            -- If UPDATE succeeded, exit loop
+            IF FOUND THEN
+                EXIT;
+            END IF;
+            
+            -- Try INSERT
+            BEGIN
+                v_new_progress := LEAST(1, v_max_progress);
+                INSERT INTO kopecht.player_achievement_progress (
+                    player_id, achievement_id, current_progress, season_id, updated_at
+                ) VALUES (
+                    NEW.player_id, v_achievement.id, v_new_progress, v_progress_season_id, NOW()
+                );
+                EXIT;
+            EXCEPTION WHEN unique_violation THEN
+                -- Loop back and try UPDATE again
+                NULL;
+            END;
+        END LOOP;
+        
+        -- Check if achievement should be unlocked
+        IF v_new_progress >= v_max_progress THEN
+            BEGIN
+                INSERT INTO kopecht.player_achievements (
+                    player_id, achievement_id, unlocked_at, season_id, match_id
+                ) VALUES (
+                    NEW.player_id, v_achievement.id, NOW(), v_progress_season_id, NEW.match_id
+                );
+                -- Track that this achievement was just unlocked (for chain children)
+                v_just_unlocked_ids := array_append(v_just_unlocked_ids, v_achievement.id);
+            EXCEPTION WHEN unique_violation THEN
+                -- Already unlocked by another process, ignore
+                NULL;
+            END;
+        END IF;
+        
+    END LOOP;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create the trigger
+CREATE TRIGGER trg_goal_achievement_progress
+    AFTER INSERT ON kopecht.goals
+    FOR EACH ROW
+    EXECUTE FUNCTION kopecht.handle_goal_achievement_progress();
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION kopecht.handle_goal_achievement_progress TO service_role;
