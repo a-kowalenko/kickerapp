@@ -1989,7 +1989,7 @@ INSERT INTO kopecht.achievement_definitions (
     'Win a match with the score 10-9',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'wins'),
     'MATCH_ENDED',
-    '{"type": "threshold", "metric": "close_win", "target": 1, "filters": {"result": "win", "final_score": "10-9"}}',
+    '{"type": "threshold", "metric": "match_won", "target": 1, "filters": {"result": "win", "final_score": "10-9"}}',
     75,
     1,
     false,
@@ -6479,3 +6479,202 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION kopecht.update_player_status_after_match(BIGINT, BIGINT, TEXT, BOOLEAN, INT, INT, INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION kopecht.update_player_status_after_match(BIGINT, BIGINT, TEXT, BOOLEAN, INT, INT, INT) TO service_role;
+
+
+-- ============================================
+-- ROBUST POINT COLLECTOR SYNC TRIGGER
+-- Synchronously updates Point Collector achievements when any achievement is unlocked
+-- Uses absolute values (idempotent) to prevent race conditions and lost webhooks
+-- ============================================
+
+-- Helper function to update a point collector and its chain
+CREATE OR REPLACE FUNCTION kopecht.update_point_collector_progress(
+    p_player_id BIGINT,
+    p_achievement_key TEXT,
+    p_total_points INTEGER,
+    p_season_id BIGINT
+)
+RETURNS VOID AS $$
+DECLARE
+    v_achievement RECORD;
+    v_current_key TEXT := p_achievement_key;
+    v_parent_unlocked BOOLEAN := TRUE;
+BEGIN
+    -- Walk through the chain starting from the base achievement
+    WHILE v_current_key IS NOT NULL AND v_parent_unlocked LOOP
+        -- Get this achievement's details
+        SELECT id, max_progress, parent_id, key INTO v_achievement
+        FROM kopecht.achievement_definitions
+        WHERE key = v_current_key;
+
+        IF v_achievement.id IS NULL THEN
+            EXIT;  -- Achievement not found, stop
+        END IF;
+
+        -- Check if parent is unlocked (for chain achievements)
+        IF v_achievement.parent_id IS NOT NULL THEN
+            IF p_season_id IS NULL THEN
+                SELECT EXISTS(
+                    SELECT 1 FROM kopecht.player_achievements
+                    WHERE player_id = p_player_id
+                    AND achievement_id = v_achievement.parent_id
+                    AND season_id IS NULL
+                ) INTO v_parent_unlocked;
+            ELSE
+                SELECT EXISTS(
+                    SELECT 1 FROM kopecht.player_achievements
+                    WHERE player_id = p_player_id
+                    AND achievement_id = v_achievement.parent_id
+                    AND season_id = p_season_id
+                ) INTO v_parent_unlocked;
+            END IF;
+
+            IF NOT v_parent_unlocked THEN
+                EXIT;  -- Parent not unlocked, can't progress this chain
+            END IF;
+        END IF;
+
+        -- Update or insert progress (idempotent - sets absolute value, only increases)
+        -- Use UPDATE first, then INSERT to handle NULL season_id correctly
+        -- Use absolute value (p_total_points), NOT GREATEST - we calculate the real total each time
+        IF p_season_id IS NULL THEN
+            -- Try UPDATE first for NULL season_id
+            UPDATE kopecht.player_achievement_progress
+            SET current_progress = p_total_points,
+                updated_at = NOW()
+            WHERE player_id = p_player_id 
+              AND achievement_id = v_achievement.id
+              AND season_id IS NULL;
+            
+            -- If no row was updated, insert (no ON CONFLICT needed, we just checked)
+            IF NOT FOUND THEN
+                INSERT INTO kopecht.player_achievement_progress (
+                    player_id, achievement_id, current_progress, season_id, updated_at
+                ) VALUES (
+                    p_player_id, v_achievement.id, p_total_points, NULL, NOW()
+                );
+            END IF;
+        ELSE
+            -- Try UPDATE first for non-NULL season_id too
+            UPDATE kopecht.player_achievement_progress
+            SET current_progress = p_total_points,
+                updated_at = NOW()
+            WHERE player_id = p_player_id 
+              AND achievement_id = v_achievement.id
+              AND season_id = p_season_id;
+            
+            -- If no row was updated, insert
+            IF NOT FOUND THEN
+                INSERT INTO kopecht.player_achievement_progress (
+                    player_id, achievement_id, current_progress, season_id, updated_at
+                ) VALUES (
+                    p_player_id, v_achievement.id, p_total_points, p_season_id, NOW()
+                );
+            END IF;
+        END IF;
+
+        -- Check if this achievement is now completed
+        IF p_total_points >= v_achievement.max_progress THEN
+            -- Try to award achievement (idempotent - uses WHERE NOT EXISTS)
+            IF p_season_id IS NULL THEN
+                INSERT INTO kopecht.player_achievements (
+                    player_id, achievement_id, unlocked_at, season_id
+                )
+                SELECT p_player_id, v_achievement.id, NOW(), NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM kopecht.player_achievements
+                    WHERE player_id = p_player_id
+                    AND achievement_id = v_achievement.id
+                    AND season_id IS NULL
+                );
+            ELSE
+                INSERT INTO kopecht.player_achievements (
+                    player_id, achievement_id, unlocked_at, season_id
+                )
+                SELECT p_player_id, v_achievement.id, NOW(), p_season_id
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM kopecht.player_achievements
+                    WHERE player_id = p_player_id
+                    AND achievement_id = v_achievement.id
+                    AND season_id = p_season_id
+                );
+            END IF;
+        END IF;
+
+        -- Move to next in chain (find child achievement)
+        SELECT key INTO v_current_key
+        FROM kopecht.achievement_definitions
+        WHERE parent_id = v_achievement.id
+        AND key LIKE 'achievement_points_%'
+        LIMIT 1;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Main trigger function
+CREATE OR REPLACE FUNCTION kopecht.sync_point_collector_on_achievement()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_achievement_key TEXT;
+    v_season_points INTEGER;
+    v_global_points INTEGER;
+BEGIN
+    -- Get the key of the achievement that was just unlocked
+    SELECT key INTO v_achievement_key
+    FROM kopecht.achievement_definitions
+    WHERE id = NEW.achievement_id;
+
+    -- Skip if this IS a point collector achievement (prevent infinite loop)
+    -- Also skip if achievement not found
+    IF v_achievement_key IS NULL OR v_achievement_key LIKE 'achievement_points_%' THEN
+        RETURN NEW;
+    END IF;
+
+    -- Calculate season-specific points (only from season-specific achievements in this season)
+    IF NEW.season_id IS NOT NULL THEN
+        SELECT COALESCE(SUM(ad.points), 0) INTO v_season_points
+        FROM kopecht.player_achievements pa
+        JOIN kopecht.achievement_definitions ad ON pa.achievement_id = ad.id
+        WHERE pa.player_id = NEW.player_id
+        AND pa.season_id = NEW.season_id
+        AND ad.is_season_specific = true
+        AND ad.key NOT LIKE 'achievement_points_%';  -- Don't count point collector points
+
+        -- Update season Point Collector chain (5000 -> 10000 -> 25000)
+        PERFORM kopecht.update_point_collector_progress(
+            NEW.player_id,
+            'achievement_points_5000',
+            v_season_points,
+            NEW.season_id
+        );
+    END IF;
+
+    -- Calculate global points (ALL achievements, all time)
+    SELECT COALESCE(SUM(ad.points), 0) INTO v_global_points
+    FROM kopecht.player_achievements pa
+    JOIN kopecht.achievement_definitions ad ON pa.achievement_id = ad.id
+    WHERE pa.player_id = NEW.player_id
+    AND ad.key NOT LIKE 'achievement_points_%';  -- Don't count point collector points
+
+    -- Update global Point Collector chain (15000 -> 50000 -> 100000)
+    PERFORM kopecht.update_point_collector_progress(
+        NEW.player_id,
+        'achievement_points_15000_global',
+        v_global_points,
+        NULL
+    );
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create the trigger (AFTER INSERT to ensure the achievement is already in the table)
+DROP TRIGGER IF EXISTS sync_point_collector_trigger ON kopecht.player_achievements;
+CREATE TRIGGER sync_point_collector_trigger
+    AFTER INSERT ON kopecht.player_achievements
+    FOR EACH ROW
+    EXECUTE FUNCTION kopecht.sync_point_collector_on_achievement();
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION kopecht.sync_point_collector_on_achievement() TO service_role;
+GRANT EXECUTE ON FUNCTION kopecht.update_point_collector_progress(BIGINT, TEXT, INTEGER, BIGINT) TO service_role;

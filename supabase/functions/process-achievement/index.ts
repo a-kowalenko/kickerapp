@@ -1491,8 +1491,15 @@ async function handleAchievementUnlocked(
                 conditionMet = hiddenCount >= (condition.target || 0);
             }
         } else if (condition.metric === "achievement_points") {
-            // Counter type: track total achievement points earned
-            // Get the points of the achievement that was just unlocked
+            // SKIP - Point Collector achievements are now handled by SQL trigger
+            // (sync_point_collector_on_achievement) for reliability
+            // The SQL trigger fires synchronously on player_achievements INSERT
+            // and calculates the absolute total, preventing race conditions
+            console.log(
+                `[achievement_points] Skipping - handled by SQL trigger sync_point_collector_on_achievement`
+            );
+            conditionMet = false;
+            /* OLD CODE - causes double-counting with SQL trigger:
             const { data: unlockedAchievementData } = await supabase
                 .from("achievement_definitions")
                 .select("points")
@@ -1502,14 +1509,12 @@ async function handleAchievementUnlocked(
             const pointsEarned = unlockedAchievementData?.points || 0;
 
             if (condition.type === "counter") {
-                // Increment by the points of the unlocked achievement
                 conditionMet = pointsEarned > 0;
                 increment = pointsEarned;
                 console.log(
                     `[achievement_points] Achievement unlocked with ${pointsEarned} points`
                 );
             } else if (condition.type === "threshold") {
-                // Sum all points earned by this player
                 const { data: allPlayerAchievements } = await supabase
                     .from("player_achievements")
                     .select("achievement:achievement_definitions(points)")
@@ -1525,6 +1530,7 @@ async function handleAchievementUnlocked(
                     `[achievement_points] Player has ${totalPoints} total points`
                 );
             }
+            END OF OLD CODE */
         } else if (condition.metric === "titles_unlocked") {
             // Counter type: track titles unlocked
             // Check if the just-unlocked achievement grants a title reward
@@ -1676,6 +1682,143 @@ async function handleAchievementUnlocked(
 
             if (result === "unlocked") {
                 unlockedMap.set(`${playerId}-${achievement.id}`, true);
+
+                // NOTE: Point Collector updates are now handled by SQL trigger
+                // (sync_point_collector_on_achievement) which fires on player_achievements INSERT
+                // This is more reliable than webhook-based updates which can have race conditions
+                console.log(
+                    `[MetaPoints] Skipping Point Collector update - handled by SQL trigger`
+                );
+
+                /* OLD CODE - disabled to prevent double-counting with SQL trigger:
+                // IMPORTANT: Synchronously add this achievement's points to Point Collector achievements
+                // This prevents the 50-point discrepancy bug where meta-achievement points get lost
+                // because the webhook for the newly unlocked achievement arrives too late
+                const metaAchievementPoints = achievement.points || 0;
+                if (metaAchievementPoints > 0) {
+                    console.log(
+                        `[MetaPoints] Synchronously adding ${metaAchievementPoints} points from meta-achievement ${achievement.key} to Point Collector achievements`
+                    );
+
+                    // Find all Point Collector achievements (metric: achievement_points)
+                    const { data: pointCollectorAchievements } = await supabase
+                        .from("achievement_definitions")
+                        .select("*")
+                        .eq("trigger_event", "ACHIEVEMENT_UNLOCKED");
+
+                    for (const pcAchievement of (pointCollectorAchievements ||
+                        []) as AchievementDefinition[]) {
+                        const pcCondition =
+                            pcAchievement.condition as AchievementCondition;
+                        if (
+                            pcCondition.metric !== "achievement_points" ||
+                            pcCondition.type !== "counter"
+                        ) {
+                            continue;
+                        }
+
+                        // Don't update the achievement that was just unlocked
+                        if (pcAchievement.id === achievement.id) {
+                            continue;
+                        }
+
+                        // Check if parent is unlocked
+                        if (pcAchievement.parent_id) {
+                            const parentKey = `${playerId}-${pcAchievement.parent_id}`;
+                            if (!unlockedMap.has(parentKey)) {
+                                continue;
+                            }
+                        }
+
+                        // Check if already unlocked
+                        const pcAlreadyUnlocked = unlockedMap.has(
+                            `${playerId}-${pcAchievement.id}`
+                        );
+                        if (pcAlreadyUnlocked && !pcAchievement.is_repeatable) {
+                            continue;
+                        }
+
+                        // Determine season_id for this Point Collector achievement
+                        const pcSeasonId = pcAchievement.is_season_specific
+                            ? playerAchievement.season_id
+                            : null;
+
+                        console.log(
+                            `[MetaPoints] Updating ${pcAchievement.key} (season_id: ${pcSeasonId}) with +${metaAchievementPoints} points`
+                        );
+
+                        const pcResult = await updateProgressWithAmount(
+                            supabase,
+                            playerId,
+                            pcAchievement,
+                            pcSeasonId,
+                            playerAchievement.match_id,
+                            pcAlreadyUnlocked,
+                            metaAchievementPoints
+                        );
+
+                        if (pcResult === "unlocked") {
+                            unlockedMap.set(
+                                `${playerId}-${pcAchievement.id}`,
+                                true
+                            );
+                            console.log(
+                                `[MetaPoints] Point Collector ${pcAchievement.key} unlocked!`
+                            );
+                        }
+                    }
+                }
+                END OF OLD CODE */
+
+                // Initialize child achievement progress when parent is unlocked
+                // This ensures chain achievements carry over accumulated progress
+                const { data: childAchievements } = await supabase
+                    .from("achievement_definitions")
+                    .select("id, key, is_season_specific")
+                    .eq("parent_id", achievement.id);
+
+                if (childAchievements && childAchievements.length > 0) {
+                    // Get the actual current progress from the parent (includes overflow)
+                    let parentProgressQuery = supabase
+                        .from("player_achievement_progress")
+                        .select("current_progress")
+                        .eq("player_id", playerId)
+                        .eq("achievement_id", achievement.id);
+
+                    if (progressSeasonId === null) {
+                        parentProgressQuery = parentProgressQuery.is(
+                            "season_id",
+                            null
+                        );
+                    } else {
+                        parentProgressQuery = parentProgressQuery.eq(
+                            "season_id",
+                            progressSeasonId
+                        );
+                    }
+
+                    const { data: parentProgress } =
+                        await parentProgressQuery.maybeSingle();
+                    const actualProgress =
+                        parentProgress?.current_progress ||
+                        achievement.max_progress;
+
+                    for (const child of childAchievements) {
+                        const childSeasonId = child.is_season_specific
+                            ? progressSeasonId
+                            : null;
+                        await initializeChainProgress(
+                            supabase,
+                            playerId,
+                            child.id,
+                            actualProgress,
+                            childSeasonId
+                        );
+                        console.log(
+                            `[MetaChain] Initialized child ${child.key} with progress: ${actualProgress}`
+                        );
+                    }
+                }
             }
         }
     }
@@ -2524,6 +2667,9 @@ async function evaluateMatchCondition(
 
         switch (metric) {
             case "wins":
+            case "match_won":
+                // Both check if player won the match
+                // The filters (like final_score) are already applied above
                 return ctx.isWinner;
             case "losses":
                 return ctx.isLoser;
