@@ -148,7 +148,9 @@ function Header() {
                             <HiArrowRightOnRectangle />
                         </ButtonIcon>
                     )}
-                    <SoundToggle />
+                </DesktopOnly>
+                <SoundToggle />
+                <DesktopOnly>
                     <DarkModeToggle />
                 </DesktopOnly>
                 <ProfileMenu />
