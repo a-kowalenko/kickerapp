@@ -358,6 +358,12 @@ export function usePlayerStatusForAvatar(playerId) {
         0
     );
 
+    // Extract bounty per gamemode
+    const bounty1on1 =
+        statuses?.find((s) => s.gamemode === "1on1")?.current_bounty || 0;
+    const bounty2on2 =
+        statuses?.find((s) => s.gamemode === "2on2")?.current_bounty || 0;
+
     // Get best streak (highest absolute value)
     const bestStreak = (statuses || []).reduce((best, s) => {
         const streak = s.current_streak || 0;
@@ -373,6 +379,8 @@ export function usePlayerStatusForAvatar(playerId) {
         allActiveStatuses: allActiveStatusKeys, // snake_case keys from DB
         displayableStatuses, // camelCase asset_keys after filtering
         totalBounty,
+        bounty1on1,
+        bounty2on2,
         bestStreak,
 
         // For Avatar component - array of asset keys to display

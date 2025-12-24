@@ -144,7 +144,7 @@ function MatchesRow({ match }) {
                     )}
                     {isDesktop && (
                         <Avatar
-                            $size="xs"
+                            $size="small"
                             src={player1.avatar || DEFAULT_AVATAR}
                         />
                     )}
@@ -168,7 +168,7 @@ function MatchesRow({ match }) {
                         )}
                         {isDesktop && (
                             <Avatar
-                                $size="xs"
+                                $size="small"
                                 src={player3.avatar || DEFAULT_AVATAR}
                             />
                         )}
@@ -192,7 +192,7 @@ function MatchesRow({ match }) {
                 >
                     {isDesktop && (
                         <Avatar
-                            $size="xs"
+                            $size="small"
                             src={player2.avatar || DEFAULT_AVATAR}
                         />
                     )}
@@ -220,7 +220,7 @@ function MatchesRow({ match }) {
                     >
                         {isDesktop && (
                             <Avatar
-                                $size="xs"
+                                $size="small"
                                 src={player4?.avatar || DEFAULT_AVATAR}
                             />
                         )}

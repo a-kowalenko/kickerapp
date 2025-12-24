@@ -1,4 +1,6 @@
 import styled, { css, keyframes } from "styled-components";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
 
 // Asset Imports - GIFs
@@ -59,7 +61,7 @@ const SIZE_CONFIG = {
    Jede Größe hat: scale, top, bottom, left, right, visible
 ----------------------------------------- */
 const DEFAULT_EFFECT_SIZE_CONFIG = {
-    xs: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: false },
+    xs: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
     small: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
     medium: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
     large: { scale: 1.0, top: 0, bottom: 0, left: 0, right: 0, visible: true },
@@ -1317,6 +1319,255 @@ const FrameOverlay = styled.div`
 `;
 
 /* ----------------------------------------
+   Bounty Indicator Configuration
+   Size tiers based on total bounty amount:
+   1-5: small, 6-10: medium, 11-20: large, 21+: xlarge
+----------------------------------------- */
+const BOUNTY_SIZE_CONFIG = {
+    xs: {
+        small: { fontSize: "1rem", bottom: "-4px", left: "-4px" },
+        medium: { fontSize: "1.2rem", bottom: "-6px", left: "-6px" },
+        large: { fontSize: "1.5rem", bottom: "-8px", left: "-8px" },
+        xlarge: { fontSize: "1.9rem", bottom: "-10px", left: "-10px" },
+    },
+    small: {
+        small: { fontSize: "1.4rem", bottom: "-6px", left: "-6px" },
+        medium: { fontSize: "1.6rem", bottom: "-8px", left: "-8px" },
+        large: { fontSize: "1.9rem", bottom: "-10px", left: "-10px" },
+        xlarge: { fontSize: "2.2rem", bottom: "-12px", left: "-12px" },
+    },
+    medium: {
+        small: { fontSize: "1.4rem", bottom: "-4px", left: "-4px" },
+        medium: { fontSize: "1.6rem", bottom: "-5px", left: "-5px" },
+        large: { fontSize: "1.8rem", bottom: "-6px", left: "-6px" },
+        xlarge: { fontSize: "2rem", bottom: "-7px", left: "-7px" },
+    },
+    large: {
+        small: { fontSize: "1.8rem", bottom: "-6px", left: "-6px" },
+        medium: { fontSize: "2.2rem", bottom: "-8px", left: "-8px" },
+        large: { fontSize: "2.6rem", bottom: "-10px", left: "-10px" },
+        xlarge: { fontSize: "3rem", bottom: "-12px", left: "-12px" },
+    },
+    huge: {
+        small: { fontSize: "3rem", bottom: "-10px", left: "-10px" },
+        medium: { fontSize: "3.6rem", bottom: "-14px", left: "-14px" },
+        large: { fontSize: "4.2rem", bottom: "-18px", left: "-18px" },
+        xlarge: { fontSize: "5rem", bottom: "-22px", left: "-22px" },
+    },
+};
+
+const getBountyTier = (totalBounty) => {
+    if (totalBounty >= 21) return "xlarge";
+    if (totalBounty >= 11) return "large";
+    if (totalBounty >= 6) return "medium";
+    return "small";
+};
+
+/* ----------------------------------------
+   Bounty Emoji Overlay
+----------------------------------------- */
+const BountyEmoji = styled.span`
+    position: absolute;
+    z-index: 13;
+    cursor: pointer;
+    user-select: none;
+    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.3));
+    transition: transform 0.2s ease;
+
+    &:hover {
+        transform: scale(1.2);
+    }
+`;
+
+/* ----------------------------------------
+   Bounty Tooltip Styles
+----------------------------------------- */
+const tooltipFadeIn = keyframes`
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+`;
+
+const BountyTooltipContainer = styled.div`
+    position: fixed;
+    z-index: 10000;
+    animation: ${tooltipFadeIn} 0.2s ease;
+    pointer-events: none;
+`;
+
+const BountyTooltipContent = styled.div`
+    background-color: var(--color-grey-0);
+    border: 1px solid var(--secondary-border-color);
+    border-radius: var(--border-radius-md);
+    padding: 0.8rem 1.2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+    min-width: 12rem;
+`;
+
+const BountyTooltipHeader = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--secondary-border-color);
+`;
+
+const BountyTooltipIcon = styled.span`
+    font-size: 1.6rem;
+`;
+
+const BountyTooltipTitle = styled.span`
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--primary-text-color);
+`;
+
+const BountyTooltipRow = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    font-size: 1.2rem;
+`;
+
+const BountyGamemode = styled.span`
+    color: var(--secondary-text-color);
+`;
+
+const BountyValue = styled.span`
+    font-weight: 600;
+    color: var(--color-yellow-600);
+`;
+
+const BountyTooltipArrow = styled.div`
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid var(--secondary-border-color);
+
+    &::after {
+        content: "";
+        position: absolute;
+        top: 1px;
+        left: -5px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 5px solid var(--color-grey-0);
+    }
+`;
+
+/* ----------------------------------------
+   BountyIndicator Component
+   Shows a 💰 emoji when player has active bounty
+   Includes tooltip with bounty breakdown by gamemode
+----------------------------------------- */
+function BountyIndicator({ bountyData, avatarSize }) {
+    const [isHovered, setIsHovered] = useState(false);
+    const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+    const emojiRef = useRef(null);
+
+    const bounty1on1 = bountyData?.bounty1on1 || 0;
+    const bounty2on2 = bountyData?.bounty2on2 || 0;
+    const totalBounty = bounty1on1 + bounty2on2;
+
+    // Don't render if no bounty
+    if (totalBounty === 0) return null;
+
+    const sizeConfig = BOUNTY_SIZE_CONFIG[avatarSize];
+    if (!sizeConfig) return null;
+
+    const bountyTier = getBountyTier(totalBounty);
+    const tierConfig = sizeConfig[bountyTier];
+
+    const handleMouseEnter = () => {
+        if (emojiRef.current) {
+            const rect = emojiRef.current.getBoundingClientRect();
+            const tooltipWidth = 140;
+            let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+
+            // Keep tooltip within viewport
+            if (left < 8) left = 8;
+            if (left + tooltipWidth > window.innerWidth - 8) {
+                left = window.innerWidth - tooltipWidth - 8;
+            }
+
+            setTooltipPos({
+                top: rect.bottom + 8,
+                left,
+            });
+        }
+        setIsHovered(true);
+    };
+
+    const handleMouseLeave = () => {
+        setIsHovered(false);
+    };
+
+    return (
+        <>
+            <BountyEmoji
+                ref={emojiRef}
+                style={{
+                    fontSize: tierConfig.fontSize,
+                    bottom: tierConfig.bottom,
+                    left: tierConfig.left,
+                }}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+            >
+                💰
+            </BountyEmoji>
+
+            {isHovered &&
+                createPortal(
+                    <BountyTooltipContainer
+                        style={{
+                            top: tooltipPos.top,
+                            left: tooltipPos.left,
+                        }}
+                    >
+                        <BountyTooltipContent>
+                            <BountyTooltipArrow />
+                            <BountyTooltipHeader>
+                                <BountyTooltipIcon>💰</BountyTooltipIcon>
+                                <BountyTooltipTitle>
+                                    Active Bounty
+                                </BountyTooltipTitle>
+                            </BountyTooltipHeader>
+                            {bounty1on1 > 0 && (
+                                <BountyTooltipRow>
+                                    <BountyGamemode>1on1</BountyGamemode>
+                                    <BountyValue>{bounty1on1}</BountyValue>
+                                </BountyTooltipRow>
+                            )}
+                            {bounty2on2 > 0 && (
+                                <BountyTooltipRow>
+                                    <BountyGamemode>2on2</BountyGamemode>
+                                    <BountyValue>{bounty2on2}</BountyValue>
+                                </BountyTooltipRow>
+                            )}
+                        </BountyTooltipContent>
+                    </BountyTooltipContainer>,
+                    document.body
+                )}
+        </>
+    );
+}
+
+/* ----------------------------------------
    Öffentliche Avatar-Komponente
    Props:
    - player: object - Player-Objekt mit id, avatar, status und rewards (optional)
@@ -1327,6 +1578,7 @@ const FrameOverlay = styled.div`
    - $frameUrl: string - URL für den Rahmen (Reward-Frame)
    - showStatusEffects: boolean - Ob Status-Effekte angezeigt werden sollen (default: true)
    - showStatus: boolean - Ob Status automatisch vom Server geladen werden soll (default: false)
+   - bountyData: { bounty1on1: number, bounty2on2: number } - Bounty data for indicator (optional)
    - ...rest: alle anderen img-Props (alt, etc.)
    
    Priorität: Explizite Props (src, $status, $frameUrl) überschreiben player-Werte
@@ -1341,6 +1593,12 @@ const FrameOverlay = styled.div`
    - Lädt Status aus BEIDEN Gamemodes (1on1 und 2on2)
    - Kombiniert und filtert nach Display-Regeln
    - z.B. hotStreak + dominator werden zusammen angezeigt
+   
+   Bounty Indicator:
+   - Shows 💰 emoji when bountyData has bounty > 0
+   - Hidden on xs size avatars
+   - Emoji size scales with total bounty (1-5: small, 6-10: medium, 11-20: large, 21+: xlarge)
+   - Tooltip shows breakdown by gamemode (only gamemodes with bounty > 0)
 ----------------------------------------- */
 const Avatar = ({
     player,
@@ -1351,6 +1609,7 @@ const Avatar = ({
     $cursor = "none",
     showStatusEffects = true,
     showStatus = false,
+    bountyData = null,
     ...props
 }) => {
     // Lade Status vom Server wenn showStatus=true und player.id vorhanden
@@ -1468,6 +1727,9 @@ const Avatar = ({
             />
             {frameUrl && (
                 <FrameOverlay $frameUrl={frameUrl} $avatarSize={$size} />
+            )}
+            {bountyData && (
+                <BountyIndicator bountyData={bountyData} avatarSize={$size} />
             )}
         </AvatarWrapper>
     );

@@ -15,6 +15,7 @@ import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
 import { DEFAULT_AVATAR, MAX_COMMENT_LENGTH } from "../../utils/constants";
+import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
 
 // Quick reaction emojis (Discord-style)
 const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
@@ -317,6 +318,11 @@ function Comment({
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const addReactionRef = useRef(null);
 
+    // Load bounty data for the comment author (always show if any gamemode has bounty)
+    const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(
+        comment.player?.id
+    );
+
     const isAuthor = comment.player_id === currentPlayerId;
     const canEdit = isAuthor;
     const canDelete = isAdmin;
@@ -431,10 +437,13 @@ function Comment({
             {!isGrouped && (
                 <Link to={`/user/${comment.player?.name}/profile`}>
                     <Avatar
+                        player={comment.player}
+                        showStatus={true}
                         $size="small"
                         src={comment.player?.avatar || DEFAULT_AVATAR}
                         alt={comment.player?.name}
                         $cursor="pointer"
+                        bountyData={{ bounty1on1, bounty2on2 }}
                     />
                 </Link>
             )}

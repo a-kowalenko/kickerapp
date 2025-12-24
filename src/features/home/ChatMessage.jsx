@@ -17,6 +17,7 @@ import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
 import { DEFAULT_AVATAR, MAX_CHAT_MESSAGE_LENGTH } from "../../utils/constants";
+import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
 
 // Quick reaction emojis (Discord-style)
 const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
@@ -416,6 +417,11 @@ function ChatMessage({
     const containerRef = useRef(null);
     const addReactionRef = useRef(null);
 
+    // Load bounty data for the message author (always show if any gamemode has bounty)
+    const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(
+        message.player?.id
+    );
+
     const isAuthor = message.player_id === currentPlayerId;
     const canEdit = isAuthor;
     const canDelete = isAdmin;
@@ -607,6 +613,7 @@ function ChatMessage({
                         src={message.player?.avatar || DEFAULT_AVATAR}
                         alt={message.player?.name}
                         $cursor="pointer"
+                        bountyData={{ bounty1on1, bounty2on2 }}
                     />
                 </Link>
             )}
