@@ -1723,20 +1723,39 @@ INSERT INTO kopecht.achievement_definitions (
     false
 ) ON CONFLICT (key) DO NOTHING;
 
--- Undefeated Season
+-- Undefeated Season 1on1
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
-    points, max_progress, is_hidden, is_repeatable
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
 ) VALUES (
-    'undefeated_season', 
-    'Undefeated', 
-    'Finish a season without losing a single match',
+    'undefeated_season_1on1', 
+    'Undefeated (1on1)', 
+    'Finish a 1on1 season without losing a single match',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'season'),
     'SEASON_ENDED',
-    '{"type": "threshold", "metric": "losses", "target": 0}',
+    '{"type": "threshold", "metric": "losses", "target": 0, "filters": {"gamemode": "1on1"}}',
     1000,
     1,
     true,
+    false,
+    false
+) ON CONFLICT (key) DO NOTHING;
+
+-- Undefeated Season 2on2
+INSERT INTO kopecht.achievement_definitions (
+    key, name, description, category_id, trigger_event, condition, 
+    points, max_progress, is_hidden, is_repeatable, is_season_specific
+) VALUES (
+    'undefeated_season_2on2', 
+    'Undefeated (2on2)', 
+    'Finish a 2on2 season without losing a single match',
+    (SELECT id FROM kopecht.achievement_categories WHERE key = 'season'),
+    'SEASON_ENDED',
+    '{"type": "threshold", "metric": "losses", "target": 0, "filters": {"gamemode": "2on2"}}',
+    1000,
+    1,
+    true,
+    false,
     false
 ) ON CONFLICT (key) DO NOTHING;
 

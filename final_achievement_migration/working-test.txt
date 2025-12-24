@@ -71,7 +71,7 @@
 ✅🏆	mmr_2on2_1300	Expert (2on2)	Skill	MATCH_ENDED	200	1		
 🏆	mmr_2on2_1400	Elite (2on2)	Skill	MATCH_ENDED	400	1		
 🏆	mmr_2on2_1500	Grandmaster (2on2)	Skill	MATCH_ENDED	1000	1		
-🏆	giant_slayer_1on1	Giant Slayer (1on1)	Skill	MATCH_ENDED	100	1		
+✅🏆	giant_slayer_1on1	Giant Slayer (1on1)	Skill	MATCH_ENDED	100	1		
 🏆	giant_slayer_2on2	Giant Slayer (2on2)	Skill	MATCH_ENDED	100	1		
 🏆	playtime_8h	Time Flies	Playtime	MATCH_ENDED	50	28800		
 🏆	playtime_16h	Dedicated Player	Playtime	MATCH_ENDED	100	57600		
@@ -95,7 +95,7 @@
 ✅🏆	win_streak_10_1on1	On Fire (1on1)	Streaks	MATCH_ENDED	200	1		
 ✅🏆	win_streak_15_1on1	Unstoppable (1on1)	Streaks	MATCH_ENDED	300	1		
 ✅🏆	win_streak_10_2on2	On Fire (2on2)	Streaks	MATCH_ENDED	200	1		
-🏆	win_streak_15_2on2	Unstoppable (2on2)	Streaks	MATCH_ENDED	300	1		
+✅🏆	win_streak_15_2on2	Unstoppable (2on2)	Streaks	MATCH_ENDED	300	1		
 ✅🏆	streak_breaker_1on1	Streak Breaker (1on1)	Streaks	MATCH_ENDED	100	1		
 ✅🏆	streak_breaker_2on2	Streak Breaker (2on2)	Streaks	MATCH_ENDED	100	1		
 ✅🏆	goals_25_in_day	Sharpshooter	Goals	GOAL_SCORED	75	1		
@@ -139,11 +139,11 @@
 🏆	after_meeting_party_10	After Meeting Rookie	Matches	MATCH_ENDED	75	10		
 🏆	after_meeting_party_25	After Meeting Regular	Matches	MATCH_ENDED	150	25		
 🏆	after_meeting_party_50	After Meeting Legend	Matches	MATCH_ENDED	300	50		
-🏆	undefeated_season	Undefeated	Season	SEASON_ENDED	1000	1	Secret	
-🏆	season_podium_1on1	On the Podium (1on1)	Season	SEASON_ENDED	200	1		
-🏆	season_podium_2on2	On the Podium (2on2)	Season	SEASON_ENDED	200	1		
-🏆	season_champion_1on1	Season Champion (1on1)	Season	SEASON_ENDED	500	1		
-🏆	season_champion_2on2	Season Champion (2on2)	Season	SEASON_ENDED	500	1		
+✅🏆	undefeated_season	Undefeated	Season	SEASON_ENDED	1000	1	Secret	
+✅🏆	season_podium_1on1	On the Podium (1on1)	Season	SEASON_ENDED	200	1		
+✅🏆	season_podium_2on2	On the Podium (2on2)	Season	SEASON_ENDED	200	1		
+✅🏆	season_champion_1on1	Season Champion (1on1)	Season	SEASON_ENDED	500	1		
+✅🏆	season_champion_2on2	Season Champion (2on2)	Season	SEASON_ENDED	500	1		
 🏆	matches_500_alltime_1on1	Veteran (1on1)	Matches	MATCH_ENDED	300	500		
 🏆	matches_1000_alltime_1on1	Legend (1on1)	Matches	MATCH_ENDED	500	1000		
 🏆	matches_500_alltime_2on2	Veteran (2on2)	Matches	MATCH_ENDED	300	500		
@@ -172,7 +172,7 @@
 🏆	bounty_hunter_25	Bounty Hunter III	Streaks	bounty_claimed	50	25		
 ✅🏆	wanted_1	Wanted!	Streaks	win_streak	10	1		
 ✅🏆	bounty_collected_50	Small Catch	Streaks	bounty_claimed	15	50		
-🏆	bounty_collected_100	Big Catch	Streaks	bounty_claimed	30	100		
+✅🏆	bounty_collected_100	Big Catch	Streaks	bounty_claimed	30	100		
 🏆	bounty_collected_250	Legendary Hunter	Streaks	bounty_claimed	50	250		
 ✅🏆	bounty_earned_25	Prize Winner	Streaks	bounty_gained	10	25		
 ✅🏆	bounty_earned_75	Most Wanted	Streaks	bounty_gained	25	75		
@@ -198,9 +198,9 @@
 ✅🏆	secrets_10_global	Global Secret Seeker	Meta	ACHIEVEMENT_UNLOCKED	200	10		
 🏆	secrets_25_global	Global Secret Hunter	Meta	ACHIEVEMENT_UNLOCKED	350	25		
 🏆	secrets_50_global	Global Secret Master	Meta	ACHIEVEMENT_UNLOCKED	500	50		
-🏆	season_champion_3x_1on1	Dynasty (1on1)	Season	SEASON_ENDED	500	3		
+✅🏆	season_champion_3x_1on1	Dynasty (1on1)	Season	SEASON_ENDED	500	3		
 🏆	season_champion_3x_2on2	Dynasty (2on2)	Season	SEASON_ENDED	500	3		
-🏆	season_podium_5x_1on1	Podium Regular (1on1)	Season	SEASON_ENDED	400	5		
-🏆	season_podium_5x_2on2	Podium Regular (2on2)	Season	SEASON_ENDED	400	5		
-🏆	season_last_1on1	Rock Bottom (1on1)	Secret	SEASON_ENDED	10	1	Secret	
-🏆	season_last_2on2	Rock Bottom (2on2)	Secret	SEASON_ENDED	10	1	Secret
+✅🏆	season_podium_5x_1on1	Podium Regular (1on1)	Season	SEASON_ENDED	400	5		
+✅🏆	season_podium_5x_2on2	Podium Regular (2on2)	Season	SEASON_ENDED	400	5		
+✅🏆	season_last_1on1	Rock Bottom (1on1)	Secret	SEASON_ENDED	10	1	Secret	
+✅🏆	season_last_2on2	Rock Bottom (2on2)	Secret	SEASON_ENDED	10	1	Secret

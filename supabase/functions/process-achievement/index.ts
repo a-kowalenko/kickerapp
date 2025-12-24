@@ -54,7 +54,7 @@ interface GoalRecord {
 interface SeasonRecord {
     id: number;
     name: string;
-    status: string;
+    is_active: boolean;
     kicker_id: number;
     start_date: string;
     end_date: string | null;
@@ -1131,8 +1131,9 @@ async function handleSeasonEnded(
     const oldSeason = payload.old_record;
 
     // Check if this is a season that just ended
+    // Season ends when is_active changes from true to false
     const seasonJustEnded =
-        season.status === "ended" && oldSeason && oldSeason.status !== "ended";
+        !season.is_active && oldSeason && oldSeason.is_active === true;
 
     if (!seasonJustEnded) {
         return jsonResponse({ message: "Season not just ended, skipping" });
@@ -1161,61 +1162,222 @@ async function handleSeasonEnded(
         `Found ${achievements.length} SEASON_ENDED achievements to evaluate`
     );
 
-    // Get all players who participated in this season (from season_end_history or rankings)
-    const { data: seasonPlayers } = await supabase
-        .from("season_end_history")
-        .select("player_id, mmr, wins, losses, rank, gamemode")
-        .eq("season_id", season.id)
-        .eq("kicker_id", season.kicker_id);
+    // MINIMUM 10 matches required to be eligible for season achievements
+    const MIN_MATCHES_FOR_RANKING = 10;
 
-    if (!seasonPlayers || seasonPlayers.length === 0) {
+    // Get all players who participated in this season from season_rankings
+    console.log(
+        `[SEASON_ENDED] Querying season_rankings for season_id=${season.id}`
+    );
+    const { data: seasonRankings, error: seasonRankingsError } = await supabase
+        .from("season_rankings")
+        .select("player_id, wins, losses, mmr, wins2on2, losses2on2, mmr2on2")
+        .eq("season_id", season.id);
+
+    if (seasonRankingsError) {
+        console.error(
+            "[SEASON_ENDED] Error fetching season_rankings:",
+            seasonRankingsError
+        );
+        return jsonResponse(
+            {
+                error: "Failed to fetch season players",
+                details: seasonRankingsError.message,
+            },
+            500
+        );
+    }
+
+    console.log(
+        `[SEASON_ENDED] Found ${
+            seasonRankings?.length || 0
+        } player entries in season_rankings`
+    );
+
+    if (!seasonRankings || seasonRankings.length === 0) {
         return jsonResponse({ message: "No players found for this season" });
     }
 
-    const playerIds = seasonPlayers.map((p: any) => p.player_id);
+    // Transform season_rankings into player entries per gamemode
+    // ONLY players with >= MIN_MATCHES_FOR_RANKING matches are eligible for rankings
+    interface SeasonPlayerData {
+        player_id: number;
+        gamemode: string;
+        wins: number;
+        losses: number;
+        mmr: number;
+        rank: number;
+        total_matches: number;
+    }
+
+    // Calculate ranks for 1on1 - ONLY players with >= 10 matches
+    const eligible1on1 = seasonRankings
+        .filter(
+            (p: any) =>
+                (p.wins || 0) + (p.losses || 0) >= MIN_MATCHES_FOR_RANKING
+        )
+        .map((p: any) => ({
+            player_id: p.player_id,
+            gamemode: "1on1",
+            wins: p.wins || 0,
+            losses: p.losses || 0,
+            mmr: p.mmr || 1000,
+            total_matches: (p.wins || 0) + (p.losses || 0),
+            rank: 0,
+        }))
+        .sort((a: any, b: any) => b.mmr - a.mmr); // Sort by MMR descending
+
+    eligible1on1.forEach((p: any, idx: number) => {
+        p.rank = idx + 1;
+    });
+
+    // Calculate ranks for 2on2 - ONLY players with >= 10 matches
+    const eligible2on2 = seasonRankings
+        .filter(
+            (p: any) =>
+                (p.wins2on2 || 0) + (p.losses2on2 || 0) >=
+                MIN_MATCHES_FOR_RANKING
+        )
+        .map((p: any) => ({
+            player_id: p.player_id,
+            gamemode: "2on2",
+            wins: p.wins2on2 || 0,
+            losses: p.losses2on2 || 0,
+            mmr: p.mmr2on2 || 1000,
+            total_matches: (p.wins2on2 || 0) + (p.losses2on2 || 0),
+            rank: 0,
+        }))
+        .sort((a: any, b: any) => b.mmr - a.mmr); // Sort by MMR descending
+
+    eligible2on2.forEach((p: any, idx: number) => {
+        p.rank = idx + 1;
+    });
+
+    // Combine all ELIGIBLE player entries (only those with >= 10 matches)
+    const seasonPlayers: SeasonPlayerData[] = [
+        ...eligible1on1,
+        ...eligible2on2,
+    ];
+
+    console.log(
+        `[SEASON_ENDED] Created ${seasonPlayers.length} ELIGIBLE player-gamemode entries ` +
+            `(${eligible1on1.length} 1on1, ${eligible2on2.length} 2on2) with >= ${MIN_MATCHES_FOR_RANKING} matches`
+    );
+
+    if (seasonPlayers.length === 0) {
+        return jsonResponse({
+            message: `No players with >= ${MIN_MATCHES_FOR_RANKING} matches found for this season`,
+        });
+    }
+
+    const playerIds = [...new Set(seasonPlayers.map((p: any) => p.player_id))];
     const unlockedMap = await getUnlockedMap(supabase, playerIds);
 
-    // Fetch historical data for all-time season achievements
-    // Get champion count (rank 1) and podium count (rank 1-3) for each player per gamemode
-    const { data: historicalData } = await supabase
-        .from("season_end_history")
-        .select("player_id, rank, gamemode, wins, losses")
-        .eq("kicker_id", season.kicker_id)
+    // For historical champion/podium counts, query ALL past seasons' rankings
+    // We need to calculate ranks for each past season to count how many times each player was champion/podium
+    console.log(
+        `[SEASON_ENDED] Querying historical season_rankings for all past seasons`
+    );
+    const { data: allSeasonRankings, error: allSeasonsError } = await supabase
+        .from("season_rankings")
+        .select(
+            "player_id, season_id, wins, losses, mmr, wins2on2, losses2on2, mmr2on2"
+        )
         .in("player_id", playerIds);
 
-    // Build lookup for champion/podium counts per player per gamemode
+    if (allSeasonsError) {
+        console.error(
+            "[SEASON_ENDED] Error fetching historical rankings:",
+            allSeasonsError
+        );
+    }
+
+    // Group rankings by season to calculate historical ranks
+    const rankingsBySeason = new Map<number, any[]>();
+    for (const r of allSeasonRankings || []) {
+        if (!rankingsBySeason.has(r.season_id)) {
+            rankingsBySeason.set(r.season_id, []);
+        }
+        rankingsBySeason.get(r.season_id)!.push(r);
+    }
+
+    // Calculate champion/podium counts per player per gamemode across ALL seasons
     const playerHistoryMap = new Map<
         string,
         { champion_count: number; podium_count: number }
     >();
-    for (const record of historicalData || []) {
-        const key = `${record.player_id}-${record.gamemode}`;
+
+    // Initialize counts for all current season players
+    for (const player of seasonPlayers) {
+        const key = `${player.player_id}-${player.gamemode}`;
         if (!playerHistoryMap.has(key)) {
             playerHistoryMap.set(key, { champion_count: 0, podium_count: 0 });
         }
-        const stats = playerHistoryMap.get(key)!;
-        if (record.rank === 1) {
-            stats.champion_count++;
-            stats.podium_count++;
-        } else if (record.rank <= 3) {
-            stats.podium_count++;
-        }
     }
 
-    // Find last place players (per gamemode) with minimum 10 matches
+    // Process each past season to count champions/podiums
+    for (const [seasonId, rankings] of rankingsBySeason) {
+        // Calculate 1on1 ranks for this season (only players with >= 10 matches)
+        const season1on1 = rankings
+            .filter(
+                (p: any) =>
+                    (p.wins || 0) + (p.losses || 0) >= MIN_MATCHES_FOR_RANKING
+            )
+            .sort((a: any, b: any) => (b.mmr || 1000) - (a.mmr || 1000));
+
+        season1on1.forEach((p: any, idx: number) => {
+            const rank = idx + 1;
+            const key = `${p.player_id}-1on1`;
+            if (playerHistoryMap.has(key)) {
+                const stats = playerHistoryMap.get(key)!;
+                if (rank === 1) {
+                    stats.champion_count++;
+                    stats.podium_count++;
+                } else if (rank <= 3) {
+                    stats.podium_count++;
+                }
+            }
+        });
+
+        // Calculate 2on2 ranks for this season (only players with >= 10 matches)
+        const season2on2 = rankings
+            .filter(
+                (p: any) =>
+                    (p.wins2on2 || 0) + (p.losses2on2 || 0) >=
+                    MIN_MATCHES_FOR_RANKING
+            )
+            .sort(
+                (a: any, b: any) => (b.mmr2on2 || 1000) - (a.mmr2on2 || 1000)
+            );
+
+        season2on2.forEach((p: any, idx: number) => {
+            const rank = idx + 1;
+            const key = `${p.player_id}-2on2`;
+            if (playerHistoryMap.has(key)) {
+                const stats = playerHistoryMap.get(key)!;
+                if (rank === 1) {
+                    stats.champion_count++;
+                    stats.podium_count++;
+                } else if (rank <= 3) {
+                    stats.podium_count++;
+                }
+            }
+        });
+    }
+
+    // Find last place players (per gamemode) - only among eligible players
     const lastPlaceByGamemode = new Map<
         string,
         { player_id: number; rank: number; total_matches: number }
     >();
     for (const player of seasonPlayers) {
         const key = player.gamemode;
-        const totalMatches = (player.wins || 0) + (player.losses || 0);
         const current = lastPlaceByGamemode.get(key);
         if (!current || player.rank > current.rank) {
             lastPlaceByGamemode.set(key, {
                 player_id: player.player_id,
                 rank: player.rank,
-                total_matches: totalMatches,
+                total_matches: player.total_matches,
             });
         }
     }
@@ -1234,26 +1396,33 @@ async function handleSeasonEnded(
             podium_count: 0,
         };
 
-        // Check if this player is last place in their gamemode (with min 10 matches)
+        // Check if this player is last place in their gamemode
+        // All players in seasonPlayers already have >= MIN_MATCHES_FOR_RANKING
         const lastPlace = lastPlaceByGamemode.get(playerData.gamemode);
-        const totalMatches = (playerData.wins || 0) + (playerData.losses || 0);
         const isLast =
-            lastPlace &&
-            lastPlace.player_id === playerData.player_id &&
-            totalMatches >= 10;
+            lastPlace && lastPlace.player_id === playerData.player_id;
+
+        // Check what the player achieved in THIS season (not historical)
+        const isChampionThisSeason = playerData.rank === 1;
+        const isPodiumThisSeason = playerData.rank <= 3;
 
         // Create enriched player data object
         const enrichedPlayerData = {
             ...playerData,
+            // Historical counts for threshold achievements like "3x champion"
             champion_count: historicalStats.champion_count,
             podium_count: historicalStats.podium_count,
+            // Current season status for progress tracking
+            is_champion_this_season: isChampionThisSeason,
+            is_podium_this_season: isPodiumThisSeason,
             is_last: isLast,
-            total_matches: totalMatches,
         };
 
         console.log(
             `[SEASON_ENDED] Player ${playerData.player_id} gamemode ${playerData.gamemode}: ` +
-                `rank=${playerData.rank}, champion_count=${historicalStats.champion_count}, ` +
+                `rank=${playerData.rank}, total_matches=${playerData.total_matches}, ` +
+                `isChampionThisSeason=${isChampionThisSeason}, isPodiumThisSeason=${isPodiumThisSeason}, ` +
+                `historical: champion_count=${historicalStats.champion_count}, ` +
                 `podium_count=${historicalStats.podium_count}, is_last=${isLast}`
         );
 
@@ -1267,11 +1436,6 @@ async function handleSeasonEnded(
             const condition = achievement.condition as AchievementCondition;
             const filters = (condition as any).filters || {};
             if (filters.gamemode && filters.gamemode !== playerData.gamemode) {
-                continue;
-            }
-
-            // Check minimum matches filter for last place achievement
-            if (filters.min_matches && totalMatches < filters.min_matches) {
                 continue;
             }
 
@@ -1294,7 +1458,12 @@ async function handleSeasonEnded(
             // Evaluate season condition with enriched data
             const conditionMet = evaluateSeasonCondition(
                 achievement.condition,
-                enrichedPlayerData
+                enrichedPlayerData,
+                achievement
+            );
+
+            console.log(
+                `[SEASON_ENDED] Achievement ${achievement.key} for player ${playerData.player_id}: conditionMet=${conditionMet}`
             );
 
             if (conditionMet) {
@@ -2576,7 +2745,13 @@ async function evaluateMatchCondition(
 
     // Check gamemode filter
     // Skip for historical metrics that query across gamemodes - they handle filtering internally
-    const historicalMetrics = ['matches_in_day', 'wins_in_day', 'playtime_in_day', 'matches_in_time_window', 'matches_total'];
+    const historicalMetrics = [
+        "matches_in_day",
+        "wins_in_day",
+        "playtime_in_day",
+        "matches_in_time_window",
+        "matches_total",
+    ];
     if (filters.gamemode && filters.gamemode !== ctx.gamemode) {
         if (!historicalMetrics.includes(metric)) {
             return false;
@@ -2798,9 +2973,10 @@ async function evaluateMatchCondition(
                 // Reach MMR threshold (check new MMR AFTER match)
                 // ctx.ownMmr is MMR BEFORE the match (from match.mmrPlayerX)
                 // Team 1 gains mmrChangeTeam1, Team 2 loses it (zero-sum)
-                const mmrChange = ctx.team === 1 
-                    ? (ctx.match.mmrChangeTeam1 || 0)
-                    : -(ctx.match.mmrChangeTeam1 || 0);
+                const mmrChange =
+                    ctx.team === 1
+                        ? ctx.match.mmrChangeTeam1 || 0
+                        : -(ctx.match.mmrChangeTeam1 || 0);
                 const newMmr = ctx.ownMmr + mmrChange;
                 console.log(
                     `[mmr] Player ${ctx.playerId}: before=${ctx.ownMmr}, change=${mmrChange}, after=${newMmr}, target=${target}, team=${ctx.team}`
@@ -2810,9 +2986,10 @@ async function evaluateMatchCondition(
             case "mmr_below":
                 // Drop below MMR threshold (check MMR AFTER match)
                 // This is for the "Rock Bottom" achievement
-                const mmrChangeBelow = ctx.team === 1 
-                    ? (ctx.match.mmrChangeTeam1 || 0)
-                    : -(ctx.match.mmrChangeTeam1 || 0);
+                const mmrChangeBelow =
+                    ctx.team === 1
+                        ? ctx.match.mmrChangeTeam1 || 0
+                        : -(ctx.match.mmrChangeTeam1 || 0);
                 const newMmrBelow = ctx.ownMmr + mmrChangeBelow;
                 console.log(
                     `[mmr_below] Player ${ctx.playerId}: before=${ctx.ownMmr}, after=${newMmrBelow}, target=${target}`
@@ -3639,61 +3816,115 @@ function evaluateGoalCondition(
 
 function evaluateSeasonCondition(
     condition: AchievementCondition,
-    playerData: any
+    playerData: any,
+    achievement: AchievementDefinition
 ): boolean {
     // Season-based achievements check final stats
     if (condition.type === "threshold") {
         const metric = condition.metric;
         const target = condition.target || 0;
-        const comparison = (condition as any).comparison || "gte";
+        const comparison = (condition as any).comparison || "eq"; // Default to eq, not gte!
+
+        console.log(
+            `[evaluateSeasonCondition] Achievement ${achievement.key}: metric=${metric}, target=${target}, ` +
+                `comparison=${comparison}, max_progress=${achievement.max_progress}, ` +
+                `playerData.rank=${playerData.rank}, playerData.losses=${playerData.losses}`
+        );
 
         switch (metric) {
             case "mmr":
                 return playerData.mmr >= target;
             case "wins":
                 return playerData.wins >= target;
-            case "losses":
+            case "losses": {
                 // For "undefeated" achievement, target is 0
-                return playerData.losses <= target;
+                const lossResult = (playerData.losses || 0) <= target;
+                console.log(
+                    `[evaluateSeasonCondition] losses check: ${playerData.losses} <= ${target} = ${lossResult}`
+                );
+                return lossResult;
+            }
             case "matches":
                 return playerData.wins + playerData.losses >= target;
-            case "season_rank":
+            case "season_rank": {
                 // Support different comparisons for rank
-                if (comparison === "eq") return playerData.rank === target;
-                if (comparison === "lte") return playerData.rank <= target;
-                if (comparison === "gte") return playerData.rank >= target;
-                return playerData.rank === target;
-            case "season_champion_count":
-                // Check how many times player has been champion (rank 1)
-                // This is set dynamically in handleSeasonEnded
-                return (playerData.champion_count || 0) >= target;
-            case "season_podium_count":
-                // Check how many times player has been on podium (rank 1-3)
-                // This is set dynamically in handleSeasonEnded
-                return (playerData.podium_count || 0) >= target;
+                let rankResult = false;
+                if (comparison === "eq")
+                    rankResult = playerData.rank === target;
+                else if (comparison === "lte")
+                    rankResult = playerData.rank <= target;
+                else if (comparison === "gte")
+                    rankResult = playerData.rank >= target;
+                else rankResult = playerData.rank === target; // Default to eq
+                console.log(
+                    `[evaluateSeasonCondition] season_rank check: rank=${playerData.rank}, target=${target}, comparison=${comparison}, result=${rankResult}`
+                );
+                return rankResult;
+            }
+            case "season_champion_count": {
+                // For progress achievements (max_progress > 1): Check if player was champion THIS season
+                // For instant unlock (max_progress = 1): Check historical count
+                if (achievement.max_progress > 1) {
+                    // Progress-based: Was the player champion in THIS season?
+                    const champResult =
+                        playerData.is_champion_this_season === true;
+                    console.log(
+                        `[evaluateSeasonCondition] season_champion_count (progress): is_champion_this_season=${playerData.is_champion_this_season}, result=${champResult}`
+                    );
+                    return champResult;
+                } else {
+                    // Instant unlock: Check historical count
+                    const champCount = playerData.champion_count || 0;
+                    const champResult = champCount >= target;
+                    console.log(
+                        `[evaluateSeasonCondition] season_champion_count (threshold): ${champCount} >= ${target} = ${champResult}`
+                    );
+                    return champResult;
+                }
+            }
+            case "season_podium_count": {
+                // For progress achievements (max_progress > 1): Check if player was on podium THIS season
+                // For instant unlock (max_progress = 1): Check historical count
+                if (achievement.max_progress > 1) {
+                    // Progress-based: Was the player on podium in THIS season?
+                    const podiumResult =
+                        playerData.is_podium_this_season === true;
+                    console.log(
+                        `[evaluateSeasonCondition] season_podium_count (progress): is_podium_this_season=${playerData.is_podium_this_season}, result=${podiumResult}`
+                    );
+                    return podiumResult;
+                } else {
+                    // Instant unlock: Check historical count
+                    const podiumCount = playerData.podium_count || 0;
+                    const podiumResult = podiumCount >= target;
+                    console.log(
+                        `[evaluateSeasonCondition] season_podium_count (threshold): ${podiumCount} >= ${target} = ${podiumResult}`
+                    );
+                    return podiumResult;
+                }
+            }
             case "season_last":
                 // Check if player is last place with minimum matches
-                // This is set dynamically in handleSeasonEnded
                 return playerData.is_last === true;
             default:
-                return true;
+                console.log(
+                    `[evaluateSeasonCondition] Unknown metric: ${metric}, returning FALSE`
+                );
+                return false;
         }
     } else if (condition.type === "counter") {
-        // Counter type: track cumulative progress over multiple seasons
-        const metric = condition.metric;
-
-        switch (metric) {
-            case "season_champion_count":
-            case "season_podium_count":
-                // For counter types, we always return true if player meets the current criteria
-                // The progress is incremented in handleSeasonEnded
-                return true;
-            default:
-                return true;
-        }
+        // Counter type should NOT be used for SEASON_ENDED achievements
+        // All season achievements use threshold type
+        console.log(
+            `[evaluateSeasonCondition] Counter type found, this is unexpected for SEASON_ENDED, returning FALSE`
+        );
+        return false;
     }
 
-    return true;
+    console.log(
+        `[evaluateSeasonCondition] Unknown condition type: ${condition.type}, returning FALSE`
+    );
+    return false;
 }
 
 // ============== PROGRESS UPDATE ==============
