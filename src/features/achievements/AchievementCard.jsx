@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { HiOutlineTrophy, HiLockClosed, HiCheck } from "react-icons/hi2";
+import { format } from "date-fns";
 import { media } from "../../utils/constants";
 import { useAchievementReward } from "./usePlayerRewards";
 import RewardBadge from "./RewardBadge";
@@ -299,7 +300,8 @@ function AchievementCard({ achievement, compact = false }) {
 
                 {isUnlocked && unlockedAt && !compact && (
                     <UnlockedDate>
-                        Unlocked: {new Date(unlockedAt).toLocaleDateString()}
+                        Unlocked:{" "}
+                        {format(new Date(unlockedAt), "dd.MM.yyyy - HH:mm")}
                     </UnlockedDate>
                 )}
             </Content>

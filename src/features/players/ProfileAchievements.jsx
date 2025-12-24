@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import styled from "styled-components";
 import { useQuery } from "react-query";
 import { HiOutlineTrophy, HiCheck } from "react-icons/hi2";
+import { format } from "date-fns";
 import { getPlayerAchievements } from "../../services/apiAchievements";
 import { useSelectedSeason } from "../seasons/useSelectedSeason";
 import { usePlayerName } from "./usePlayerName";
@@ -257,9 +258,10 @@ function ProfileAchievements() {
                                         {pa.unlocked_at && (
                                             <UnlockedDate>
                                                 Unlocked:{" "}
-                                                {new Date(
-                                                    pa.unlocked_at
-                                                ).toLocaleDateString()}
+                                                {format(
+                                                    new Date(pa.unlocked_at),
+                                                    "dd.MM.yyyy - HH:mm"
+                                                )}
                                             </UnlockedDate>
                                         )}
                                         {pa.times_completed > 1 && (

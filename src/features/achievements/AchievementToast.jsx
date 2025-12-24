@@ -108,6 +108,11 @@ const AchievementName = styled.div`
     font-weight: 700;
 `;
 
+const AchievementDescription = styled.div`
+    font-size: 1.4rem;
+    opacity: 0.85;
+`;
+
 const Points = styled.div`
     font-size: 1.4rem;
     opacity: 0.9;
@@ -136,7 +141,8 @@ const CloseButton = styled.button`
 `;
 
 function AchievementToast({ achievement, onClose }) {
-    const { name, points, icon, playerName, isOwnAchievement } = achievement;
+    const { name, points, icon, description, playerName, isOwnAchievement } =
+        achievement;
 
     return (
         <Container>
@@ -155,6 +161,9 @@ function AchievementToast({ achievement, onClose }) {
                             : `${playerName} unlocked:`}
                     </Title>
                     <AchievementName>{name}</AchievementName>
+                    <AchievementDescription>
+                        {description}
+                    </AchievementDescription>
                     <Points>+{points} points</Points>
                 </Content>
             </ToastCard>

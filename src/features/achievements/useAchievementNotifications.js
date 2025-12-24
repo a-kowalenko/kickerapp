@@ -48,6 +48,8 @@ function useAchievementNotifications() {
                     newAchievement.achievement_id
                 );
 
+                console.log("definition:", definition);
+
                 // Achievements are now global - no kicker_id check needed
                 if (definition) {
                     // Get the player name for the toast
@@ -66,6 +68,7 @@ function useAchievementNotifications() {
                             name: definition.name,
                             icon: definition.icon,
                             points: definition.points,
+                            description: definition.description,
                             playerName: playerName,
                             isOwnAchievement: isOwnAchievement,
                         },

@@ -8,6 +8,7 @@ import {
     HiChevronDown,
     HiChevronUp,
 } from "react-icons/hi2";
+import { format } from "date-fns";
 import { media } from "../../utils/constants";
 import { useAchievementReward } from "./usePlayerRewards";
 import RewardBadge from "./RewardBadge";
@@ -67,8 +68,8 @@ const IconContainer = styled.div`
         props.$isUnlocked
             ? "linear-gradient(135deg, var(--color-brand-500), var(--color-brand-700))"
             : props.$isAvailable
-              ? "var(--color-grey-200)"
-              : "var(--color-grey-300)"};
+            ? "var(--color-grey-200)"
+            : "var(--color-grey-300)"};
     color: ${(props) =>
         props.$isUnlocked ? "white" : "var(--color-grey-500)"};
     font-size: 2.4rem;
@@ -257,9 +258,7 @@ const DropdownOverlay = styled.div`
     background-color: var(--color-grey-0);
     border: 1px solid var(--color-brand-300);
     border-radius: var(--border-radius-md);
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.15),
-        0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
     z-index: 1000;
     animation: ${fadeIn} 0.2s ease;
     max-height: 70vh;
@@ -338,10 +337,10 @@ const ChainItemIcon = styled.div`
         props.$isUnlocked
             ? "var(--color-brand-500)"
             : props.$isCurrent
-              ? "var(--color-grey-0)"
-              : props.$isFuture
-                ? "var(--color-grey-100)"
-                : "var(--color-grey-200)"};
+            ? "var(--color-grey-0)"
+            : props.$isFuture
+            ? "var(--color-grey-100)"
+            : "var(--color-grey-200)"};
     color: ${(props) =>
         props.$isUnlocked ? "white" : "var(--color-grey-500)"};
     border: 2px solid
@@ -349,8 +348,8 @@ const ChainItemIcon = styled.div`
             props.$isUnlocked
                 ? "var(--color-brand-600)"
                 : props.$isCurrent
-                  ? "var(--color-brand-400)"
-                  : "var(--color-grey-300)"};
+                ? "var(--color-brand-400)"
+                : "var(--color-grey-300)"};
 
     & svg {
         width: 1.2rem;
@@ -370,10 +369,10 @@ const ChainItemName = styled.span`
         props.$isUnlocked
             ? "var(--color-brand-700)"
             : props.$isCurrent
-              ? "var(--primary-text-color)"
-              : props.$isFuture
-                ? "var(--color-grey-400)"
-                : "var(--color-grey-500)"};
+            ? "var(--primary-text-color)"
+            : props.$isFuture
+            ? "var(--color-grey-400)"
+            : "var(--color-grey-500)"};
     display: block;
 `;
 
@@ -394,8 +393,8 @@ const ChainItemPoints = styled.span`
         props.$isUnlocked
             ? "var(--color-brand-600)"
             : props.$isFuture
-              ? "var(--color-grey-300)"
-              : "var(--color-grey-400)"};
+            ? "var(--color-grey-300)"
+            : "var(--color-grey-400)"};
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -669,7 +668,7 @@ function AchievementChainCard({ chain, currentAchievementId }) {
                     {isUnlocked && unlockedAt && (
                         <UnlockedDate>
                             Unlocked:{" "}
-                            {new Date(unlockedAt).toLocaleDateString()}
+                            {format(new Date(unlockedAt), "dd.MM.yyyy - HH:mm")}
                         </UnlockedDate>
                     )}
                 </Content>
