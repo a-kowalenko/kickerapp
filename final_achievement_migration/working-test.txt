@@ -130,7 +130,7 @@
 ✅🏆	own_goals_5_in_day	Wrong Direction Day	Secret	GOAL_SCORED	50	5	Secret	
 ✅🏆	perfect_wins_5	Flawless Victory	Victories	MATCH_ENDED	150	5		
 ✅🏆	perfect_wins_10	Domination Expert	Victories	MATCH_ENDED	300	10		
-🏆	early_bird_1	Early Bird	Playtime	MATCH_ENDED	25	1		
+✅🏆	early_bird_1	Early Bird	Playtime	MATCH_ENDED	25	1		
 🏆	early_bird_10	Morning Enthusiast	Playtime	MATCH_ENDED	75	10		
 🏆	early_bird_25	Dawn Champion	Playtime	MATCH_ENDED	150	25		
 ✅🏆	night_owl_1	Evening Player	Playtime	MATCH_ENDED	25	1		
