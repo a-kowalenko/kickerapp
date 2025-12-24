@@ -429,7 +429,7 @@ function Comment({
             )}
 
             {!isGrouped && (
-                <Link to={`/players/${comment.player_id}`}>
+                <Link to={`/user/${comment.player?.name}/profile`}>
                     <Avatar
                         $size="small"
                         src={comment.player?.avatar || DEFAULT_AVATAR}
@@ -441,7 +441,9 @@ function Comment({
             <CommentContent>
                 {!isGrouped && (
                     <CommentHeader>
-                        <AuthorName to={`/players/${comment.player_id}`}>
+                        <AuthorName
+                            to={`/user/${comment.player?.name}/profile`}
+                        >
                             {comment.player?.name}
                         </AuthorName>
                         <Timestamp>
