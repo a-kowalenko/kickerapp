@@ -64,6 +64,16 @@ const ToggleWrapper = styled.div`
     gap: 2.4rem;
 `;
 
+const DesktopOnly = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 2.4rem;
+
+    ${media.tablet} {
+        display: none;
+    }
+`;
+
 function Header() {
     const navigate = useNavigate();
     const { data: kickerData, isLoading: isLoadingKickerData } =
@@ -126,19 +136,21 @@ function Header() {
             {showActiveMatch && <MiniActiveMatchInfo />}
 
             <ToggleWrapper>
-                {showLeaveKicker && (
-                    <ButtonIcon
-                        onClick={() => {
-                            setCurrentKicker(null);
-                            navigate("/");
-                        }}
-                        title="Exit kicker"
-                    >
-                        <HiArrowRightOnRectangle />
-                    </ButtonIcon>
-                )}
-                <SoundToggle />
-                <DarkModeToggle />
+                <DesktopOnly>
+                    {showLeaveKicker && (
+                        <ButtonIcon
+                            onClick={() => {
+                                setCurrentKicker(null);
+                                navigate("/");
+                            }}
+                            title="Exit kicker"
+                        >
+                            <HiArrowRightOnRectangle />
+                        </ButtonIcon>
+                    )}
+                    <SoundToggle />
+                    <DarkModeToggle />
+                </DesktopOnly>
                 <ProfileMenu />
             </ToggleWrapper>
         </StyledHeader>

@@ -1685,71 +1685,13 @@ async function handleAchievementUnlocked(
                     conditionMet = hiddenCount >= (condition.target || 0);
                 }
             } else if (condition.metric === "achievement_points") {
-                // Track achievement points for Point Collector chain
-                // Get the points from the achievement that was just unlocked
-                const { data: unlockedAchievementData } = await supabase
-                    .from("achievement_definitions")
-                    .select("points")
-                    .eq("id", unlockedAchievementId)
-                    .single();
-
-                const pointsEarned = unlockedAchievementData?.points || 0;
-
-                if (condition.type === "counter") {
-                    conditionMet = pointsEarned > 0;
-                    increment = pointsEarned;
-                    console.log(
-                        `[achievement_points] Achievement unlocked with ${pointsEarned} points, incrementing Point Collector progress`
-                    );
-                } else if (condition.type === "threshold") {
-                    // Calculate total points from all player achievements
-                    const { data: allPlayerAchievements } = await supabase
-                        .from("player_achievements")
-                        .select("achievement:achievement_definitions(points)")
-                        .eq("player_id", playerId);
-
-                    const totalPoints = (allPlayerAchievements || []).reduce(
-                        (sum: number, pa: any) =>
-                            sum + (pa.achievement?.points || 0),
-                        0
-                    );
-                    conditionMet = totalPoints >= (condition.target || 0);
-                    console.log(
-                        `[achievement_points] Player has ${totalPoints} total points (target: ${condition.target})`
-                    );
-                }
-                /* SQL trigger code disabled - using webhook-based tracking instead:
-            const { data: unlockedAchievementData } = await supabase
-                .from("achievement_definitions")
-                .select("points")
-                .eq("id", unlockedAchievementId)
-                .single();
-
-            const pointsEarned = unlockedAchievementData?.points || 0;
-
-            if (condition.type === "counter") {
-                conditionMet = pointsEarned > 0;
-                increment = pointsEarned;
+                // SKIP: Point Collector achievements are handled by SQL trigger (sync_point_collector_trigger)
+                // The trigger calculates absolute point totals and updates progress idempotently
+                // Processing here would cause double-counting
                 console.log(
-                    `[achievement_points] Achievement unlocked with ${pointsEarned} points`
+                    `[achievement_points] Skipping ${achievement.key} - handled by SQL trigger`
                 );
-            } else if (condition.type === "threshold") {
-                const { data: allPlayerAchievements } = await supabase
-                    .from("player_achievements")
-                    .select("achievement:achievement_definitions(points)")
-                    .eq("player_id", playerId);
-
-                const totalPoints = (allPlayerAchievements || []).reduce(
-                    (sum: number, pa: any) =>
-                        sum + (pa.achievement?.points || 0),
-                    0
-                );
-                conditionMet = totalPoints >= (condition.target || 0);
-                console.log(
-                    `[achievement_points] Player has ${totalPoints} total points`
-                );
-            }
-            END OF OLD CODE */
+                continue;
             } else if (condition.metric === "titles_unlocked") {
                 // Counter type: track titles unlocked
                 // Check if the just-unlocked achievement grants a title reward
@@ -1911,86 +1853,8 @@ async function handleAchievementUnlocked(
                         `[ChainUnlock] ${achievement.key} (id: ${achievement.id}) unlocked, added to newlyUnlockedInThisIteration`
                     );
 
-                    // IMPORTANT: Synchronously add this achievement's points to Point Collector achievements
-                    // This ensures meta-achievement points are immediately tracked without relying on webhooks
-                    const metaAchievementPoints = achievement.points || 0;
-                    if (metaAchievementPoints > 0) {
-                        console.log(
-                            `[MetaPoints] Synchronously adding ${metaAchievementPoints} points from meta-achievement ${achievement.key} to Point Collector achievements`
-                        );
-
-                        // Find all Point Collector achievements (metric: achievement_points)
-                        const { data: pointCollectorAchievements } =
-                            await supabase
-                                .from("achievement_definitions")
-                                .select("*")
-                                .eq("trigger_event", "ACHIEVEMENT_UNLOCKED");
-
-                        for (const pcAchievement of (pointCollectorAchievements ||
-                            []) as AchievementDefinition[]) {
-                            const pcCondition =
-                                pcAchievement.condition as AchievementCondition;
-                            if (
-                                pcCondition.metric !== "achievement_points" ||
-                                pcCondition.type !== "counter"
-                            ) {
-                                continue;
-                            }
-
-                            // Don't update the achievement that was just unlocked
-                            if (pcAchievement.id === achievement.id) {
-                                continue;
-                            }
-
-                            // Check if parent is unlocked (including just-unlocked achievements)
-                            if (pcAchievement.parent_id) {
-                                const parentKey = `${playerId}-${pcAchievement.parent_id}`;
-                                if (!unlockedMap.has(parentKey)) {
-                                    continue;
-                                }
-                            }
-
-                            // Check if already unlocked
-                            const pcAlreadyUnlocked = unlockedMap.has(
-                                `${playerId}-${pcAchievement.id}`
-                            );
-                            if (
-                                pcAlreadyUnlocked &&
-                                !pcAchievement.is_repeatable
-                            ) {
-                                continue;
-                            }
-
-                            // Determine season_id for this Point Collector achievement
-                            const pcSeasonId = pcAchievement.is_season_specific
-                                ? playerAchievement.season_id
-                                : null;
-
-                            console.log(
-                                `[MetaPoints] Updating ${pcAchievement.key} (season_id: ${pcSeasonId}) with +${metaAchievementPoints} points`
-                            );
-
-                            const pcResult = await updateProgressWithAmount(
-                                supabase,
-                                playerId,
-                                pcAchievement,
-                                pcSeasonId,
-                                playerAchievement.match_id,
-                                pcAlreadyUnlocked,
-                                metaAchievementPoints
-                            );
-
-                            if (pcResult === "unlocked") {
-                                unlockedMap.set(
-                                    `${playerId}-${pcAchievement.id}`,
-                                    true
-                                );
-                                console.log(
-                                    `[MetaPoints] Point Collector ${pcAchievement.key} unlocked!`
-                                );
-                            }
-                        }
-                    }
+                    // NOTE: Point Collector achievements are handled by SQL trigger (sync_point_collector_trigger)
+                    // The trigger fires on player_achievements INSERT and calculates absolute point totals
 
                     // Initialize child achievement progress when parent is unlocked
                     // This ensures chain achievements carry over accumulated progress

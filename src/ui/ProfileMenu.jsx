@@ -1,40 +1,39 @@
 import styled from "styled-components";
-import Avatar from "./Avatar";
 import { useState } from "react";
 import {
     HiMiniArrowLeftOnRectangle,
     HiOutlineUserCircle,
+    HiArrowRightOnRectangle,
+    HiOutlineMoon,
+    HiOutlineSun,
 } from "react-icons/hi2";
 import { useLogout } from "../features/authentication/useLogout";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOutsideClick } from "../hooks/useOutsideClick";
-import { DEFAULT_AVATAR } from "../utils/constants";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
+import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
+import { useKicker } from "../contexts/KickerContext";
+import { useDarkMode } from "../contexts/DarkModeContext";
+import useWindowWidth from "../hooks/useWindowWidth";
+import { media } from "../utils/constants";
 import SpinnerMini from "./SpinnerMini";
+import { BountyCard } from "./BountyCard";
 
-const StyledProfileMenu = styled.div`
+const ProfileMenuWrapper = styled.div`
     position: relative;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    cursor: pointer;
-
-    & label {
-        cursor: pointer;
-    }
 `;
 
 const StyledList = styled.ul`
     position: absolute;
     width: max-content;
+    min-width: 100%;
     background-color: var(--color-grey-0);
     box-shadow: var(--shadow-md);
     border-radius: var(--border-radius-md);
-
-    position: absolute; // Die Liste wird über anderen Elementen angezeigt
-    top: 110%; // Beginnt direkt unter dem Toggle-Button
-    right: 0; // Ausgerichtet am linken Rand des Containers
-    /* width: 100%; // Nimmt die volle Breite des Containers ein */
+    border: 1px solid var(--primary-border-color);
+    overflow: hidden;
+    top: 110%;
+    right: 0;
     z-index: 10;
 `;
 
@@ -58,20 +57,44 @@ const StyledButton = styled.button`
     & svg {
         width: 2rem;
         height: 2rem;
-        /* color: var(--color-grey-400); */
         transition: all 0.3s;
+    }
+`;
+
+const MobileOnlyItem = styled.li`
+    display: none;
+
+    ${media.tablet} {
+        display: block;
+    }
+`;
+
+const Divider = styled.hr`
+    border: none;
+    border-top: 1px solid var(--primary-border-color);
+    margin: 0.5rem 0;
+    display: none;
+
+    ${media.tablet} {
+        display: block;
     }
 `;
 
 function ProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const close = () => setIsOpen(false);
-    const { logout, isLoading } = useLogout();
+    const { logout } = useLogout();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const dropdownRef = useOutsideClick(close);
+    const { setCurrentKicker } = useKicker();
+    const { isDarkMode, toggleDarkMode } = useDarkMode();
+    const { windowWidth } = useWindowWidth();
+    const isMobile = windowWidth <= media.maxTablet;
 
     const { data: player, isLoading: isLoadingPlayer } = useOwnPlayer();
+    const { bestStreak, totalBounty, primaryStatusAsset } =
+        usePlayerStatusForAvatar(player?.id);
 
     function handleToggle() {
         setIsOpen((open) => !open);
@@ -80,7 +103,6 @@ function ProfileMenu() {
     function goToProfile(e) {
         e.stopPropagation();
         close();
-        // Preserve season param when navigating to profile
         const seasonParam = searchParams.get("season");
         const queryString = seasonParam ? `?season=${seasonParam}` : "";
         navigate(`/user/${player.name}/profile${queryString}`);
@@ -91,37 +113,72 @@ function ProfileMenu() {
         logout();
     }
 
+    function handleExitKicker(e) {
+        e.stopPropagation();
+        close();
+        setCurrentKicker(null);
+        navigate("/");
+    }
+
+    function handleToggleDarkMode(e) {
+        e.stopPropagation();
+        toggleDarkMode();
+        // Don't close menu after toggle so user can see the change
+    }
+
     if (isLoadingPlayer) {
         return <SpinnerMini />;
     }
 
-    const username = player.name;
-    const avatar = player.avatar;
-
     return (
-        <div ref={dropdownRef}>
-            <StyledProfileMenu onClick={handleToggle}>
-                <Avatar $size="small" src={avatar || DEFAULT_AVATAR} />
-                <label>{username}</label>
+        <ProfileMenuWrapper ref={dropdownRef}>
+            <BountyCard
+                player={player}
+                bounty={totalBounty}
+                streak={bestStreak}
+                status={primaryStatusAsset}
+                size="small"
+                onClick={handleToggle}
+                showGamemode={false}
+                showStatusBadge={true}
+                showTargetIcon={false}
+                showLabel={true}
+            />
 
-                {isOpen && (
-                    <StyledList>
-                        <li>
-                            <StyledButton onClick={goToProfile}>
-                                <HiOutlineUserCircle />
-                                Profile
-                            </StyledButton>
-                        </li>
-                        <li>
-                            <StyledButton onClick={handleLogout}>
-                                <HiMiniArrowLeftOnRectangle />
-                                Logout
-                            </StyledButton>
-                        </li>
-                    </StyledList>
-                )}
-            </StyledProfileMenu>
-        </div>
+            {isOpen && (
+                <StyledList>
+                    <li>
+                        <StyledButton onClick={goToProfile}>
+                            <HiOutlineUserCircle />
+                            Profile
+                        </StyledButton>
+                    </li>
+
+                    {/* Mobile-only items */}
+                    <Divider />
+                    <MobileOnlyItem>
+                        <StyledButton onClick={handleToggleDarkMode}>
+                            {isDarkMode ? <HiOutlineSun /> : <HiOutlineMoon />}
+                            {isDarkMode ? "Light Mode" : "Dark Mode"}
+                        </StyledButton>
+                    </MobileOnlyItem>
+                    <MobileOnlyItem>
+                        <StyledButton onClick={handleExitKicker}>
+                            <HiArrowRightOnRectangle />
+                            Exit Kicker
+                        </StyledButton>
+                    </MobileOnlyItem>
+                    <Divider />
+
+                    <li>
+                        <StyledButton onClick={handleLogout}>
+                            <HiMiniArrowLeftOnRectangle />
+                            Logout
+                        </StyledButton>
+                    </li>
+                </StyledList>
+            )}
+        </ProfileMenuWrapper>
     );
 }
 

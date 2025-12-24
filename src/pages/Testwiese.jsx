@@ -11,6 +11,8 @@ import Heading from "../ui/Heading";
 import Filter from "../ui/Filter";
 import Spinner from "../ui/Spinner";
 import { useKickerInfo } from "../hooks/useKickerInfo";
+import BountyCard from "../ui/BountyCard";
+import { usePlayer } from "../hooks/usePlayer";
 
 const fakeOptions = [
     { text: "Element 1", value: 1 },
@@ -29,6 +31,11 @@ const fakeFilterOptions = [
 function Testwiese() {
     const { data: kickerData, isLoading: isLoadingKickerData } =
         useKickerInfo();
+    const { player, isLoading: isLoadingPlayer } = usePlayer(1);
+
+    if (player) {
+        console.log("Loaded player:", player);
+    }
 
     const isDisabled = false;
 
@@ -159,6 +166,22 @@ function Testwiese() {
                     </MiniTable>
                 </ContentBox>
                 <ContentBox>ContentBox</ContentBox>
+            </FormRow>
+            <FormRow>
+                {isLoadingPlayer ? (
+                    <Spinner />
+                ) : player.length === 1 ? (
+                    <BountyCard
+                        player={player[0]}
+                        bounty={30}
+                        streak={10}
+                        status="onFire"
+                        gamemode="1on1"
+                        onClick={() => alert("BountyCard clicked")}
+                    />
+                ) : (
+                    <div>Kein Spieler gefunden</div>
+                )}
             </FormRow>
         </>
     );
