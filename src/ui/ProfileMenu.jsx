@@ -93,8 +93,15 @@ function ProfileMenu() {
     const isMobile = windowWidth <= media.maxTablet;
 
     const { data: player, isLoading: isLoadingPlayer } = useOwnPlayer();
-    const { bestStreak, totalBounty, bounty1on1, bounty2on2, streak1on1, streak2on2, primaryStatusAsset } =
-        usePlayerStatusForAvatar(player?.id);
+    const {
+        bestStreak,
+        totalBounty,
+        bounty1on1,
+        bounty2on2,
+        streak1on1,
+        streak2on2,
+        primaryStatusAsset,
+    } = usePlayerStatusForAvatar(player?.id);
 
     function handleToggle() {
         setIsOpen((open) => !open);

@@ -272,7 +272,9 @@ export function StreakTooltipContent({
             )}
             {!show1on1 && !show2on2 && (
                 <TooltipRow>
-                    <GamemodeLabel style={{ color: "var(--secondary-text-color)" }}>
+                    <GamemodeLabel
+                        style={{ color: "var(--secondary-text-color)" }}
+                    >
                         No active streaks
                     </GamemodeLabel>
                 </TooltipRow>
