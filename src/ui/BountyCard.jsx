@@ -1,8 +1,13 @@
 import styled, { keyframes, css } from "styled-components";
 import Avatar from "./Avatar";
 import { StatusBadge, SimpleStreakBadge } from "./StatusBadge";
-import { HiOutlineFire, HiOutlineCurrencyDollar } from "react-icons/hi2";
+import { HiOutlineFire } from "react-icons/hi2";
 import { TbTarget } from "react-icons/tb";
+import {
+    BountyTooltip,
+    StreakTooltip,
+    useBountyTooltip,
+} from "./BountyTooltip";
 
 /* ----------------------------------------
    Size Configuration
@@ -173,6 +178,12 @@ const BountySection = styled.div`
     align-self: flex-start;
     gap: ${(props) => (props.$size === "xs" ? "0.1rem" : "0.3rem")};
     flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
 `;
 
 const BountyValue = styled.div`
@@ -207,6 +218,16 @@ const StreakInfo = styled.div`
     font-size: ${(props) =>
         sizeConfig[props.$size]?.streakSize || sizeConfig.medium.streakSize};
     color: var(--secondary-text-color);
+    cursor: ${(props) => (props.$hoverable ? "pointer" : "default")};
+    transition: transform 0.2s ease;
+
+    ${(props) =>
+        props.$hoverable &&
+        css`
+            &:hover {
+                transform: scale(1.08);
+            }
+        `}
 
     svg {
         color: #ff6432;
@@ -230,8 +251,12 @@ const TargetIcon = styled(TbTarget)`
    
    Props:
    - player: { id, name, avatar }
-   - bounty: number - Kopfgeld-Wert in MMR
-   - streak: number - Aktuelle Siegesserie
+   - bounty: number - Kopfgeld-Wert (total oder für einen Gamemode)
+   - bounty1on1: number - Kopfgeld für 1on1 (für Tooltip)
+   - bounty2on2: number - Kopfgeld für 2on2 (für Tooltip)
+   - streak: number - Aktuelle Siegesserie (beste/angezeigte)
+   - streak1on1: number - Streak für 1on1 (für Tooltip)
+   - streak2on2: number - Streak für 2on2 (für Tooltip)
    - status: string - Primärer Status (z.B. 'onFire')
    - gamemode: string - '1on1' oder '2on2'
    - size: 'xs' | 'small' | 'medium' | 'large'
@@ -240,11 +265,17 @@ const TargetIcon = styled(TbTarget)`
    - showStatusBadge: boolean - Zeige Status Badge
    - showTargetIcon: boolean - Zeige Target Icon
    - showLabel: boolean - Zeige "MMR Kopfgeld" Label
+   - showBountyTooltip: boolean - Zeige Tooltip bei Hover auf Bounty
+   - showStreakTooltip: boolean - Zeige Tooltip bei Hover auf Streak
 ----------------------------------------- */
 export function BountyCard({
     player,
     bounty = 0,
+    bounty1on1 = 0,
+    bounty2on2 = 0,
     streak = 0,
+    streak1on1 = 0,
+    streak2on2 = 0,
     status,
     gamemode,
     size = "medium",
@@ -253,7 +284,27 @@ export function BountyCard({
     showStatusBadge = true,
     showTargetIcon = true,
     showLabel = true,
+    showBountyTooltip = true,
+    showStreakTooltip = true,
 }) {
+    // Bounty tooltip hook
+    const {
+        isHovered: isBountyHovered,
+        tooltipPos: bountyTooltipPos,
+        handleMouseEnter: handleBountyMouseEnter,
+        handleMouseLeave: handleBountyMouseLeave,
+        triggerRef: bountyTriggerRef,
+    } = useBountyTooltip(140);
+
+    // Streak tooltip hook
+    const {
+        isHovered: isStreakHovered,
+        tooltipPos: streakTooltipPos,
+        handleMouseEnter: handleStreakMouseEnter,
+        handleMouseLeave: handleStreakMouseLeave,
+        triggerRef: streakTriggerRef,
+    } = useBountyTooltip(140);
+
     const isHighBounty = bounty >= 30;
     const hasBounty = bounty > 0;
     const hasStreak = streak >= 3;
@@ -262,6 +313,19 @@ export function BountyCard({
     // For xs size, simplify the display
     const isXs = size === "xs";
     const isSmall = size === "small";
+
+    // Determine tooltip bounty values
+    // If specific values aren't provided, use bounty with gamemode
+    const tooltipBounty1on1 = bounty1on1 || (gamemode === "1on1" ? bounty : 0);
+    const tooltipBounty2on2 = bounty2on2 || (gamemode === "2on2" ? bounty : 0);
+    const hasBountyTooltipData = tooltipBounty1on1 > 0 || tooltipBounty2on2 > 0;
+
+    // Determine tooltip streak values
+    // If specific values aren't provided, use streak with gamemode
+    const tooltipStreak1on1 = streak1on1 || (gamemode === "1on1" ? streak : 0);
+    const tooltipStreak2on2 = streak2on2 || (gamemode === "2on2" ? streak : 0);
+    const hasStreakTooltipData =
+        tooltipStreak1on1 >= 3 || tooltipStreak2on2 >= 3;
 
     return (
         <Card
@@ -298,7 +362,35 @@ export function BountyCard({
 
                 {/* Streak Info - shown for small sizes inline */}
                 {(isXs || isSmall) && (hasBounty || hasStreak) && (
-                    <StreakInfo $size={size}>
+                    <StreakInfo
+                        $size={size}
+                        $hoverable={
+                            showStreakTooltip &&
+                            hasStreakTooltipData &&
+                            hasStreak
+                        }
+                        ref={
+                            showStreakTooltip &&
+                            hasStreakTooltipData &&
+                            hasStreak
+                                ? streakTriggerRef
+                                : null
+                        }
+                        onMouseEnter={
+                            showStreakTooltip &&
+                            hasStreakTooltipData &&
+                            hasStreak
+                                ? handleStreakMouseEnter
+                                : undefined
+                        }
+                        onMouseLeave={
+                            showStreakTooltip &&
+                            hasStreakTooltipData &&
+                            hasStreak
+                                ? handleStreakMouseLeave
+                                : undefined
+                        }
+                    >
                         {hasStreak && (
                             <>
                                 <HiOutlineFire />
@@ -315,12 +407,40 @@ export function BountyCard({
 
                 {/* Full streak info with gamemode - medium/large only */}
                 {!isXs && !isSmall && gamemode && showGamemode && hasStreak && (
-                    <StreakInfo $size={size}>
+                    <StreakInfo
+                        $size={size}
+                        $hoverable={showStreakTooltip && hasStreakTooltipData}
+                        ref={
+                            showStreakTooltip && hasStreakTooltipData
+                                ? streakTriggerRef
+                                : null
+                        }
+                        onMouseEnter={
+                            showStreakTooltip && hasStreakTooltipData
+                                ? handleStreakMouseEnter
+                                : undefined
+                        }
+                        onMouseLeave={
+                            showStreakTooltip && hasStreakTooltipData
+                                ? handleStreakMouseLeave
+                                : undefined
+                        }
+                    >
                         <HiOutlineFire />
                         {streak} Siege in Folge ({gamemode})
                     </StreakInfo>
                 )}
             </PlayerInfo>
+
+            {/* Streak Tooltip */}
+            {showStreakTooltip && hasStreakTooltipData && (
+                <StreakTooltip
+                    isVisible={isStreakHovered}
+                    position={streakTooltipPos}
+                    streak1on1={tooltipStreak1on1}
+                    streak2on2={tooltipStreak2on2}
+                />
+            )}
 
             {/* Bounty Section - always shown if bounty > 0 */}
             {hasBounty && (
@@ -333,12 +453,38 @@ export function BountyCard({
                             height: "40px",
                         }}
                     />
-                    <BountySection $size={size}>
+                    <BountySection
+                        $size={size}
+                        ref={
+                            showBountyTooltip && hasBountyTooltipData
+                                ? bountyTriggerRef
+                                : null
+                        }
+                        onMouseEnter={
+                            showBountyTooltip && hasBountyTooltipData
+                                ? handleBountyMouseEnter
+                                : undefined
+                        }
+                        onMouseLeave={
+                            showBountyTooltip && hasBountyTooltipData
+                                ? handleBountyMouseLeave
+                                : undefined
+                        }
+                    >
                         <BountyValue $size={size}>💰+{bounty}</BountyValue>
                         {showLabel && (
                             <BountyLabel $size={size}>Bounty</BountyLabel>
                         )}
                     </BountySection>
+
+                    {showBountyTooltip && hasBountyTooltipData && (
+                        <BountyTooltip
+                            isVisible={isBountyHovered}
+                            position={bountyTooltipPos}
+                            bounty1on1={tooltipBounty1on1}
+                            bounty2on2={tooltipBounty2on2}
+                        />
+                    )}
                 </>
             )}
 

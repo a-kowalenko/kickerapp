@@ -93,7 +93,7 @@ function ProfileMenu() {
     const isMobile = windowWidth <= media.maxTablet;
 
     const { data: player, isLoading: isLoadingPlayer } = useOwnPlayer();
-    const { bestStreak, totalBounty, primaryStatusAsset } =
+    const { bestStreak, totalBounty, bounty1on1, bounty2on2, streak1on1, streak2on2, primaryStatusAsset } =
         usePlayerStatusForAvatar(player?.id);
 
     function handleToggle() {
@@ -135,7 +135,11 @@ function ProfileMenu() {
             <BountyCard
                 player={player}
                 bounty={totalBounty}
+                bounty1on1={bounty1on1}
+                bounty2on2={bounty2on2}
                 streak={bestStreak}
+                streak1on1={streak1on1}
+                streak2on2={streak2on2}
                 status={primaryStatusAsset}
                 size="small"
                 onClick={handleToggle}

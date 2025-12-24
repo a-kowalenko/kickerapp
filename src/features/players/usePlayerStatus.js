@@ -364,6 +364,12 @@ export function usePlayerStatusForAvatar(playerId) {
     const bounty2on2 =
         statuses?.find((s) => s.gamemode === "2on2")?.current_bounty || 0;
 
+    // Extract streak per gamemode
+    const streak1on1 =
+        statuses?.find((s) => s.gamemode === "1on1")?.current_streak || 0;
+    const streak2on2 =
+        statuses?.find((s) => s.gamemode === "2on2")?.current_streak || 0;
+
     // Get best streak (highest absolute value)
     const bestStreak = (statuses || []).reduce((best, s) => {
         const streak = s.current_streak || 0;
@@ -382,6 +388,8 @@ export function usePlayerStatusForAvatar(playerId) {
         bounty1on1,
         bounty2on2,
         bestStreak,
+        streak1on1,
+        streak2on2,
 
         // For Avatar component - array of asset keys to display
         statusAssets,
