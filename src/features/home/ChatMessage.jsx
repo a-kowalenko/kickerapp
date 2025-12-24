@@ -12,10 +12,12 @@ import {
 } from "react-icons/hi2";
 import { Link } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
+import PlayerNameWithTitle from "../../ui/PlayerNameWithTitle";
 import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
 import { DEFAULT_AVATAR, MAX_CHAT_MESSAGE_LENGTH } from "../../utils/constants";
+import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
 
 // Quick reaction emojis (Discord-style)
 const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
@@ -40,7 +42,7 @@ const MessageContainer = styled.div`
     gap: 1rem;
     padding: ${(props) =>
         props.$isGrouped ? "0.2rem 1rem 0.2rem 1rem" : "0.8rem 1rem"};
-    padding-left: ${(props) => (props.$isGrouped ? "4.8rem" : "1rem")};
+    padding-left: ${(props) => (props.$isGrouped ? "5.4rem" : "1rem")};
     border-radius: var(--border-radius-md);
     background-color: ${(props) =>
         props.$isWhisper
@@ -108,9 +110,7 @@ const HoverToolbar = styled.div`
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     opacity: 0;
     visibility: hidden;
-    transition:
-        opacity 0.15s,
-        visibility 0.15s;
+    transition: opacity 0.15s, visibility 0.15s;
     z-index: 20;
 
     ${MessageContainer}:hover & {
@@ -219,7 +219,8 @@ const Timestamp = styled.span`
 
 const HoverTimestamp = styled.span`
     position: absolute;
-    left: 0.5rem;
+    left: 1.5rem;
+    top: 0.4rem;
     font-size: 1rem;
     color: var(--tertiary-text-color);
     opacity: 0;
@@ -416,6 +417,11 @@ function ChatMessage({
     const containerRef = useRef(null);
     const addReactionRef = useRef(null);
 
+    // Load bounty data for the message author (always show if any gamemode has bounty)
+    const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(
+        message.player?.id
+    );
+
     const isAuthor = message.player_id === currentPlayerId;
     const canEdit = isAuthor;
     const canDelete = isAdmin;
@@ -601,10 +607,13 @@ function ChatMessage({
             {!isGrouped && (
                 <Link to={`/user/${message.player?.name}/profile`}>
                     <Avatar
+                        player={message.player}
+                        showStatus={true}
                         $size="small"
                         src={message.player?.avatar || DEFAULT_AVATAR}
                         alt={message.player?.name}
                         $cursor="pointer"
+                        bountyData={{ bounty1on1, bounty2on2 }}
                     />
                 </Link>
             )}
@@ -616,7 +625,11 @@ function ChatMessage({
                             to={`/user/${message.player?.name}/profile`}
                             $isWhisper={isWhisper}
                         >
-                            {message.player?.name}
+                            <PlayerNameWithTitle
+                                asText
+                                name={message.player?.name}
+                                playerId={message.player_id}
+                            />
                         </AuthorName>
                         {isWhisper && (
                             <WhisperLabel>
@@ -624,7 +637,13 @@ function ChatMessage({
                             </WhisperLabel>
                         )}
                         <Timestamp>
-                            {format(new Date(message.created_at), "HH:mm")}
+                            {format(
+                                new Date(message.created_at),
+                                new Date(message.created_at).getDate() ===
+                                    new Date().getDate()
+                                    ? "HH:mm"
+                                    : "dd.MM.yyyy - HH:mm"
+                            )}
                         </Timestamp>
                         {message.edited_at && (
                             <EditedLabel>(edited)</EditedLabel>

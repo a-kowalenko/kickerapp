@@ -18,6 +18,7 @@ import GlobalStyles from "./styles/GlobalStyles";
 import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
 import Fatalities from "./pages/Fatalities";
+import AchievementsPage from "./features/achievements/AchievementsPage";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
 import Players from "./pages/Players";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
@@ -87,6 +88,10 @@ function App() {
                                     <Route
                                         path="matches"
                                         element={<Matches />}
+                                    />
+                                    <Route
+                                        path="achievements/*"
+                                        element={<AchievementsPage />}
                                     />
                                     <Route
                                         path="players"

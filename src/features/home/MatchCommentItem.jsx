@@ -33,8 +33,8 @@ const MatchLabel = styled(Link)`
     align-items: center;
     gap: 0.6rem;
     padding: 0.4rem 1rem;
-    padding-left: 4.8rem;
-    font-size: 1.1rem;
+    padding-left: 1rem;
+    font-size: 1.5rem;
     color: var(--tertiary-text-color);
     text-decoration: none;
     transition: color 0.2s;

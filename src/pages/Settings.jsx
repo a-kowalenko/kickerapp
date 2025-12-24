@@ -1,5 +1,6 @@
 import { HiOutlineClipboardDocument } from "react-icons/hi2";
 import { useKickerInfo } from "../hooks/useKickerInfo";
+import { useUser } from "../features/authentication/useUser";
 import FormRow from "../ui/FormRow";
 import Input from "../ui/Input";
 import styled from "styled-components";
@@ -12,6 +13,7 @@ import useWindowWidth from "../hooks/useWindowWidth";
 import TabView from "../ui/TabView";
 import SeasonManagement from "../features/seasons/SeasonManagement";
 import NotificationSettings from "../features/settings/NotificationSettings";
+import StatusDisplaySettings from "../features/settings/StatusDisplaySettings";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
@@ -107,6 +109,9 @@ function GeneralSettings() {
 function Settings() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { data: kickerData } = useKickerInfo();
+    const { user } = useUser();
+    const isAdmin = kickerData?.admin === user?.id;
 
     // Redirect to general tab if no specific tab is selected
     useEffect(() => {
@@ -132,6 +137,15 @@ function Settings() {
             component: <SeasonManagement />,
         },
     ];
+
+    // Add admin-only tabs
+    if (isAdmin) {
+        tabs.push({
+            path: "/settings/status-display",
+            label: "Status Display",
+            component: <StatusDisplaySettings />,
+        });
+    }
 
     return (
         <StyledSettings>

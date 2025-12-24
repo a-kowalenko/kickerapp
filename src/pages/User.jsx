@@ -5,6 +5,7 @@ import TabView from "../ui/TabView";
 import Spinner from "../ui/Spinner";
 import ProfileSettings from "../features/players/ProfileSettings";
 import ProfileMatches from "../features/players/ProfileMatches";
+import ProfileAchievements from "../features/players/ProfileAchievements";
 import PlayerStatistics from "../features/players/PlayerStatistics";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
 import { usePrefetchProfileData } from "../features/players/usePrefetchProfileData";
@@ -32,6 +33,11 @@ function User() {
             path: `/user/${userId}/history`,
             label: "Match History",
             component: <ProfileMatches />,
+        },
+        {
+            path: `/user/${userId}/achievements`,
+            label: "Achievements",
+            component: <ProfileAchievements />,
         },
         {
             path: `/user/${userId}/statistics`,

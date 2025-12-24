@@ -9,6 +9,7 @@ import MatchCommentItem from "./MatchCommentItem";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
 import JumpToLatestButton from "../../ui/JumpToLatestButton";
+import { media } from "../../utils/constants";
 
 const ContentWrapper = styled.div`
     display: flex;
@@ -16,6 +17,10 @@ const ContentWrapper = styled.div`
     flex: 1;
     position: relative;
     min-height: 0;
+
+    ${media.tablet} {
+        height: 80rem;
+    }
 `;
 
 const CommentsContainer = styled.div`

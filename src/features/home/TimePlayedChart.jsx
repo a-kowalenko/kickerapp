@@ -128,6 +128,11 @@ function TimePlayedChart() {
     }
     const finalData = transformToMonthlyData(month, year, data);
     const playersObject = createPlayersObject(isLoadingPlayers, players);
+    const playersWithMatches = getPlayersWithMatchesInCategory(
+        players,
+        data,
+        gamemode
+    );
     const { options, gamemodeOptions, monthOptions, yearOptions } =
         createDropdownOptionLists(
             type,
@@ -268,7 +273,7 @@ function TimePlayedChart() {
                     {isLoadingPlayers ? (
                         <LoadingSpinner />
                     ) : (
-                        players.map((player) => (
+                        playersWithMatches.map((player) => (
                             <Line
                                 type="monotone"
                                 name={player.name}
@@ -301,6 +306,31 @@ function createPlayersObject(isLoadingPlayers, players) {
         }
     }
     return playersObject;
+}
+
+function getPlayersWithMatchesInCategory(players, data, gamemode) {
+    if (!data || data.length === 0) return [];
+
+    return players.filter((player) => {
+        // Get the last data entry for this player (cumulated data)
+        const lastEntry = data[data.length - 1];
+        const playerData = lastEntry?.[player.id];
+
+        if (!playerData) return false;
+
+        // Check if player has at least 1 match in the selected category
+        if (gamemode === "all") {
+            return playerData.matchesPlayedall > 0;
+        } else if (gamemode === GAMEMODE_1ON1) {
+            return playerData.matchesPlayed > 0;
+        } else if (gamemode === GAMEMODE_2ON2) {
+            return playerData.matchesPlayed2on2 > 0;
+        } else if (gamemode === GAMEMODE_2ON1) {
+            return playerData.matchesPlayed2on1 > 0;
+        }
+
+        return false;
+    });
 }
 
 function createDropdownOptionLists(

@@ -3,6 +3,8 @@ import Table from "../../ui/Table";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import PlayerName from "../../ui/PlayerName";
+import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const Rank = styled.div`
     font-size: 1.6rem;
@@ -45,6 +47,16 @@ function RankingsRow({ player, gamemode }) {
     const mmr = gamemode === "1on1" ? player.mmr : player.mmr2on2;
     const isUnranked = player.isUnranked;
 
+    // Load bounty data - filter by selected gamemode
+    const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(player.id);
+    const { isDesktop } = useWindowWidth();
+
+    // Only show bounty for the filtered gamemode
+    const bountyData = {
+        bounty1on1: gamemode === "1on1" ? bounty1on1 : 0,
+        bounty2on2: gamemode === "2on2" ? bounty2on2 : 0,
+    };
+
     const totalGames = wins + losses;
     const winrate = totalGames > 0 ? ((wins / totalGames) * 100).toFixed(1) : 0;
     return (
@@ -54,7 +66,11 @@ function RankingsRow({ player, gamemode }) {
             </Rank>
 
             <PlayerName to={`/user/${player.name}/profile`}>
-                <Avatar $size="xs" src={player.avatar || DEFAULT_AVATAR} />
+                <Avatar
+                    $size={isDesktop ? "small" : "xs"}
+                    src={player.avatar || DEFAULT_AVATAR}
+                    bountyData={bountyData}
+                />
                 <span>{player.name}</span>
             </PlayerName>
 

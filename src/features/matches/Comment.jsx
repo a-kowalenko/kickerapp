@@ -15,6 +15,7 @@ import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
 import { DEFAULT_AVATAR, MAX_COMMENT_LENGTH } from "../../utils/constants";
+import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
 
 // Quick reaction emojis (Discord-style)
 const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
@@ -23,7 +24,7 @@ const CommentContainer = styled.div`
     display: flex;
     gap: 1rem;
     padding: ${(props) => (props.$isGrouped ? "0.2rem 1rem" : "1rem")};
-    padding-left: ${(props) => (props.$isGrouped ? "4.8rem" : "1rem")};
+    padding-left: ${(props) => (props.$isGrouped ? "5.4rem" : "1rem")};
     border-radius: var(--border-radius-md);
     background-color: ${(props) =>
         props.$disableHover
@@ -163,7 +164,8 @@ const Timestamp = styled.span`
 
 const HoverTimestamp = styled.span`
     position: absolute;
-    left: 0.5rem;
+    left: 1.5rem;
+    top: 0.4rem;
     font-size: 1rem;
     color: var(--tertiary-text-color);
     opacity: 0;
@@ -316,6 +318,11 @@ function Comment({
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const addReactionRef = useRef(null);
 
+    // Load bounty data for the comment author (always show if any gamemode has bounty)
+    const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(
+        comment.player?.id
+    );
+
     const isAuthor = comment.player_id === currentPlayerId;
     const canEdit = isAuthor;
     const canDelete = isAdmin;
@@ -428,25 +435,33 @@ function Comment({
             )}
 
             {!isGrouped && (
-                <Link to={`/players/${comment.player_id}`}>
+                <Link to={`/user/${comment.player?.name}/profile`}>
                     <Avatar
+                        player={comment.player}
+                        showStatus={true}
                         $size="small"
                         src={comment.player?.avatar || DEFAULT_AVATAR}
                         alt={comment.player?.name}
                         $cursor="pointer"
+                        bountyData={{ bounty1on1, bounty2on2 }}
                     />
                 </Link>
             )}
             <CommentContent>
                 {!isGrouped && (
                     <CommentHeader>
-                        <AuthorName to={`/players/${comment.player_id}`}>
+                        <AuthorName
+                            to={`/user/${comment.player?.name}/profile`}
+                        >
                             {comment.player?.name}
                         </AuthorName>
                         <Timestamp>
                             {format(
                                 new Date(comment.created_at),
-                                "dd.MM.yyyy HH:mm"
+                                new Date(comment.created_at).getDate() ===
+                                    new Date().getDate()
+                                    ? "HH:mm"
+                                    : "dd.MM.yyyy - HH:mm"
                             )}
                         </Timestamp>
                         {comment.edited_at && (
