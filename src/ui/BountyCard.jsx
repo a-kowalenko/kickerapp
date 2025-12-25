@@ -2,7 +2,7 @@ import styled, { keyframes, css } from "styled-components";
 import Avatar from "./Avatar";
 import { StatusBadge, SimpleStreakBadge } from "./StatusBadge";
 import { HiOutlineFire } from "react-icons/hi2";
-import { TbTarget } from "react-icons/tb";
+import { TbTarget, TbSnowflake } from "react-icons/tb";
 import {
     BountyTooltip,
     StreakTooltip,
@@ -98,6 +98,39 @@ const glowPulseLarge = keyframes`
     }
 `;
 
+/* Cold Glow Animations (for losing streaks) */
+const coldGlowPulseXs = keyframes`
+    0%, 100% { box-shadow: 0 0 3px rgba(100, 180, 255, 0.3); }
+    50% { box-shadow: 0 0 6px rgba(100, 180, 255, 0.5); }
+`;
+
+const coldGlowPulseSmall = keyframes`
+    0%, 100% { box-shadow: 0 0 5px rgba(100, 180, 255, 0.3); }
+    50% { box-shadow: 0 0 10px rgba(100, 180, 255, 0.5); }
+`;
+
+const coldGlowPulseMedium = keyframes`
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(100, 180, 255, 0.3),
+                    0 0 20px rgba(100, 180, 255, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(100, 180, 255, 0.5),
+                    0 0 30px rgba(100, 180, 255, 0.3);
+    }
+`;
+
+const coldGlowPulseLarge = keyframes`
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(100, 180, 255, 0.3),
+                    0 0 30px rgba(100, 180, 255, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(100, 180, 255, 0.5),
+                    0 0 40px rgba(100, 180, 255, 0.3);
+    }
+`;
+
 const getGlowAnimation = (size) => {
     switch (size) {
         case "xs":
@@ -108,6 +141,19 @@ const getGlowAnimation = (size) => {
             return glowPulseLarge;
         default:
             return glowPulseMedium;
+    }
+};
+
+const getColdGlowAnimation = (size) => {
+    switch (size) {
+        case "xs":
+            return coldGlowPulseXs;
+        case "small":
+            return coldGlowPulseSmall;
+        case "large":
+            return coldGlowPulseLarge;
+        default:
+            return coldGlowPulseMedium;
     }
 };
 
@@ -133,6 +179,15 @@ const Card = styled.div`
         css`
             animation: ${getGlowAnimation(props.$size)} 2s ease-in-out infinite;
             border-color: rgba(255, 100, 50, 0.5);
+        `}
+
+    ${(props) =>
+        props.$coldStreak &&
+        !props.$highBounty &&
+        css`
+            animation: ${getColdGlowAnimation(props.$size)} 2s ease-in-out
+                infinite;
+            border-color: rgba(100, 180, 255, 0.5);
         `}
 
     ${(props) =>
@@ -232,7 +287,7 @@ const StreakInfo = styled.div`
         `}
 
     svg {
-        color: #ff6432;
+        color: ${(props) => (props.$cold ? "#64b4ff" : "#ff6432")};
         font-size: 1.4em;
     }
 `;
@@ -328,7 +383,8 @@ export function BountyCard({
 
     const isHighBounty = bounty >= 30;
     const hasBounty = bounty > 0;
-    const hasStreak = streak >= 3;
+    const hasStreak = Math.abs(streak) >= 3;
+    const isColdStreak = streak <= -5; // Glow animation for losing streaks of 5+
     const avatarSize = sizeConfig[size]?.avatarSize || "medium";
 
     // For xs size, simplify the display
@@ -346,19 +402,22 @@ export function BountyCard({
     const tooltipStreak1on1 = streak1on1 || (gamemode === "1on1" ? streak : 0);
     const tooltipStreak2on2 = streak2on2 || (gamemode === "2on2" ? streak : 0);
     const hasStreakTooltipData =
-        tooltipStreak1on1 >= 3 || tooltipStreak2on2 >= 3;
+        Math.abs(tooltipStreak1on1) >= 3 || Math.abs(tooltipStreak2on2) >= 3;
 
     return (
         <Card
             $size={size}
             $highBounty={isHighBounty}
+            $coldStreak={isColdStreak}
             $clickable={!!onClick}
             onClick={onClick}
         >
             <Avatar
                 player={player}
                 $size={avatarSize}
-                $status={hasBounty ? "hotStreak" : status}
+                $status={
+                    hasBounty ? "hotStreak" : isColdStreak ? "cold" : status
+                }
                 $cursor={onClick ? "pointer" : "default"}
             />
 
@@ -386,6 +445,7 @@ export function BountyCard({
                 {(isXs || isSmall) && (hasBounty || hasStreak) && (
                     <StreakInfo
                         $size={size}
+                        $cold={streak < 0}
                         $hoverable={
                             showStreakTooltip &&
                             hasStreakTooltipData &&
@@ -415,8 +475,13 @@ export function BountyCard({
                     >
                         {hasStreak && (
                             <>
-                                <HiOutlineFire />
-                                {streak} Win Streak
+                                {streak > 0 ? (
+                                    <HiOutlineFire />
+                                ) : (
+                                    <TbSnowflake />
+                                )}
+                                {Math.abs(streak)} {streak > 0 ? "Win" : "Loss"}{" "}
+                                Streak
                             </>
                         )}
                         {hasBounty && !hasStreak && (
@@ -431,6 +496,7 @@ export function BountyCard({
                 {!isXs && !isSmall && gamemode && showGamemode && hasStreak && (
                     <StreakInfo
                         $size={size}
+                        $cold={streak < 0}
                         $hoverable={showStreakTooltip && hasStreakTooltipData}
                         ref={
                             showStreakTooltip && hasStreakTooltipData
@@ -448,8 +514,10 @@ export function BountyCard({
                                 : undefined
                         }
                     >
-                        <HiOutlineFire />
-                        {streak} Siege in Folge ({gamemode})
+                        {streak > 0 ? <HiOutlineFire /> : <TbSnowflake />}
+                        {Math.abs(streak)}{" "}
+                        {streak > 0 ? "Siege" : "Niederlagen"} in Folge (
+                        {gamemode})
                     </StreakInfo>
                 )}
             </PlayerInfo>

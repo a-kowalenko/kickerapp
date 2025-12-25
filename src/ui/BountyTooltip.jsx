@@ -70,7 +70,7 @@ const BountyValue = styled.span`
 
 const StreakValue = styled.span`
     font-weight: 600;
-    color: #ff6432;
+    color: ${(props) => (props.$cold ? "#64b4ff" : "#ff6432")};
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -237,37 +237,63 @@ export function useBountyTooltip(tooltipWidth = 140) {
    Zeigt ein Tooltip mit Streak-Aufschlüsselung nach Gamemode
    
    Props:
-   - streak1on1: number - Streak für 1on1 Modus
-   - streak2on2: number - Streak für 2on2 Modus
-   - title: string - Titel im Header (default: "Win Streaks")
-   - icon: string - Icon/Emoji im Header (default: "🔥")
+   - streak1on1: number - Streak für 1on1 Modus (positive = wins, negative = losses)
+   - streak2on2: number - Streak für 2on2 Modus (positive = wins, negative = losses)
+   - title: string - Titel im Header (default: auto based on streaks)
+   - icon: string - Icon/Emoji im Header (default: auto based on streaks)
 ----------------------------------------- */
 export function StreakTooltipContent({
     streak1on1 = 0,
     streak2on2 = 0,
-    title = "Win Streaks",
-    icon = "🔥",
+    title,
+    icon,
 }) {
-    const show1on1 = streak1on1 >= 3;
-    const show2on2 = streak2on2 >= 3;
+    const show1on1 = Math.abs(streak1on1) >= 3;
+    const show2on2 = Math.abs(streak2on2) >= 3;
+
+    // Determine if we have any losing streaks
+    const hasLosingStreak = streak1on1 <= -3 || streak2on2 <= -3;
+    const hasWinningStreak = streak1on1 >= 3 || streak2on2 >= 3;
+
+    // Auto-determine title and icon based on streak types
+    const displayTitle =
+        title ||
+        (hasLosingStreak && !hasWinningStreak
+            ? "Loss Streaks"
+            : hasWinningStreak && !hasLosingStreak
+            ? "Win Streaks"
+            : "Streaks");
+    const displayIcon =
+        icon ||
+        (hasLosingStreak && !hasWinningStreak
+            ? "❄️"
+            : hasWinningStreak && !hasLosingStreak
+            ? "🔥"
+            : "📊");
 
     return (
         <TooltipContent>
             <TooltipArrow />
             <TooltipHeader>
-                <TooltipIcon>{icon}</TooltipIcon>
-                <TooltipTitle>{title}</TooltipTitle>
+                <TooltipIcon>{displayIcon}</TooltipIcon>
+                <TooltipTitle>{displayTitle}</TooltipTitle>
             </TooltipHeader>
             {show1on1 && (
                 <TooltipRow>
                     <GamemodeLabel>1on1</GamemodeLabel>
-                    <StreakValue>{streak1on1} 🔥</StreakValue>
+                    <StreakValue $cold={streak1on1 < 0}>
+                        {streak1on1 > 0 ? "+" : ""}
+                        {streak1on1} {streak1on1 > 0 ? "🔥" : "❄️"}
+                    </StreakValue>
                 </TooltipRow>
             )}
             {show2on2 && (
                 <TooltipRow>
                     <GamemodeLabel>2on2</GamemodeLabel>
-                    <StreakValue>{streak2on2} 🔥</StreakValue>
+                    <StreakValue $cold={streak2on2 < 0}>
+                        {streak2on2 > 0 ? "+" : ""}
+                        {streak2on2} {streak2on2 > 0 ? "🔥" : "❄️"}
+                    </StreakValue>
                 </TooltipRow>
             )}
             {!show1on1 && !show2on2 && (
@@ -291,18 +317,18 @@ export function StreakTooltipContent({
    Props:
    - isVisible: boolean - Ob das Tooltip sichtbar ist
    - position: { top, left } - Position des Tooltips
-   - streak1on1: number - Streak für 1on1 Modus
-   - streak2on2: number - Streak für 2on2 Modus
-   - title: string - Titel im Header
-   - icon: string - Icon/Emoji im Header
+   - streak1on1: number - Streak für 1on1 Modus (positive = wins, negative = losses)
+   - streak2on2: number - Streak für 2on2 Modus (positive = wins, negative = losses)
+   - title: string - Titel im Header (optional, auto-determined)
+   - icon: string - Icon/Emoji im Header (optional, auto-determined)
 ----------------------------------------- */
 export function StreakTooltip({
     isVisible,
     position,
     streak1on1 = 0,
     streak2on2 = 0,
-    title = "Win Streaks",
-    icon = "🔥",
+    title,
+    icon,
 }) {
     if (!isVisible) return null;
 
