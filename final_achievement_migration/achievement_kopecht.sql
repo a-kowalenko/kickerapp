@@ -426,13 +426,13 @@ INSERT INTO kopecht.achievement_definitions (
 -- These reset each season and track progress within the current season
 -- ============================================
 
--- Teamplayer - 10 goals in 2on2 (season-specific)
+-- Tag Team Rookie - 10 goals in 2on2 (season-specific)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, is_season_specific
 ) VALUES (
     'goals_2on2_10', 
-    'Teamplayer', 
+    'Not Useless', 
     'Score 10 goals in 2on2 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
@@ -444,13 +444,13 @@ INSERT INTO kopecht.achievement_definitions (
     true
 );
 
--- Team Striker - 50 goals in 2on2 (season-specific, chain from goals_2on2_10)
+-- Got Aim - 50 goals in 2on2 (season-specific, chain from goals_2on2_10)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
     'goals_2on2_50', 
-    'Team Striker', 
+    'Got Aim', 
     'Score 50 goals in 2on2 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
@@ -463,13 +463,13 @@ INSERT INTO kopecht.achievement_definitions (
     (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_10')
 );
 
--- Double Striker - 100 goals in 2on2 (season-specific, chain from goals_2on2_50)
+-- Solid Partner - 100 goals in 2on2 (season-specific, chain from goals_2on2_50)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
     'goals_2on2_100', 
-    'Double Striker', 
+    'Solid Partner', 
     'Score 100 goals in 2on2 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',
@@ -482,13 +482,13 @@ INSERT INTO kopecht.achievement_definitions (
     (SELECT id FROM kopecht.achievement_definitions WHERE key = 'goals_2on2_50')
 );
 
--- Team Cannon - 250 goals in 2on2 (season-specific, chain from goals_2on2_100)
+-- Tandem Master - 250 goals in 2on2 (season-specific, chain from goals_2on2_100)
 INSERT INTO kopecht.achievement_definitions (
     key, name, description, category_id, trigger_event, condition, 
     points, max_progress, is_hidden, is_repeatable, is_season_specific, parent_id
 ) VALUES (
     'goals_2on2_250', 
-    'Team Cannon', 
+    'Tandem Master', 
     'Score 250 goals in 2on2 matches this season',
     (SELECT id FROM kopecht.achievement_categories WHERE key = 'goals'),
     'GOAL_SCORED',

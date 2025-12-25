@@ -2,6 +2,7 @@ import styled from "styled-components";
 import AchievementCard from "./AchievementCard";
 import AchievementChainCard from "./AchievementChainCard";
 import { media } from "../../utils/constants";
+import { vi } from "date-fns/locale";
 
 const Grid = styled.div`
     display: grid;
@@ -189,6 +190,7 @@ function AchievementsList({ achievements, groupByCategory = true }) {
         <div>
             {sortedGroups.map(
                 ({ category, achievements: categoryAchievements }) => {
+                    console.log(category);
                     // Build chains within this category (from all achievements)
                     const allChains = buildChains(categoryAchievements);
 
@@ -201,6 +203,10 @@ function AchievementsList({ achievements, groupByCategory = true }) {
                     const unlockedCount = visibleAchievements.filter(
                         (a) => a.isUnlocked
                     ).length;
+
+                    if (visibleAchievements.length === 0) {
+                        return null;
+                    }
 
                     return (
                         <CategorySection key={category.id}>
