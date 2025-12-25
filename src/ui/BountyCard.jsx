@@ -154,7 +154,9 @@ const PlayerInfo = styled.div`
 `;
 
 const PlayerName = styled.span`
+    display: flex;
     font-weight: 700;
+    gap: 0.8rem;
     font-size: ${(props) =>
         sizeConfig[props.$size]?.nameSize || sizeConfig.medium.nameSize};
     color: var(--primary-text-color);
@@ -174,7 +176,7 @@ const StatusRow = styled.div`
 const BountySection = styled.div`
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
     align-self: flex-start;
     gap: ${(props) => (props.$size === "xs" ? "0.1rem" : "0.3rem")};
     flex-shrink: 0;
@@ -189,7 +191,7 @@ const BountySection = styled.div`
 const BountyValue = styled.div`
     display: flex;
     align-items: center;
-    gap: 0.2rem;
+    gap: 0.5rem;
     font-size: ${(props) =>
         sizeConfig[props.$size]?.bountySize || sizeConfig.medium.bountySize};
     font-weight: 700;
@@ -242,6 +244,25 @@ const TargetIcon = styled(TbTarget)`
     opacity: 0.5;
     flex-shrink: 0;
     display: ${(props) => (props.$size === "xs" ? "none" : "block")};
+`;
+
+const Divider = styled.div`
+    width: 1px;
+    height: ${(props) =>
+        props.$size === "xs"
+            ? "24px"
+            : props.$size === "small"
+            ? "36px"
+            : "40px"};
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        var(--secondary-text-color) 20%,
+        var(--secondary-text-color) 80%,
+        transparent 100%
+    );
+    opacity: 0.3;
+    flex-shrink: 0;
 `;
 
 /* ----------------------------------------
@@ -344,6 +365,7 @@ export function BountyCard({
             <PlayerInfo $size={size}>
                 <PlayerName $size={size}>
                     {player?.name || "Unbekannt"}
+                    <StatusBadge status={status} size="small" showLabel />
                 </PlayerName>
 
                 {/* Status Row - shown for medium and large */}
@@ -394,7 +416,7 @@ export function BountyCard({
                         {hasStreak && (
                             <>
                                 <HiOutlineFire />
-                                {streak}
+                                {streak} Win Streak
                             </>
                         )}
                         {hasBounty && !hasStreak && (
@@ -446,13 +468,7 @@ export function BountyCard({
             {hasBounty && (
                 <>
                     {/* // horizontal separator */}
-                    <hr
-                        style={{
-                            border: "none",
-                            borderLeft: "1px solid var(--secondary-text-color)",
-                            height: "40px",
-                        }}
-                    />
+                    <Divider $size={size} />
                     <BountySection
                         $size={size}
                         ref={
@@ -471,9 +487,28 @@ export function BountyCard({
                                 : undefined
                         }
                     >
-                        <BountyValue $size={size}>💰+{bounty}</BountyValue>
-                        {showLabel && (
-                            <BountyLabel $size={size}>Bounty</BountyLabel>
+                        {status ? (
+                            <>
+                                {showLabel && (
+                                    <BountyLabel $size={size}>
+                                        Bounty
+                                    </BountyLabel>
+                                )}
+                                <BountyValue $size={size}>
+                                    💰+{bounty}
+                                </BountyValue>
+                            </>
+                        ) : (
+                            <>
+                                <BountyValue $size={size}>
+                                    💰+{bounty}
+                                </BountyValue>
+                                {showLabel && (
+                                    <BountyLabel $size={size}>
+                                        Bounty
+                                    </BountyLabel>
+                                )}
+                            </>
                         )}
                     </BountySection>
 

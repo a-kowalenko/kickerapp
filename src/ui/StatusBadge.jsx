@@ -50,18 +50,18 @@ const STATUS_COLORS = {
    Status Labels (German)
 ----------------------------------------- */
 const STATUS_LABELS = {
-    warmingUp: "Aufwärmen",
-    hotStreak: "Heiße Serie",
+    warmingUp: "Warming Up",
+    hotStreak: "Hot Streak",
     onFire: "On Fire!",
-    legendary: "Legendär",
-    cold: "Kalt",
-    iceCold: "Eiskalt",
-    frozen: "Eingefroren",
-    humiliated: "Gedemütigt",
+    legendary: "Legendary",
+    cold: "Cold",
+    iceCold: "Ice Cold",
+    frozen: "Frozen",
+    humiliated: "Humiliated",
     dominator: "Dominator",
     comeback: "Comeback",
     underdog: "Underdog",
-    giantSlayer: "Riesenbezwinger",
+    giantSlayer: "Giant Slayer",
 };
 
 /* ----------------------------------------
