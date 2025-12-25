@@ -149,7 +149,9 @@ function Header() {
                         </ButtonIcon>
                     )}
                 </DesktopOnly>
-                <SoundToggle />
+                <DesktopOnly>
+                    <SoundToggle />
+                </DesktopOnly>
                 <DesktopOnly>
                     <DarkModeToggle />
                 </DesktopOnly>

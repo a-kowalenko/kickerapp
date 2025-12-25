@@ -13,6 +13,81 @@ import {
 } from "../../services/apiPlayerStatus";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 
+// ============== STATUS CHAINS & CATEGORIES ==============
+
+/**
+ * Status chain definitions - ordered from lowest to highest tier
+ * Used to determine which status to show when multiple from same chain exist
+ */
+const STATUS_CHAINS = {
+    winStreak: ["warmingUp", "hotStreak", "onFire", "legendary"],
+    lossStreak: ["cold", "iceCold", "frozen"],
+};
+
+/**
+ * Special statuses that can coexist with streak statuses
+ * These take priority over streak statuses for display
+ */
+const SPECIAL_STATUSES = ["dominator", "giantSlayer", "comeback", "underdog"];
+
+/**
+ * Monthly/Event statuses (separate from streak chains)
+ */
+const MONTHLY_STATUSES = ["humiliated"];
+
+/**
+ * Get the highest status from a chain within a list of statuses
+ * @param {string[]} statuses - List of asset keys
+ * @param {string} chainName - 'winStreak' or 'lossStreak'
+ * @returns {string|null} - Highest status in chain or null
+ */
+function getHighestInChain(statuses, chainName) {
+    const chain = STATUS_CHAINS[chainName];
+    if (!chain) return null;
+
+    // Find highest status in this chain (chain is ordered low to high)
+    for (let i = chain.length - 1; i >= 0; i--) {
+        if (statuses.includes(chain[i])) {
+            return chain[i];
+        }
+    }
+    return null;
+}
+
+/**
+ * Filter statuses to show only unique ones:
+ * - Only highest from each chain (winStreak, lossStreak)
+ * - All special statuses
+ * - All monthly statuses
+ * @param {string[]} statuses - List of asset keys
+ * @returns {string[]} - Filtered unique statuses
+ */
+function getUniqueStatuses(statuses) {
+    if (!statuses || statuses.length === 0) return [];
+
+    const result = [];
+
+    // Get highest win streak status
+    const highestWin = getHighestInChain(statuses, "winStreak");
+    if (highestWin) result.push(highestWin);
+
+    // Get highest loss streak status
+    const highestLoss = getHighestInChain(statuses, "lossStreak");
+    if (highestLoss) result.push(highestLoss);
+
+    // Add all special statuses
+    for (const status of statuses) {
+        if (
+            SPECIAL_STATUSES.includes(status) ||
+            MONTHLY_STATUSES.includes(status)
+        ) {
+            result.push(status);
+        }
+    }
+
+    return result;
+}
+
 // ============== STATUS DEFINITIONS ==============
 
 /**
@@ -343,15 +418,6 @@ export function usePlayerStatusForAvatar(playerId) {
     // displayableStatuses are already asset_keys, so use directly
     const statusAssets = displayableStatuses;
 
-    // Get the highest priority status for primary display
-    // displayableStatuses[0] is an asset_key, need to find the definition by asset_key
-    const primaryAssetKey = displayableStatuses[0];
-    const primaryStatusDef = primaryAssetKey
-        ? Object.values(statusMap).find(
-              (def) => def.asset_key === primaryAssetKey
-          )
-        : null;
-
     // Calculate combined bounty from all gamemodes
     const totalBounty = (statuses || []).reduce(
         (sum, s) => sum + (s.current_bounty || 0),
@@ -370,12 +436,96 @@ export function usePlayerStatusForAvatar(playerId) {
     const streak2on2 =
         statuses?.find((s) => s.gamemode === "2on2")?.current_streak || 0;
 
-    // Get best streak (highest absolute value)
-    const bestStreak = (statuses || []).reduce((best, s) => {
-        const streak = s.current_streak || 0;
-        if (Math.abs(streak) > Math.abs(best)) return streak;
-        return best;
-    }, 0);
+    // Get best streak (highest absolute value, win streak wins on tie)
+    const bestStreakData = (statuses || []).reduce(
+        (best, s) => {
+            const streak = s.current_streak || 0;
+            const absStreak = Math.abs(streak);
+            const absBest = Math.abs(best.streak);
+
+            // Higher absolute value wins
+            if (absStreak > absBest) {
+                return {
+                    streak,
+                    gamemode: s.gamemode,
+                    statuses: s.active_statuses || [],
+                };
+            }
+            // On tie, prefer win streak (positive)
+            if (absStreak === absBest && streak > 0 && best.streak <= 0) {
+                return {
+                    streak,
+                    gamemode: s.gamemode,
+                    statuses: s.active_statuses || [],
+                };
+            }
+            return best;
+        },
+        { streak: 0, gamemode: null, statuses: [] }
+    );
+
+    const bestStreak = bestStreakData.streak;
+
+    // Extract statuses per gamemode (as asset_keys) for tooltip
+    const statuses1on1 = (
+        statuses?.find((s) => s.gamemode === "1on1")?.active_statuses || []
+    )
+        .map((key) => statusMap[key]?.asset_key)
+        .filter(Boolean);
+    const statuses2on2 = (
+        statuses?.find((s) => s.gamemode === "2on2")?.active_statuses || []
+    )
+        .map((key) => statusMap[key]?.asset_key)
+        .filter(Boolean);
+
+    // Get unique statuses per gamemode (for tooltip display)
+    const uniqueStatuses1on1 = getUniqueStatuses(statuses1on1);
+    const uniqueStatuses2on2 = getUniqueStatuses(statuses2on2);
+
+    // Determine primary status:
+    // 1. First check for special statuses (dominator, giantSlayer, etc.) - they take priority
+    // 2. Otherwise use the streak status from the gamemode with bestStreak
+    let primaryStatusAsset = null;
+
+    // Check for special statuses across all gamemodes
+    const specialStatus = displayableStatuses.find((s) =>
+        SPECIAL_STATUSES.includes(s)
+    );
+
+    if (specialStatus) {
+        // Special status takes priority
+        primaryStatusAsset = specialStatus;
+    } else if (bestStreakData.gamemode) {
+        // Use the streak status from the gamemode with the best streak
+        const bestGamemodeAssetKeys = bestStreakData.statuses
+            .map((key) => statusMap[key]?.asset_key)
+            .filter(Boolean);
+
+        // Get the appropriate chain based on streak direction
+        if (bestStreak > 0) {
+            primaryStatusAsset = getHighestInChain(
+                bestGamemodeAssetKeys,
+                "winStreak"
+            );
+        } else if (bestStreak < 0) {
+            primaryStatusAsset = getHighestInChain(
+                bestGamemodeAssetKeys,
+                "lossStreak"
+            );
+        }
+    }
+
+    // Fallback to first displayable status if nothing found
+    if (!primaryStatusAsset && displayableStatuses.length > 0) {
+        primaryStatusAsset = displayableStatuses[0];
+    }
+
+    // Get the full status definition for the primary status
+    const primaryStatusDef = primaryStatusAsset
+        ? Object.values(statusMap).find(
+              (def) => def.asset_key === primaryStatusAsset
+          )
+        : null;
 
     return {
         // All raw statuses by gamemode
@@ -391,11 +541,15 @@ export function usePlayerStatusForAvatar(playerId) {
         streak1on1,
         streak2on2,
 
+        // Status per gamemode (for tooltip)
+        statuses1on1: uniqueStatuses1on1,
+        statuses2on2: uniqueStatuses2on2,
+
         // For Avatar component - array of asset keys to display
         statusAssets,
 
-        // Primary status (highest priority)
-        primaryStatusAsset: primaryStatusDef?.asset_key || null,
+        // Primary status (highest priority, linked to bestStreak)
+        primaryStatusAsset,
         primaryStatusInfo: primaryStatusDef,
 
         isLoading: statusLoading || defsLoading || configLoading,

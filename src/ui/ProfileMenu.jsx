@@ -6,6 +6,8 @@ import {
     HiArrowRightOnRectangle,
     HiOutlineMoon,
     HiOutlineSun,
+    HiOutlineSpeakerWave,
+    HiOutlineSpeakerXMark,
 } from "react-icons/hi2";
 import { useLogout } from "../features/authentication/useLogout";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -14,6 +16,7 @@ import { useOwnPlayer } from "../hooks/useOwnPlayer";
 import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
 import { useKicker } from "../contexts/KickerContext";
 import { useDarkMode } from "../contexts/DarkModeContext";
+import { useSound } from "../contexts/SoundContext";
 import useWindowWidth from "../hooks/useWindowWidth";
 import { media } from "../utils/constants";
 import SpinnerMini from "./SpinnerMini";
@@ -89,6 +92,7 @@ function ProfileMenu() {
     const dropdownRef = useOutsideClick(close);
     const { setCurrentKicker } = useKicker();
     const { isDarkMode, toggleDarkMode } = useDarkMode();
+    const { isSound, toggleSound } = useSound();
     const { windowWidth } = useWindowWidth();
     const isMobile = windowWidth <= media.maxTablet;
 
@@ -100,6 +104,8 @@ function ProfileMenu() {
         bounty2on2,
         streak1on1,
         streak2on2,
+        statuses1on1,
+        statuses2on2,
         primaryStatusAsset,
     } = usePlayerStatusForAvatar(player?.id);
 
@@ -133,6 +139,12 @@ function ProfileMenu() {
         // Don't close menu after toggle so user can see the change
     }
 
+    function handleToggleSound(e) {
+        e.stopPropagation();
+        toggleSound();
+        // Don't close menu after toggle so user can hear the change
+    }
+
     if (isLoadingPlayer) {
         return <SpinnerMini />;
     }
@@ -147,6 +159,8 @@ function ProfileMenu() {
                 streak={bestStreak}
                 streak1on1={streak1on1}
                 streak2on2={streak2on2}
+                statuses1on1={statuses1on1}
+                statuses2on2={statuses2on2}
                 status={primaryStatusAsset}
                 size="small"
                 onClick={handleToggle}
@@ -154,6 +168,7 @@ function ProfileMenu() {
                 showStatusBadge={true}
                 showTargetIcon={false}
                 showLabel={true}
+                showStatusTooltip={true}
             />
 
             {isOpen && (
@@ -171,6 +186,16 @@ function ProfileMenu() {
                         <StyledButton onClick={handleToggleDarkMode}>
                             {isDarkMode ? <HiOutlineSun /> : <HiOutlineMoon />}
                             {isDarkMode ? "Light Mode" : "Dark Mode"}
+                        </StyledButton>
+                    </MobileOnlyItem>
+                    <MobileOnlyItem>
+                        <StyledButton onClick={handleToggleSound}>
+                            {isSound ? (
+                                <HiOutlineSpeakerWave />
+                            ) : (
+                                <HiOutlineSpeakerXMark />
+                            )}
+                            {isSound ? "Sound Off" : "Sound On"}
                         </StyledButton>
                     </MobileOnlyItem>
                     <MobileOnlyItem>

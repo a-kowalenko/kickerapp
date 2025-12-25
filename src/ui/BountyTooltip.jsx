@@ -70,7 +70,7 @@ const BountyValue = styled.span`
 
 const StreakValue = styled.span`
     font-weight: 600;
-    color: ${(props) => (props.$cold ? "#64b4ff" : "#ff6432")};
+    color: ${(props) => (props.$cold ? "#3B82F6" : "#EF4444")};
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -344,6 +344,205 @@ export function StreakTooltip({
                 streak2on2={streak2on2}
                 title={title}
                 icon={icon}
+            />
+        </TooltipContainer>,
+        document.body
+    );
+}
+
+/* ----------------------------------------
+   StatusTooltip Components
+   
+   Zeigt aktive Status pro Gamemode an
+----------------------------------------- */
+
+const STATUS_ICONS_MAP = {
+    warmingUp: "✨",
+    hotStreak: "🔥",
+    onFire: "🔥",
+    legendary: "👑",
+    cold: "❄️",
+    iceCold: "🥶",
+    frozen: "🧊",
+    humiliated: "😢",
+    dominator: "💪",
+    giantSlayer: "⚔️",
+    comeback: "🚀",
+    underdog: "🐺",
+};
+
+const STATUS_LABELS_MAP = {
+    warmingUp: "Warming Up",
+    hotStreak: "Hot Streak",
+    onFire: "On Fire!",
+    legendary: "Legendary",
+    cold: "Cold",
+    iceCold: "Ice Cold",
+    frozen: "Frozen",
+    humiliated: "Humiliated",
+    dominator: "Dominator",
+    giantSlayer: "Giant Slayer",
+    comeback: "Comeback",
+    underdog: "Underdog",
+};
+
+const StatusItem = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0;
+    font-size: 1.1rem;
+`;
+
+const StatusIcon = styled.span`
+    font-size: 1.2rem;
+`;
+
+const StatusLabel = styled.span`
+    color: var(--primary-text-color);
+    font-weight: 500;
+`;
+
+const GamemodeSection = styled.div`
+    &:not(:last-child) {
+        margin-bottom: 0.6rem;
+        padding-bottom: 0.6rem;
+        border-bottom: 1px solid var(--secondary-border-color);
+    }
+`;
+
+const GamemodeHeader = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+`;
+
+const GamemodeTitle = styled.span`
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--secondary-text-color);
+`;
+
+const StreakIndicator = styled.span`
+    font-size: 1rem;
+    font-weight: 600;
+    color: ${(props) =>
+        props.$streak > 0
+            ? "#EF4444"
+            : props.$streak < 0
+            ? "#3B82F6"
+            : "var(--secondary-text-color)"};
+`;
+
+const NoStatusText = styled.span`
+    color: var(--secondary-text-color);
+    font-size: 1rem;
+    font-style: italic;
+`;
+
+export function StatusTooltipContent({
+    statuses1on1 = [],
+    statuses2on2 = [],
+    streak1on1 = 0,
+    streak2on2 = 0,
+}) {
+    const hasStatuses = statuses1on1.length > 0 || statuses2on2.length > 0;
+
+    if (!hasStatuses) {
+        return (
+            <TooltipContent>
+                <TooltipArrow />
+                <TooltipHeader>
+                    <TooltipIcon>📊</TooltipIcon>
+                    <TooltipTitle>Status</TooltipTitle>
+                </TooltipHeader>
+                <NoStatusText>Keine aktiven Status</NoStatusText>
+            </TooltipContent>
+        );
+    }
+
+    return (
+        <TooltipContent>
+            <TooltipArrow />
+            <TooltipHeader>
+                <TooltipIcon>📊</TooltipIcon>
+                <TooltipTitle>Aktive Status</TooltipTitle>
+            </TooltipHeader>
+
+            {statuses1on1.length > 0 && (
+                <GamemodeSection>
+                    <GamemodeHeader>
+                        <GamemodeTitle>1on1</GamemodeTitle>
+                        {streak1on1 !== 0 && (
+                            <StreakIndicator $streak={streak1on1}>
+                                {streak1on1 > 0 ? "+" : ""}
+                                {streak1on1}
+                            </StreakIndicator>
+                        )}
+                    </GamemodeHeader>
+                    {statuses1on1.map((status) => (
+                        <StatusItem key={status}>
+                            <StatusIcon>
+                                {STATUS_ICONS_MAP[status] || "•"}
+                            </StatusIcon>
+                            <StatusLabel>
+                                {STATUS_LABELS_MAP[status] || status}
+                            </StatusLabel>
+                        </StatusItem>
+                    ))}
+                </GamemodeSection>
+            )}
+
+            {statuses2on2.length > 0 && (
+                <GamemodeSection>
+                    <GamemodeHeader>
+                        <GamemodeTitle>2on2</GamemodeTitle>
+                        {streak2on2 !== 0 && (
+                            <StreakIndicator $streak={streak2on2}>
+                                {streak2on2 > 0 ? "+" : ""}
+                                {streak2on2}
+                            </StreakIndicator>
+                        )}
+                    </GamemodeHeader>
+                    {statuses2on2.map((status) => (
+                        <StatusItem key={status}>
+                            <StatusIcon>
+                                {STATUS_ICONS_MAP[status] || "•"}
+                            </StatusIcon>
+                            <StatusLabel>
+                                {STATUS_LABELS_MAP[status] || status}
+                            </StatusLabel>
+                        </StatusItem>
+                    ))}
+                </GamemodeSection>
+            )}
+        </TooltipContent>
+    );
+}
+
+export function StatusTooltip({
+    isVisible,
+    position,
+    statuses1on1 = [],
+    statuses2on2 = [],
+    streak1on1 = 0,
+    streak2on2 = 0,
+}) {
+    if (!isVisible) return null;
+
+    return createPortal(
+        <TooltipContainer
+            style={{
+                top: position.top,
+                left: position.left,
+            }}
+        >
+            <StatusTooltipContent
+                statuses1on1={statuses1on1}
+                statuses2on2={statuses2on2}
+                streak1on1={streak1on1}
+                streak2on2={streak2on2}
             />
         </TooltipContainer>,
         document.body

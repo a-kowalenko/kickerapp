@@ -6,6 +6,7 @@ import { TbTarget, TbSnowflake } from "react-icons/tb";
 import {
     BountyTooltip,
     StreakTooltip,
+    StatusTooltip,
     useBountyTooltip,
 } from "./BountyTooltip";
 
@@ -67,67 +68,67 @@ const sizeConfig = {
    Animations
 ----------------------------------------- */
 const glowPulseXs = keyframes`
-    0%, 100% { box-shadow: 0 0 3px rgba(255, 100, 50, 0.3); }
-    50% { box-shadow: 0 0 6px rgba(255, 100, 50, 0.5); }
+    0%, 100% { box-shadow: 0 0 3px rgba(239, 68, 68, 0.3); }
+    50% { box-shadow: 0 0 6px rgba(185, 28, 28, 0.4); }
 `;
 
 const glowPulseSmall = keyframes`
-    0%, 100% { box-shadow: 0 0 5px rgba(255, 100, 50, 0.3); }
-    50% { box-shadow: 0 0 10px rgba(255, 100, 50, 0.5); }
+    0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.3); }
+    50% { box-shadow: 0 0 10px rgba(185, 28, 28, 0.4); }
 `;
 
 const glowPulseMedium = keyframes`
     0%, 100% {
-        box-shadow: 0 0 10px rgba(255, 100, 50, 0.3),
-                    0 0 20px rgba(255, 100, 50, 0.2);
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.25),
+                    0 0 20px rgba(185, 28, 28, 0.15);
     }
     50% {
-        box-shadow: 0 0 15px rgba(255, 100, 50, 0.5),
-                    0 0 30px rgba(255, 100, 50, 0.3);
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.4),
+                    0 0 30px rgba(185, 28, 28, 0.25);
     }
 `;
 
 const glowPulseLarge = keyframes`
     0%, 100% {
-        box-shadow: 0 0 15px rgba(255, 100, 50, 0.3),
-                    0 0 30px rgba(255, 100, 50, 0.2);
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.25),
+                    0 0 30px rgba(185, 28, 28, 0.15);
     }
     50% {
-        box-shadow: 0 0 20px rgba(255, 100, 50, 0.5),
-                    0 0 40px rgba(255, 100, 50, 0.3);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.4),
+                    0 0 40px rgba(185, 28, 28, 0.25);
     }
 `;
 
 /* Cold Glow Animations (for losing streaks) */
 const coldGlowPulseXs = keyframes`
-    0%, 100% { box-shadow: 0 0 3px rgba(100, 180, 255, 0.3); }
-    50% { box-shadow: 0 0 6px rgba(100, 180, 255, 0.5); }
+    0%, 100% { box-shadow: 0 0 3px rgba(59, 130, 246, 0.3); }
+    50% { box-shadow: 0 0 6px rgba(29, 78, 216, 0.4); }
 `;
 
 const coldGlowPulseSmall = keyframes`
-    0%, 100% { box-shadow: 0 0 5px rgba(100, 180, 255, 0.3); }
-    50% { box-shadow: 0 0 10px rgba(100, 180, 255, 0.5); }
+    0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.3); }
+    50% { box-shadow: 0 0 10px rgba(29, 78, 216, 0.4); }
 `;
 
 const coldGlowPulseMedium = keyframes`
     0%, 100% {
-        box-shadow: 0 0 10px rgba(100, 180, 255, 0.3),
-                    0 0 20px rgba(100, 180, 255, 0.2);
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.25),
+                    0 0 20px rgba(29, 78, 216, 0.15);
     }
     50% {
-        box-shadow: 0 0 15px rgba(100, 180, 255, 0.5),
-                    0 0 30px rgba(100, 180, 255, 0.3);
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4),
+                    0 0 30px rgba(29, 78, 216, 0.25);
     }
 `;
 
 const coldGlowPulseLarge = keyframes`
     0%, 100% {
-        box-shadow: 0 0 15px rgba(100, 180, 255, 0.3),
-                    0 0 30px rgba(100, 180, 255, 0.2);
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.25),
+                    0 0 30px rgba(29, 78, 216, 0.15);
     }
     50% {
-        box-shadow: 0 0 20px rgba(100, 180, 255, 0.5),
-                    0 0 40px rgba(100, 180, 255, 0.3);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4),
+                    0 0 40px rgba(29, 78, 216, 0.25);
     }
 `;
 
@@ -250,7 +251,7 @@ const BountyValue = styled.div`
     font-size: ${(props) =>
         sizeConfig[props.$size]?.bountySize || sizeConfig.medium.bountySize};
     font-weight: 700;
-    color: #ff6432;
+    color: #ef4444;
 
     svg {
         font-size: ${(props) =>
@@ -287,9 +288,23 @@ const StreakInfo = styled.div`
         `}
 
     svg {
-        color: ${(props) => (props.$cold ? "#64b4ff" : "#ff6432")};
+        color: ${(props) => (props.$cold ? "#3B82F6" : "#EF4444")};
         font-size: 1.4em;
     }
+`;
+
+const StatusBadgeWrapper = styled.span`
+    display: inline-flex;
+    cursor: ${(props) => (props.$hoverable ? "pointer" : "default")};
+    transition: transform 0.2s ease;
+
+    ${(props) =>
+        props.$hoverable &&
+        css`
+            &:hover {
+                transform: scale(1.05);
+            }
+        `}
 `;
 
 const TargetIcon = styled(TbTarget)`
@@ -343,6 +358,9 @@ const Divider = styled.div`
    - showLabel: boolean - Zeige "MMR Kopfgeld" Label
    - showBountyTooltip: boolean - Zeige Tooltip bei Hover auf Bounty
    - showStreakTooltip: boolean - Zeige Tooltip bei Hover auf Streak
+   - showStatusTooltip: boolean - Zeige Tooltip bei Hover auf Status Badge
+   - statuses1on1: string[] - Aktive Status für 1on1 (für StatusTooltip)
+   - statuses2on2: string[] - Aktive Status für 2on2 (für StatusTooltip)
 ----------------------------------------- */
 export function BountyCard({
     player,
@@ -353,6 +371,8 @@ export function BountyCard({
     streak1on1 = 0,
     streak2on2 = 0,
     status,
+    statuses1on1 = [],
+    statuses2on2 = [],
     gamemode,
     size = "medium",
     onClick,
@@ -362,6 +382,7 @@ export function BountyCard({
     showLabel = true,
     showBountyTooltip = true,
     showStreakTooltip = true,
+    showStatusTooltip = false,
 }) {
     // Bounty tooltip hook
     const {
@@ -380,6 +401,15 @@ export function BountyCard({
         handleMouseLeave: handleStreakMouseLeave,
         triggerRef: streakTriggerRef,
     } = useBountyTooltip(140);
+
+    // Status tooltip hook
+    const {
+        isHovered: isStatusHovered,
+        tooltipPos: statusTooltipPos,
+        handleMouseEnter: handleStatusMouseEnter,
+        handleMouseLeave: handleStatusMouseLeave,
+        triggerRef: statusTriggerRef,
+    } = useBountyTooltip(180);
 
     const isHighBounty = bounty >= 30;
     const hasBounty = bounty > 0;
@@ -404,6 +434,10 @@ export function BountyCard({
     const hasStreakTooltipData =
         Math.abs(tooltipStreak1on1) >= 3 || Math.abs(tooltipStreak2on2) >= 3;
 
+    // Determine if status tooltip should be shown
+    const hasStatusTooltipData =
+        statuses1on1.length > 0 || statuses2on2.length > 0;
+
     return (
         <Card
             $size={size}
@@ -423,19 +457,77 @@ export function BountyCard({
 
             <PlayerInfo $size={size}>
                 <PlayerName $size={size}>
-                    {player?.name || "Unbekannt"}
-                    <StatusBadge status={status} size="small" showLabel />
+                    {(() => {
+                        const name = player?.name || "Unbekannt";
+                        return name.length > 8
+                            ? name.slice(0, 7) + "..."
+                            : name;
+                    })()}
+                    {/* StatusBadge with tooltip for xs/small sizes */}
+                    {(isXs || isSmall) && status && (
+                        <StatusBadgeWrapper
+                            $hoverable={
+                                showStatusTooltip && hasStatusTooltipData
+                            }
+                            ref={
+                                showStatusTooltip && hasStatusTooltipData
+                                    ? statusTriggerRef
+                                    : null
+                            }
+                            onMouseEnter={
+                                showStatusTooltip && hasStatusTooltipData
+                                    ? handleStatusMouseEnter
+                                    : undefined
+                            }
+                            onMouseLeave={
+                                showStatusTooltip && hasStatusTooltipData
+                                    ? handleStatusMouseLeave
+                                    : undefined
+                            }
+                        >
+                            <StatusBadge
+                                status={status}
+                                size="small"
+                                showLabel
+                            />
+                        </StatusBadgeWrapper>
+                    )}
+                    {/* StatusBadge without tooltip for medium/large (shown in StatusRow) */}
+                    {!isXs && !isSmall && status && (
+                        <StatusBadge status={status} size="small" showLabel />
+                    )}
                 </PlayerName>
 
                 {/* Status Row - shown for medium and large */}
                 {!isXs && !isSmall && showStatusBadge && (
                     <StatusRow>
                         {status && (
-                            <StatusBadge
-                                status={status}
-                                size="small"
-                                showLabel
-                            />
+                            <StatusBadgeWrapper
+                                $hoverable={
+                                    showStatusTooltip && hasStatusTooltipData
+                                }
+                                ref={
+                                    showStatusTooltip && hasStatusTooltipData
+                                        ? statusTriggerRef
+                                        : null
+                                }
+                                onMouseEnter={
+                                    showStatusTooltip && hasStatusTooltipData
+                                        ? handleStatusMouseEnter
+                                        : undefined
+                                }
+                                onMouseLeave={
+                                    showStatusTooltip && hasStatusTooltipData
+                                        ? handleStatusMouseLeave
+                                        : undefined
+                                }
+                            >
+                                <StatusBadge
+                                    status={status}
+                                    size="small"
+                                    showLabel
+                                />
+                            </StatusBadgeWrapper>
                         )}
                         <SimpleStreakBadge streak={streak} />
                     </StatusRow>
@@ -527,6 +619,18 @@ export function BountyCard({
                 <StreakTooltip
                     isVisible={isStreakHovered}
                     position={streakTooltipPos}
+                    streak1on1={tooltipStreak1on1}
+                    streak2on2={tooltipStreak2on2}
+                />
+            )}
+
+            {/* Status Tooltip */}
+            {showStatusTooltip && hasStatusTooltipData && (
+                <StatusTooltip
+                    isVisible={isStatusHovered}
+                    position={statusTooltipPos}
+                    statuses1on1={statuses1on1}
+                    statuses2on2={statuses2on2}
                     streak1on1={tooltipStreak1on1}
                     streak2on2={tooltipStreak2on2}
                 />

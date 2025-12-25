@@ -29,21 +29,44 @@ const STATUS_ICONS = {
 };
 
 /* ----------------------------------------
-   Status Colors
+   Status Colors - Einzigartige, ikonische Farbpalette
+   
+   Win Streaks (Warm → Hot):
+   - warmingUp: Amber/Sonnenaufgang
+   - hotStreak: Coral/Energie
+   - onFire: Feuerrot/Intensiv
+   - legendary: Gold/Majestätisch
+   
+   Loss Streaks (Cool → Frozen):
+   - cold: Himmelblau/Kühl
+   - iceCold: Tiefblau/Eiskalt
+   - frozen: Violett-Blau/Tiefgefroren
+   - humiliated: Anthrazit/Dunkel
+   
+   Special Status:
+   - dominator: Königspurpur
+   - comeback: Smaragdgrün/Triumph
+   - underdog: Türkis/Cyan
+   - giantSlayer: Magenta/Pink
 ----------------------------------------- */
 const STATUS_COLORS = {
-    warmingUp: { primary: "#ffc864", secondary: "#ff9f1c" },
-    hotStreak: { primary: "#ff6432", secondary: "#ff3c00" },
-    onFire: { primary: "#ff3200", secondary: "#ff0000" },
-    legendary: { primary: "#ffd700", secondary: "#ffaa00" },
-    cold: { primary: "#64b4ff", secondary: "#3296ff" },
-    iceCold: { primary: "#3296ff", secondary: "#0064ff" },
-    frozen: { primary: "#0064ff", secondary: "#0032c8" },
-    humiliated: { primary: "#808080", secondary: "#606060" },
-    dominator: { primary: "#ff3232", secondary: "#c80000" },
-    comeback: { primary: "#64ff96", secondary: "#32c864" },
-    underdog: { primary: "#ffc864", secondary: "#ff9f1c" },
-    giantSlayer: { primary: "#c832ff", secondary: "#9600c8" },
+    // Win Streaks - Warme aufsteigende Intensität (dunklere secondary für Kontrast)
+    warmingUp: { primary: "#F59E0B", secondary: "#B45309" },
+    hotStreak: { primary: "#EF4444", secondary: "#B91C1C" },
+    onFire: { primary: "#DC2626", secondary: "#991B1B" },
+    legendary: { primary: "#F59E0B", secondary: "#92400E" },
+
+    // Loss Streaks - Kalte absteigende Intensität
+    cold: { primary: "#3B82F6", secondary: "#1D4ED8" },
+    iceCold: { primary: "#2563EB", secondary: "#1E40AF" },
+    frozen: { primary: "#7C3AED", secondary: "#5B21B6" },
+    humiliated: { primary: "#6B7280", secondary: "#374151" },
+
+    // Special Status - Einzigartige Farben
+    dominator: { primary: "#8B5CF6", secondary: "#6D28D9" },
+    comeback: { primary: "#10B981", secondary: "#047857" },
+    underdog: { primary: "#14B8A6", secondary: "#0F766E" },
+    giantSlayer: { primary: "#EC4899", secondary: "#BE185D" },
 };
 
 /* ----------------------------------------
@@ -65,25 +88,27 @@ const STATUS_LABELS = {
 };
 
 /* ----------------------------------------
-   Animations
+   Animations - Subtil und nicht ablenkend
 ----------------------------------------- */
-const pulse = keyframes`
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-`;
-
 const shimmer = keyframes`
-    0% { background-position: -100% 0; }
+    0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
 `;
 
-const fireGlow = keyframes`
+const subtleGlow = keyframes`
     0%, 100% { 
-        filter: drop-shadow(0 0 4px var(--status-primary));
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
     }
     50% { 
-        filter: drop-shadow(0 0 8px var(--status-primary)) drop-shadow(0 0 12px var(--status-secondary));
+        box-shadow: 0 2px 8px var(--status-primary),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
+`;
+
+const gentlePulse = keyframes`
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
 `;
 
 /* ----------------------------------------
@@ -91,7 +116,7 @@ const fireGlow = keyframes`
 ----------------------------------------- */
 const sizes = {
     small: css`
-        font-size: 0.7rem;
+        font-size: 0.85rem;
         padding: 0.2rem 0.5rem;
         gap: 0.25rem;
 
@@ -129,50 +154,74 @@ const BadgeContainer = styled.div`
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
+    letter-spacing: 0.01em;
 
     ${(props) => sizes[props.$size || "medium"]}
 
     /* Gradient Background */
     background: linear-gradient(
         135deg,
-        var(--status-primary),
-        var(--status-secondary)
+        var(--status-primary) 0%,
+        var(--status-secondary) 100%
     );
 
+    /* Bessere Textlesbarkeit */
     color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5), 0 0 2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
 
-    /* Shimmer effect for legendary */
+    /* Legendary - Goldener Shimmer (subtil) */
     ${(props) =>
         props.$status === "legendary" &&
         css`
-            background-size: 200% 100%;
-            animation: ${shimmer} 2s linear infinite;
+            background-size: 300% 100%;
+            animation: ${shimmer} 4s ease-in-out infinite;
             background-image: linear-gradient(
                 90deg,
                 var(--status-secondary) 0%,
                 var(--status-primary) 25%,
-                #fff 50%,
+                #fde68a 50%,
                 var(--status-primary) 75%,
                 var(--status-secondary) 100%
             );
         `}
 
-    /* Fire glow for hot statuses */
+    /* Hot Statuses - Subtiler Glow */
     ${(props) =>
         ["hotStreak", "onFire"].includes(props.$status) &&
         css`
-            animation: ${fireGlow} 1.5s ease-in-out infinite;
+            animation: ${subtleGlow} 2.5s ease-in-out infinite;
         `}
 
-    /* Pulse for bounty-relevant statuses */
+    /* Cold Statuses - Subtiler Glow */
     ${(props) =>
-        props.$showBounty &&
-        props.$bounty > 0 &&
+        ["cold", "iceCold", "frozen"].includes(props.$status) &&
         css`
-            animation: ${pulse} 2s ease-in-out infinite;
+            animation: ${subtleGlow} 3s ease-in-out infinite;
+        `}
+
+    /* Special Statuses - Subtiler Glow */
+    ${(props) =>
+        ["dominator", "giantSlayer"].includes(props.$status) &&
+        css`
+            animation: ${subtleGlow} 2.5s ease-in-out infinite;
+        `}
+
+    /* Comeback & Underdog - Sanftes Pulsieren */
+    ${(props) =>
+        ["comeback", "underdog", "warmingUp"].includes(props.$status) &&
+        css`
+            animation: ${gentlePulse} 3s ease-in-out infinite;
+        `}
+
+    /* Humiliated - Gedämpft, keine Animation */
+    ${(props) =>
+        props.$status === "humiliated" &&
+        css`
+            opacity: 0.85;
         `}
 `;
 
@@ -204,13 +253,15 @@ const StreakBadge = styled.div`
     padding: 0.2rem 0.5rem;
     border-radius: 999px;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
 
     background: ${(props) =>
         props.$streak > 0
-            ? "linear-gradient(135deg, #ff6432, #ff3c00)"
-            : "linear-gradient(135deg, #64b4ff, #3296ff)"};
+            ? "linear-gradient(135deg, #EF4444, #B91C1C)"
+            : "linear-gradient(135deg, #3B82F6, #1D4ED8)"};
     color: white;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 
     svg {
         font-size: 0.9rem;
