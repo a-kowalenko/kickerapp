@@ -162,7 +162,6 @@ function CommentsSection({ maxHeight }) {
     // User/Player info
     const { data: currentPlayer } = useOwnPlayer();
     const { data: kickerData } = useKickerInfo();
-    const { user } = useUser();
 
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
