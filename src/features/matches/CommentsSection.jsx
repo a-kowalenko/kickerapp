@@ -17,6 +17,7 @@ import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
 import { useKicker } from "../../contexts/KickerContext";
 import { updateCommentReadStatus } from "../../services/apiComments";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { useQueryClient } from "react-query";
 import Comment from "./Comment";
 import CommentInput from "./CommentInput";
@@ -130,6 +131,8 @@ function CommentsSection({ maxHeight }) {
     const location = useLocation();
     const queryClient = useQueryClient();
     const { currentKicker } = useKicker();
+    const { user } = useUser();
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
 
     // Hooks
     const { comments, isLoading: isLoadingComments } = useComments();
@@ -199,15 +202,17 @@ function CommentsSection({ maxHeight }) {
         if (!currentKicker) return;
         try {
             await updateCommentReadStatus(currentKicker);
-            // Invalidate unread count query
+            // Invalidate local unread count query
             queryClient.invalidateQueries([
                 "unread-comment-count",
                 currentKicker,
             ]);
+            // Invalidate global badge to update browser tab title and PWA badge
+            invalidateUnreadBadge();
         } catch (error) {
             console.error("Error marking comments as read:", error);
         }
-    }, [currentKicker, queryClient]);
+    }, [currentKicker, queryClient, invalidateUnreadBadge]);
 
     // Mark as read when comments are loaded and user is viewing
     useEffect(() => {
