@@ -659,29 +659,10 @@ export function BountyCard({
                                 : undefined
                         }
                     >
-                        {status ? (
-                            <>
-                                {showLabel && (
-                                    <BountyLabel $size={size}>
-                                        Bounty
-                                    </BountyLabel>
-                                )}
-                                <BountyValue $size={size}>
-                                    💰+{bounty}
-                                </BountyValue>
-                            </>
-                        ) : (
-                            <>
-                                <BountyValue $size={size}>
-                                    💰+{bounty}
-                                </BountyValue>
-                                {showLabel && (
-                                    <BountyLabel $size={size}>
-                                        Bounty
-                                    </BountyLabel>
-                                )}
-                            </>
+                        {showLabel && (
+                            <BountyLabel $size={size}>Bounty</BountyLabel>
                         )}
+                        <BountyValue $size={size}>💰+{bounty}</BountyValue>
                     </BountySection>
 
                     {showBountyTooltip && hasBountyTooltipData && (
