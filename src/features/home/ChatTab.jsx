@@ -13,6 +13,7 @@ import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
 import { useKicker } from "../../contexts/KickerContext";
 import { updateChatReadStatus } from "../../services/apiChat";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LoadingSpinner from "../../ui/LoadingSpinner";
@@ -156,34 +157,25 @@ function ChatTab() {
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
 
+    // Get invalidate function from unread badge hook
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
 
-    // Mark messages as read and clear badge when chat is viewed
+    // Mark messages as read - only invalidate badge queries, the hook handles the rest
     const markAsRead = useCallback(async () => {
         if (!currentKicker) return;
         try {
             await updateChatReadStatus(currentKicker);
-
-            // Immediately clear document title badge
-            document.title = "KickerApp";
-
-            // Clear app badge (works for Android/Desktop PWA)
-            if ("clearAppBadge" in navigator) {
-                navigator.clearAppBadge().catch(() => {});
-            }
-
-            // Notify service worker to clear badge count
-            if (navigator.serviceWorker?.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: "CLEAR_BADGE",
-                });
-            }
+            // Invalidate badge queries to trigger refetch of combined unread count
+            // The useUnreadBadge hook will handle updating document title and app badge
+            invalidateUnreadBadge();
         } catch (error) {
             console.error("Error marking chat as read:", error);
         }
-    }, [currentKicker]);
+    }, [currentKicker, invalidateUnreadBadge]);
 
     // Track if user is viewing the chat (at bottom of messages)
     const markAsReadIfAtBottom = useCallback(() => {
@@ -199,7 +191,7 @@ function ChatTab() {
                 if (isNearBottomRef.current) {
                     markAsRead();
                 }
-            }, 1000);
+            }, 500); // 500ms delay to prevent accidental opens
             return () => clearTimeout(timer);
         }
     }, [hasInitiallyScrolled, currentKicker, markAsRead]);

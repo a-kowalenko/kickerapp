@@ -375,3 +375,17 @@ export async function getTotalUnreadCount() {
 
     return data || 0;
 }
+
+/**
+ * Get combined unread count (chat + comments) across all kickers for current user
+ * Used for global notification badges (browser tab, PWA badge)
+ */
+export async function getCombinedUnreadCount() {
+    const { data, error } = await supabase.rpc("get_combined_unread_count");
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data || 0;
+}

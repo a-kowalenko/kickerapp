@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery } from "react-query";
+import { useQuery, useQueryClient } from "react-query";
 import supabase, { databaseSchema } from "../services/supabase";
 import {
-    getTotalUnreadCount,
+    getCombinedUnreadCount,
     getUnreadCountPerKicker,
 } from "../services/apiChat";
-import { CHAT_MESSAGES } from "../utils/constants";
+import { CHAT_MESSAGES, MATCH_COMMENTS } from "../utils/constants";
 
 const ORIGINAL_TITLE = "KickerApp";
 const BADGE_QUERY_KEY = "unreadBadgeCount";
@@ -18,6 +18,7 @@ const BADGE_QUERY_KEY = "unreadBadgeCount";
  * @param {string} userId - Current user ID
  */
 export function useUnreadBadge(userId) {
+    const queryClient = useQueryClient();
     const [isAppBadgeSupported, setIsAppBadgeSupported] = useState(false);
     const previousCountRef = useRef(0);
 
@@ -26,11 +27,11 @@ export function useUnreadBadge(userId) {
         setIsAppBadgeSupported("setAppBadge" in navigator);
     }, []);
 
-    // Query total unread count
+    // Query combined unread count (chat + comments)
     const { data: totalUnreadCount = 0, refetch: refetchUnreadCount } =
         useQuery({
             queryKey: [BADGE_QUERY_KEY, userId],
-            queryFn: getTotalUnreadCount,
+            queryFn: getCombinedUnreadCount,
             enabled: !!userId,
             staleTime: 1000 * 60, // 1 minute
             refetchOnWindowFocus: true,
@@ -125,7 +126,7 @@ export function useUnreadBadge(userId) {
         updateDocumentTitle(totalUnreadCount);
     }, [totalUnreadCount, setBadge, updateDocumentTitle]);
 
-    // Subscribe to realtime chat message inserts
+    // Subscribe to realtime chat message and comment inserts
     useEffect(() => {
         if (!userId) return;
 
@@ -139,10 +140,21 @@ export function useUnreadBadge(userId) {
                     table: CHAT_MESSAGES,
                 },
                 () => {
-                    // Refetch unread count when new message arrives
-                    // The query will calculate the correct count based on last_read_at
+                    // Refetch unread count when new chat message arrives
                     refetchUnreadCount();
                     refetchUnreadPerKicker();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: databaseSchema,
+                    table: MATCH_COMMENTS,
+                },
+                () => {
+                    // Refetch unread count when new comment arrives
+                    refetchUnreadCount();
                 }
             )
             .subscribe();
@@ -201,6 +213,12 @@ export function useUnreadBadge(userId) {
         [unreadPerKicker]
     );
 
+    // Invalidate badge queries to trigger refetch
+    // Use this after marking messages/comments as read
+    const invalidateUnreadBadge = useCallback(() => {
+        queryClient.invalidateQueries([BADGE_QUERY_KEY]);
+    }, [queryClient]);
+
     return {
         // State
         totalUnreadCount,
@@ -213,6 +231,7 @@ export function useUnreadBadge(userId) {
         incrementBadge,
         refetchUnreadCount,
         getUnreadForKicker,
+        invalidateUnreadBadge,
     };
 }
 

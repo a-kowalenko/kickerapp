@@ -410,11 +410,11 @@ serve(async (req) => {
         const invalidTokens: string[] = [];
 
         for (const sub of subscriptions) {
-            // Get actual unread count for this user (for iOS badge)
+            // Get actual combined unread count for this user (chat + comments, for iOS/Android badge)
             let badgeCount = 1;
             try {
                 const { data: unreadData } = await supabase.rpc(
-                    "get_unread_count_for_user",
+                    "get_combined_unread_count_for_user",
                     { p_user_id: sub.user_id }
                 );
                 if (unreadData !== null && unreadData !== undefined) {

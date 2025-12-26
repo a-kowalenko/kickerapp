@@ -6,6 +6,8 @@ import {
 } from "react-icons/hi2";
 import { useKicker } from "../../contexts/KickerContext";
 import { useUnreadCommentCount } from "./useUnreadCommentCount";
+import { useUser } from "../authentication/useUser";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
 import ChatTab from "./ChatTab";
 import MatchCommentsTab from "./MatchCommentsTab";
@@ -125,8 +127,10 @@ function ChatSection() {
         return saved === "comments" ? "comments" : "chat";
     });
     const { currentKicker } = useKicker();
+    const { user } = useUser();
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
 
     // Persist tab selection
     useEffect(() => {
@@ -142,12 +146,14 @@ function ChatSection() {
                 try {
                     await updateCommentReadStatus(currentKicker);
                     invalidateUnreadCount();
+                    // Also invalidate global badge to update browser tab title
+                    invalidateUnreadBadge();
                 } catch (error) {
                     console.error("Error marking comments as read:", error);
                 }
             }
         },
-        [currentKicker, invalidateUnreadCount]
+        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]
     );
 
     return (
