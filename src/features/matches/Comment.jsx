@@ -29,8 +29,15 @@ const CommentContainer = styled.div`
     background-color: ${(props) =>
         props.$disableHover
             ? "transparent"
+            : props.$isUnread
+            ? "rgba(59, 130, 246, 0.08)"
             : "var(--secondary-background-color)"};
-    transition: background-color 0.2s;
+    border-left: 3px solid
+        ${(props) =>
+            props.$isUnread && !props.$disableHover
+                ? "var(--primary-button-color)"
+                : "transparent"};
+    transition: background-color 0.2s, border-left-color 0.2s;
     position: relative;
 
     &:hover {
@@ -312,6 +319,7 @@ function Comment({
     isTogglingReaction,
     isGrouped = false,
     disableHover = false,
+    isUnread = false,
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
@@ -348,7 +356,11 @@ function Comment({
     }
 
     return (
-        <CommentContainer $isGrouped={isGrouped} $disableHover={disableHover}>
+        <CommentContainer
+            $isGrouped={isGrouped}
+            $disableHover={disableHover}
+            $isUnread={isUnread}
+        >
             {/* Discord-style hover toolbar */}
             <HoverToolbar>
                 {/* Quick reactions */}

@@ -397,3 +397,26 @@ export async function getCombinedUnreadCount() {
 
     return data || 0;
 }
+
+/**
+ * Get the last_read_at timestamp for chat in a specific kicker
+ * Used to determine which messages are unread for visual marking
+ */
+export async function getChatReadStatus(kickerId) {
+    const { data, error } = await supabase
+        .from("chat_read_status")
+        .select("last_read_at")
+        .eq("kicker_id", kickerId)
+        .limit(1)
+        .single();
+
+    if (error) {
+        // PGRST116 = no rows returned, which is OK for new users
+        if (error.code === "PGRST116") {
+            return null;
+        }
+        throw new Error(error.message);
+    }
+
+    return data?.last_read_at || null;
+}

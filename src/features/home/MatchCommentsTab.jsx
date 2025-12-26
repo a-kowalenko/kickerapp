@@ -7,6 +7,7 @@ import { useToggleKickerCommentReaction } from "./useToggleKickerCommentReaction
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useUser } from "../authentication/useUser";
 import { useKicker } from "../../contexts/KickerContext";
+import { useCommentReadStatus } from "../../hooks/useCommentReadStatus";
 import { updateCommentReadStatus } from "../../services/apiComments";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { useUnreadCommentCount } from "./useUnreadCommentCount";
@@ -130,6 +131,10 @@ function MatchCommentsTab() {
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
     const { invalidate: invalidateUnreadCount } = useUnreadCommentCount();
 
+    // Get read status for unread markers
+    const { lastReadAt, invalidate: invalidateCommentReadStatus } =
+        useCommentReadStatus(currentKicker);
+
     // Mark comments as read
     const markAsRead = useCallback(async () => {
         if (!currentKicker) return;
@@ -137,10 +142,17 @@ function MatchCommentsTab() {
             await updateCommentReadStatus(currentKicker);
             invalidateUnreadCount();
             invalidateUnreadBadge();
+            // Invalidate comment read status so unread markers update immediately
+            invalidateCommentReadStatus();
         } catch (error) {
             console.error("Error marking comments as read:", error);
         }
-    }, [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]);
+    }, [
+        currentKicker,
+        invalidateUnreadCount,
+        invalidateUnreadBadge,
+        invalidateCommentReadStatus,
+    ]);
 
     // Get comment IDs for reactions
     const commentIds = useMemo(
@@ -352,6 +364,15 @@ function MatchCommentsTab() {
                                 nextComment &&
                                 shouldGroupWithPrevious(comment, nextComment);
 
+                            // Comment is unread if:
+                            // - Created after lastReadAt
+                            // - Not from the current user
+                            const isUnread =
+                                comment.player_id !== currentPlayerId &&
+                                lastReadAt &&
+                                new Date(comment.created_at) >
+                                    new Date(lastReadAt);
+
                             return (
                                 <MatchCommentItem
                                     key={comment.id}
@@ -363,6 +384,7 @@ function MatchCommentsTab() {
                                     onToggleReaction={handleToggleReaction}
                                     isTogglingReaction={isTogglingReaction}
                                     isGrouped={isGrouped}
+                                    isUnread={isUnread}
                                 />
                             );
                         })}

@@ -47,8 +47,15 @@ const MessageContainer = styled.div`
     background-color: ${(props) =>
         props.$isWhisper
             ? "rgba(34, 197, 94, 0.1)"
+            : props.$isUnread
+            ? "rgba(59, 130, 246, 0.08)"
             : "var(--secondary-background-color)"};
-    transition: background-color 0.2s;
+    border-left: 3px solid
+        ${(props) =>
+            props.$isUnread && !props.$isWhisper
+                ? "var(--primary-button-color)"
+                : "transparent"};
+    transition: background-color 0.2s, border-left-color 0.2s;
     position: relative;
     touch-action: pan-y;
 
@@ -408,6 +415,7 @@ function ChatMessage({
     isTogglingReaction,
     onScrollToMessage,
     isGrouped = false,
+    isUnread = false,
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(message.content);
@@ -499,6 +507,7 @@ function ChatMessage({
         <MessageContainer
             ref={containerRef}
             $isWhisper={isWhisper}
+            $isUnread={isUnread}
             $swipeOffset={swipeOffset}
             $isGrouped={isGrouped}
             onTouchStart={handleTouchStart}

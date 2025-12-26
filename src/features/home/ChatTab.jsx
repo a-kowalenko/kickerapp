@@ -12,6 +12,7 @@ import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
 import { useKicker } from "../../contexts/KickerContext";
+import { useChatReadStatus } from "../../hooks/useChatReadStatus";
 import { updateChatReadStatus } from "../../services/apiChat";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import ChatMessage from "./ChatMessage";
@@ -160,29 +161,27 @@ function ChatTab() {
     // Get invalidate function from unread badge hook
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
 
+    // Get invalidate function for read status
+    const { lastReadAt, invalidate: invalidateChatReadStatus } =
+        useChatReadStatus(currentKicker);
+
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
 
-    // Mark messages as read - only invalidate badge queries, the hook handles the rest
+    // Mark messages as read and update both badge and read status
     const markAsRead = useCallback(async () => {
         if (!currentKicker) return;
         try {
-            console.log(
-                "[ChatTab] markAsRead called for kicker:",
-                currentKicker
-            );
             await updateChatReadStatus(currentKicker);
-            console.log(
-                "[ChatTab] updateChatReadStatus completed, invalidating badge..."
-            );
             // Invalidate badge queries to trigger refetch of combined unread count
-            // The useUnreadBadge hook will handle updating document title and app badge
             invalidateUnreadBadge();
+            // Invalidate chat read status so unread markers update immediately
+            invalidateChatReadStatus();
         } catch (error) {
             console.error("Error marking chat as read:", error);
         }
-    }, [currentKicker, invalidateUnreadBadge]);
+    }, [currentKicker, invalidateUnreadBadge, invalidateChatReadStatus]);
 
     // Track if user is viewing the chat (at bottom of messages)
     const markAsReadIfAtBottom = useCallback(() => {
@@ -508,6 +507,15 @@ function ChatTab() {
                                         nextMessage
                                     );
 
+                                // Message is unread if:
+                                // - Created after lastReadAt
+                                // - Not from the current user
+                                const isUnread =
+                                    message.player_id !== currentPlayerId &&
+                                    lastReadAt &&
+                                    new Date(message.created_at) >
+                                        new Date(lastReadAt);
+
                                 return (
                                     <ChatMessage
                                         key={message.id}
@@ -529,6 +537,7 @@ function ChatTab() {
                                             handleScrollToMessage
                                         }
                                         isGrouped={isGrouped}
+                                        isUnread={isUnread}
                                     />
                                 );
                             })}

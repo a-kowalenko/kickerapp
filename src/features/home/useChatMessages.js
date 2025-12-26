@@ -40,6 +40,7 @@ export function useChatMessages() {
             // Fetch the full message with relations
             try {
                 const newMessage = await getChatMessageById(payload.new.id);
+
                 queryClient.setQueryData([CHAT_MESSAGES, kicker], (oldData) => {
                     if (!oldData) return oldData;
 

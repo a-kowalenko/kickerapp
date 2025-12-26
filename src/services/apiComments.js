@@ -389,3 +389,49 @@ export async function getUnreadMatchCommentCount(matchId) {
 
     return data || 0;
 }
+
+/**
+ * Get the last_read_at timestamp for comments in a specific kicker
+ * Used to determine which comments are unread for visual marking
+ */
+export async function getCommentReadStatus(kickerId) {
+    const { data, error } = await supabase
+        .from("comment_read_status")
+        .select("last_read_at")
+        .eq("kicker_id", kickerId)
+        .limit(1)
+        .single();
+
+    if (error) {
+        // PGRST116 = no rows returned, which is OK for new users
+        if (error.code === "PGRST116") {
+            return null;
+        }
+        throw new Error(error.message);
+    }
+
+    return data?.last_read_at || null;
+}
+
+/**
+ * Get the last_read_at timestamp for comments in a specific match
+ * Used to determine which comments are unread for visual marking in match detail view
+ */
+export async function getMatchCommentReadStatus(matchId) {
+    const { data, error } = await supabase
+        .from("match_comment_read_status")
+        .select("last_read_at")
+        .eq("match_id", matchId)
+        .limit(1)
+        .single();
+
+    if (error) {
+        // PGRST116 = no rows returned, which is OK for new users/matches
+        if (error.code === "PGRST116") {
+            return null;
+        }
+        throw new Error(error.message);
+    }
+
+    return data?.last_read_at || null;
+}

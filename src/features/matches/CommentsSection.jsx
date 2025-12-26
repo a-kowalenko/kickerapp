@@ -15,6 +15,7 @@ import {
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
+import { useMatchCommentReadStatus } from "../../hooks/useCommentReadStatus";
 import { updateMatchCommentReadStatus } from "../../services/apiComments";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import Comment from "./Comment";
@@ -132,6 +133,10 @@ function CommentsSection({ maxHeight }) {
     const { user } = useUser();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
 
+    // Get read status for unread markers
+    const { lastReadAt, invalidate: invalidateMatchReadStatus } =
+        useMatchCommentReadStatus(matchId);
+
     // Hooks
     const { comments, isLoading: isLoadingComments } = useComments();
     const { createComment, isCreating } = useCreateComment();
@@ -202,11 +207,13 @@ function CommentsSection({ maxHeight }) {
             await updateMatchCommentReadStatus(Number(matchId));
             // Invalidate global badge to update browser tab title and PWA badge
             invalidateUnreadBadge();
+            // Invalidate match read status so unread markers update immediately
+            invalidateMatchReadStatus();
         } catch (error) {
             console.error("Error marking match comments as read:", error);
             hasMarkedAsReadRef.current = false; // Allow retry on error
         }
-    }, [matchId, invalidateUnreadBadge]);
+    }, [matchId, invalidateUnreadBadge, invalidateMatchReadStatus]);
 
     // Handle scroll - mark as read when scrolling to bottom
     const handleScroll = useCallback(() => {
@@ -374,6 +381,14 @@ function CommentsSection({ maxHeight }) {
                             prevComment &&
                             shouldGroupWithPrevious(comment, prevComment);
 
+                        // Comment is unread if:
+                        // - Created after lastReadAt
+                        // - Not from the current user
+                        const isUnread =
+                            comment.player_id !== currentPlayerId &&
+                            lastReadAt &&
+                            new Date(comment.created_at) > new Date(lastReadAt);
+
                         return (
                             <div key={comment.id} data-comment-id={comment.id}>
                                 <Comment
@@ -394,6 +409,7 @@ function CommentsSection({ maxHeight }) {
                                         isTogglingCommentReaction
                                     }
                                     isGrouped={isGrouped}
+                                    isUnread={isUnread}
                                 />
                             </div>
                         );
