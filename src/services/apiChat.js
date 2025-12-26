@@ -5,7 +5,7 @@ import {
     PLAYER,
     CHAT_PAGE_SIZE,
 } from "../utils/constants";
-import supabase from "./supabase";
+import supabase, { databaseSchema } from "./supabase";
 
 // ============ CHAT MESSAGES ============
 
@@ -338,9 +338,11 @@ export async function getTypingUsers(kickerId) {
  * Update last read timestamp for current user in a specific kicker
  */
 export async function updateChatReadStatus(kickerId) {
-    const { error } = await supabase.rpc("update_chat_read_status", {
-        p_kicker_id: kickerId,
-    });
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .rpc("update_chat_read_status", {
+            p_kicker_id: kickerId,
+        });
 
     if (error) {
         throw new Error(error.message);
@@ -354,7 +356,9 @@ export async function updateChatReadStatus(kickerId) {
  * Returns array of { kicker_id, unread_count }
  */
 export async function getUnreadCountPerKicker() {
-    const { data, error } = await supabase.rpc("get_unread_count_per_kicker");
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_unread_count_per_kicker");
 
     if (error) {
         throw new Error(error.message);
@@ -367,7 +371,9 @@ export async function getUnreadCountPerKicker() {
  * Get total unread count across all kickers for current user
  */
 export async function getTotalUnreadCount() {
-    const { data, error } = await supabase.rpc("get_total_unread_count");
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_total_unread_count");
 
     if (error) {
         throw new Error(error.message);
@@ -381,7 +387,9 @@ export async function getTotalUnreadCount() {
  * Used for global notification badges (browser tab, PWA badge)
  */
 export async function getCombinedUnreadCount() {
-    const { data, error } = await supabase.rpc("get_combined_unread_count");
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_combined_unread_count");
 
     if (error) {
         throw new Error(error.message);

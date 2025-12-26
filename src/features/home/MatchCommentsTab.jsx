@@ -5,6 +5,11 @@ import { useKickerComments } from "./useKickerComments";
 import { useKickerCommentReactions } from "./useKickerCommentReactions";
 import { useToggleKickerCommentReaction } from "./useToggleKickerCommentReaction";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
+import { useUser } from "../authentication/useUser";
+import { useKicker } from "../../contexts/KickerContext";
+import { updateCommentReadStatus } from "../../services/apiComments";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
+import { useUnreadCommentCount } from "./useUnreadCommentCount";
 import MatchCommentItem from "./MatchCommentItem";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
@@ -104,6 +109,7 @@ function MatchCommentsTab() {
     const prevCommentCountRef = useRef(0);
     const isNearBottomRef = useRef(true);
     const prevFirstCommentIdRef = useRef(null);
+    const hasMarkedAsReadRef = useRef(false);
 
     // Hooks
     const {
@@ -116,7 +122,25 @@ function MatchCommentsTab() {
 
     // User/Player info
     const { data: currentPlayer } = useOwnPlayer();
+    const { user } = useUser();
+    const { currentKicker } = useKicker();
     const currentPlayerId = currentPlayer?.id;
+
+    // Unread badge hooks
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+    const { invalidate: invalidateUnreadCount } = useUnreadCommentCount();
+
+    // Mark comments as read
+    const markAsRead = useCallback(async () => {
+        if (!currentKicker) return;
+        try {
+            await updateCommentReadStatus(currentKicker);
+            invalidateUnreadCount();
+            invalidateUnreadBadge();
+        } catch (error) {
+            console.error("Error marking comments as read:", error);
+        }
+    }, [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]);
 
     // Get comment IDs for reactions
     const commentIds = useMemo(
@@ -138,15 +162,20 @@ function MatchCommentsTab() {
         const threshold = 100;
         // With column-reverse, scrollTop increases as user scrolls UP
         const nearBottom = Math.abs(container.scrollTop) < threshold;
+        const wasNearBottom = isNearBottomRef.current;
         isNearBottomRef.current = nearBottom;
 
         if (nearBottom) {
             setShowJumpToLatest(false);
             setNewCommentsCount(0);
+            // Mark as read when scrolling to bottom
+            if (!wasNearBottom && currentKicker) {
+                markAsRead();
+            }
         } else {
             setShowJumpToLatest(true);
         }
-    }, []);
+    }, [currentKicker, markAsRead]);
 
     // Infinite scroll - load more when scrolling to top
     useEffect(() => {
@@ -221,6 +250,35 @@ function MatchCommentsTab() {
         isLoadingReactions,
         comments.length,
         hasInitiallyScrolled,
+    ]);
+
+    // Mark as read after initial scroll with delay (only once)
+    useEffect(() => {
+        if (
+            hasInitiallyScrolled &&
+            currentKicker &&
+            isNearBottomRef.current &&
+            !hasMarkedAsReadRef.current
+        ) {
+            hasMarkedAsReadRef.current = true;
+            const timer = setTimeout(async () => {
+                if (isNearBottomRef.current) {
+                    try {
+                        await updateCommentReadStatus(currentKicker);
+                        invalidateUnreadCount();
+                        invalidateUnreadBadge();
+                    } catch (error) {
+                        console.error("Error marking comments as read:", error);
+                    }
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [
+        hasInitiallyScrolled,
+        currentKicker,
+        invalidateUnreadCount,
+        invalidateUnreadBadge,
     ]);
 
     function handleJumpToLatest() {

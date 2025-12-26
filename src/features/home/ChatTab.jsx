@@ -168,7 +168,14 @@ function ChatTab() {
     const markAsRead = useCallback(async () => {
         if (!currentKicker) return;
         try {
+            console.log(
+                "[ChatTab] markAsRead called for kicker:",
+                currentKicker
+            );
             await updateChatReadStatus(currentKicker);
+            console.log(
+                "[ChatTab] updateChatReadStatus completed, invalidating badge..."
+            );
             // Invalidate badge queries to trigger refetch of combined unread count
             // The useUnreadBadge hook will handle updating document title and app badge
             invalidateUnreadBadge();

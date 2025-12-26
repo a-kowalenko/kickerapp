@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
@@ -144,7 +144,14 @@ function ChatSection() {
             // Mark comments as read when switching to comments tab
             if (tab === "comments" && currentKicker) {
                 try {
+                    console.log(
+                        "[ChatSection] Marking comments as read for kicker:",
+                        currentKicker
+                    );
                     await updateCommentReadStatus(currentKicker);
+                    console.log(
+                        "[ChatSection] updateCommentReadStatus completed"
+                    );
                     invalidateUnreadCount();
                     // Also invalidate global badge to update browser tab title
                     invalidateUnreadBadge();
@@ -155,6 +162,37 @@ function ChatSection() {
         },
         [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]
     );
+
+    // Mark comments as read if comments tab is already active on mount
+    // Using a ref to track if we've already run this once
+    const hasMarkedCommentsAsReadRef = useRef(false);
+
+    useEffect(() => {
+        if (
+            activeTab === "comments" &&
+            currentKicker &&
+            !hasMarkedCommentsAsReadRef.current
+        ) {
+            hasMarkedCommentsAsReadRef.current = true;
+            const timer = setTimeout(async () => {
+                try {
+                    console.log(
+                        "[ChatSection] Initial mark comments as read for kicker:",
+                        currentKicker
+                    );
+                    await updateCommentReadStatus(currentKicker);
+                    invalidateUnreadCount();
+                    invalidateUnreadBadge();
+                } catch (error) {
+                    console.error(
+                        "Error marking comments as read on mount:",
+                        error
+                    );
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [activeTab, currentKicker]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <StyledChatSection>

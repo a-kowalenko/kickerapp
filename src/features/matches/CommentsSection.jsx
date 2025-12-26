@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { HiChatBubbleLeftRight } from "react-icons/hi2";
 import { useComments } from "./useComments";
 import { useCreateComment } from "./useCreateComment";
@@ -15,10 +15,8 @@ import {
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
-import { useKicker } from "../../contexts/KickerContext";
-import { updateCommentReadStatus } from "../../services/apiComments";
+import { updateMatchCommentReadStatus } from "../../services/apiComments";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
-import { useQueryClient } from "react-query";
 import Comment from "./Comment";
 import CommentInput from "./CommentInput";
 import ReactionBar from "./ReactionBar";
@@ -128,9 +126,9 @@ function CommentsSection({ maxHeight }) {
     const commentsContainerRef = useRef(null);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
     const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
+    const hasMarkedAsReadRef = useRef(false);
     const location = useLocation();
-    const queryClient = useQueryClient();
-    const { currentKicker } = useKicker();
+    const { matchId } = useParams();
     const { user } = useUser();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
 
@@ -196,22 +194,35 @@ function CommentsSection({ maxHeight }) {
         }
     }, []);
 
-    // Mark comments as read when viewing this section
+    // Mark comments as read when viewing this section (match-specific)
     const markCommentsAsRead = useCallback(async () => {
-        if (!currentKicker) return;
+        if (!matchId || hasMarkedAsReadRef.current) return;
+        hasMarkedAsReadRef.current = true;
         try {
-            await updateCommentReadStatus(currentKicker);
-            // Invalidate local unread count query
-            queryClient.invalidateQueries([
-                "unread-comment-count",
-                currentKicker,
-            ]);
+            await updateMatchCommentReadStatus(Number(matchId));
             // Invalidate global badge to update browser tab title and PWA badge
             invalidateUnreadBadge();
         } catch (error) {
-            console.error("Error marking comments as read:", error);
+            console.error("Error marking match comments as read:", error);
+            hasMarkedAsReadRef.current = false; // Allow retry on error
         }
-    }, [currentKicker, queryClient, invalidateUnreadBadge]);
+    }, [matchId, invalidateUnreadBadge]);
+
+    // Handle scroll - mark as read when scrolling to bottom
+    const handleScroll = useCallback(() => {
+        const container = commentsContainerRef.current;
+        if (!container || hasMarkedAsReadRef.current) return;
+
+        const threshold = 100;
+        // Check if near bottom (scrollTop + clientHeight >= scrollHeight - threshold)
+        const nearBottom =
+            container.scrollTop + container.clientHeight >=
+            container.scrollHeight - threshold;
+
+        if (nearBottom) {
+            markCommentsAsRead();
+        }
+    }, [markCommentsAsRead]);
 
     // Mark as read when comments are loaded and user is viewing
     useEffect(() => {
@@ -344,6 +355,7 @@ function CommentsSection({ maxHeight }) {
             <CommentsContainer
                 ref={commentsContainerRef}
                 $maxHeight={maxHeight}
+                onScroll={handleScroll}
             >
                 {comments?.length === 0 ? (
                     <EmptyState>

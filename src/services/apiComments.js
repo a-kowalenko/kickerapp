@@ -6,7 +6,7 @@ import {
     MATCHES,
     CHAT_PAGE_SIZE,
 } from "../utils/constants";
-import supabase from "./supabase";
+import supabase, { databaseSchema } from "./supabase";
 
 // ============ COMMENTS ============
 
@@ -308,9 +308,11 @@ export async function toggleCommentReaction({
  * Update last read timestamp for comments in a specific kicker
  */
 export async function updateCommentReadStatus(kickerId) {
-    const { error } = await supabase.rpc("update_comment_read_status", {
-        p_kicker_id: kickerId,
-    });
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .rpc("update_comment_read_status", {
+            p_kicker_id: kickerId,
+        });
 
     if (error) {
         throw new Error(error.message);
@@ -323,9 +325,11 @@ export async function updateCommentReadStatus(kickerId) {
  * Get unread comment count for a specific kicker
  */
 export async function getUnreadCommentCount(kickerId) {
-    const { data, error } = await supabase.rpc("get_unread_comment_count", {
-        p_kicker_id: kickerId,
-    });
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_unread_comment_count", {
+            p_kicker_id: kickerId,
+        });
 
     if (error) {
         throw new Error(error.message);
@@ -339,13 +343,49 @@ export async function getUnreadCommentCount(kickerId) {
  * Returns array of { kicker_id, unread_count }
  */
 export async function getUnreadCommentCountPerKicker() {
-    const { data, error } = await supabase.rpc(
-        "get_unread_comment_count_per_kicker"
-    );
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_unread_comment_count_per_kicker");
 
     if (error) {
         throw new Error(error.message);
     }
 
     return data || [];
+}
+
+// ============ MATCH-SPECIFIC COMMENT READ STATUS ============
+
+/**
+ * Update last read timestamp for comments in a specific match
+ */
+export async function updateMatchCommentReadStatus(matchId) {
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .rpc("update_match_comment_read_status", {
+            p_match_id: matchId,
+        });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return { success: true };
+}
+
+/**
+ * Get unread comment count for a specific match
+ */
+export async function getUnreadMatchCommentCount(matchId) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_unread_match_comment_count", {
+            p_match_id: matchId,
+        });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data || 0;
 }

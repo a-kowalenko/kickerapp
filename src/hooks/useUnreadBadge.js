@@ -31,7 +31,14 @@ export function useUnreadBadge(userId) {
     const { data: totalUnreadCount = 0, refetch: refetchUnreadCount } =
         useQuery({
             queryKey: [BADGE_QUERY_KEY, userId],
-            queryFn: getCombinedUnreadCount,
+            queryFn: async () => {
+                const count = await getCombinedUnreadCount();
+                console.log(
+                    "[useUnreadBadge] getCombinedUnreadCount returned:",
+                    count
+                );
+                return count;
+            },
             enabled: !!userId,
             staleTime: 1000 * 60, // 1 minute
             refetchOnWindowFocus: true,
