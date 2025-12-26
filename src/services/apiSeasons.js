@@ -298,3 +298,44 @@ export async function getPlayerSeasonRanking({ playerId, seasonId }) {
 
     return data || null;
 }
+
+/**
+ * Get season announcement status for a player
+ * Returns true if seen, false if not seen, null if no season_rankings entry exists
+ */
+export async function getSeasonAnnouncementStatus({ playerId, seasonId }) {
+    const { data, error } = await supabase
+        .from(SEASON_RANKINGS)
+        .select("season_announcement_seen")
+        .eq("player_id", playerId)
+        .eq("season_id", seasonId)
+        .single();
+
+    // PGRST116 = no rows found
+    if (error && error.code !== "PGRST116") {
+        throw new Error(error.message);
+    }
+
+    // Return null if no entry exists, otherwise return the boolean value
+    return data ? data.season_announcement_seen : null;
+}
+
+/**
+ * Mark season announcement as seen for a player
+ * Only updates existing entries, does not create new ones
+ */
+export async function markSeasonAnnouncementSeen({ playerId, seasonId }) {
+    const { error } = await supabase
+        .from(SEASON_RANKINGS)
+        .update({ season_announcement_seen: true })
+        .eq("player_id", playerId)
+        .eq("season_id", seasonId);
+
+    if (error) {
+        // Silently fail if no entry exists - this is expected behavior
+        console.warn(
+            "Could not mark season announcement as seen:",
+            error.message
+        );
+    }
+}

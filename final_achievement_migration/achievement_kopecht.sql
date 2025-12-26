@@ -6725,3 +6725,12 @@ CREATE TRIGGER sync_point_collector_trigger
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION kopecht.sync_point_collector_on_achievement() TO service_role;
 GRANT EXECUTE ON FUNCTION kopecht.update_point_collector_progress(BIGINT, TEXT, INTEGER, BIGINT) TO service_role;
+
+
+-- ============================================
+-- Migration: Add Season Announcement Seen Column
+-- Tracks whether a player has seen the new season announcement
+-- ============================================
+
+ALTER TABLE kopecht.season_rankings
+ADD COLUMN IF NOT EXISTS season_announcement_seen BOOLEAN DEFAULT FALSE;
