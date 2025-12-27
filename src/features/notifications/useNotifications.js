@@ -33,7 +33,6 @@ export function useNotifications() {
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-        refetch: refetchNotifications,
     } = useInfiniteQuery({
         queryKey: ["mention-notifications", userId],
         queryFn: ({ pageParam = 0 }) =>
@@ -47,7 +46,7 @@ export function useNotifications() {
     });
 
     // Query for unread count
-    const { data: unreadCount = 0, refetch: refetchUnreadCount } = useQuery({
+    const { data: unreadCount = 0 } = useQuery({
         queryKey: ["mention-notifications-unread", userId],
         queryFn: getUnreadMentionCount,
         enabled: !!userId,
