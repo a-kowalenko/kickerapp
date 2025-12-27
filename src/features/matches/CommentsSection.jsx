@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { HiChatBubbleLeftRight } from "react-icons/hi2";
 import { useComments } from "./useComments";
 import { useCreateComment } from "./useCreateComment";
@@ -129,6 +129,7 @@ function CommentsSection({ maxHeight }) {
     const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
     const hasMarkedAsReadRef = useRef(false);
     const location = useLocation();
+    const [searchParams] = useSearchParams();
     const { matchId } = useParams();
     const { user } = useUser();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
@@ -169,14 +170,20 @@ function CommentsSection({ maxHeight }) {
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
 
-    // Parse deep link from URL hash (e.g., #comment-123)
+    // Parse deep link from URL hash (e.g., #comment-123) or query param (e.g., ?scrollTo=comment-123)
     const deepLinkCommentId = useMemo(() => {
+        // Check query param first (from notification bell)
+        const scrollToParam = searchParams.get("scrollTo");
+        if (scrollToParam && scrollToParam.startsWith("comment-")) {
+            return scrollToParam.replace("comment-", "");
+        }
+        // Fallback to hash
         const hash = location.hash;
         if (hash && hash.startsWith("#comment-")) {
             return hash.replace("#comment-", "");
         }
         return null;
-    }, [location.hash]);
+    }, [location.hash, searchParams]);
 
     // Scroll to deep-linked comment
     const scrollToComment = useCallback((commentId) => {

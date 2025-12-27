@@ -31,17 +31,11 @@ export function useUnreadBadge(userId) {
     const { data: totalUnreadCount = 0, refetch: refetchUnreadCount } =
         useQuery({
             queryKey: [BADGE_QUERY_KEY, userId],
-            queryFn: async () => {
-                const count = await getCombinedUnreadCount();
-                console.log(
-                    "[useUnreadBadge] getCombinedUnreadCount returned:",
-                    count
-                );
-                return count;
-            },
+            queryFn: getCombinedUnreadCount,
             enabled: !!userId,
             staleTime: 1000 * 60, // 1 minute
             refetchOnWindowFocus: true,
+            refetchInterval: false, // Disable automatic refetching
         });
 
     // Query unread count per kicker (for detail UI)
@@ -134,11 +128,21 @@ export function useUnreadBadge(userId) {
     }, [totalUnreadCount, setBadge, updateDocumentTitle]);
 
     // Subscribe to realtime chat message and comment inserts
+    // Use a ref for refetch functions to avoid recreating the subscription
+    const refetchFnsRef = useRef({
+        refetchUnreadCount,
+        refetchUnreadPerKicker,
+    });
+    useEffect(() => {
+        refetchFnsRef.current = { refetchUnreadCount, refetchUnreadPerKicker };
+    }, [refetchUnreadCount, refetchUnreadPerKicker]);
+
     useEffect(() => {
         if (!userId) return;
 
+        const channelName = `unread-badge-updates-${userId}`;
         const channel = supabase
-            .channel("unread-badge-updates")
+            .channel(channelName)
             .on(
                 "postgres_changes",
                 {
@@ -148,8 +152,8 @@ export function useUnreadBadge(userId) {
                 },
                 () => {
                     // Refetch unread count when new chat message arrives
-                    refetchUnreadCount();
-                    refetchUnreadPerKicker();
+                    refetchFnsRef.current.refetchUnreadCount();
+                    refetchFnsRef.current.refetchUnreadPerKicker();
                 }
             )
             .on(
@@ -161,7 +165,7 @@ export function useUnreadBadge(userId) {
                 },
                 () => {
                     // Refetch unread count when new comment arrives
-                    refetchUnreadCount();
+                    refetchFnsRef.current.refetchUnreadCount();
                 }
             )
             .subscribe();
@@ -169,15 +173,15 @@ export function useUnreadBadge(userId) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [userId, refetchUnreadCount, refetchUnreadPerKicker]);
+    }, [userId]); // Only depend on userId, use ref for functions
 
     // Handle visibility change (user returns to tab)
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible" && userId) {
                 // Refetch count when tab becomes visible
-                refetchUnreadCount();
-                refetchUnreadPerKicker();
+                refetchFnsRef.current.refetchUnreadCount();
+                refetchFnsRef.current.refetchUnreadPerKicker();
             }
         };
 
@@ -188,14 +192,14 @@ export function useUnreadBadge(userId) {
                 handleVisibilityChange
             );
         };
-    }, [userId, refetchUnreadCount, refetchUnreadPerKicker]);
+    }, [userId]);
 
     // Listen for messages from service worker
     useEffect(() => {
         const handleServiceWorkerMessage = (event) => {
             if (event.data?.type === "BADGE_COUNT_UPDATE") {
                 // Service worker is informing us of a badge update
-                refetchUnreadCount();
+                refetchFnsRef.current.refetchUnreadCount();
             }
         };
 
@@ -209,7 +213,7 @@ export function useUnreadBadge(userId) {
                 handleServiceWorkerMessage
             );
         };
-    }, [refetchUnreadCount]);
+    }, []);
 
     // Get unread count for a specific kicker
     const getUnreadForKicker = useCallback(

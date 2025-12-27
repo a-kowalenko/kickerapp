@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
@@ -122,7 +123,20 @@ const TabContent = styled.div`
 `;
 
 function ChatSection() {
+    const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(() => {
+        // Check if there's a scrollTo param that specifies a message (should switch to chat tab)
+        const scrollTo = new URLSearchParams(window.location.search).get(
+            "scrollTo"
+        );
+        if (scrollTo?.startsWith("message-")) {
+            return "chat";
+        }
+        // Check if tab param is set
+        const tabParam = new URLSearchParams(window.location.search).get("tab");
+        if (tabParam === "chat" || tabParam === "comments") {
+            return tabParam;
+        }
         const saved = localStorage.getItem(CHAT_TAB_STORAGE_KEY);
         return saved === "comments" ? "comments" : "chat";
     });
@@ -131,6 +145,19 @@ function ChatSection() {
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+
+    // Handle tab query param changes
+    useEffect(() => {
+        const tabParam = searchParams.get("tab");
+        const scrollTo = searchParams.get("scrollTo");
+
+        // Switch to chat tab if scrollTo is for a message
+        if (scrollTo?.startsWith("message-")) {
+            setActiveTab("chat");
+        } else if (tabParam === "chat" || tabParam === "comments") {
+            setActiveTab(tabParam);
+        }
+    }, [searchParams]);
 
     // Persist tab selection
     useEffect(() => {

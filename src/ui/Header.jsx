@@ -17,6 +17,7 @@ import MiniActiveMatchInfo from "./MiniActiveMatchInfo";
 import { useEffect } from "react";
 import { useState } from "react";
 import SeasonBadge from "../features/seasons/SeasonBadge";
+import NotificationBell from "../features/notifications/NotificationBell";
 
 const StyledHeader = styled.header`
     background-color: var(--primary-background-color);
@@ -154,6 +155,9 @@ function Header() {
                 </DesktopOnly>
                 <DesktopOnly>
                     <DarkModeToggle />
+                </DesktopOnly>
+                <DesktopOnly>
+                    <NotificationBell />
                 </DesktopOnly>
                 <ProfileMenu />
             </ToggleWrapper>

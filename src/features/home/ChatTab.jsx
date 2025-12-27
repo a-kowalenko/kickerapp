@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { HiChatBubbleLeftRight, HiChevronDoubleDown } from "react-icons/hi2";
 import { useChatMessages } from "./useChatMessages";
 import { useCreateChatMessage } from "./useCreateChatMessage";
@@ -119,10 +120,42 @@ function ChatTab() {
     const [lastWhisperFrom, setLastWhisperFrom] = useState(null);
     const [scrollTrigger, setScrollTrigger] = useState(0);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
+    const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
     const prevMessageCountRef = useRef(0);
     const isNearBottomRef = useRef(true);
     const prevFirstMessageIdRef = useRef(null);
     const pendingScrollRef = useRef(false);
+    const [searchParams] = useSearchParams();
+
+    // Parse deep link from query param (e.g., ?scrollTo=message-123)
+    const deepLinkMessageId = useMemo(() => {
+        const scrollToParam = searchParams.get("scrollTo");
+        if (scrollToParam && scrollToParam.startsWith("message-")) {
+            return scrollToParam.replace("message-", "");
+        }
+        return null;
+    }, [searchParams]);
+
+    // Scroll to deep-linked message
+    const scrollToMessage = useCallback((messageId) => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const messageElement = container.querySelector(
+            `[data-message-id="${messageId}"]`
+        );
+        if (messageElement) {
+            messageElement.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+            // Add highlight effect
+            messageElement.classList.add("highlight");
+            setTimeout(() => {
+                messageElement.classList.remove("highlight");
+            }, 2000);
+        }
+    }, []);
 
     // Hooks
     const {
@@ -190,15 +223,11 @@ function ChatTab() {
         }
     }, [currentKicker, hasInitiallyScrolled, markAsRead]);
 
-    // Mark as read when user scrolls to bottom
+    // Mark as read when user scrolls to bottom OR when chat is initially loaded
     useEffect(() => {
         if (hasInitiallyScrolled && currentKicker && isNearBottomRef.current) {
-            const timer = setTimeout(() => {
-                if (isNearBottomRef.current) {
-                    markAsRead();
-                }
-            }, 500); // 500ms delay to prevent accidental opens
-            return () => clearTimeout(timer);
+            // Mark as read immediately when chat opens and user is at bottom
+            markAsRead();
         }
     }, [hasInitiallyScrolled, currentKicker, markAsRead]);
 
@@ -359,15 +388,28 @@ function ChatTab() {
 
         const container = messagesContainerRef.current;
         if (container) {
-            container.scrollTop = 0;
+            // If there's a deep link, scroll to that message instead
+            if (deepLinkMessageId && !hasScrolledToDeepLink) {
+                setHasInitiallyScrolled(true);
+                setHasScrolledToDeepLink(true);
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    scrollToMessage(deepLinkMessageId);
+                }, 100);
+            } else {
+                container.scrollTop = 0;
+                setHasInitiallyScrolled(true);
+            }
             prevMessageCountRef.current = messages.length;
-            setHasInitiallyScrolled(true);
         }
     }, [
         isLoadingMessages,
         isLoadingReactions,
         messages.length,
         hasInitiallyScrolled,
+        deepLinkMessageId,
+        hasScrolledToDeepLink,
+        scrollToMessage,
     ]);
 
     function handleJumpToLatest() {
@@ -510,11 +552,19 @@ function ChatTab() {
                                 // Message is unread if:
                                 // - Created after lastReadAt
                                 // - Not from the current user
-                                const isUnread =
-                                    message.player_id !== currentPlayerId &&
-                                    lastReadAt &&
-                                    new Date(message.created_at) >
-                                        new Date(lastReadAt);
+                                // - lastReadAt must be a valid date string
+                                // - If no lastReadAt exists (null), all messages are considered READ
+                                // TEMPORARILY DISABLED - all messages shown as read
+                                const isUnread = false;
+                                // const isUnread = Boolean(
+                                //     currentPlayerId &&
+                                //         message.player_id !== currentPlayerId &&
+                                //         lastReadAt &&
+                                //         typeof lastReadAt === "string" &&
+                                //         lastReadAt.length > 0 &&
+                                //         new Date(message.created_at) >
+                                //             new Date(lastReadAt)
+                                // );
 
                                 return (
                                     <ChatMessage

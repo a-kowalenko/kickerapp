@@ -8,6 +8,7 @@ import {
     HiOutlineSun,
     HiOutlineSpeakerWave,
     HiOutlineSpeakerXMark,
+    HiOutlineBell,
 } from "react-icons/hi2";
 import { useLogout } from "../features/authentication/useLogout";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -21,6 +22,7 @@ import useWindowWidth from "../hooks/useWindowWidth";
 import { media } from "../utils/constants";
 import SpinnerMini from "./SpinnerMini";
 import { BountyCard } from "./BountyCard";
+import { useUnreadMentionCount } from "../features/notifications/useNotifications";
 
 const ProfileMenuWrapper = styled.div`
     position: relative;
@@ -83,6 +85,43 @@ const Divider = styled.hr`
     }
 `;
 
+const ProfileMenuContainer = styled.div`
+    position: relative;
+`;
+
+const MobileNotificationBadge = styled.span`
+    position: absolute;
+    top: -0.4rem;
+    left: -0.4rem;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    padding: 0 0.5rem;
+    background-color: var(--color-red-700);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--border-radius-pill);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 1;
+
+    ${media.tablet} {
+        display: flex;
+    }
+`;
+
+const NotificationCount = styled.span`
+    background-color: var(--color-red-700);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--border-radius-pill);
+    margin-left: auto;
+`;
+
 function ProfileMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const close = () => setIsOpen(false);
@@ -95,6 +134,7 @@ function ProfileMenu() {
     const { isSound, toggleSound } = useSound();
     const { windowWidth } = useWindowWidth();
     const isMobile = windowWidth <= media.maxTablet;
+    const { unreadCount } = useUnreadMentionCount();
 
     const { data: player, isLoading: isLoadingPlayer } = useOwnPlayer();
     const {
@@ -149,27 +189,43 @@ function ProfileMenu() {
         return <SpinnerMini />;
     }
 
+    // Format badge count (max 99+)
+    const badgeCount = unreadCount > 99 ? "99+" : unreadCount;
+
+    function handleGoToNotifications(e) {
+        e.stopPropagation();
+        close();
+        navigate("/notifications");
+    }
+
     return (
         <ProfileMenuWrapper ref={dropdownRef}>
-            <BountyCard
-                player={player}
-                bounty={totalBounty}
-                bounty1on1={bounty1on1}
-                bounty2on2={bounty2on2}
-                streak={bestStreak}
-                streak1on1={streak1on1}
-                streak2on2={streak2on2}
-                statuses1on1={statuses1on1}
-                statuses2on2={statuses2on2}
-                status={primaryStatusAsset}
-                size="small"
-                onClick={handleToggle}
-                showGamemode={false}
-                showStatusBadge={true}
-                showTargetIcon={false}
-                showLabel={true}
-                showStatusTooltip={true}
-            />
+            <ProfileMenuContainer>
+                {isMobile && unreadCount > 0 && (
+                    <MobileNotificationBadge>
+                        {badgeCount}
+                    </MobileNotificationBadge>
+                )}
+                <BountyCard
+                    player={player}
+                    bounty={totalBounty}
+                    bounty1on1={bounty1on1}
+                    bounty2on2={bounty2on2}
+                    streak={bestStreak}
+                    streak1on1={streak1on1}
+                    streak2on2={streak2on2}
+                    statuses1on1={statuses1on1}
+                    statuses2on2={statuses2on2}
+                    status={primaryStatusAsset}
+                    size="small"
+                    onClick={handleToggle}
+                    showGamemode={false}
+                    showStatusBadge={true}
+                    showTargetIcon={false}
+                    showLabel={true}
+                    showStatusTooltip={true}
+                />
+            </ProfileMenuContainer>
 
             {isOpen && (
                 <StyledList>
@@ -182,6 +238,17 @@ function ProfileMenu() {
 
                     {/* Mobile-only items */}
                     <Divider />
+                    <MobileOnlyItem>
+                        <StyledButton onClick={handleGoToNotifications}>
+                            <HiOutlineBell />
+                            Notifications
+                            {unreadCount > 0 && (
+                                <NotificationCount>
+                                    {badgeCount}
+                                </NotificationCount>
+                            )}
+                        </StyledButton>
+                    </MobileOnlyItem>
                     <MobileOnlyItem>
                         <StyledButton onClick={handleToggleDarkMode}>
                             {isDarkMode ? <HiOutlineSun /> : <HiOutlineMoon />}
