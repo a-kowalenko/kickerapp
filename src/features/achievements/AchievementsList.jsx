@@ -190,7 +190,6 @@ function AchievementsList({ achievements, groupByCategory = true }) {
         <div>
             {sortedGroups.map(
                 ({ category, achievements: categoryAchievements }) => {
-                    console.log(category);
                     // Build chains within this category (from all achievements)
                     const allChains = buildChains(categoryAchievements);
 

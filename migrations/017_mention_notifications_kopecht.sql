@@ -367,3 +367,10 @@ FROM kopecht.chat_messages cm
 JOIN kopecht.player p ON p.kicker_id = cm.kicker_id AND p.id != cm.player_id AND p.user_id IS NOT NULL
 WHERE cm.content LIKE '%@everyone%'
 ON CONFLICT DO NOTHING;
+
+
+-- Enable realtime for the table (run this if realtime doesn't work)
+ALTER TABLE kopecht.mention_notifications REPLICA IDENTITY FULL;
+
+-- Add to realtime publication
+ALTER PUBLICATION supabase_realtime ADD TABLE kopecht.mention_notifications;
