@@ -11,6 +11,20 @@ const MentionLink = styled(Link)`
     }
 `;
 
+const MatchLink = styled(Link)`
+    color: var(--color-orange-500, #f97316);
+    font-weight: 600;
+    text-decoration: none;
+    background-color: rgba(249, 115, 22, 0.1);
+    border-radius: 3px;
+    padding: 0 3px;
+
+    &:hover {
+        text-decoration: underline;
+        background-color: rgba(249, 115, 22, 0.2);
+    }
+`;
+
 const ExternalLink = styled.a`
     color: var(--primary-button-color);
     text-decoration: none;
@@ -30,7 +44,8 @@ const GifImage = styled.img`
 `;
 
 // Parse comment content and convert @[name](id) patterns to clickable links,
-// [gif:URL] patterns to images, and plain URLs to clickable links
+// #[matchDisplay](matchId) patterns to match links, [gif:URL] patterns to images,
+// and plain URLs to clickable links
 function MentionText({ content }) {
     if (!content) return null;
 
@@ -43,6 +58,7 @@ function MentionText({ content }) {
 
     // Regex patterns
     const mentionRegex = /@\[([^\]]+)\]\((\d+)\)/g;
+    const matchLinkRegex = /#\[([^\]]+)\]\((\d+)\)/g;
     const gifRegex = /\[gif:(https?:\/\/[^\]]+)\]/g;
     // URL regex - matches http://, https://, and www. URLs
     // Excludes URLs that are part of [gif:...] syntax
@@ -52,7 +68,7 @@ function MentionText({ content }) {
     let lastIndex = 0;
     let match;
 
-    // Find all matches (mentions, gifs, and URLs)
+    // Find all matches (mentions, match links, gifs, and URLs)
     const allMatches = [];
 
     // Reset regex lastIndex and find mentions
@@ -64,6 +80,19 @@ function MentionText({ content }) {
             length: match[0].length,
             name: match[1],
             playerId: match[2],
+            fullMatch: match[0],
+        });
+    }
+
+    // Find match links
+    matchLinkRegex.lastIndex = 0;
+    while ((match = matchLinkRegex.exec(content)) !== null) {
+        allMatches.push({
+            type: "matchLink",
+            index: match.index,
+            length: match[0].length,
+            display: match[1],
+            matchId: match[2],
             fullMatch: match[0],
         });
     }
@@ -133,6 +162,15 @@ function MentionText({ content }) {
                 >
                     @{m.name}
                 </MentionLink>
+            );
+        } else if (m.type === "matchLink") {
+            parts.push(
+                <MatchLink
+                    key={`match-${m.index}`}
+                    to={`/matches/${m.matchId}`}
+                >
+                    #{m.display}
+                </MatchLink>
             );
         } else if (m.type === "gif") {
             parts.push(
