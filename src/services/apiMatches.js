@@ -1253,7 +1253,11 @@ export async function searchMatches({ query, kicker, limit = 10 }) {
             )
             .eq("kicker_id", kicker)
             .filter("nr", "gte", matchNr)
-            .filter("nr", "lt", matchNr + Math.pow(10, Math.max(1, 4 - searchStr.length)))
+            .filter(
+                "nr",
+                "lt",
+                matchNr + Math.pow(10, Math.max(1, 4 - searchStr.length))
+            )
             .order("nr", { ascending: true })
             .limit(limit);
 
@@ -1296,7 +1300,9 @@ export async function searchMatches({ query, kicker, limit = 10 }) {
                     ]
                         .filter(Boolean)
                         .map((n) => n.toLowerCase());
-                    return playerNames.some((name) => name.includes(lowerQuery));
+                    return playerNames.some((name) =>
+                        name.includes(lowerQuery)
+                    );
                 })
                 .slice(0, limit);
         }

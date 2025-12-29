@@ -104,9 +104,14 @@ function MatchDropdown({ search, selectedIndex, onSelect }) {
     const { currentKicker: kicker } = useKicker();
 
     // Query for matches based on search
-    const { data: matches = [], isLoading, error } = useQuery({
+    const {
+        data: matches = [],
+        isLoading,
+        error,
+    } = useQuery({
         queryKey: ["searchMatches", kicker, search],
-        queryFn: () => searchMatches({ query: search || "", kicker, limit: 10 }),
+        queryFn: () =>
+            searchMatches({ query: search || "", kicker, limit: 10 }),
         enabled: !!kicker, // Only run query when kicker is available
         staleTime: 1000 * 30, // 30 seconds
         retry: 1,
@@ -117,14 +122,12 @@ function MatchDropdown({ search, selectedIndex, onSelect }) {
         return matches.map((match) => ({
             ...match,
             display: formatMatchDisplay(match),
-            team1:
-                match.player3
-                    ? `${match.player1?.name} & ${match.player3?.name}`
-                    : match.player1?.name,
-            team2:
-                match.player4
-                    ? `${match.player2?.name} & ${match.player4?.name}`
-                    : match.player2?.name,
+            team1: match.player3
+                ? `${match.player1?.name} & ${match.player3?.name}`
+                : match.player1?.name,
+            team2: match.player4
+                ? `${match.player2?.name} & ${match.player4?.name}`
+                : match.player2?.name,
         }));
     }, [matches]);
 
@@ -148,9 +151,7 @@ function MatchDropdown({ search, selectedIndex, onSelect }) {
 
     return (
         <Dropdown>
-            <HintText>
-                Type match number or player name to search
-            </HintText>
+            <HintText>Type match number or player name to search</HintText>
             {formattedMatches.length > 0 ? (
                 formattedMatches.map((match, index) => (
                     <MatchItem
@@ -174,9 +175,7 @@ function MatchDropdown({ search, selectedIndex, onSelect }) {
                 ))
             ) : (
                 <EmptyItem>
-                    {search
-                        ? "No matches found"
-                        : "No recent matches"}
+                    {search ? "No matches found" : "No recent matches"}
                 </EmptyItem>
             )}
         </Dropdown>

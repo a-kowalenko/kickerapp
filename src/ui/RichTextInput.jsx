@@ -603,7 +603,8 @@ const RichTextInput = forwardRef(function RichTextInput(
 
             // Check for match URLs like /matches/123 or full URLs ending in /matches/123
             // Also handles query parameters (?sort=asc) and anchors (#section)
-            const matchUrlRegex = /(?:https?:\/\/[^\s/]+)?\/matches\/(\d+)(?:[?#][^\s]*)?/g;
+            const matchUrlRegex =
+                /(?:https?:\/\/[^\s/]+)?\/matches\/(\d+)(?:[?#][^\s]*)?/g;
             let match;
             const matchIds = [];
 

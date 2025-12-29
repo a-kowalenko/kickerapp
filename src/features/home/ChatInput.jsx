@@ -423,7 +423,10 @@ function ChatInput({
                     const match = await getMatch({ matchId, kicker });
                     if (match) {
                         const display = formatMatchDisplay(match);
-                        inputRef.current?.replaceMatchPlaceholder(matchId, display);
+                        inputRef.current?.replaceMatchPlaceholder(
+                            matchId,
+                            display
+                        );
                     } else {
                         // Match not found - show ID only
                         inputRef.current?.replaceMatchPlaceholder(
