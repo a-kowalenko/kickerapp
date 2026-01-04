@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { Link } from "react-router-dom";
+import MatchLinkWithTooltip from "./MatchLinkWithTooltip";
 
 const MentionLink = styled(Link)`
     color: var(--primary-button-color);
@@ -8,20 +9,6 @@ const MentionLink = styled(Link)`
 
     &:hover {
         text-decoration: underline;
-    }
-`;
-
-const MatchLink = styled(Link)`
-    color: var(--color-orange-500, #f97316);
-    font-weight: 600;
-    text-decoration: none;
-    background-color: rgba(249, 115, 22, 0.1);
-    border-radius: 3px;
-    padding: 0 3px;
-
-    &:hover {
-        text-decoration: underline;
-        background-color: rgba(249, 115, 22, 0.2);
     }
 `;
 
@@ -165,12 +152,11 @@ function MentionText({ content }) {
             );
         } else if (m.type === "matchLink") {
             parts.push(
-                <MatchLink
+                <MatchLinkWithTooltip
                     key={`match-${m.index}`}
-                    to={`/matches/${m.matchId}`}
-                >
-                    #{m.display}
-                </MatchLink>
+                    matchId={m.matchId}
+                    display={m.display}
+                />
             );
         } else if (m.type === "gif") {
             parts.push(
