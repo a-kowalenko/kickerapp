@@ -438,8 +438,6 @@ export function BountyCard({
     const hasStatusTooltipData =
         statuses1on1.length > 0 || statuses2on2.length > 0;
 
-    console.log("status", status);
-
     return (
         <Card
             $size={size}
@@ -753,7 +751,6 @@ export function BountyList({
                 </ListTitle>
             )}
             {players.map((data) => {
-                console.log("data");
                 return (
                     <BountyCard
                         key={`${data.player_id}-${data.gamemode}`}

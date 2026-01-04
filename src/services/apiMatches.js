@@ -317,7 +317,11 @@ export async function getMatch({ matchId, kicker }) {
     return data;
 }
 
-export async function getMatches({ currentPage, filter }) {
+export async function getMatches({
+    currentPage,
+    filter,
+    pageSize = PAGE_SIZE,
+}) {
     let query = supabase
         .from(MATCHES)
         .select(
@@ -389,8 +393,8 @@ export async function getMatches({ currentPage, filter }) {
     query = query.order("start_time", { ascending: false });
 
     if (currentPage) {
-        const from = (currentPage - 1) * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
         query = query.range(from, to);
     }
 
