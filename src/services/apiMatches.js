@@ -794,7 +794,7 @@ export async function getFatalities({ filter }) {
         }
     }
 
-    if (filter?.month) {
+    if (typeof filter?.month === "number") {
         const start = new Date(
             filter.year || new Date().getFullYear(),
             filter.month,
