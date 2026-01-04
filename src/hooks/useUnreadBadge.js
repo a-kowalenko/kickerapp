@@ -1,23 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery } from "react-query";
+import { useQuery, useQueryClient } from "react-query";
 import supabase, { databaseSchema } from "../services/supabase";
-import {
-    getTotalUnreadCount,
-    getUnreadCountPerKicker,
-} from "../services/apiChat";
-import { CHAT_MESSAGES } from "../utils/constants";
+import { getUnreadMentionCount } from "../services/apiNotifications";
 
 const ORIGINAL_TITLE = "KickerApp";
-const BADGE_QUERY_KEY = "unreadBadgeCount";
+const MENTION_NOTIFICATIONS_TABLE = "mention_notifications";
+
+// Shared query key - same as in useNotifications.js for cache sharing
+const UNREAD_COUNT_QUERY_KEY = "mention-notifications-unread";
 
 /**
- * Hook to manage unread message badges
+ * Hook to manage unread notification badges
+ * - Uses mention_notifications as the SINGLE SOURCE OF TRUTH
  * - Updates app badge (PWA) via navigator.setAppBadge
  * - Updates document title with count for browser tabs
- * - Listens to realtime chat message inserts
+ * - Shares the same query cache as NotificationBell for instant sync
  * @param {string} userId - Current user ID
  */
 export function useUnreadBadge(userId) {
+    const queryClient = useQueryClient();
     const [isAppBadgeSupported, setIsAppBadgeSupported] = useState(false);
     const previousCountRef = useRef(0);
 
@@ -26,23 +27,14 @@ export function useUnreadBadge(userId) {
         setIsAppBadgeSupported("setAppBadge" in navigator);
     }, []);
 
-    // Query total unread count
+    // Query unread mention count - SAME QUERY KEY as useUnreadMentionCount
+    // This ensures NotificationBell and browser badge share the same cache
     const { data: totalUnreadCount = 0, refetch: refetchUnreadCount } =
         useQuery({
-            queryKey: [BADGE_QUERY_KEY, userId],
-            queryFn: getTotalUnreadCount,
+            queryKey: [UNREAD_COUNT_QUERY_KEY, userId],
+            queryFn: getUnreadMentionCount,
             enabled: !!userId,
-            staleTime: 1000 * 60, // 1 minute
-            refetchOnWindowFocus: true,
-        });
-
-    // Query unread count per kicker (for detail UI)
-    const { data: unreadPerKicker = [], refetch: refetchUnreadPerKicker } =
-        useQuery({
-            queryKey: [BADGE_QUERY_KEY, "perKicker", userId],
-            queryFn: getUnreadCountPerKicker,
-            enabled: !!userId,
-            staleTime: 1000 * 60, // 1 minute
+            staleTime: 1000 * 10, // 10 seconds - keep in sync with useNotifications
             refetchOnWindowFocus: true,
         });
 
@@ -65,7 +57,7 @@ export function useUnreadBadge(userId) {
         [isAppBadgeSupported]
     );
 
-    // Update document title (browser tab fallback)
+    // Update document title (browser tab)
     const updateDocumentTitle = useCallback((count) => {
         if (count > 0) {
             document.title = `(${count}) ${ORIGINAL_TITLE}`;
@@ -92,57 +84,47 @@ export function useUnreadBadge(userId) {
         async (count) => {
             updateDocumentTitle(count);
             await updateAppBadge(count);
+
+            // Sync with service worker
+            if (navigator.serviceWorker?.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: "SET_BADGE",
+                    count,
+                });
+            }
         },
         [updateDocumentTitle, updateAppBadge]
     );
 
-    // Increment badge by 1 (for realtime updates when not in chat)
-    const incrementBadge = useCallback(async () => {
-        const newCount = previousCountRef.current + 1;
-        previousCountRef.current = newCount;
-        await setBadge(newCount);
-
-        // Also notify service worker
-        if (navigator.serviceWorker?.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: "INCREMENT_BADGE",
-            });
-        }
-    }, [setBadge]);
-
-    // Update badges when count changes
-    // Note: We only SET the badge, never clear it here automatically
-    // Clearing is done explicitly when user views the chat
+    // Update badges when count changes - THIS IS THE KEY SYNC POINT
     useEffect(() => {
         previousCountRef.current = totalUnreadCount;
-        // Only update badge if there are unread messages
-        // Don't automatically clear badge when count becomes 0
-        // (that's handled by ChatSection when user actually reads messages)
-        if (totalUnreadCount > 0) {
-            setBadge(totalUnreadCount);
-        }
-        // Always update document title though
-        updateDocumentTitle(totalUnreadCount);
-    }, [totalUnreadCount, setBadge, updateDocumentTitle]);
+        setBadge(totalUnreadCount);
+    }, [totalUnreadCount, setBadge]);
 
-    // Subscribe to realtime chat message inserts
+    // Subscribe to realtime mention_notifications changes
+    // This triggers INSTANT updates when notifications are created/read
     useEffect(() => {
         if (!userId) return;
 
+        const channelName = `badge-mentions-${userId}`;
         const channel = supabase
-            .channel("unread-badge-updates")
+            .channel(channelName)
             .on(
                 "postgres_changes",
                 {
-                    event: "INSERT",
+                    event: "*", // INSERT, UPDATE (mark as read), DELETE
                     schema: databaseSchema,
-                    table: CHAT_MESSAGES,
+                    table: MENTION_NOTIFICATIONS_TABLE,
+                    filter: `user_id=eq.${userId}`,
                 },
                 () => {
-                    // Refetch unread count when new message arrives
-                    // The query will calculate the correct count based on last_read_at
-                    refetchUnreadCount();
-                    refetchUnreadPerKicker();
+                    // Immediately invalidate to trigger refetch
+                    // This updates BOTH NotificationBell AND browser badge instantly
+                    queryClient.invalidateQueries([
+                        UNREAD_COUNT_QUERY_KEY,
+                        userId,
+                    ]);
                 }
             )
             .subscribe();
@@ -150,7 +132,7 @@ export function useUnreadBadge(userId) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [userId, refetchUnreadCount, refetchUnreadPerKicker]);
+    }, [userId, queryClient]);
 
     // Handle visibility change (user returns to tab)
     useEffect(() => {
@@ -158,7 +140,6 @@ export function useUnreadBadge(userId) {
             if (document.visibilityState === "visible" && userId) {
                 // Refetch count when tab becomes visible
                 refetchUnreadCount();
-                refetchUnreadPerKicker();
             }
         };
 
@@ -169,13 +150,12 @@ export function useUnreadBadge(userId) {
                 handleVisibilityChange
             );
         };
-    }, [userId, refetchUnreadCount, refetchUnreadPerKicker]);
+    }, [userId, refetchUnreadCount]);
 
     // Listen for messages from service worker
     useEffect(() => {
         const handleServiceWorkerMessage = (event) => {
             if (event.data?.type === "BADGE_COUNT_UPDATE") {
-                // Service worker is informing us of a badge update
                 refetchUnreadCount();
             }
         };
@@ -192,27 +172,21 @@ export function useUnreadBadge(userId) {
         };
     }, [refetchUnreadCount]);
 
-    // Get unread count for a specific kicker
-    const getUnreadForKicker = useCallback(
-        (kickerId) => {
-            const found = unreadPerKicker.find((k) => k.kicker_id === kickerId);
-            return found?.unread_count || 0;
-        },
-        [unreadPerKicker]
-    );
+    // Invalidate badge queries to trigger refetch
+    const invalidateUnreadBadge = useCallback(() => {
+        queryClient.invalidateQueries([UNREAD_COUNT_QUERY_KEY, userId]);
+    }, [queryClient, userId]);
 
     return {
         // State
         totalUnreadCount,
-        unreadPerKicker,
         isAppBadgeSupported,
 
         // Actions
         clearBadge,
         setBadge,
-        incrementBadge,
         refetchUnreadCount,
-        getUnreadForKicker,
+        invalidateUnreadBadge,
     };
 }
 

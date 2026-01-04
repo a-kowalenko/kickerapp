@@ -30,6 +30,7 @@ import Start from "./pages/Start";
 import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
 import Testwiese from "./pages/Testwiese";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -112,6 +113,10 @@ function App() {
                                     <Route
                                         path="tournament/:tourId"
                                         element={<Tournament />}
+                                    />
+                                    <Route
+                                        path="notifications"
+                                        element={<Notifications />}
                                     />
                                     <Route
                                         path="testwiese"

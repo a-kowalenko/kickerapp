@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { HiChatBubbleLeftRight, HiChevronDoubleDown } from "react-icons/hi2";
 import { useChatMessages } from "./useChatMessages";
 import { useCreateChatMessage } from "./useCreateChatMessage";
@@ -12,7 +13,9 @@ import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
 import { useKicker } from "../../contexts/KickerContext";
+import { useChatReadStatus } from "../../hooks/useChatReadStatus";
 import { updateChatReadStatus } from "../../services/apiChat";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LoadingSpinner from "../../ui/LoadingSpinner";
@@ -117,10 +120,43 @@ function ChatTab() {
     const [lastWhisperFrom, setLastWhisperFrom] = useState(null);
     const [scrollTrigger, setScrollTrigger] = useState(0);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
+    const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
     const prevMessageCountRef = useRef(0);
     const isNearBottomRef = useRef(true);
     const prevFirstMessageIdRef = useRef(null);
     const pendingScrollRef = useRef(false);
+    const hasMarkedAsReadRef = useRef(false);
+    const [searchParams] = useSearchParams();
+
+    // Parse deep link from query param (e.g., ?scrollTo=message-123)
+    const deepLinkMessageId = useMemo(() => {
+        const scrollToParam = searchParams.get("scrollTo");
+        if (scrollToParam && scrollToParam.startsWith("message-")) {
+            return scrollToParam.replace("message-", "");
+        }
+        return null;
+    }, [searchParams]);
+
+    // Scroll to deep-linked message
+    const scrollToMessage = useCallback((messageId) => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const messageElement = container.querySelector(
+            `[data-message-id="${messageId}"]`
+        );
+        if (messageElement) {
+            messageElement.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+            // Add highlight effect
+            messageElement.classList.add("highlight");
+            setTimeout(() => {
+                messageElement.classList.remove("highlight");
+            }, 2000);
+        }
+    }, []);
 
     // Hooks
     const {
@@ -156,34 +192,37 @@ function ChatTab() {
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
 
+    // Get invalidate function from unread badge hook
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+
+    // Get invalidate function for read status
+    const { lastReadAt, invalidate: invalidateChatReadStatus } =
+        useChatReadStatus(currentKicker);
+
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
 
-    // Mark messages as read and clear badge when chat is viewed
+    // Mark messages as read and update both badge and read status
+    // Uses hasMarkedAsReadRef to prevent duplicate API calls
     const markAsRead = useCallback(async () => {
-        if (!currentKicker) return;
+        if (!currentKicker || hasMarkedAsReadRef.current) return;
+        hasMarkedAsReadRef.current = true;
         try {
             await updateChatReadStatus(currentKicker);
-
-            // Immediately clear document title badge
-            document.title = "KickerApp";
-
-            // Clear app badge (works for Android/Desktop PWA)
-            if ("clearAppBadge" in navigator) {
-                navigator.clearAppBadge().catch(() => {});
-            }
-
-            // Notify service worker to clear badge count
-            if (navigator.serviceWorker?.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: "CLEAR_BADGE",
-                });
-            }
+            // Invalidate badge queries to trigger refetch of combined unread count
+            invalidateUnreadBadge();
+            // Invalidate chat read status so unread markers update immediately
+            invalidateChatReadStatus();
         } catch (error) {
             console.error("Error marking chat as read:", error);
+        } finally {
+            // Reset after a short delay to allow subsequent reads (e.g., new messages)
+            setTimeout(() => {
+                hasMarkedAsReadRef.current = false;
+            }, 1000);
         }
-    }, [currentKicker]);
+    }, [currentKicker, invalidateUnreadBadge, invalidateChatReadStatus]);
 
     // Track if user is viewing the chat (at bottom of messages)
     const markAsReadIfAtBottom = useCallback(() => {
@@ -192,17 +231,16 @@ function ChatTab() {
         }
     }, [currentKicker, hasInitiallyScrolled, markAsRead]);
 
-    // Mark as read when user scrolls to bottom
+    // Mark as read when user scrolls to bottom OR when chat is initially loaded
+    // Note: markAsRead is intentionally excluded from deps to prevent infinite loops
+    // The hasMarkedAsReadRef guard ensures we don't make duplicate API calls
     useEffect(() => {
         if (hasInitiallyScrolled && currentKicker && isNearBottomRef.current) {
-            const timer = setTimeout(() => {
-                if (isNearBottomRef.current) {
-                    markAsRead();
-                }
-            }, 1000);
-            return () => clearTimeout(timer);
+            // Mark as read immediately when chat opens and user is at bottom
+            markAsRead();
         }
-    }, [hasInitiallyScrolled, currentKicker, markAsRead]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasInitiallyScrolled, currentKicker]);
 
     // Mark as read when tab becomes visible AND user is at bottom
     useEffect(() => {
@@ -361,15 +399,28 @@ function ChatTab() {
 
         const container = messagesContainerRef.current;
         if (container) {
-            container.scrollTop = 0;
+            // If there's a deep link, scroll to that message instead
+            if (deepLinkMessageId && !hasScrolledToDeepLink) {
+                setHasInitiallyScrolled(true);
+                setHasScrolledToDeepLink(true);
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    scrollToMessage(deepLinkMessageId);
+                }, 100);
+            } else {
+                container.scrollTop = 0;
+                setHasInitiallyScrolled(true);
+            }
             prevMessageCountRef.current = messages.length;
-            setHasInitiallyScrolled(true);
         }
     }, [
         isLoadingMessages,
         isLoadingReactions,
         messages.length,
         hasInitiallyScrolled,
+        deepLinkMessageId,
+        hasScrolledToDeepLink,
+        scrollToMessage,
     ]);
 
     function handleJumpToLatest() {
@@ -509,6 +560,23 @@ function ChatTab() {
                                         nextMessage
                                     );
 
+                                // Message is unread if:
+                                // - Created after lastReadAt
+                                // - Not from the current user
+                                // - lastReadAt must be a valid date string
+                                // - If no lastReadAt exists (null), all messages are considered READ
+                                // TEMPORARILY DISABLED - all messages shown as read
+                                const isUnread = false;
+                                // const isUnread = Boolean(
+                                //     currentPlayerId &&
+                                //         message.player_id !== currentPlayerId &&
+                                //         lastReadAt &&
+                                //         typeof lastReadAt === "string" &&
+                                //         lastReadAt.length > 0 &&
+                                //         new Date(message.created_at) >
+                                //             new Date(lastReadAt)
+                                // );
+
                                 return (
                                     <ChatMessage
                                         key={message.id}
@@ -530,6 +598,7 @@ function ChatTab() {
                                             handleScrollToMessage
                                         }
                                         isGrouped={isGrouped}
+                                        isUnread={isUnread}
                                     />
                                 );
                             })}

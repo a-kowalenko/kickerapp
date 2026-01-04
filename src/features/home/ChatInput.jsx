@@ -1,15 +1,18 @@
 import styled from "styled-components";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { HiOutlineFaceSmile, HiPaperAirplane, HiXMark } from "react-icons/hi2";
 import { PiGifBold } from "react-icons/pi";
 import { usePlayers } from "../../hooks/usePlayers";
+import { useKicker } from "../../contexts/KickerContext";
 import { MAX_CHAT_MESSAGE_LENGTH, DEFAULT_AVATAR } from "../../utils/constants";
 import Avatar from "../../ui/Avatar";
 import EmojiPicker from "../../ui/EmojiPicker";
 import GifPicker from "../../ui/GifPicker";
+import MatchDropdown from "../../ui/MatchDropdown";
 import SpinnerMini from "../../ui/SpinnerMini";
 import MentionText from "../../ui/MentionText";
 import RichTextInput from "../../ui/RichTextInput";
+import { getMatch, formatMatchDisplay } from "../../services/apiMatches";
 
 const InputContainer = styled.div`
     display: flex;
@@ -241,8 +244,11 @@ function ChatInput({
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+    const [showMatchDropdown, setShowMatchDropdown] = useState(false);
     const [playerSearch, setPlayerSearch] = useState("");
+    const [matchSearch, setMatchSearch] = useState("");
     const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0);
+    const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
     const [dropdownMode, setDropdownMode] = useState(null); // "whisper" | "mention" | "reply"
     const [whisperRecipient, setWhisperRecipient] = useState(null);
     const [shouldRefocusAfterSubmit, setShouldRefocusAfterSubmit] =
@@ -251,6 +257,7 @@ function ChatInput({
     const emojiButtonRef = useRef(null);
     const gifButtonRef = useRef(null);
     const { players } = usePlayers();
+    const { currentKicker: kicker } = useKicker();
 
     // Refocus input after submission completes (when isSubmitting goes from true to false)
     useEffect(() => {
@@ -377,6 +384,7 @@ function ChatInput({
             setPlayerSearch(search);
             setDropdownMode("mention");
             setShowPlayerDropdown(true);
+            setShowMatchDropdown(false);
         } else {
             if (dropdownMode === "mention") {
                 setShowPlayerDropdown(false);
@@ -386,7 +394,76 @@ function ChatInput({
         }
     }
 
+    // Handle # match trigger from RichTextInput
+    function handleMatchTrigger(search, hashIndex) {
+        if (search !== null && hashIndex !== -1) {
+            setMatchSearch(search);
+            setShowMatchDropdown(true);
+            setShowPlayerDropdown(false);
+            setDropdownMode(null);
+        } else {
+            setShowMatchDropdown(false);
+            setMatchSearch("");
+        }
+    }
+
+    // Handle match selection from dropdown
+    function handleSelectMatch(match, display) {
+        inputRef.current?.insertMatch(match, display);
+        setShowMatchDropdown(false);
+        setMatchSearch("");
+        setSelectedMatchIndex(0);
+    }
+
+    // Handle pasted match URLs - async resolution
+    const handleMatchPaste = useCallback(
+        async (matchIds) => {
+            for (const matchId of matchIds) {
+                try {
+                    const match = await getMatch({ matchId, kicker });
+                    if (match) {
+                        const display = formatMatchDisplay(match);
+                        inputRef.current?.replaceMatchPlaceholder(
+                            matchId,
+                            display
+                        );
+                    } else {
+                        // Match not found - show ID only
+                        inputRef.current?.replaceMatchPlaceholder(
+                            matchId,
+                            `Match ${matchId}`
+                        );
+                    }
+                } catch (error) {
+                    console.error("Failed to load match:", error);
+                    // Replace placeholder with just the match ID
+                    inputRef.current?.replaceMatchPlaceholder(
+                        matchId,
+                        `Match ${matchId}`
+                    );
+                }
+            }
+        },
+        [kicker]
+    );
+
     function handleKeyDown(e) {
+        // Handle match dropdown navigation
+        if (showMatchDropdown) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSelectedMatchIndex((prev) => prev + 1);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setSelectedMatchIndex((prev) => Math.max(0, prev - 1));
+            } else if (e.key === "Escape") {
+                setShowMatchDropdown(false);
+                setMatchSearch("");
+            }
+            // Note: Enter/Tab handled by MatchDropdown's onSelect
+            return;
+        }
+
         if (showPlayerDropdown && filteredPlayers?.length > 0) {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -502,7 +579,7 @@ function ChatInput({
         if (whisperRecipient) {
             return `Whisper to ${whisperRecipient.name}...`;
         }
-        return "Type a message... Use @ to mention, /w to whisper";
+        return "Type a message... @ mention, # match, /w whisper";
     }, [replyTo, whisperRecipient]);
 
     if (!currentPlayer) return null;
@@ -560,9 +637,18 @@ function ChatInput({
                         onChange={handleContentChange}
                         onKeyDown={handleKeyDown}
                         onMentionTrigger={handleMentionTrigger}
+                        onMatchTrigger={handleMatchTrigger}
+                        onMatchPaste={handleMatchPaste}
                         placeholder={placeholder}
                         disabled={isSubmitting}
                     />
+                    {showMatchDropdown && (
+                        <MatchDropdown
+                            search={matchSearch}
+                            selectedIndex={selectedMatchIndex}
+                            onSelect={handleSelectMatch}
+                        />
+                    )}
                     {showPlayerDropdown && (
                         <PlayerDropdown>
                             {filteredPlayers?.length > 0 ? (

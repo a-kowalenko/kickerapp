@@ -153,8 +153,13 @@ function ChoosePlayerProvider({ children }) {
             if (isLoadingPlayers) {
                 dispatch({ type: "loading_players" });
             } else {
+                // Get IDs of selected players for filtering
+                const selectedIds = selectedPlayers
+                    .filter((p) => p != null && p.id != null)
+                    .map((p) => p.id);
+
                 const filteredPlayers = players
-                    .filter((player) => !selectedPlayers.includes(player))
+                    .filter((player) => !selectedIds.includes(player.id))
                     .map((player) => ({ text: player.name, value: player.id }));
 
                 const filteredForPlayer3And4 = [...filteredPlayers];
@@ -283,6 +288,30 @@ function ChoosePlayerProvider({ children }) {
     }
 
     function selectPlayer(playerId, playerNumber) {
+        // Handle "No player" selection for Player 1 - promote Player 3 to Player 1
+        if (!playerId && playerNumber === 1) {
+            const p3Params = Number(searchParams.get("player3"));
+            if (p3Params) {
+                // Move Player 3 to Player 1 position
+                searchParams.set("player1", p3Params);
+                searchParams.delete("player3");
+                setSearchParams(searchParams, { replace: true });
+                return;
+            }
+        }
+
+        // Handle "No player" selection for Player 2 - promote Player 4 to Player 2
+        if (!playerId && playerNumber === 2) {
+            const p4Params = Number(searchParams.get("player4"));
+            if (p4Params) {
+                // Move Player 4 to Player 2 position
+                searchParams.set("player2", p4Params);
+                searchParams.delete("player4");
+                setSearchParams(searchParams, { replace: true });
+                return;
+            }
+        }
+
         if (!playerId) {
             searchParams.delete(`player${playerNumber}`);
         } else {
@@ -438,6 +467,18 @@ function ChoosePlayerProvider({ children }) {
         toast.success(`Teams balanced! MMR difference: ${minDiff}`);
     }
 
+    // Create filtered options for Player 1 (with "No player" if Player 3 exists)
+    const filteredForPlayer1 =
+        isPlayer3Active && player3
+            ? [{ text: "No player", value: null }, ...filteredPlayers]
+            : filteredPlayers;
+
+    // Create filtered options for Player 2 (with "No player" if Player 4 exists)
+    const filteredForPlayer2 =
+        isPlayer4Active && player4
+            ? [{ text: "No player", value: null }, ...filteredPlayers]
+            : filteredPlayers;
+
     return (
         <ChoosePlayerContext.Provider
             value={{
@@ -450,6 +491,8 @@ function ChoosePlayerProvider({ children }) {
                 isPlayer3Active,
                 isPlayer4Active,
                 filteredPlayers,
+                filteredForPlayer1,
+                filteredForPlayer2,
                 filteredForPlayer3And4,
                 selectPlayer,
                 switchTeams,

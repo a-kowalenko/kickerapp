@@ -5,7 +5,7 @@ import {
     PLAYER,
     CHAT_PAGE_SIZE,
 } from "../utils/constants";
-import supabase from "./supabase";
+import supabase, { databaseSchema } from "./supabase";
 
 // ============ CHAT MESSAGES ============
 
@@ -338,9 +338,11 @@ export async function getTypingUsers(kickerId) {
  * Update last read timestamp for current user in a specific kicker
  */
 export async function updateChatReadStatus(kickerId) {
-    const { error } = await supabase.rpc("update_chat_read_status", {
-        p_kicker_id: kickerId,
-    });
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .rpc("update_chat_read_status", {
+            p_kicker_id: kickerId,
+        });
 
     if (error) {
         throw new Error(error.message);
@@ -354,7 +356,9 @@ export async function updateChatReadStatus(kickerId) {
  * Returns array of { kicker_id, unread_count }
  */
 export async function getUnreadCountPerKicker() {
-    const { data, error } = await supabase.rpc("get_unread_count_per_kicker");
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_unread_count_per_kicker");
 
     if (error) {
         throw new Error(error.message);
@@ -367,11 +371,52 @@ export async function getUnreadCountPerKicker() {
  * Get total unread count across all kickers for current user
  */
 export async function getTotalUnreadCount() {
-    const { data, error } = await supabase.rpc("get_total_unread_count");
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_total_unread_count");
 
     if (error) {
         throw new Error(error.message);
     }
 
     return data || 0;
+}
+
+/**
+ * Get combined unread count (chat + comments) across all kickers for current user
+ * Used for global notification badges (browser tab, PWA badge)
+ */
+export async function getCombinedUnreadCount() {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_combined_unread_count");
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data || 0;
+}
+
+/**
+ * Get the last_read_at timestamp for chat in a specific kicker
+ * Used to determine which messages are unread for visual marking
+ */
+export async function getChatReadStatus(kickerId) {
+    const { data, error } = await supabase
+        .from("chat_read_status")
+        .select("last_read_at")
+        .eq("kicker_id", kickerId)
+        .limit(1)
+        .single();
+
+    if (error) {
+        // PGRST116 = no rows returned, which is OK for new users
+        if (error.code === "PGRST116") {
+            return null;
+        }
+        throw new Error(error.message);
+    }
+
+    return data?.last_read_at || null;
 }

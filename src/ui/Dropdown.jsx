@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { HiOutlineChevronDown } from "react-icons/hi2";
 import styled, { css } from "styled-components";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import SpinnerMini from "./SpinnerMini";
-import { useEffect } from "react";
+import { useDropdownContext } from "../contexts/DropdownContext";
 
 const variations = {
     default: css`
@@ -131,8 +131,18 @@ function Dropdown({
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState(initSelected);
-    const close = () => setIsOpen(false);
+    const dropdownContext = useDropdownContext();
+
+    const close = useCallback(() => setIsOpen(false), []);
     const ref = useOutsideClick(close, false);
+
+    // Register this dropdown's close function with the context (if available)
+    useEffect(() => {
+        if (dropdownContext) {
+            const unregister = dropdownContext.registerDropdown(close);
+            return unregister;
+        }
+    }, [dropdownContext, close]);
 
     useEffect(() => {
         setSelected(initSelected);
@@ -142,6 +152,10 @@ function Dropdown({
         e.stopPropagation();
         if (disabled) {
             return;
+        }
+        // Close all other dropdowns before opening this one
+        if (!isOpen && dropdownContext) {
+            dropdownContext.closeAllExcept(close);
         }
         setIsOpen((open) => !open);
     }

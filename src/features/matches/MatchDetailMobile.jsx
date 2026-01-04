@@ -111,8 +111,8 @@ const PlayerName = styled.span`
         props.$winner === null
             ? "var(--primary-text-color)"
             : props.$winner === true
-              ? "var(--winner-name-color)"
-              : "var(--loser-name-color)"};
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
 
     & div {
         width: 100%;
@@ -438,8 +438,8 @@ function MatchDetailMobile({ match, timer }) {
                                 !isEnded
                                     ? null
                                     : winner === "Team 1"
-                                      ? true
-                                      : false
+                                    ? true
+                                    : false
                             }
                         >
                             <Avatar
@@ -481,8 +481,8 @@ function MatchDetailMobile({ match, timer }) {
                                     !isEnded
                                         ? null
                                         : winner === "Team 1"
-                                          ? true
-                                          : false
+                                        ? true
+                                        : false
                                 }
                             >
                                 <Avatar
@@ -535,8 +535,8 @@ function MatchDetailMobile({ match, timer }) {
                                 !isEnded
                                     ? null
                                     : winner === "Team 2"
-                                      ? true
-                                      : false
+                                    ? true
+                                    : false
                             }
                         >
                             <Avatar
@@ -578,8 +578,8 @@ function MatchDetailMobile({ match, timer }) {
                                     !isEnded
                                         ? null
                                         : winner === "Team 2"
-                                          ? true
-                                          : false
+                                        ? true
+                                        : false
                                 }
                             >
                                 <Avatar

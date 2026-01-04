@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { HiChatBubbleLeftRight } from "react-icons/hi2";
 import { useComments } from "./useComments";
 import { useCreateComment } from "./useCreateComment";
@@ -15,9 +15,9 @@ import {
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
-import { useKicker } from "../../contexts/KickerContext";
-import { updateCommentReadStatus } from "../../services/apiComments";
-import { useQueryClient } from "react-query";
+import { useMatchCommentReadStatus } from "../../hooks/useCommentReadStatus";
+import { updateMatchCommentReadStatus } from "../../services/apiComments";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
 import Comment from "./Comment";
 import CommentInput from "./CommentInput";
 import ReactionBar from "./ReactionBar";
@@ -127,9 +127,16 @@ function CommentsSection({ maxHeight }) {
     const commentsContainerRef = useRef(null);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
     const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
+    const hasMarkedAsReadRef = useRef(false);
     const location = useLocation();
-    const queryClient = useQueryClient();
-    const { currentKicker } = useKicker();
+    const [searchParams] = useSearchParams();
+    const { matchId } = useParams();
+    const { user } = useUser();
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+
+    // Get read status for unread markers
+    const { lastReadAt, invalidate: invalidateMatchReadStatus } =
+        useMatchCommentReadStatus(matchId);
 
     // Hooks
     const { comments, isLoading: isLoadingComments } = useComments();
@@ -159,19 +166,24 @@ function CommentsSection({ maxHeight }) {
     // User/Player info
     const { data: currentPlayer } = useOwnPlayer();
     const { data: kickerData } = useKickerInfo();
-    const { user } = useUser();
 
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
 
-    // Parse deep link from URL hash (e.g., #comment-123)
+    // Parse deep link from URL hash (e.g., #comment-123) or query param (e.g., ?scrollTo=comment-123)
     const deepLinkCommentId = useMemo(() => {
+        // Check query param first (from notification bell)
+        const scrollToParam = searchParams.get("scrollTo");
+        if (scrollToParam && scrollToParam.startsWith("comment-")) {
+            return scrollToParam.replace("comment-", "");
+        }
+        // Fallback to hash
         const hash = location.hash;
         if (hash && hash.startsWith("#comment-")) {
             return hash.replace("#comment-", "");
         }
         return null;
-    }, [location.hash]);
+    }, [location.hash, searchParams]);
 
     // Scroll to deep-linked comment
     const scrollToComment = useCallback((commentId) => {
@@ -194,20 +206,37 @@ function CommentsSection({ maxHeight }) {
         }
     }, []);
 
-    // Mark comments as read when viewing this section
+    // Mark comments as read when viewing this section (match-specific)
     const markCommentsAsRead = useCallback(async () => {
-        if (!currentKicker) return;
+        if (!matchId || hasMarkedAsReadRef.current) return;
+        hasMarkedAsReadRef.current = true;
         try {
-            await updateCommentReadStatus(currentKicker);
-            // Invalidate unread count query
-            queryClient.invalidateQueries([
-                "unread-comment-count",
-                currentKicker,
-            ]);
+            await updateMatchCommentReadStatus(Number(matchId));
+            // Invalidate global badge to update browser tab title and PWA badge
+            invalidateUnreadBadge();
+            // Invalidate match read status so unread markers update immediately
+            invalidateMatchReadStatus();
         } catch (error) {
-            console.error("Error marking comments as read:", error);
+            console.error("Error marking match comments as read:", error);
+            hasMarkedAsReadRef.current = false; // Allow retry on error
         }
-    }, [currentKicker, queryClient]);
+    }, [matchId, invalidateUnreadBadge, invalidateMatchReadStatus]);
+
+    // Handle scroll - mark as read when scrolling to bottom
+    const handleScroll = useCallback(() => {
+        const container = commentsContainerRef.current;
+        if (!container || hasMarkedAsReadRef.current) return;
+
+        const threshold = 100;
+        // Check if near bottom (scrollTop + clientHeight >= scrollHeight - threshold)
+        const nearBottom =
+            container.scrollTop + container.clientHeight >=
+            container.scrollHeight - threshold;
+
+        if (nearBottom) {
+            markCommentsAsRead();
+        }
+    }, [markCommentsAsRead]);
 
     // Mark as read when comments are loaded and user is viewing
     useEffect(() => {
@@ -340,6 +369,7 @@ function CommentsSection({ maxHeight }) {
             <CommentsContainer
                 ref={commentsContainerRef}
                 $maxHeight={maxHeight}
+                onScroll={handleScroll}
             >
                 {comments?.length === 0 ? (
                     <EmptyState>
@@ -357,6 +387,14 @@ function CommentsSection({ maxHeight }) {
                         const isGrouped =
                             prevComment &&
                             shouldGroupWithPrevious(comment, prevComment);
+
+                        // Comment is unread if:
+                        // - Created after lastReadAt
+                        // - Not from the current user
+                        const isUnread =
+                            comment.player_id !== currentPlayerId &&
+                            lastReadAt &&
+                            new Date(comment.created_at) > new Date(lastReadAt);
 
                         return (
                             <div key={comment.id} data-comment-id={comment.id}>
@@ -378,6 +416,7 @@ function CommentsSection({ maxHeight }) {
                                         isTogglingCommentReaction
                                     }
                                     isGrouped={isGrouped}
+                                    isUnread={isUnread}
                                 />
                             </div>
                         );

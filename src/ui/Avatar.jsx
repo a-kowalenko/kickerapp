@@ -1,12 +1,15 @@
 import styled, { css, keyframes } from "styled-components";
-import { useState, useRef } from "react";
-import { createPortal } from "react-dom";
 import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
+import { BountyTooltip, useBountyTooltip } from "./BountyTooltip";
 
 // Asset Imports - GIFs
 import RedThunder from "../assets/avatar_highlights/sprites/RedThunder.png";
-import IceCold from "../assets/avatar_highlights/gifs/IceCold.gif";
+import ColdGif from "../assets/avatar_highlights/gifs/Cold.gif";
+import IceColdGif from "../assets/avatar_highlights/gifs/IceCold.gif";
+import FrozenGif from "../assets/avatar_highlights/gifs/Frozen.gif";
+import HotStreakGif from "../assets/avatar_highlights/gifs/HotStreak.gif";
 import OnFireGif from "../assets/avatar_highlights/gifs/OnFire.gif";
+import LegendaryGif from "../assets/avatar_highlights/gifs/Legendary.gif";
 
 // Asset Imports - Sprites (für zukünftige Erweiterungen)
 // import ChampionSprite from "../assets/avatar_highlights/sprites/Champion.png";
@@ -164,7 +167,7 @@ const STATUS_EFFECTS = {
     },
     hotStreak: {
         type: "gif",
-        asset: OnFireGif,
+        asset: HotStreakGif,
         zIndex: 11,
         cssEffect: "hot",
         color: "rgba(255, 100, 50, 0.6)",
@@ -178,16 +181,16 @@ const STATUS_EFFECTS = {
                 visible: true,
             },
             small: {
-                scale: 4.1,
-                top: 0,
+                scale: 4,
+                top: 1,
                 bottom: 0,
-                left: 0,
+                left: 3,
                 right: 0,
                 visible: true,
             },
             medium: {
                 scale: 2.7,
-                top: 0,
+                top: 1,
                 bottom: 0,
                 left: 0,
                 right: 0,
@@ -219,91 +222,91 @@ const STATUS_EFFECTS = {
         color: "rgba(255, 50, 0, 0.7)",
         sizeConfig: {
             xs: {
-                scale: 1.4,
-                top: 0,
+                scale: 6,
+                top: 4,
                 bottom: 0,
                 left: 0,
-                right: 0,
-                visible: false,
+                right: 5,
+                visible: true,
             },
             small: {
-                scale: 1.5,
-                top: 5,
-                bottom: 0,
-                left: -8,
-                right: 0,
+                scale: 4.8,
+                top: 0,
+                bottom: 5,
+                left: 0,
+                right: 10,
                 visible: true,
             },
             medium: {
-                scale: 1.6,
-                top: 5,
+                scale: 2.7,
+                top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 4,
                 visible: true,
             },
             large: {
-                scale: 1.6,
-                top: 5,
-                bottom: 2,
-                left: 5,
-                right: 2,
+                scale: 1.3,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 4,
                 visible: true,
             },
             huge: {
-                scale: 1.7,
-                top: 3,
-                bottom: 1,
-                left: 3,
-                right: 0,
+                scale: 3.4,
+                top: 2,
+                bottom: 0,
+                left: 4,
+                right: 6,
                 visible: true,
             },
         },
     },
     legendary: {
         type: "gif",
-        asset: OnFireGif, // TODO: Eigenes goldenes Feuer-Asset
+        asset: LegendaryGif, // TODO: Eigenes goldenes Feuer-Asset
         zIndex: 11,
         cssEffect: "legendary",
         color: "rgba(255, 215, 0, 0.8)",
         sizeConfig: {
             xs: {
-                scale: 1.6,
+                scale: 1,
                 top: 0,
                 bottom: 0,
                 left: 0,
                 right: 0,
-                visible: false,
+                visible: true,
             },
             small: {
-                scale: 1.7,
-                top: 5,
+                scale: 0.8,
+                top: 0,
                 bottom: 0,
-                left: -8,
+                left: 0,
                 right: 0,
                 visible: true,
             },
             medium: {
-                scale: 1.8,
-                top: 5,
+                scale: 0.5,
+                top: 0,
                 bottom: 0,
                 left: 0,
                 right: 0,
                 visible: true,
             },
             large: {
-                scale: 1.8,
-                top: 5,
-                bottom: 2,
-                left: 5,
-                right: 2,
+                scale: 0.3,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
                 visible: true,
             },
             huge: {
-                scale: 1.9,
-                top: 3,
-                bottom: 1,
-                left: 3,
+                scale: 0.7,
+                top: 0,
+                bottom: 0,
+                left: 0,
                 right: 0,
                 visible: true,
             },
@@ -313,56 +316,56 @@ const STATUS_EFFECTS = {
     // ============== LOSS STREAK STATUSES ==============
     cold: {
         type: "gif",
-        asset: IceCold,
+        asset: ColdGif,
         zIndex: 11,
         cssEffect: "cold",
         color: "rgba(100, 180, 255, 0.4)",
         sizeConfig: {
             xs: {
-                scale: 0.4,
+                scale: 0.3,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
-                visible: false,
+                right: 3,
+                visible: true,
             },
             small: {
-                scale: 0.45,
+                scale: 0.3,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 4,
                 visible: true,
             },
             medium: {
-                scale: 0.5,
+                scale: 0.2,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 4,
                 visible: true,
             },
             large: {
-                scale: 0.5,
+                scale: 0.1,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 2,
                 visible: true,
             },
             huge: {
-                scale: 0.55,
+                scale: 0.3,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 4,
                 visible: true,
             },
         },
     },
     iceCold: {
         type: "gif",
-        asset: IceCold,
+        asset: IceColdGif,
         zIndex: 11,
         cssEffect: "ice",
         color: "rgba(50, 150, 255, 0.6)",
@@ -373,7 +376,7 @@ const STATUS_EFFECTS = {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                visible: false,
+                visible: true,
             },
             small: {
                 scale: 0.5,
@@ -392,7 +395,7 @@ const STATUS_EFFECTS = {
                 visible: true,
             },
             large: {
-                scale: 0.5,
+                scale: 0.25,
                 top: 0,
                 bottom: 0,
                 left: 0,
@@ -411,7 +414,7 @@ const STATUS_EFFECTS = {
     },
     frozen: {
         type: "gif",
-        asset: IceCold,
+        asset: FrozenGif,
         zIndex: 11,
         cssEffect: "frozen",
         color: "rgba(0, 100, 255, 0.7)",
@@ -422,7 +425,7 @@ const STATUS_EFFECTS = {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                visible: false,
+                visible: true,
             },
             small: {
                 scale: 0.5,
@@ -441,11 +444,11 @@ const STATUS_EFFECTS = {
                 visible: true,
             },
             large: {
-                scale: 0.5,
+                scale: 0.4,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 3,
                 visible: true,
             },
             huge: {
@@ -453,7 +456,7 @@ const STATUS_EFFECTS = {
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 3,
                 visible: true,
             },
         },
@@ -1380,104 +1383,18 @@ const BountyEmoji = styled.span`
 `;
 
 /* ----------------------------------------
-   Bounty Tooltip Styles
------------------------------------------ */
-const tooltipFadeIn = keyframes`
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-`;
-
-const BountyTooltipContainer = styled.div`
-    position: fixed;
-    z-index: 10000;
-    animation: ${tooltipFadeIn} 0.2s ease;
-    pointer-events: none;
-`;
-
-const BountyTooltipContent = styled.div`
-    background-color: var(--color-grey-0);
-    border: 1px solid var(--secondary-border-color);
-    border-radius: var(--border-radius-md);
-    padding: 0.8rem 1.2rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
-    min-width: 12rem;
-`;
-
-const BountyTooltipHeader = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.6rem;
-    padding-bottom: 0.6rem;
-    border-bottom: 1px solid var(--secondary-border-color);
-`;
-
-const BountyTooltipIcon = styled.span`
-    font-size: 1.6rem;
-`;
-
-const BountyTooltipTitle = styled.span`
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: var(--primary-text-color);
-`;
-
-const BountyTooltipRow = styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.3rem 0;
-    font-size: 1.2rem;
-`;
-
-const BountyGamemode = styled.span`
-    color: var(--secondary-text-color);
-`;
-
-const BountyValue = styled.span`
-    font-weight: 600;
-    color: var(--color-yellow-600);
-`;
-
-const BountyTooltipArrow = styled.div`
-    position: absolute;
-    top: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 6px solid var(--secondary-border-color);
-
-    &::after {
-        content: "";
-        position: absolute;
-        top: 1px;
-        left: -5px;
-        width: 0;
-        height: 0;
-        border-left: 5px solid transparent;
-        border-right: 5px solid transparent;
-        border-bottom: 5px solid var(--color-grey-0);
-    }
-`;
-
-/* ----------------------------------------
    BountyIndicator Component
    Shows a 💰 emoji when player has active bounty
    Includes tooltip with bounty breakdown by gamemode
 ----------------------------------------- */
 function BountyIndicator({ bountyData, avatarSize }) {
-    const [isHovered, setIsHovered] = useState(false);
-    const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
-    const emojiRef = useRef(null);
+    const {
+        isHovered,
+        tooltipPos,
+        handleMouseEnter,
+        handleMouseLeave,
+        triggerRef,
+    } = useBountyTooltip(140);
 
     const bounty1on1 = bountyData?.bounty1on1 || 0;
     const bounty2on2 = bountyData?.bounty2on2 || 0;
@@ -1492,34 +1409,10 @@ function BountyIndicator({ bountyData, avatarSize }) {
     const bountyTier = getBountyTier(totalBounty);
     const tierConfig = sizeConfig[bountyTier];
 
-    const handleMouseEnter = () => {
-        if (emojiRef.current) {
-            const rect = emojiRef.current.getBoundingClientRect();
-            const tooltipWidth = 140;
-            let left = rect.left + rect.width / 2 - tooltipWidth / 2;
-
-            // Keep tooltip within viewport
-            if (left < 8) left = 8;
-            if (left + tooltipWidth > window.innerWidth - 8) {
-                left = window.innerWidth - tooltipWidth - 8;
-            }
-
-            setTooltipPos({
-                top: rect.bottom + 8,
-                left,
-            });
-        }
-        setIsHovered(true);
-    };
-
-    const handleMouseLeave = () => {
-        setIsHovered(false);
-    };
-
     return (
         <>
             <BountyEmoji
-                ref={emojiRef}
+                ref={triggerRef}
                 style={{
                     fontSize: tierConfig.fontSize,
                     bottom: tierConfig.bottom,
@@ -1531,38 +1424,12 @@ function BountyIndicator({ bountyData, avatarSize }) {
                 💰
             </BountyEmoji>
 
-            {isHovered &&
-                createPortal(
-                    <BountyTooltipContainer
-                        style={{
-                            top: tooltipPos.top,
-                            left: tooltipPos.left,
-                        }}
-                    >
-                        <BountyTooltipContent>
-                            <BountyTooltipArrow />
-                            <BountyTooltipHeader>
-                                <BountyTooltipIcon>💰</BountyTooltipIcon>
-                                <BountyTooltipTitle>
-                                    Active Bounty
-                                </BountyTooltipTitle>
-                            </BountyTooltipHeader>
-                            {bounty1on1 > 0 && (
-                                <BountyTooltipRow>
-                                    <BountyGamemode>1on1</BountyGamemode>
-                                    <BountyValue>{bounty1on1}</BountyValue>
-                                </BountyTooltipRow>
-                            )}
-                            {bounty2on2 > 0 && (
-                                <BountyTooltipRow>
-                                    <BountyGamemode>2on2</BountyGamemode>
-                                    <BountyValue>{bounty2on2}</BountyValue>
-                                </BountyTooltipRow>
-                            )}
-                        </BountyTooltipContent>
-                    </BountyTooltipContainer>,
-                    document.body
-                )}
+            <BountyTooltip
+                isVisible={isHovered}
+                position={tooltipPos}
+                bounty1on1={bounty1on1}
+                bounty2on2={bounty2on2}
+            />
         </>
     );
 }

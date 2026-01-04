@@ -317,7 +317,11 @@ export async function getMatch({ matchId, kicker }) {
     return data;
 }
 
-export async function getMatches({ currentPage, filter }) {
+export async function getMatches({
+    currentPage,
+    filter,
+    pageSize = PAGE_SIZE,
+}) {
     let query = supabase
         .from(MATCHES)
         .select(
@@ -389,8 +393,8 @@ export async function getMatches({ currentPage, filter }) {
     query = query.order("start_time", { ascending: false });
 
     if (currentPage) {
-        const from = (currentPage - 1) * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
         query = query.range(from, to);
     }
 
@@ -794,7 +798,7 @@ export async function getFatalities({ filter }) {
         }
     }
 
-    if (filter?.month) {
+    if (typeof filter?.month === "number") {
         const start = new Date(
             filter.year || new Date().getFullYear(),
             filter.month,
@@ -1220,6 +1224,135 @@ export async function deleteMatch({ matchId, kicker, userId }) {
     }
 
     return data;
+}
+
+/**
+ * Search for matches by match number or player names
+ * @param {Object} params - Search parameters
+ * @param {string} params.query - Search query (match number or player name)
+ * @param {number} params.kicker - Kicker ID
+ * @param {number} params.limit - Maximum number of results (default: 10)
+ * @returns {Promise<Array>} - Array of matches with player data
+ */
+export async function searchMatches({ query, kicker, limit = 10 }) {
+    // First try to search by match number
+    const matchNr = parseInt(query, 10);
+    const isNumeric = !isNaN(matchNr) && query.trim() !== "";
+
+    let results = [];
+
+    if (isNumeric) {
+        // Search by match number - convert number to string and use text search
+        const searchStr = String(matchNr);
+        const { data, error } = await supabase
+            .from(MATCHES)
+            .select(
+                `
+                *,
+                player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+                player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+                player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+                player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
+            `
+            )
+            .eq("kicker_id", kicker)
+            .filter("nr", "gte", matchNr)
+            .filter(
+                "nr",
+                "lt",
+                matchNr + Math.pow(10, Math.max(1, 4 - searchStr.length))
+            )
+            .order("nr", { ascending: true })
+            .limit(limit);
+
+        if (error) {
+            console.error("Error searching matches by number:", error);
+        } else {
+            results = data || [];
+        }
+    }
+
+    // If no numeric results or query is not numeric, search by player names
+    if (results.length === 0 && query.trim()) {
+        const { data, error } = await supabase
+            .from(MATCHES)
+            .select(
+                `
+                *,
+                player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+                player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+                player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+                player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
+            `
+            )
+            .eq("kicker_id", kicker)
+            .order("nr", { ascending: false })
+            .limit(100); // Get more to filter locally
+
+        if (error) {
+            console.error("Error searching matches:", error);
+        } else {
+            // Filter matches where any player name contains the query
+            const lowerQuery = query.toLowerCase();
+            results = (data || [])
+                .filter((match) => {
+                    const playerNames = [
+                        match.player1?.name,
+                        match.player2?.name,
+                        match.player3?.name,
+                        match.player4?.name,
+                    ]
+                        .filter(Boolean)
+                        .map((n) => n.toLowerCase());
+                    return playerNames.some((name) =>
+                        name.includes(lowerQuery)
+                    );
+                })
+                .slice(0, limit);
+        }
+    }
+
+    // If still no results and no query, return recent matches
+    if (results.length === 0 && !query.trim()) {
+        const { data, error } = await supabase
+            .from(MATCHES)
+            .select(
+                `
+                *,
+                player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+                player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+                player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+                player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
+            `
+            )
+            .eq("kicker_id", kicker)
+            .order("nr", { ascending: false })
+            .limit(limit);
+
+        if (error) {
+            console.error("Error fetching recent matches:", error);
+        } else {
+            results = data || [];
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Format a match for display in match links
+ * @param {Object} match - Match object with player data
+ * @returns {string} - Formatted display string like "Match 801 Max vs Tim" or "Match 801 Max & Tom vs Tim & Jan"
+ */
+export function formatMatchDisplay(match) {
+    const team1 = match.player3
+        ? `${match.player1?.name} & ${match.player3?.name}`
+        : match.player1?.name;
+    const team2 = match.player4
+        ? `${match.player2?.name} & ${match.player4?.name}`
+        : match.player2?.name;
+
+    return `Match ${match.nr} ${team1} vs ${team2}`;
 }
 
 function isPlayerInTeam(playerId, ...teamPlayers) {

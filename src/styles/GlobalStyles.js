@@ -346,6 +346,16 @@ const GlobalStyles = createGlobalStyle`
 --border-radius-md: 7px;
 --border-radius-lg: 9px;
 
+/* MMR Rating Colors (CS2-inspired) */
+--mmr-grey: #A0A0A0;
+--mmr-cyan: #4BB7FF;
+--mmr-blue: #0066FF;
+--mmr-purple: #C74BFF;
+--mmr-pink: #FF4BC7;
+--mmr-red: #FF3B3B;
+--mmr-gold: #FFD700;
+--mmr-gold-light: #FFF8DC;
+
 }
 
 
