@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 const BurgerMenuContainer = styled.div`
     display: flex;
-    position: absolute;
+    position: fixed;
     left: 1.5rem;
     top: 1.6rem;
     gap: 1rem;

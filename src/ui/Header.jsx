@@ -28,6 +28,11 @@ const StyledHeader = styled.header`
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    // sticky:
+    /* position: sticky;
+    top: 0;
+    z-index: 100;
+    grid-column: 2 / -1; */
 
     ${media.tablet} {
         justify-content: flex-end;

@@ -18,6 +18,10 @@ const StyledSidebar = styled.aside`
     width: 24rem;
     overflow: auto;
     overflow-x: hidden;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    align-self: start;
 
     @media (max-width: 850px) {
         &.active {
