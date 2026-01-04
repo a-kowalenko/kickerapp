@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
 import PlayerNameWithTitle from "../../ui/PlayerNameWithTitle";
+import { PlayerNameWithTooltip } from "../../ui/PlayerTooltip";
 import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
@@ -634,11 +635,13 @@ function ChatMessage({
                             to={`/user/${message.player?.name}/profile`}
                             $isWhisper={isWhisper}
                         >
-                            <PlayerNameWithTitle
-                                asText
-                                name={message.player?.name}
-                                playerId={message.player_id}
-                            />
+                            <PlayerNameWithTooltip player={message.player}>
+                                <PlayerNameWithTitle
+                                    asText
+                                    name={message.player?.name}
+                                    playerId={message.player_id}
+                                />
+                            </PlayerNameWithTooltip>
                         </AuthorName>
                         {isWhisper && (
                             <WhisperLabel>

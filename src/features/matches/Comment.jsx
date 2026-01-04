@@ -14,6 +14,7 @@ import Avatar from "../../ui/Avatar";
 import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
+import { PlayerNameWithTooltip } from "../../ui/PlayerTooltip";
 import { DEFAULT_AVATAR, MAX_COMMENT_LENGTH } from "../../utils/constants";
 import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
 
@@ -465,7 +466,9 @@ function Comment({
                         <AuthorName
                             to={`/user/${comment.player?.name}/profile`}
                         >
-                            {comment.player?.name}
+                            <PlayerNameWithTooltip player={comment.player}>
+                                {comment.player?.name}
+                            </PlayerNameWithTooltip>
                         </AuthorName>
                         <Timestamp>
                             {format(
