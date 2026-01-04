@@ -14,6 +14,10 @@ function getTeams(match) {
     const {
         mmrChangeTeam1,
         mmrChangeTeam2,
+        bounty_team1,
+        bounty_team2,
+        scoreTeam1,
+        scoreTeam2,
         player1,
         player2,
         player3,
@@ -22,7 +26,31 @@ function getTeams(match) {
     const team1 = [player1, player3];
     const team2 = [player2, player4];
 
-    return { team1, team2, mmrChangeTeam1, mmrChangeTeam2 };
+    // Determine winner
+    const team1Won = scoreTeam1 > scoreTeam2;
+
+    // Calculate bounty per player (split in 2v2)
+    const team1PlayerCount = team1.filter(Boolean).length;
+    const team2PlayerCount = team2.filter(Boolean).length;
+
+    // Bounty is only claimed by winners
+    const bountyPerTeam1Player =
+        team1Won && bounty_team1 > 0
+            ? Math.floor(bounty_team1 / team1PlayerCount)
+            : 0;
+    const bountyPerTeam2Player =
+        !team1Won && bounty_team2 > 0
+            ? Math.floor(bounty_team2 / team2PlayerCount)
+            : 0;
+
+    return {
+        team1,
+        team2,
+        mmrChangeTeam1,
+        mmrChangeTeam2,
+        bountyPerTeam1Player,
+        bountyPerTeam2Player,
+    };
 }
 
 function TodayStats() {
@@ -54,25 +82,36 @@ function TodayStats() {
 
     // 3. Today's top and flop
     const playerWithPoints = matches?.reduce((acc, cur) => {
-        const { team1, team2, mmrChangeTeam1, mmrChangeTeam2 } = getTeams(cur);
+        const {
+            team1,
+            team2,
+            mmrChangeTeam1,
+            mmrChangeTeam2,
+            bountyPerTeam1Player,
+            bountyPerTeam2Player,
+        } = getTeams(cur);
         let newState = {};
         for (const player of team1) {
             if (player) {
+                const totalChange =
+                    (mmrChangeTeam1 || 0) + bountyPerTeam1Player;
                 newState = {
                     ...newState,
                     [player.name]: acc[player.name]
-                        ? acc[player.name] + mmrChangeTeam1
-                        : mmrChangeTeam1,
+                        ? acc[player.name] + totalChange
+                        : totalChange,
                 };
             }
         }
         for (const player of team2) {
             if (player) {
+                const totalChange =
+                    (mmrChangeTeam2 || 0) + bountyPerTeam2Player;
                 newState = {
                     ...newState,
                     [player.name]: acc[player.name]
-                        ? acc[player.name] + mmrChangeTeam2
-                        : mmrChangeTeam2,
+                        ? acc[player.name] + totalChange
+                        : totalChange,
                 };
             }
         }

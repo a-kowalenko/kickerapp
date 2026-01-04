@@ -1,6 +1,7 @@
 import styled, { css, keyframes } from "styled-components";
 import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
 import { BountyTooltip, useBountyTooltip } from "./BountyTooltip";
+import { DEFAULT_AVATAR } from "../utils/constants";
 
 // Asset Imports - GIFs
 import RedThunder from "../assets/avatar_highlights/sprites/RedThunder.png";
@@ -1489,7 +1490,8 @@ const Avatar = ({
     );
 
     // Werte aus player-Objekt extrahieren, explizite Props haben Priorität
-    const avatarSrc = src ?? player?.avatar;
+    // Fallback auf DEFAULT_AVATAR wenn src/player.avatar leer oder undefined ist
+    const avatarSrc = src || player?.avatar || DEFAULT_AVATAR;
 
     // Status-Priorität: expliziter $status > geladene Status-Assets > player.status
     let status = $status;

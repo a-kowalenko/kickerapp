@@ -273,14 +273,14 @@ function PlayerTooltipContent({ player, playerId }) {
                                 <StatValues>
                                     {bounty1on1 > 0 && (
                                         <StatValue $color="#EAB308">
-                                            <GiCoins />
+                                            💰
                                             {bounty1on1}
                                             <GamemodeTag>1v1</GamemodeTag>
                                         </StatValue>
                                     )}
                                     {bounty2on2 > 0 && (
                                         <StatValue $color="#EAB308">
-                                            <GiCoins />
+                                            💰
                                             {bounty2on2}
                                             <GamemodeTag>2v2</GamemodeTag>
                                         </StatValue>
