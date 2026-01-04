@@ -6,6 +6,7 @@ import { useLocalStorageState } from "../hooks/useLocalStorageState";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { isTouchDevice } from "../utils/helpers";
 import useWindowWidth from "../hooks/useWindowWidth";
+import { useState, useEffect } from "react";
 
 const StyledSidebar = styled.aside`
     display: flex;
@@ -77,6 +78,25 @@ function Sidebar() {
         "isOpenLeftSidebar"
     );
 
+    // Track header visibility for BurgerMenu sync on mobile
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+
+    useEffect(() => {
+        const handleHeaderVisibility = (e) => {
+            setIsHeaderVisible(e.detail.isVisible);
+        };
+
+        window.addEventListener(
+            "headerVisibilityChange",
+            handleHeaderVisibility
+        );
+        return () =>
+            window.removeEventListener(
+                "headerVisibilityChange",
+                handleHeaderVisibility
+            );
+    }, []);
+
     const close = () => {
         if (isTouchDevice()) {
             setIsOpen(false);
@@ -99,7 +119,10 @@ function Sidebar() {
 
     return (
         <>
-            <BurgerMenu onClick={toggleSidebar} />
+            <BurgerMenu
+                onClick={toggleSidebar}
+                isHeaderVisible={isHeaderVisible}
+            />
             <StyledSidebar
                 ref={sidebarRef}
                 className={isOpen ? "active" : ""}

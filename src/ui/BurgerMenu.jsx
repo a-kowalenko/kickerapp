@@ -17,12 +17,16 @@ const BurgerMenuContainer = styled.div`
         top: 1.6rem;
         gap: 1rem;
         z-index: 1000;
+        transform: translateY(
+            ${(props) => (props.$isHeaderVisible ? "0" : "-100px")}
+        );
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 `;
 
-function BurgerMenu({ onClick }) {
+function BurgerMenu({ onClick, isHeaderVisible = true }) {
     return (
-        <BurgerMenuContainer>
+        <BurgerMenuContainer $isHeaderVisible={isHeaderVisible}>
             <ButtonIcon onClick={onClick}>
                 <FaBars />
             </ButtonIcon>

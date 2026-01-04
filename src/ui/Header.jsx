@@ -103,9 +103,15 @@ function Header() {
     // Listen for sidebar state changes
     useEffect(() => {
         const handleStorageChange = () => {
-            setIsSidebarOpen(
-                localStorage.getItem("isOpenLeftSidebar") === "true"
-            );
+            const sidebarOpen =
+                localStorage.getItem("isOpenLeftSidebar") === "true";
+            setIsSidebarOpen(sidebarOpen);
+
+            // On mobile, show header when sidebar opens
+            const isMobile = window.innerWidth <= 850;
+            if (isMobile && sidebarOpen) {
+                setIsHeaderVisible(true);
+            }
         };
 
         // Custom event for same-tab updates
@@ -133,6 +139,16 @@ function Header() {
             return;
         }
 
+        // On mobile, don't hide header when sidebar is open
+        const isMobile = window.innerWidth <= 850;
+        const sidebarOpen =
+            localStorage.getItem("isOpenLeftSidebar") === "true";
+        if (isMobile && sidebarOpen) {
+            setIsHeaderVisible(true);
+            lastScrollY.current = currentScrollY;
+            return;
+        }
+
         // Only react if scrolled more than threshold
         if (scrollDiff < threshold) {
             return;
@@ -149,6 +165,15 @@ function Header() {
 
         lastScrollY.current = currentScrollY;
     }, []);
+
+    // Dispatch header visibility changes for BurgerMenu sync
+    useEffect(() => {
+        window.dispatchEvent(
+            new CustomEvent("headerVisibilityChange", {
+                detail: { isVisible: isHeaderVisible },
+            })
+        );
+    }, [isHeaderVisible]);
 
     useEffect(() => {
         window.addEventListener("scroll", handleScroll, { passive: true });
