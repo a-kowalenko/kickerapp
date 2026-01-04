@@ -438,6 +438,8 @@ export function BountyCard({
     const hasStatusTooltipData =
         statuses1on1.length > 0 || statuses2on2.length > 0;
 
+    console.log("status", status);
+
     return (
         <Card
             $size={size}
@@ -449,9 +451,8 @@ export function BountyCard({
             <Avatar
                 player={player}
                 $size={avatarSize}
-                $status={
-                    hasBounty ? "hotStreak" : isColdStreak ? "cold" : status
-                }
+                showStatus={true}
+                // $status={status}
                 $cursor={onClick ? "pointer" : "default"}
             />
 
@@ -751,26 +752,29 @@ export function BountyList({
                     {title} ({players.length})
                 </ListTitle>
             )}
-            {players.map((data) => (
-                <BountyCard
-                    key={`${data.player_id}-${data.gamemode}`}
-                    player={{
-                        id: data.player_id,
-                        name: data.player_name,
-                        avatar: data.player_avatar,
-                    }}
-                    bounty={data.current_bounty}
-                    streak={data.current_streak}
-                    status={data.primary_status}
-                    gamemode={data.gamemode}
-                    size={size}
-                    onClick={
-                        onPlayerClick
-                            ? () => onPlayerClick(data.player_id)
-                            : undefined
-                    }
-                />
-            ))}
+            {players.map((data) => {
+                console.log("data");
+                return (
+                    <BountyCard
+                        key={`${data.player_id}-${data.gamemode}`}
+                        player={{
+                            id: data.player_id,
+                            name: data.player_name,
+                            avatar: data.player_avatar,
+                        }}
+                        bounty={data.current_bounty}
+                        streak={data.current_streak}
+                        // status={data.primary_status}
+                        gamemode={data.gamemode}
+                        size={size}
+                        onClick={
+                            onPlayerClick
+                                ? () => onPlayerClick(data.player_id)
+                                : undefined
+                        }
+                    />
+                );
+            })}
         </ListContainer>
     );
 }

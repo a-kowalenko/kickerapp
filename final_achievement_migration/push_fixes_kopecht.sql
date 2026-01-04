@@ -575,3 +575,7 @@ ALTER TABLE kopecht.mention_notifications REPLICA IDENTITY FULL;
 
 -- Add to realtime publication
 ALTER PUBLICATION supabase_realtime ADD TABLE kopecht.mention_notifications;
+
+-- Grant permissions for PostgREST access
+GRANT SELECT, INSERT, UPDATE, DELETE ON kopecht.match_comment_read_status TO authenticated;
+GRANT USAGE ON SEQUENCE kopecht.match_comment_read_status_id_seq TO authenticated;

@@ -125,6 +125,7 @@ function ChatTab() {
     const isNearBottomRef = useRef(true);
     const prevFirstMessageIdRef = useRef(null);
     const pendingScrollRef = useRef(false);
+    const hasMarkedAsReadRef = useRef(false);
     const [searchParams] = useSearchParams();
 
     // Parse deep link from query param (e.g., ?scrollTo=message-123)
@@ -203,8 +204,10 @@ function ChatTab() {
         useTypingIndicator(currentPlayerId);
 
     // Mark messages as read and update both badge and read status
+    // Uses hasMarkedAsReadRef to prevent duplicate API calls
     const markAsRead = useCallback(async () => {
-        if (!currentKicker) return;
+        if (!currentKicker || hasMarkedAsReadRef.current) return;
+        hasMarkedAsReadRef.current = true;
         try {
             await updateChatReadStatus(currentKicker);
             // Invalidate badge queries to trigger refetch of combined unread count
@@ -213,6 +216,11 @@ function ChatTab() {
             invalidateChatReadStatus();
         } catch (error) {
             console.error("Error marking chat as read:", error);
+        } finally {
+            // Reset after a short delay to allow subsequent reads (e.g., new messages)
+            setTimeout(() => {
+                hasMarkedAsReadRef.current = false;
+            }, 1000);
         }
     }, [currentKicker, invalidateUnreadBadge, invalidateChatReadStatus]);
 
@@ -224,12 +232,15 @@ function ChatTab() {
     }, [currentKicker, hasInitiallyScrolled, markAsRead]);
 
     // Mark as read when user scrolls to bottom OR when chat is initially loaded
+    // Note: markAsRead is intentionally excluded from deps to prevent infinite loops
+    // The hasMarkedAsReadRef guard ensures we don't make duplicate API calls
     useEffect(() => {
         if (hasInitiallyScrolled && currentKicker && isNearBottomRef.current) {
             // Mark as read immediately when chat opens and user is at bottom
             markAsRead();
         }
-    }, [hasInitiallyScrolled, currentKicker, markAsRead]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasInitiallyScrolled, currentKicker]);
 
     // Mark as read when tab becomes visible AND user is at bottom
     useEffect(() => {

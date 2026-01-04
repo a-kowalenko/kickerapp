@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQuery, useQueryClient } from "react-query";
 import { getChatReadStatus } from "../services/apiChat";
 
@@ -15,9 +16,10 @@ export function useChatReadStatus(kickerId) {
         staleTime: 30000, // Consider fresh for 30 seconds
     });
 
-    const invalidate = () => {
+    // Wrap in useCallback to prevent infinite loops from unstable function references
+    const invalidate = useCallback(() => {
         queryClient.invalidateQueries(["chat-read-status", kickerId]);
-    };
+    }, [queryClient, kickerId]);
 
     return {
         lastReadAt,
