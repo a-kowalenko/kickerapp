@@ -4,7 +4,7 @@ import { HiOutlineChartBar } from "react-icons/hi2";
 import { FaCrown } from "react-icons/fa";
 import { useRecentPerformance } from "./useRecentPerformance";
 import { hasPlayerWonMatch } from "../../utils/helpers";
-import SpinnerMini from "../../ui/SpinnerMini";
+import LoadingSpinner from "../../ui/LoadingSpinner";
 import { MatchTooltip, useMatchTooltip } from "../../ui/MatchTooltip";
 import { useMatchPreview } from "../matches/useMatchPreview";
 import { media } from "../../utils/constants";
@@ -331,28 +331,7 @@ function RecentPerformance({ playerName, playerId }) {
 
     const hasData = matches1on1?.length > 0 || matches2on2?.length > 0;
 
-    if (isLoading) {
-        return (
-            <Card>
-                <CardHeader>
-                    <IconWrapper>
-                        <HiOutlineChartBar />
-                    </IconWrapper>
-                    <HeaderContent>
-                        <CardTitle>Recent Performance</CardTitle>
-                        <CardDescription>
-                            Win/loss record from recent matches
-                        </CardDescription>
-                    </HeaderContent>
-                </CardHeader>
-                <LoadingContainer>
-                    <SpinnerMini />
-                </LoadingContainer>
-            </Card>
-        );
-    }
-
-    if (!hasData) {
+    if (!isLoading && !hasData) {
         return null;
     }
 
@@ -369,20 +348,28 @@ function RecentPerformance({ playerName, playerId }) {
                     </CardDescription>
                 </HeaderContent>
             </CardHeader>
-            <CardBody
-                $hasBoth={matches1on1?.length > 0 && matches2on2?.length > 0}
-            >
-                <GamemodePerformance
-                    title="1v1"
-                    matches={matches1on1}
-                    playerId={playerId}
-                />
-                <GamemodePerformance
-                    title="2v2"
-                    matches={matches2on2}
-                    playerId={playerId}
-                />
-            </CardBody>
+            {isLoading ? (
+                <LoadingContainer>
+                    <LoadingSpinner />
+                </LoadingContainer>
+            ) : (
+                <CardBody
+                    $hasBoth={
+                        matches1on1?.length > 0 && matches2on2?.length > 0
+                    }
+                >
+                    <GamemodePerformance
+                        title="1v1"
+                        matches={matches1on1}
+                        playerId={playerId}
+                    />
+                    <GamemodePerformance
+                        title="2v2"
+                        matches={matches2on2}
+                        playerId={playerId}
+                    />
+                </CardBody>
+            )}
         </Card>
     );
 }
