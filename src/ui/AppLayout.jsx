@@ -32,16 +32,15 @@ const Main = styled.main`
     grid-column: 2;
     min-height: 100dvh;
 
+    /* Space for fixed header */
+    margin-top: 66px;
+
     /* Removing scrollbars for webkit, firefox, and ms, respectively */
     /* &::-webkit-scrollbar {
         display: none;
     }
     scrollbar-width: none;
     -ms-overflow-style: none; */
-
-    @media (max-width: 850px) {
-        margin-top: 66px;
-    }
 
     ${media.tablet} {
         padding: 1.6rem 0rem;

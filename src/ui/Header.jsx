@@ -14,7 +14,7 @@ import ProfileMenu from "./ProfileMenu";
 import useWindowWidth from "../hooks/useWindowWidth";
 import { useMatchContext } from "../contexts/MatchContext";
 import MiniActiveMatchInfo from "./MiniActiveMatchInfo";
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useState } from "react";
 import SeasonBadge from "../features/seasons/SeasonBadge";
 import NotificationBell from "../features/notifications/NotificationBell";
@@ -27,12 +27,15 @@ const StyledHeader = styled.header`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
-    // sticky:
-    /* position: sticky;
+
+    /* Smart header - shows on scroll up */
+    position: fixed;
     top: 0;
+    left: ${(props) => (props.$isSidebarOpen ? "24rem" : "6rem")};
+    right: 0;
     z-index: 100;
-    grid-column: 2 / -1; */
+    transform: translateY(${(props) => (props.$isVisible ? "0" : "-100%")});
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.2s ease-out;
 
     ${media.tablet} {
         justify-content: flex-end;
@@ -40,10 +43,7 @@ const StyledHeader = styled.header`
     }
 
     @media (max-width: 850px) {
-        position: fixed;
-        top: 0;
         left: 0;
-        width: 100%;
         z-index: 1000;
         height: 66px;
     }
@@ -91,6 +91,70 @@ function Header() {
     const showLeaveKicker = windowWidth <= media.maxTablet;
     const [showActiveMatch, setShowActiveMatch] = useState(!!activeMatch);
 
+    // Smart header visibility
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const lastScrollY = useRef(0);
+
+    // Track sidebar state for header positioning
+    const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+        return localStorage.getItem("isOpenLeftSidebar") === "true";
+    });
+
+    // Listen for sidebar state changes
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setIsSidebarOpen(
+                localStorage.getItem("isOpenLeftSidebar") === "true"
+            );
+        };
+
+        // Custom event for same-tab updates
+        window.addEventListener("sidebarToggle", handleStorageChange);
+        // Storage event for cross-tab updates
+        window.addEventListener("storage", handleStorageChange);
+
+        return () => {
+            window.removeEventListener("sidebarToggle", handleStorageChange);
+            window.removeEventListener("storage", handleStorageChange);
+        };
+    }, []);
+
+    const handleScroll = useCallback(() => {
+        const currentScrollY = window.scrollY;
+        const scrollDiff = Math.abs(currentScrollY - lastScrollY.current);
+
+        // In the first 100px, require a threshold of 30px before reacting
+        const threshold = currentScrollY < 100 ? 30 : 0;
+
+        // Always show header when at the very top
+        if (currentScrollY < 50) {
+            setIsHeaderVisible(true);
+            lastScrollY.current = currentScrollY;
+            return;
+        }
+
+        // Only react if scrolled more than threshold
+        if (scrollDiff < threshold) {
+            return;
+        }
+
+        // Scrolling down - hide header
+        if (currentScrollY > lastScrollY.current) {
+            setIsHeaderVisible(false);
+        }
+        // Scrolling up - show header
+        else if (currentScrollY < lastScrollY.current) {
+            setIsHeaderVisible(true);
+        }
+
+        lastScrollY.current = currentScrollY;
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, [handleScroll]);
+
     function handleKickerSelect(option) {
         setCurrentKicker(option);
         navigate("/home");
@@ -108,7 +172,10 @@ function Header() {
     }, [windowWidth, activeMatch]);
 
     return (
-        <StyledHeader>
+        <StyledHeader
+            $isVisible={isHeaderVisible}
+            $isSidebarOpen={isSidebarOpen}
+        >
             <KickerInfoWrapper>
                 {isLoadingKickerData || isLoadingKickers || !kickers ? (
                     <SpinnerMini />

@@ -80,6 +80,11 @@ function Sidebar() {
     const close = () => {
         if (isTouchDevice()) {
             setIsOpen(false);
+            // Dispatch after state update with slight delay to ensure localStorage is updated
+            setTimeout(
+                () => window.dispatchEvent(new Event("sidebarToggle")),
+                0
+            );
         }
     };
 
@@ -88,6 +93,8 @@ function Sidebar() {
     const toggleSidebar = (e) => {
         e.stopPropagation();
         setIsOpen((open) => !open);
+        // Dispatch event so Header can update its position (after localStorage updates)
+        setTimeout(() => window.dispatchEvent(new Event("sidebarToggle")), 0);
     };
 
     return (
