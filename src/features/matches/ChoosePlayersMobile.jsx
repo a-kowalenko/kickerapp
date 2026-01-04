@@ -8,6 +8,7 @@ import { HiArrowsUpDown, HiPlus, HiScale } from "react-icons/hi2";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
 import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
+import { DropdownProvider } from "../../contexts/DropdownContext";
 
 const StyledChoosePlayersMobile = styled.div`
     display: flex;
@@ -83,7 +84,8 @@ function ChoosePlayersMobile() {
         activatePlayer,
         isPlayer3Active,
         isPlayer4Active,
-        filteredPlayers,
+        filteredForPlayer1,
+        filteredForPlayer2,
         filteredForPlayer3And4,
         switchTeams,
         clearAllPlayers,
@@ -123,106 +125,108 @@ function ChoosePlayersMobile() {
     }
 
     return (
-        <StyledChoosePlayersMobile>
-            <TeamContainer>
-                <Heading as="h3">
-                    Team 1{team1Mmr !== null && ` (MMR ${team1Mmr})`}
-                </Heading>
-                <Dropdown
-                    options={filteredPlayers}
-                    onSelect={(playerId) => selectPlayer(playerId, 1)}
-                    initSelected={{
-                        text: player1?.name,
-                        value: player1?.id,
-                    }}
-                />
-                {isPlayer3Active ? (
+        <DropdownProvider>
+            <StyledChoosePlayersMobile>
+                <TeamContainer>
+                    <Heading as="h3">
+                        Team 1{team1Mmr !== null && ` (MMR ${team1Mmr})`}
+                    </Heading>
                     <Dropdown
-                        options={filteredForPlayer3And4}
-                        onSelect={(playerId) => selectPlayer(playerId, 3)}
+                        options={filteredForPlayer1}
+                        onSelect={(playerId) => selectPlayer(playerId, 1)}
                         initSelected={{
-                            text: player3?.name,
-                            value: player3?.id,
+                            text: player1?.name,
+                            value: player1?.id,
                         }}
                     />
-                ) : (
-                    <Button onClick={() => activatePlayer(3)}>
-                        <HiPlus />
-                        <span>Add player</span>
-                    </Button>
-                )}
-            </TeamContainer>
+                    {isPlayer3Active ? (
+                        <Dropdown
+                            options={filteredForPlayer3And4}
+                            onSelect={(playerId) => selectPlayer(playerId, 3)}
+                            initSelected={{
+                                text: player3?.name,
+                                value: player3?.id,
+                            }}
+                        />
+                    ) : (
+                        <Button onClick={() => activatePlayer(3)}>
+                            <HiPlus />
+                            <span>Add player</span>
+                        </Button>
+                    )}
+                </TeamContainer>
 
-            <MidButtonsContainer>
-                {canBalanceTeams && (
-                    <BalanceButton
-                        onClick={balanceTeams}
+                <MidButtonsContainer>
+                    {canBalanceTeams && (
+                        <BalanceButton
+                            onClick={balanceTeams}
+                            disabled={isStarting}
+                            $isBalanced={isAlreadyBalanced}
+                            title={
+                                isAlreadyBalanced
+                                    ? "Restore original teams"
+                                    : "Balance Teams by MMR"
+                            }
+                        >
+                            <HiScale />
+                        </BalanceButton>
+                    )}
+                    <MidButton onClick={switchTeams}>
+                        <HiArrowsUpDown />
+                    </MidButton>
+                    <MidButton
+                        onClick={clearAllPlayers}
                         disabled={isStarting}
-                        $isBalanced={isAlreadyBalanced}
-                        title={
-                            isAlreadyBalanced
-                                ? "Restore original teams"
-                                : "Balance Teams by MMR"
-                        }
+                        title="Clear Players"
                     >
-                        <HiScale />
-                    </BalanceButton>
-                )}
-                <MidButton onClick={switchTeams}>
-                    <HiArrowsUpDown />
-                </MidButton>
-                <MidButton
-                    onClick={clearAllPlayers}
-                    disabled={isStarting}
-                    title="Clear Players"
-                >
-                    <ClearPlayers />
-                </MidButton>
-            </MidButtonsContainer>
+                        <ClearPlayers />
+                    </MidButton>
+                </MidButtonsContainer>
 
-            <TeamContainer>
-                <Heading as="h3">
-                    Team 2{team2Mmr !== null && ` (MMR ${team2Mmr})`}
-                </Heading>
-                <Dropdown
-                    options={filteredPlayers}
-                    onSelect={(playerId) => selectPlayer(playerId, 2)}
-                    initSelected={{
-                        text: player2?.name,
-                        value: player2?.id,
-                    }}
-                />
-                {isPlayer4Active ? (
+                <TeamContainer>
+                    <Heading as="h3">
+                        Team 2{team2Mmr !== null && ` (MMR ${team2Mmr})`}
+                    </Heading>
                     <Dropdown
-                        options={filteredForPlayer3And4}
-                        onSelect={(playerId) => selectPlayer(playerId, 4)}
+                        options={filteredForPlayer2}
+                        onSelect={(playerId) => selectPlayer(playerId, 2)}
                         initSelected={{
-                            text: player4?.name,
-                            value: player4?.id,
+                            text: player2?.name,
+                            value: player2?.id,
                         }}
                     />
-                ) : (
-                    <Button onClick={() => activatePlayer(4)}>
-                        <HiPlus />
-                        <span>Add player</span>
-                    </Button>
-                )}
-            </TeamContainer>
-            <SubmitContainer>
-                {timer <= 0 ? (
-                    "Good luck have fun!"
-                ) : (
-                    <Button
-                        $size="large"
-                        $variation={isStarting ? "secondary" : "primary"}
-                        onClick={isStarting ? cancelTimer : startCountdown}
-                    >
-                        {isStarting ? `Cancel ${timer}` : "Start match"}
-                    </Button>
-                )}
-            </SubmitContainer>
-            <Ruleset />
-        </StyledChoosePlayersMobile>
+                    {isPlayer4Active ? (
+                        <Dropdown
+                            options={filteredForPlayer3And4}
+                            onSelect={(playerId) => selectPlayer(playerId, 4)}
+                            initSelected={{
+                                text: player4?.name,
+                                value: player4?.id,
+                            }}
+                        />
+                    ) : (
+                        <Button onClick={() => activatePlayer(4)}>
+                            <HiPlus />
+                            <span>Add player</span>
+                        </Button>
+                    )}
+                </TeamContainer>
+                <SubmitContainer>
+                    {timer <= 0 ? (
+                        "Good luck have fun!"
+                    ) : (
+                        <Button
+                            $size="large"
+                            $variation={isStarting ? "secondary" : "primary"}
+                            onClick={isStarting ? cancelTimer : startCountdown}
+                        >
+                            {isStarting ? `Cancel ${timer}` : "Start match"}
+                        </Button>
+                    )}
+                </SubmitContainer>
+                <Ruleset />
+            </StyledChoosePlayersMobile>
+        </DropdownProvider>
     );
 }
 
