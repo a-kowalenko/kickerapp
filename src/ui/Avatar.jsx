@@ -2,18 +2,16 @@ import styled, { css, keyframes } from "styled-components";
 import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
 import { BountyTooltip, useBountyTooltip } from "./BountyTooltip";
 import { DEFAULT_AVATAR } from "../utils/constants";
+import { avatarHighlightsUrl } from "../services/supabase";
 
-// Asset Imports - GIFs
-import RedThunder from "../assets/avatar_highlights/sprites/RedThunder.png";
-import ColdGif from "../assets/avatar_highlights/gifs/Cold.gif";
-import IceColdGif from "../assets/avatar_highlights/gifs/IceCold.gif";
-import FrozenGif from "../assets/avatar_highlights/gifs/Frozen.gif";
-import HotStreakGif from "../assets/avatar_highlights/gifs/HotStreak.gif";
-import OnFireGif from "../assets/avatar_highlights/gifs/OnFire.gif";
-import LegendaryGif from "../assets/avatar_highlights/gifs/Legendary.gif";
-
-// Asset Imports - Sprites (für zukünftige Erweiterungen)
-// import ChampionSprite from "../assets/avatar_highlights/sprites/Champion.png";
+// Avatar Highlight Assets - loaded from Supabase Storage
+const RedThunder = `${avatarHighlightsUrl}/sprites/RedThunder.png`;
+const ColdGif = `${avatarHighlightsUrl}/gifs/Cold.gif`;
+const IceColdGif = `${avatarHighlightsUrl}/gifs/IceCold.gif`;
+const FrozenGif = `${avatarHighlightsUrl}/gifs/Frozen.gif`;
+const HotStreakGif = `${avatarHighlightsUrl}/gifs/HotStreak.gif`;
+const OnFireGif = `${avatarHighlightsUrl}/gifs/OnFire.gif`;
+const LegendaryGif = `${avatarHighlightsUrl}/gifs/Legendary.gif`;
 
 /* ----------------------------------------
    Größen-Konfiguration für Avatar
