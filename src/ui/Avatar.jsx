@@ -6,6 +6,7 @@ import { avatarHighlightsUrl } from "../services/supabase";
 
 // Avatar Highlight Assets - loaded from Supabase Storage
 const RedThunder = `${avatarHighlightsUrl}/sprites/RedThunder.png`;
+const HumiliationGif = `${avatarHighlightsUrl}/gifs/Humiliation.gif`;
 const ColdGif = `${avatarHighlightsUrl}/gifs/Cold.gif`;
 const IceColdGif = `${avatarHighlightsUrl}/gifs/IceCold.gif`;
 const FrozenGif = `${avatarHighlightsUrl}/gifs/Frozen.gif`;
@@ -463,50 +464,50 @@ const STATUS_EFFECTS = {
 
     // ============== EVENT STATUSES ==============
     humiliated: {
-        type: "css",
-        asset: null,
+        type: "gif",
+        asset: HumiliationGif,
         zIndex: 1,
         cssEffect: "humiliated",
         color: "rgba(128, 128, 128, 0.5)",
         sizeConfig: {
             xs: {
-                scale: 1.0,
+                scale: 6.4,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
-                visible: false,
+                right: 12,
+                visible: true,
             },
             small: {
-                scale: 1.0,
+                scale: 3.6,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 12,
                 visible: true,
             },
             medium: {
-                scale: 1.0,
+                scale: 2.4,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 16,
                 visible: true,
             },
             large: {
-                scale: 1.0,
+                scale: 1.4,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 10,
                 visible: true,
             },
             huge: {
-                scale: 1.0,
+                scale: 3.2,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 15,
                 visible: true,
             },
         },
