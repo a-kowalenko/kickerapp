@@ -14,6 +14,7 @@ import TabView from "../ui/TabView";
 import SeasonManagement from "../features/seasons/SeasonManagement";
 import NotificationSettings from "../features/settings/NotificationSettings";
 import StatusDisplaySettings from "../features/settings/StatusDisplaySettings";
+import UserPermissionsManager from "../features/settings/UserPermissionsManager";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
@@ -144,6 +145,11 @@ function Settings() {
             path: "/settings/status-display",
             label: "Status Display",
             component: <StatusDisplaySettings />,
+        });
+        tabs.push({
+            path: "/settings/permissions",
+            label: "Permissions",
+            component: <UserPermissionsManager />,
         });
     }
 

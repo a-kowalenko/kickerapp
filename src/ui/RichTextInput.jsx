@@ -67,6 +67,16 @@ const EditableDiv = styled.div`
         font-size: 1.2rem;
         user-select: all;
     }
+
+    /* Image tag styling - show as placeholder */
+    .img-tag {
+        color: var(--primary-button-color);
+        background-color: rgba(var(--primary-button-color-rgb), 0.1);
+        border-radius: 3px;
+        padding: 0 4px;
+        font-size: 1.2rem;
+        user-select: all;
+    }
 `;
 
 // Parse raw content to HTML with styled mentions and match links
@@ -105,6 +115,12 @@ function contentToHtml(content) {
         '<span class="gif-tag" data-gif="$1" contenteditable="false">[GIF]</span>'
     );
 
+    // Replace [img:URL] with a styled tag
+    html = html.replace(
+        /\[img:([^\]]+)\]/g,
+        '<span class="img-tag" data-img="$1" contenteditable="false">[IMG]</span>'
+    );
+
     return html;
 }
 
@@ -134,6 +150,11 @@ function htmlToContent(element) {
                 const gifUrl = node.dataset.gif;
                 if (gifUrl) {
                     content += `[gif:${gifUrl}]`;
+                }
+            } else if (node.classList.contains("img-tag")) {
+                const imgUrl = node.dataset.img;
+                if (imgUrl) {
+                    content += `[img:${imgUrl}]`;
                 }
             } else if (node.tagName === "BR") {
                 content += "\n";
@@ -202,6 +223,11 @@ function getCursorPosition(element) {
                 const gifUrl = node.dataset.gif;
                 if (gifUrl) {
                     position += `[gif:${gifUrl}]`.length;
+                }
+            } else if (node.classList?.contains("img-tag")) {
+                const imgUrl = node.dataset.img;
+                if (imgUrl) {
+                    position += `[img:${imgUrl}]`.length;
                 }
             }
         }
@@ -277,6 +303,17 @@ function setCursorPosition(element, targetPosition) {
                     return;
                 }
                 currentPosition += gifLength;
+            } else if (node.classList?.contains("img-tag")) {
+                const imgUrl = node.dataset.img;
+                const imgLength = imgUrl ? `[img:${imgUrl}]`.length : 0;
+
+                if (currentPosition + imgLength >= targetPosition) {
+                    range.setStartAfter(node);
+                    range.collapse(true);
+                    found = true;
+                    return;
+                }
+                currentPosition += imgLength;
             } else {
                 // Process children
                 for (const child of node.childNodes) {
@@ -312,6 +349,7 @@ const RichTextInput = forwardRef(function RichTextInput(
         onMentionTrigger,
         onMatchTrigger,
         onMatchPaste,
+        onImagePaste,
     },
     ref
 ) {
@@ -595,9 +633,24 @@ const RichTextInput = forwardRef(function RichTextInput(
         [onKeyDown, handleInput]
     );
 
-    // Handle paste - strip formatting and detect match URLs
+    // Handle paste - strip formatting, detect match URLs, and handle images
     const handlePaste = useCallback(
         (e) => {
+            // Check for pasted images first
+            const items = e.clipboardData?.items;
+            if (items) {
+                for (const item of items) {
+                    if (item.type.startsWith("image/")) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        if (file && onImagePaste) {
+                            onImagePaste(file);
+                        }
+                        return;
+                    }
+                }
+            }
+
             e.preventDefault();
             let text = e.clipboardData.getData("text/plain");
 
@@ -626,7 +679,7 @@ const RichTextInput = forwardRef(function RichTextInput(
                 onMatchPaste(matchIds.map((m) => m.matchId));
             }
         },
-        [onMatchPaste]
+        [onMatchPaste, onImagePaste]
     );
 
     return (

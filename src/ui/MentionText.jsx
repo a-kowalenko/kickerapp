@@ -1,6 +1,8 @@
 import styled from "styled-components";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import MatchLinkWithTooltip from "./MatchLinkWithTooltip";
+import MediaViewer from "./MediaViewer";
 
 const MentionLink = styled(Link)`
     color: var(--primary-button-color);
@@ -30,10 +32,38 @@ const GifImage = styled.img`
     margin: 0.4rem 0;
 `;
 
+const UploadedImage = styled.img`
+    max-width: 100%;
+    max-height: 30rem;
+    border-radius: var(--border-radius-sm);
+    display: block;
+    margin: 0.4rem 0;
+    cursor: pointer;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 0.9;
+    }
+`;
+
+// Helper component for clickable images that open the viewer
+function ClickableImage({ src, onOpenViewer }) {
+    return (
+        <UploadedImage
+            src={src}
+            alt="Uploaded image"
+            loading="lazy"
+            onClick={() => onOpenViewer(src)}
+        />
+    );
+}
+
 // Parse comment content and convert @[name](id) patterns to clickable links,
 // #[matchDisplay](matchId) patterns to match links, [gif:URL] patterns to images,
-// and plain URLs to clickable links
+// [img:URL] patterns to uploaded images, and plain URLs to clickable links
 function MentionText({ content }) {
+    const [viewerImage, setViewerImage] = useState(null);
+
     if (!content) return null;
 
     // Check if entire content is just a GIF
@@ -43,13 +73,38 @@ function MentionText({ content }) {
         return <GifImage src={gifOnlyMatch[1]} alt="GIF" loading="lazy" />;
     }
 
+    // Check if entire content is just an uploaded image
+    const imgOnlyRegex = /^\[img:(https?:\/\/[^\]]+)\]$/;
+    const imgOnlyMatch = content.match(imgOnlyRegex);
+    if (imgOnlyMatch) {
+        return (
+            <>
+                <UploadedImage
+                    src={imgOnlyMatch[1]}
+                    alt="Uploaded image"
+                    loading="lazy"
+                    onClick={() => setViewerImage(imgOnlyMatch[1])}
+                />
+                {viewerImage && (
+                    <MediaViewer
+                        src={viewerImage}
+                        alt="Uploaded image"
+                        onClose={() => setViewerImage(null)}
+                    />
+                )}
+            </>
+        );
+    }
+
     // Regex patterns
     const mentionRegex = /@\[([^\]]+)\]\((\d+)\)/g;
     const matchLinkRegex = /#\[([^\]]+)\]\((\d+)\)/g;
     const gifRegex = /\[gif:(https?:\/\/[^\]]+)\]/g;
+    const imgRegex = /\[img:(https?:\/\/[^\]]+)\]/g;
     // URL regex - matches http://, https://, and www. URLs
-    // Excludes URLs that are part of [gif:...] syntax
-    const urlRegex = /(?<!\[gif:)(https?:\/\/[^\s<>\[\]]+|www\.[^\s<>\[\]]+)/g;
+    // Excludes URLs that are part of [gif:...] or [img:...] syntax
+    const urlRegex =
+        /(?<!\[(gif|img):)(https?:\/\/[^\s<>\[\]]+|www\.[^\s<>\[\]]+)/g;
 
     const parts = [];
     let lastIndex = 0;
@@ -96,18 +151,33 @@ function MentionText({ content }) {
         });
     }
 
-    // Find URLs (but not those inside [gif:...])
+    // Find uploaded images
+    imgRegex.lastIndex = 0;
+    while ((match = imgRegex.exec(content)) !== null) {
+        allMatches.push({
+            type: "img",
+            index: match.index,
+            length: match[0].length,
+            url: match[1],
+            fullMatch: match[0],
+        });
+    }
+
+    // Find URLs (but not those inside [gif:...] or [img:...])
     urlRegex.lastIndex = 0;
     while ((match = urlRegex.exec(content)) !== null) {
         const url = match[0];
         const startIndex = match.index;
 
-        // Check if this URL is inside a [gif:...] block
+        // Check if this URL is inside a [gif:...] or [img:...] block
         const beforeText = content.slice(0, startIndex);
-        const isInsideGif =
-            beforeText.lastIndexOf("[gif:") > beforeText.lastIndexOf("]");
+        const lastGifIndex = beforeText.lastIndexOf("[gif:");
+        const lastImgIndex = beforeText.lastIndexOf("[img:");
+        const lastCloseBracket = beforeText.lastIndexOf("]");
+        const isInsideTag =
+            Math.max(lastGifIndex, lastImgIndex) > lastCloseBracket;
 
-        if (!isInsideGif) {
+        if (!isInsideTag) {
             allMatches.push({
                 type: "url",
                 index: startIndex,
@@ -167,6 +237,14 @@ function MentionText({ content }) {
                     loading="lazy"
                 />
             );
+        } else if (m.type === "img") {
+            parts.push(
+                <ClickableImage
+                    key={`img-${m.index}`}
+                    src={m.url}
+                    onOpenViewer={setViewerImage}
+                />
+            );
         } else if (m.type === "url") {
             // Add https:// prefix if URL starts with www.
             const href = m.url.startsWith("www.") ? `https://${m.url}` : m.url;
@@ -190,7 +268,18 @@ function MentionText({ content }) {
         parts.push(content.slice(lastIndex));
     }
 
-    return <>{parts}</>;
+    return (
+        <>
+            {parts}
+            {viewerImage && (
+                <MediaViewer
+                    src={viewerImage}
+                    alt="Uploaded image"
+                    onClose={() => setViewerImage(null)}
+                />
+            )}
+        </>
+    );
 }
 
 export default MentionText;
