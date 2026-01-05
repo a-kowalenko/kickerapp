@@ -110,6 +110,12 @@ interface AchievementCondition {
     };
 }
 
+// Helper function to normalize gamemode for achievement tracking
+// Team matches should be treated as 2on2 for achievement purposes
+function getEffectiveGamemode(gamemode: string): string {
+    return gamemode === "team" ? "2on2" : gamemode;
+}
+
 interface PlayerMatchContext {
     playerId: number;
     isWinner: boolean;
@@ -118,7 +124,7 @@ interface PlayerMatchContext {
     scoreDiff: number;
     opponentMmr: number;
     ownMmr: number; // Added for MMR achievements
-    gamemode: string;
+    gamemode: string; // Normalized gamemode ("team" becomes "2on2")
     durationSeconds: number;
     match: MatchRecord;
     playerGoals: number; // Goals scored by this player in match
@@ -839,10 +845,11 @@ async function handleGoalScored(
     }
 
     // Build context for this goal
+    // Normalize gamemode for achievement tracking ("team" → "2on2")
     const goalCtx: PlayerGoalContext = {
         playerId: goal.player_id,
         goalType: goal.goal_type,
-        gamemode: goal.gamemode,
+        gamemode: getEffectiveGamemode(goal.gamemode),
         kickerId: goal.kicker_id,
         matchId: goal.match_id,
         amount: goal.amount,
@@ -2061,6 +2068,9 @@ function buildPlayerMatchContexts(
         0
     );
 
+    // Normalize gamemode for achievement tracking ("team" → "2on2")
+    const effectiveGamemode = getEffectiveGamemode(match.gamemode);
+
     // Player 1 (Team 1)
     contexts.push({
         playerId: match.player1,
@@ -2070,7 +2080,7 @@ function buildPlayerMatchContexts(
         scoreDiff,
         opponentMmr: team2AvgMmr,
         ownMmr: match.mmrPlayer1 || 1000,
-        gamemode: match.gamemode,
+        gamemode: effectiveGamemode,
         durationSeconds,
         match,
         playerGoals: goalStats[match.player1]?.goals || 0,
@@ -2098,7 +2108,7 @@ function buildPlayerMatchContexts(
         scoreDiff,
         opponentMmr: team1AvgMmr,
         ownMmr: match.mmrPlayer2 || 1000,
-        gamemode: match.gamemode,
+        gamemode: effectiveGamemode,
         durationSeconds,
         match,
         playerGoals: goalStats[match.player2]?.goals || 0,
@@ -2127,7 +2137,7 @@ function buildPlayerMatchContexts(
             scoreDiff,
             opponentMmr: team2AvgMmr,
             ownMmr: match.mmrPlayer3 || 1000,
-            gamemode: match.gamemode,
+            gamemode: effectiveGamemode,
             durationSeconds,
             match,
             playerGoals: goalStats[match.player3]?.goals || 0,
@@ -2157,7 +2167,7 @@ function buildPlayerMatchContexts(
             scoreDiff,
             opponentMmr: team1AvgMmr,
             ownMmr: match.mmrPlayer4 || 1000,
-            gamemode: match.gamemode,
+            gamemode: effectiveGamemode,
             durationSeconds,
             match,
             playerGoals: goalStats[match.player4]?.goals || 0,
@@ -4576,11 +4586,16 @@ async function updatePlayerStatusesAfterMatch(
                 ? ownScore - oppScore
                 : (oppScore - ownScore) * -1;
 
-            // Get opponent MMR (average for 2on2)
+            // Get opponent MMR (average for 2on2/team)
             let ownMmr = 0;
             let oppMmr = 0;
 
-            if (match.gamemode === "1on1") {
+            // Use effective gamemode for MMR calculation (team → 2on2)
+            const effectiveGamemodeForMmr = getEffectiveGamemode(
+                match.gamemode
+            );
+
+            if (effectiveGamemodeForMmr === "1on1") {
                 if (isTeam1) {
                     ownMmr = match.mmrPlayer1 || 1000;
                     oppMmr = match.mmrPlayer2 || 1000;

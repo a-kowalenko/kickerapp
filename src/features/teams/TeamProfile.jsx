@@ -19,6 +19,7 @@ import Error from "../../ui/Error";
 import SpinnerMini from "../../ui/SpinnerMini";
 import { useTeam, useDissolveTeam, useTeamMatches } from "./useTeams";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
+import TeamRecentPerformance from "./TeamRecentPerformance";
 
 /* ----------------------------------------
    MMR Color Helpers
@@ -570,6 +571,9 @@ function TeamProfile() {
                     </StatsGrid>
                 </CardBody>
             </Card>
+
+            {/* Recent Performance */}
+            <TeamRecentPerformance teamId={teamId} />
 
             {/* Match History */}
             <Card>

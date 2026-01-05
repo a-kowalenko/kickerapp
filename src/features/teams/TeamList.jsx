@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { HiOutlinePlus } from "react-icons/hi2";
 import Button from "../../ui/Button";
 import LoadingSpinner from "../../ui/LoadingSpinner";
+import EmptyState from "../../ui/EmptyState";
 import {
     media,
     TEAM_STATUS_ACTIVE,
@@ -20,8 +21,12 @@ const PageContainer = styled.div`
     flex-direction: column;
     gap: 1.6rem;
 
+    ${media.tablet} {
+        padding: 0 1.6rem;
+    }
+
     ${media.mobile} {
-        padding: 0 1.2rem;
+        padding: 0;
     }
 `;
 
@@ -30,6 +35,10 @@ const HeaderRow = styled.div`
     justify-content: flex-end;
     align-items: center;
     gap: 1.6rem;
+
+    ${media.mobile} {
+        padding: 0 1.2rem;
+    }
 `;
 
 const TeamsGrid = styled.div`
@@ -37,37 +46,6 @@ const TeamsGrid = styled.div`
     flex-direction: column;
     gap: 1.2rem;
     max-width: 80rem;
-`;
-
-const EmptyState = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-    color: var(--tertiary-text-color);
-    max-width: 80rem;
-`;
-
-const EmptyIcon = styled.span`
-    font-size: 4rem;
-    margin-bottom: 1.2rem;
-    opacity: 0.5;
-`;
-
-const EmptyTitle = styled.h3`
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: var(--secondary-text-color);
-    margin-bottom: 0.6rem;
-`;
-
-const EmptyText = styled.p`
-    font-size: 1.4rem;
-    color: var(--tertiary-text-color);
-    max-width: 40rem;
-    margin-bottom: 1.6rem;
 `;
 
 function TeamList() {
@@ -122,22 +100,23 @@ function TeamList() {
             {isLoading ? (
                 <LoadingSpinner />
             ) : filteredTeams.length === 0 ? (
-                <EmptyState>
-                    <EmptyIcon>👥</EmptyIcon>
-                    <EmptyTitle>
-                        {filter === "my"
+                <EmptyState
+                    icon={filter === "dissolved" ? "📦" : "👥"}
+                    title={
+                        filter === "my"
                             ? "No teams yet"
                             : filter === "dissolved"
-                              ? "No dissolved teams"
-                              : "No teams in this kicker"}
-                    </EmptyTitle>
-                    <EmptyText>
-                        {filter === "my"
+                            ? "No dissolved teams"
+                            : "No teams in this kicker"
+                    }
+                    description={
+                        filter === "my"
                             ? "Create a team with a partner to compete in team matches!"
                             : filter === "dissolved"
-                              ? "Your dissolved teams will appear here."
-                              : "Be the first to create a team!"}
-                    </EmptyText>
+                            ? "Your dissolved teams will appear here."
+                            : "Be the first to create a team!"
+                    }
+                >
                     {filter === "my" && (
                         <Button
                             $variation="primary"

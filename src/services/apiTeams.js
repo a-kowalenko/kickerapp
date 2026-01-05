@@ -460,7 +460,7 @@ export async function deleteTeamLogo(teamId, logoUrl) {
 // ============================================================================
 
 /**
- * Update team MMR after a match
+ * Update team MMR after a match (all-time stats)
  * @param {number} teamId - Team ID
  * @param {number} mmrChange - MMR change (positive or negative)
  * @param {boolean} won - Whether the team won
@@ -479,6 +479,120 @@ export async function updateTeamMmr(teamId, mmrChange, won) {
         console.error("[Teams] Error updating team MMR:", error);
         throw new Error(error.message || "Failed to update team MMR");
     }
+}
+
+/**
+ * Update team season ranking after a match
+ * @param {number} teamId - Team ID
+ * @param {number} seasonId - Season ID
+ * @param {number} mmrChange - MMR change (positive or negative)
+ * @param {boolean} won - Whether the team won
+ * @returns {Promise<void>}
+ */
+export async function updateTeamSeasonRanking(
+    teamId,
+    seasonId,
+    mmrChange,
+    won
+) {
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .rpc("update_team_season_ranking", {
+            p_team_id: teamId,
+            p_season_id: seasonId,
+            p_mmr_change: mmrChange,
+            p_won: won,
+        });
+
+    if (error) {
+        console.error("[Teams] Error updating team season ranking:", error);
+        throw new Error(
+            error.message || "Failed to update team season ranking"
+        );
+    }
+}
+
+/**
+ * Get team season rankings for a kicker/season (for leaderboard)
+ * @param {number} kickerId - Kicker ID
+ * @param {number} seasonId - Season ID
+ * @returns {Promise<Array>}
+ */
+export async function getTeamSeasonRankings(kickerId, seasonId) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_team_season_rankings", {
+            p_kicker_id: kickerId,
+            p_season_id: seasonId,
+        });
+
+    if (error) {
+        console.error("[Teams] Error fetching team season rankings:", error);
+        throw new Error(
+            error.message || "Failed to fetch team season rankings"
+        );
+    }
+
+    return data || [];
+}
+
+/**
+ * Update team season ranking after a match with bounty tracking
+ * @param {number} teamId - Team ID
+ * @param {number} seasonId - Season ID
+ * @param {number} mmrChange - MMR change (positive or negative)
+ * @param {boolean} won - Whether the team won
+ * @param {number} bountyClaimed - Bounty claimed in this match
+ * @returns {Promise<void>}
+ */
+export async function updateTeamSeasonRankingWithBounty(
+    teamId,
+    seasonId,
+    mmrChange,
+    won,
+    bountyClaimed = 0
+) {
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .rpc("update_team_season_ranking_with_bounty", {
+            p_team_id: teamId,
+            p_season_id: seasonId,
+            p_mmr_change: mmrChange,
+            p_won: won,
+            p_bounty_claimed: bountyClaimed,
+        });
+
+    if (error) {
+        console.error(
+            "[Teams] Error updating team season ranking with bounty:",
+            error
+        );
+        throw new Error(
+            error.message || "Failed to update team season ranking"
+        );
+    }
+}
+
+/**
+ * Get aggregated team stats for a player across all their teams
+ * @param {number} playerId - Player ID
+ * @param {number} seasonId - Season ID (optional, null for all-time)
+ * @returns {Promise<{ wins: number, losses: number, bounty_claimed: number }>}
+ */
+export async function getPlayerTeamStats(playerId, seasonId = null) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_player_team_stats", {
+            p_player_id: playerId,
+            p_season_id: seasonId,
+        });
+
+    if (error) {
+        console.error("[Teams] Error fetching player team stats:", error);
+        throw new Error(error.message || "Failed to fetch player team stats");
+    }
+
+    return data?.[0] || { wins: 0, losses: 0, bounty_claimed: 0 };
 }
 
 // ============================================================================
@@ -557,4 +671,93 @@ export async function getTeamVsTeamStats(teamId, opponentTeamId) {
     });
 
     return { wins, losses, total: data?.length || 0 };
+}
+
+/**
+ * Get team MMR history
+ * @param {number} teamId - Team ID
+ * @param {number} limit - Max number of records
+ * @returns {Promise<Array>}
+ */
+export async function getTeamMmrHistory(teamId, limit = 50) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .rpc("get_team_mmr_history", {
+            p_team_id: teamId,
+            p_limit: limit,
+        });
+
+    if (error) {
+        console.error("[Teams] Error fetching team MMR history:", error);
+        throw new Error(error.message || "Failed to fetch team MMR history");
+    }
+
+    return data || [];
+}
+
+/**
+ * Get opponent stats for a team (aggregated wins/losses against each opponent)
+ * @param {number} teamId - Team ID
+ * @returns {Promise<Array<{ teamId: number, teamName: string, wins: number, losses: number }>>}
+ */
+export async function getTeamOpponentStats(teamId) {
+    // Fetch all matches for this team
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .from("matches")
+        .select(
+            `
+            scoreTeam1,
+            scoreTeam2,
+            team1_id,
+            team2_id,
+            team1:teams!matches_team1_id_fkey(id, name),
+            team2:teams!matches_team2_id_fkey(id, name)
+        `
+        )
+        .or(`team1_id.eq.${teamId},team2_id.eq.${teamId}`)
+        .eq("status", "ended");
+
+    if (error) {
+        console.error("[Teams] Error fetching opponent stats:", error);
+        throw new Error(error.message || "Failed to fetch opponent stats");
+    }
+
+    // Aggregate stats by opponent
+    const opponentMap = new Map();
+
+    (data || []).forEach((match) => {
+        const isTeam1 = match.team1_id === teamId;
+        const opponent = isTeam1 ? match.team2 : match.team1;
+        const teamScore = isTeam1 ? match.scoreTeam1 : match.scoreTeam2;
+        const opponentScore = isTeam1 ? match.scoreTeam2 : match.scoreTeam1;
+
+        if (!opponent?.id) return;
+
+        if (!opponentMap.has(opponent.id)) {
+            opponentMap.set(opponent.id, {
+                teamId: opponent.id,
+                teamName: opponent.name,
+                wins: 0,
+                losses: 0,
+            });
+        }
+
+        const stats = opponentMap.get(opponent.id);
+        if (teamScore > opponentScore) {
+            stats.wins++;
+        } else if (teamScore < opponentScore) {
+            stats.losses++;
+        }
+    });
+
+    // Sort by total matches played, then by win rate
+    return Array.from(opponentMap.values()).sort((a, b) => {
+        const totalA = a.wins + a.losses;
+        const totalB = b.wins + b.losses;
+        if (totalB !== totalA) return totalB - totalA;
+        const rateA = totalA > 0 ? a.wins / totalA : 0;
+        const rateB = totalB > 0 ? b.wins / totalB : 0;
+        return rateB - rateA;
+    });
 }

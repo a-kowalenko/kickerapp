@@ -4,7 +4,12 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import PlayerName from "../../ui/PlayerName";
 import useWindowWidth from "../../hooks/useWindowWidth";
-import { MATCH_ACTIVE, MATCH_ENDED, media } from "../../utils/constants";
+import {
+    GAMEMODE_TEAM,
+    MATCH_ACTIVE,
+    MATCH_ENDED,
+    media,
+} from "../../utils/constants";
 
 const TeamContainer = styled.div`
     display: flex;
@@ -22,6 +27,30 @@ const TeamContainer = styled.div`
                 ? "var(--winner-name-color)"
                 : "var(--loser-name-color)"};
     }
+`;
+
+const TeamName = styled.span`
+    font-weight: 600;
+    color: ${(props) =>
+        props.$won === null
+            ? "var(--primary-text-color)"
+            : props.$won === true
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
+    cursor: pointer;
+
+    &:hover {
+        text-decoration: underline;
+    }
+`;
+
+const MmrChange = styled.span`
+    font-size: 1.2rem;
+    margin-left: 0.4rem;
+    color: ${(props) =>
+        props.$positive
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
 `;
 
 const ScoreContainer = styled.div`
@@ -65,9 +94,30 @@ const BountyBadge = styled.span`
     margin-left: 0.4rem;
 `;
 
+const TeamModeBadge = styled.span`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    padding: 0.2rem 0.5rem;
+    background-color: var(--color-purple-100, #ede9fe);
+    color: var(--color-purple-700, #6d28d9);
+    border-radius: 0.4rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 0.6rem;
+
+    ${media.mobile} {
+        font-size: 0.9rem;
+        padding: 0.15rem 0.4rem;
+    }
+`;
+
 function MiniMatchRow({ match }) {
-    const { player1, player2, player3, player4 } = match;
+    const { player1, player2, player3, player4, team1, team2 } = match;
     const navigate = useNavigate();
+    const isTeamMatch = match.gamemode === GAMEMODE_TEAM && team1 && team2;
     const team1Won =
         match.status !== MATCH_ENDED
             ? null
@@ -82,6 +132,94 @@ function MiniMatchRow({ match }) {
         navigate(`/matches/${match.id}`);
     }
 
+    function handleTeamClick(e, teamId) {
+        e.stopPropagation();
+        navigate(`/team/${teamId}`);
+    }
+
+    // Render team match display
+    if (isTeamMatch) {
+        return (
+            <MiniTable.Row onClick={handleClickRow} isTeamMatch={true}>
+                {showId && <div>{match.nr}</div>}
+                <TeamContainer $won={team1Won} $team="1">
+                    <TeamName
+                        $won={team1Won}
+                        onClick={(e) => handleTeamClick(e, team1.id)}
+                    >
+                        {team1.name}
+                        {match.mmrChangeTeam1 && (
+                            <MmrChange $positive={team1Won}>
+                                {team1Won ? "+" : ""}
+                                {match.mmrChangeTeam1}
+                            </MmrChange>
+                        )}
+                        {team1Won && match.bounty_team1_team > 0 && (
+                            <BountyBadge>
+                                +{match.bounty_team1_team}💰
+                            </BountyBadge>
+                        )}
+                    </TeamName>
+                </TeamContainer>
+
+                <ScoreContainer>
+                    <Score $team="1">{match.scoreTeam1}</Score>
+                    &mdash;
+                    <Score $team="2">{match.scoreTeam2}</Score>
+                    <TeamModeBadge>Team</TeamModeBadge>
+                </ScoreContainer>
+
+                <TeamContainer
+                    $won={team1Won === null ? null : !team1Won}
+                    $team="2"
+                >
+                    <TeamName
+                        $won={team1Won === null ? null : !team1Won}
+                        onClick={(e) => handleTeamClick(e, team2.id)}
+                    >
+                        {team2.name}
+                        {match.mmrChangeTeam2 && (
+                            <MmrChange $positive={!team1Won}>
+                                {!team1Won ? "+" : ""}
+                                {match.mmrChangeTeam2}
+                            </MmrChange>
+                        )}
+                        {!team1Won && match.bounty_team2_team > 0 && (
+                            <BountyBadge>
+                                +{match.bounty_team2_team}💰
+                            </BountyBadge>
+                        )}
+                    </TeamName>
+                </TeamContainer>
+                {showStartTime && (
+                    <div>
+                        {format(
+                            new Date(match.start_time),
+                            "dd.MM.yyyy - HH:mm"
+                        )}
+                    </div>
+                )}
+                {showDuration && (
+                    <DurationContainer>
+                        {match.end_time && (
+                            <span>
+                                {format(
+                                    new Date(match.end_time) -
+                                        new Date(match.start_time),
+                                    "mm:ss"
+                                )}
+                            </span>
+                        )}
+                        {match.status === MATCH_ACTIVE && (
+                            <span>Is active</span>
+                        )}
+                    </DurationContainer>
+                )}
+            </MiniTable.Row>
+        );
+    }
+
+    // Render regular match display
     return (
         <MiniTable.Row onClick={handleClickRow}>
             {showId && <div>{match.nr}</div>}

@@ -2,7 +2,8 @@ import styled from "styled-components";
 import { useState } from "react";
 import { HiOutlinePlus } from "react-icons/hi2";
 import Button from "../../ui/Button";
-import Spinner from "../../ui/Spinner";
+import LoadingSpinner from "../../ui/LoadingSpinner";
+import EmptyState from "../../ui/EmptyState";
 import { media, TEAM_STATUS_ACTIVE } from "../../utils/constants";
 import { useMyTeams } from "./useTeams";
 import TeamCard from "./TeamCard";
@@ -12,56 +13,43 @@ import CreateTeamModal from "./CreateTeamModal";
 const Content = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 1.6rem;
-
-    ${media.mobile} {
-        padding: 0 1.2rem;
-    }
+    gap: 2rem;
 `;
 
 const HeaderRow = styled.div`
     display: flex;
-    justify-content: flex-end;
+    justify-content: right;
     align-items: center;
     gap: 1.6rem;
+    flex-wrap: wrap;
+
+    ${media.mobile} {
+        flex-direction: column;
+        align-items: stretch;
+    }
+`;
+
+const HeaderTitle = styled.h2`
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--primary-text-color);
+    margin: 0;
+
+    ${media.mobile} {
+        font-size: 1.6rem;
+        text-align: center;
+    }
 `;
 
 const TeamsGrid = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-    max-width: 80rem;
-`;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(32rem, 1fr));
+    gap: 1.6rem;
 
-const EmptyState = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-    color: var(--tertiary-text-color);
-    max-width: 80rem;
-`;
-
-const EmptyIcon = styled.span`
-    font-size: 4rem;
-    margin-bottom: 1.2rem;
-    opacity: 0.5;
-`;
-
-const EmptyTitle = styled.h3`
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: var(--secondary-text-color);
-    margin-bottom: 0.6rem;
-`;
-
-const EmptyText = styled.p`
-    font-size: 1.4rem;
-    color: var(--tertiary-text-color);
-    max-width: 40rem;
-    margin-bottom: 1.6rem;
+    ${media.mobile} {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+    }
 `;
 
 function MyTeamsTab() {
@@ -71,12 +59,13 @@ function MyTeamsTab() {
     const activeTeams = myTeams.filter((t) => t.status === TEAM_STATUS_ACTIVE);
 
     if (isLoading) {
-        return <Spinner />;
+        return <LoadingSpinner />;
     }
 
     return (
         <Content>
             <HeaderRow>
+                {/* <HeaderTitle>My Teams</HeaderTitle> */}
                 <Button
                     $variation="primary"
                     onClick={() => setShowCreateModal(true)}
@@ -88,12 +77,11 @@ function MyTeamsTab() {
             <TeamInvitationBanner />
 
             {activeTeams.length === 0 ? (
-                <EmptyState>
-                    <EmptyIcon>👥</EmptyIcon>
-                    <EmptyTitle>No teams yet</EmptyTitle>
-                    <EmptyText>
-                        Create a team with a partner to compete in team matches!
-                    </EmptyText>
+                <EmptyState
+                    icon="👥"
+                    title="No teams yet"
+                    description="Create a team with a partner to compete in team matches!"
+                >
                     <Button
                         $variation="primary"
                         onClick={() => setShowCreateModal(true)}

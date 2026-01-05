@@ -2,11 +2,14 @@ import useWindowWidth from "../../hooks/useWindowWidth";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import Table from "../../ui/Table";
 import { usePlayerSeasonStats } from "./usePlayerSeasonStats";
+import { usePlayerTeamStats } from "./usePlayerTeamStats";
 import { usePlaytime } from "./usePlaytime";
 import { formatTimeInHoursAndMinutes } from "../../utils/helpers";
 
 function StatsTable({ userId }) {
     const { stats, isLoading: isLoadingStats } = usePlayerSeasonStats(userId);
+    const { teamStats, isLoading: isLoadingTeamStats } =
+        usePlayerTeamStats(userId);
     const { data: playtimeData, isLoading: isLoadingPlaytime } = usePlaytime();
     const { isDesktop, isTablet, isMobile } = useWindowWidth();
     const columns = isDesktop
@@ -15,7 +18,7 @@ function StatsTable({ userId }) {
         ? "1.3fr 0.7fr 0.7fr 0.7fr 1fr 0.7fr 0.7fr 1fr"
         : "0.8fr 0.4fr 0.4fr 0.4fr 0.6fr 0.7fr 0.5fr 1fr";
 
-    const isLoading = isLoadingPlaytime || isLoadingStats;
+    const isLoading = isLoadingPlaytime || isLoadingStats || isLoadingTeamStats;
 
     let data;
 
@@ -30,11 +33,13 @@ function StatsTable({ userId }) {
             bounty_claimed,
             bounty_claimed_2on2,
         } = stats;
-        const { playtimeSolo, playtimeDuo, playtimeOverall } = playtimeData || {
-            playtimeSolo: 0,
-            playtimeDuo: 0,
-            playtimeOverall: 0,
-        };
+        const { playtimeSolo, playtimeDuo, playtimeTeam, playtimeOverall } =
+            playtimeData || {
+                playtimeSolo: 0,
+                playtimeDuo: 0,
+                playtimeTeam: 0,
+                playtimeOverall: 0,
+            };
 
         const stats1on1 = {
             gamemode: "1on1",
@@ -54,17 +59,35 @@ function StatsTable({ userId }) {
             bounty: bounty_claimed_2on2 || 0,
             playtime: playtimeDuo,
         };
+
+        // Team stats (aggregated across all player's teams)
+        const winsTeam = teamStats?.wins || 0;
+        const lossesTeam = teamStats?.losses || 0;
+        const statsTeam = {
+            gamemode: "Team",
+            wins: winsTeam,
+            losses: lossesTeam,
+            total: winsTeam + lossesTeam,
+            mmr: null, // No MMR for aggregated team stats
+            bounty: teamStats?.bounty_claimed || 0,
+            playtime: playtimeTeam || 0,
+        };
+
         const statsOverall = {
             gamemode: "Overall",
-            wins: wins + wins2on2,
-            losses: losses + losses2on2,
-            total: wins + wins2on2 + losses + losses2on2,
+            wins: wins + wins2on2 + winsTeam,
+            losses: losses + losses2on2 + lossesTeam,
+            total:
+                wins + wins2on2 + losses + losses2on2 + winsTeam + lossesTeam,
             mmr: null,
-            bounty: (bounty_claimed || 0) + (bounty_claimed_2on2 || 0),
+            bounty:
+                (bounty_claimed || 0) +
+                (bounty_claimed_2on2 || 0) +
+                (teamStats?.bounty_claimed || 0),
             playtime: playtimeOverall,
         };
 
-        data = [stats1on1, stats2on2, statsOverall];
+        data = [stats1on1, stats2on2, statsTeam, statsOverall];
     }
 
     return (
@@ -116,7 +139,7 @@ function StatsRow({ stats }) {
                 <span>{winrate}</span>%
             </div>
             <div>
-                <span>{mmr}</span>
+                <span>{mmr !== null ? mmr : "-"}</span>
             </div>
             <div>
                 <span>{bounty}</span>

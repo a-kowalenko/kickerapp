@@ -2,8 +2,7 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import { HiOutlineChartBar } from "react-icons/hi2";
 import { FaCrown } from "react-icons/fa";
-import { useRecentPerformance } from "./useRecentPerformance";
-import { hasPlayerWonMatch } from "../../utils/helpers";
+import { useTeamRecentPerformance } from "./useTeamRecentPerformance";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { MatchTooltip, useMatchTooltip } from "../../ui/MatchTooltip";
 import { useMatchPreview } from "../matches/useMatchPreview";
@@ -94,37 +93,14 @@ const CardDescription = styled.span`
 const CardBody = styled.div`
     padding: 2.4rem;
     display: flex;
-    flex-direction: ${(props) => (props.$hasBoth ? "row" : "column")};
-    justify-content: ${(props) => (props.$hasBoth ? "space-evenly" : "center")};
-    align-items: ${(props) => (props.$hasBoth ? "flex-start" : "center")};
-    gap: 2.4rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6rem;
 
     ${media.mobile} {
         padding: 1.6rem;
-        gap: 2rem;
-        flex-direction: column;
-        align-items: center;
+        gap: 1.2rem;
     }
-`;
-
-const GamemodeSection = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-`;
-
-const GamemodeHeader = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-`;
-
-const GamemodeTitle = styled.span`
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--color-grey-700);
-    text-transform: uppercase;
-    letter-spacing: 1px;
 `;
 
 const ShieldsContainer = styled.div`
@@ -211,6 +187,13 @@ const LoadingContainer = styled.div`
     padding: 2rem;
 `;
 
+const EmptyMessage = styled.p`
+    color: var(--color-grey-500);
+    font-size: 1.4rem;
+    text-align: center;
+    margin: 0;
+`;
+
 function ShieldIcon({ isWin, matchId, opacity }) {
     const navigate = useNavigate();
     const { match, isLoading, error } = useMatchPreview(matchId);
@@ -270,27 +253,58 @@ function ShieldIcon({ isWin, matchId, opacity }) {
     );
 }
 
-function GamemodePerformance({ title, matches, playerId, isTeamMode = false }) {
-    if (!matches || matches.length === 0) {
-        return null;
+/**
+ * Helper to determine if a team won a match
+ */
+function hasTeamWonMatch(teamId, match) {
+    const isTeam1 = match.team1_id === teamId || match.team1?.id === teamId;
+    const score1 = match.scoreTeam1;
+    const score2 = match.scoreTeam2;
+
+    return isTeam1 ? score1 > score2 : score2 > score1;
+}
+
+/**
+ * Get MMR change for a team in a match
+ */
+function getTeamMmrChange(teamId, match) {
+    const isTeam1 = match.team1_id === teamId || match.team1?.id === teamId;
+    return isTeam1 ? match.mmrChangeTeam1 : match.mmrChangeTeam2;
+}
+
+function TeamRecentPerformance({ teamId }) {
+    const { matches, isLoading } = useTeamRecentPerformance(teamId, 10);
+
+    const hasData = matches?.length > 0;
+
+    if (!isLoading && !hasData) {
+        return (
+            <Card>
+                <CardHeader>
+                    <IconWrapper>
+                        <HiOutlineChartBar />
+                    </IconWrapper>
+                    <HeaderContent>
+                        <CardTitle>Recent Performance</CardTitle>
+                        <CardDescription>
+                            Win/loss record from recent matches
+                        </CardDescription>
+                    </HeaderContent>
+                </CardHeader>
+                <CardBody>
+                    <EmptyMessage>
+                        No matches played yet. Start a Team Match to see your
+                        performance here!
+                    </EmptyMessage>
+                </CardBody>
+            </Card>
+        );
     }
 
     // Calculate total MMR change
     const totalMmrChange = matches.reduce((sum, match) => {
-        if (isTeamMode) {
-            // For team matches, check which team the player is on
-            const isTeam1 =
-                playerId === match.player1?.id ||
-                playerId === match.player3?.id;
-            const mmrChange = isTeam1
-                ? match.mmrChangeTeam1
-                : match.mmrChangeTeam2;
-            return sum + (mmrChange || 0);
-        }
-        const isTeam1 =
-            playerId === match.player1?.id || playerId === match.player3?.id;
-        const mmrChange = isTeam1 ? match.mmrChangeTeam1 : match.mmrChangeTeam2;
-        return sum + (mmrChange || 0);
+        const mmrChange = getTeamMmrChange(parseInt(teamId), match) || 0;
+        return sum + mmrChange;
     }, 0);
 
     // Reverse to show oldest first (newest on right)
@@ -300,60 +314,8 @@ function GamemodePerformance({ title, matches, playerId, isTeamMode = false }) {
     // Calculate opacity: oldest (left) gets 0.5, newest (right) gets 1.0
     const getOpacity = (index) => {
         if (matchCount <= 1) return 1;
-        // Linear interpolation from 0.5 (oldest) to 1.0 (newest)
         return 0.5 + (index / (matchCount - 1)) * 0.5;
     };
-
-    return (
-        <GamemodeSection>
-            <GamemodeHeader>
-                <GamemodeTitle>
-                    Last {matches.length} Games - {title}
-                </GamemodeTitle>
-            </GamemodeHeader>
-            <ShieldsContainer>
-                {orderedMatches.map((match, index) => {
-                    const isWin = hasPlayerWonMatch(playerId, match);
-                    return (
-                        <ShieldIcon
-                            key={match.id}
-                            isWin={isWin}
-                            matchId={match.id}
-                            opacity={getOpacity(index)}
-                        />
-                    );
-                })}
-            </ShieldsContainer>
-            <MmrChange
-                $positive={totalMmrChange > 0}
-                $negative={totalMmrChange < 0}
-            >
-                <MmrArrow>{totalMmrChange >= 0 ? "▲" : "▼"}</MmrArrow>
-                {Math.abs(Math.round(totalMmrChange))} MMR
-            </MmrChange>
-        </GamemodeSection>
-    );
-}
-
-function RecentPerformance({ playerName, playerId }) {
-    const { matches1on1, matches2on2, matchesTeam, isLoading } =
-        useRecentPerformance(playerName);
-
-    const hasData =
-        matches1on1?.length > 0 ||
-        matches2on2?.length > 0 ||
-        matchesTeam?.length > 0;
-
-    if (!isLoading && !hasData) {
-        return null;
-    }
-
-    // Count how many gamemodes have data for layout
-    const gamemodesWithData = [
-        matches1on1?.length > 0,
-        matches2on2?.length > 0,
-        matchesTeam?.length > 0,
-    ].filter(Boolean).length;
 
     return (
         <Card>
@@ -364,7 +326,7 @@ function RecentPerformance({ playerName, playerId }) {
                 <HeaderContent>
                     <CardTitle>Recent Performance</CardTitle>
                     <CardDescription>
-                        Win/loss record from recent matches
+                        Win/loss record from last {matches.length} team matches
                     </CardDescription>
                 </HeaderContent>
             </CardHeader>
@@ -373,27 +335,34 @@ function RecentPerformance({ playerName, playerId }) {
                     <LoadingSpinner />
                 </LoadingContainer>
             ) : (
-                <CardBody $hasBoth={gamemodesWithData >= 2}>
-                    <GamemodePerformance
-                        title="1v1"
-                        matches={matches1on1}
-                        playerId={playerId}
-                    />
-                    <GamemodePerformance
-                        title="2v2"
-                        matches={matches2on2}
-                        playerId={playerId}
-                    />
-                    <GamemodePerformance
-                        title="Team"
-                        matches={matchesTeam}
-                        playerId={playerId}
-                        isTeamMode={true}
-                    />
+                <CardBody>
+                    <ShieldsContainer>
+                        {orderedMatches.map((match, index) => {
+                            const isWin = hasTeamWonMatch(
+                                parseInt(teamId),
+                                match
+                            );
+                            return (
+                                <ShieldIcon
+                                    key={match.id}
+                                    isWin={isWin}
+                                    matchId={match.id}
+                                    opacity={getOpacity(index)}
+                                />
+                            );
+                        })}
+                    </ShieldsContainer>
+                    <MmrChange
+                        $positive={totalMmrChange > 0}
+                        $negative={totalMmrChange < 0}
+                    >
+                        <MmrArrow>{totalMmrChange >= 0 ? "▲" : "▼"}</MmrArrow>
+                        {Math.abs(Math.round(totalMmrChange))} MMR
+                    </MmrChange>
                 </CardBody>
             )}
         </Card>
     );
 }
 
-export default RecentPerformance;
+export default TeamRecentPerformance;

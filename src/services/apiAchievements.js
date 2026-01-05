@@ -1,4 +1,4 @@
-import supabase from "./supabase";
+import supabase, { databaseSchema } from "./supabase";
 
 // Table names
 const ACHIEVEMENT_CATEGORIES = "achievement_categories";
@@ -10,6 +10,7 @@ const PLAYER_ACHIEVEMENTS = "player_achievements";
 
 export async function getAchievementCategories() {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_CATEGORIES)
         .select("*")
         .order("sort_order", { ascending: true });
@@ -29,6 +30,7 @@ export async function createAchievementCategory({
     sortOrder,
 }) {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_CATEGORIES)
         .insert({
             key,
@@ -49,6 +51,7 @@ export async function createAchievementCategory({
 
 export async function updateAchievementCategory(id, updates) {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_CATEGORIES)
         .update({
             ...(updates.key && { key: updates.key }),
@@ -74,6 +77,7 @@ export async function updateAchievementCategory(id, updates) {
 
 export async function deleteAchievementCategory(id) {
     const { error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_CATEGORIES)
         .delete()
         .eq("id", id);
@@ -87,6 +91,7 @@ export async function deleteAchievementCategory(id) {
 
 export async function getAchievementDefinitions(seasonId = null) {
     let query = supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_DEFINITIONS)
         .select(
             `
@@ -111,6 +116,7 @@ export async function getAchievementDefinitions(seasonId = null) {
 
 export async function getAchievementDefinition(id) {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_DEFINITIONS)
         .select(
             `
@@ -119,7 +125,7 @@ export async function getAchievementDefinition(id) {
         `
         )
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
     if (error) {
         throw new Error(error.message);
@@ -145,6 +151,7 @@ export async function createAchievementDefinition({
     sortOrder,
 }) {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_DEFINITIONS)
         .insert({
             key,
@@ -203,6 +210,7 @@ export async function updateAchievementDefinition(id, updates) {
         updateData.sort_order = updates.sortOrder;
 
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_DEFINITIONS)
         .update(updateData)
         .eq("id", id)
@@ -223,6 +231,7 @@ export async function updateAchievementDefinition(id, updates) {
 
 export async function deleteAchievementDefinition(id) {
     const { error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_DEFINITIONS)
         .delete()
         .eq("id", id);
@@ -237,6 +246,7 @@ export async function deleteAchievementDefinition(id) {
 export async function getPlayerProgress(playerId, seasonId = null) {
     // Get progress for both season-specific (with season_id) and global (null season_id)
     let query = supabase
+        .schema(databaseSchema)
         .from(PLAYER_ACHIEVEMENT_PROGRESS)
         .select("*")
         .eq("player_id", playerId);
@@ -259,6 +269,7 @@ export async function getPlayerProgress(playerId, seasonId = null) {
 
 export async function getPlayerAchievements(playerId, seasonId = null) {
     let query = supabase
+        .schema(databaseSchema)
         .from(PLAYER_ACHIEVEMENTS)
         .select(
             `
@@ -287,6 +298,7 @@ export async function getPlayerAchievements(playerId, seasonId = null) {
 
 export async function getPlayerAchievementsSummary(playerId) {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(PLAYER_ACHIEVEMENTS)
         .select(
             `
@@ -383,6 +395,7 @@ export async function getAchievementsWithProgress(playerId, seasonId = null) {
 // Get the next achievement in a chain (for WoW-style display)
 export async function getNextInChain(achievementId) {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from(ACHIEVEMENT_DEFINITIONS)
         .select(
             `

@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import {
     DEFAULT_AVATAR,
+    GAMEMODE_TEAM,
     MATCH_ACTIVE,
     MATCH_ENDED,
     media,
@@ -93,10 +94,35 @@ const DurationContainer = styled.div`
     display: flex;
 `;
 
+const TeamName = styled.span`
+    font-weight: 600;
+    color: ${(props) =>
+        props.$won === null
+            ? "var(--primary-text-color)"
+            : props.$won === true
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
+    cursor: pointer;
+
+    &:hover {
+        text-decoration: underline;
+    }
+`;
+
+const MmrChange = styled.span`
+    font-size: 1.2rem;
+    margin-left: 0.4rem;
+    color: ${(props) =>
+        props.$positive
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
+`;
+
 function MatchesRow({ match }) {
     const navigate = useNavigate();
-    const { player1, player2, player3, player4 } = match;
+    const { player1, player2, player3, player4, team1, team2 } = match;
     const { isDesktop } = useWindowWidth();
+    const isTeamMatch = match.gamemode === GAMEMODE_TEAM && team1 && team2;
 
     const gameMode =
         !player3 && !player4
@@ -115,6 +141,103 @@ function MatchesRow({ match }) {
     function handleClickRow(e) {
         e.stopPropagation();
         navigate(`/matches/${match.id}`);
+    }
+
+    function handleTeamClick(e, teamId) {
+        e.stopPropagation();
+        navigate(`/team/${teamId}`);
+    }
+
+    // Render team match display
+    if (isTeamMatch) {
+        return (
+            <Table.Row onClick={handleClickRow}>
+                <Rank>{match.nr}</Rank>
+
+                <TeamContainer $won={team1Won} $team="1">
+                    <TeamName
+                        $won={team1Won}
+                        onClick={(e) => handleTeamClick(e, team1.id)}
+                    >
+                        {team1.name}
+                        {match.mmrChangeTeam1 && (
+                            <MmrChange $positive={team1Won}>
+                                {team1Won ? "+" : ""}
+                                {match.mmrChangeTeam1}
+                            </MmrChange>
+                        )}
+                        {team1Won && match.bounty_team1_team > 0 && (
+                            <BountyBadge>
+                                +{match.bounty_team1_team}💰
+                            </BountyBadge>
+                        )}
+                    </TeamName>
+                </TeamContainer>
+
+                <ScoreContainer>
+                    <Score $team="1">{match.scoreTeam1}</Score>
+                    &mdash;
+                    <Score $team="2">{match.scoreTeam2}</Score>
+                </ScoreContainer>
+
+                <TeamContainer
+                    $won={team1Won === null ? null : !team1Won}
+                    $team="2"
+                >
+                    <TeamName
+                        $won={team1Won === null ? null : !team1Won}
+                        onClick={(e) => handleTeamClick(e, team2.id)}
+                    >
+                        {team2.name}
+                        {match.mmrChangeTeam2 && (
+                            <MmrChange $positive={!team1Won}>
+                                {!team1Won ? "+" : ""}
+                                {match.mmrChangeTeam2}
+                            </MmrChange>
+                        )}
+                        {!team1Won && match.bounty_team2_team > 0 && (
+                            <BountyBadge>
+                                +{match.bounty_team2_team}💰
+                            </BountyBadge>
+                        )}
+                    </TeamName>
+                </TeamContainer>
+
+                {isDesktop && (
+                    <GameModeContainer>
+                        <span>Team</span>
+                    </GameModeContainer>
+                )}
+
+                {isDesktop && (
+                    <StartTimeContainer>
+                        <span>
+                            {format(
+                                new Date(match.start_time),
+                                "dd.MM.yyyy - HH:mm"
+                            )}
+                        </span>
+                    </StartTimeContainer>
+                )}
+
+                {isDesktop && (
+                    <DurationContainer>
+                        {match.end_time && (
+                            <span>
+                                {format(
+                                    new Date(match.end_time) -
+                                        new Date(match.start_time),
+                                    "mm:ss"
+                                )}
+                            </span>
+                        )}
+                        {match.status === MATCH_ACTIVE && (
+                            <span>IS ACTIVE</span>
+                        )}
+                    </DurationContainer>
+                )}
+            </Table.Row>
+        );
     }
 
     return (

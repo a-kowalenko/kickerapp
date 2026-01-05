@@ -118,7 +118,7 @@ function App() {
                                     />
                                     <Route path="teams/*" element={<Teams />} />
                                     <Route
-                                        path="team/:teamId"
+                                        path="team/:teamId/*"
                                         element={<Team />}
                                     />
                                     <Route

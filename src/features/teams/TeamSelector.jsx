@@ -17,28 +17,35 @@ const Toggle = styled.button`
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 1.2rem 1.6rem;
+    padding: 1.2rem 2.4rem;
     font-size: 1.6rem;
-    background-color: var(--primary-dropdown-background-color);
+    color: var(--primary-dropdown-text-color);
+    background-color: ${(props) =>
+        props.$isOpen
+            ? "var(--primary-dropdown-background-color-hover)"
+            : "var(--primary-dropdown-background-color)"};
     border: 1px solid var(--primary-dropdown-border-color);
     border-radius: var(--border-radius-sm);
+    box-shadow: ${(props) =>
+        props.$isOpen
+            ? "0 1px 5px rgba(0, 0, 0, 0.727)"
+            : "0 1px 3px rgba(0, 0, 0, 0.361)"};
     cursor: pointer;
     transition: all 0.2s ease;
 
     &:hover:not(:disabled) {
         background-color: var(--primary-dropdown-background-color-hover);
-        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.727);
     }
 
     &:disabled {
-        opacity: 0.6;
+        background-color: var(--disabled-color);
         cursor: not-allowed;
     }
 
     ${(props) =>
         props.$isOpen &&
         `
-        background-color: var(--primary-dropdown-background-color-hover);
         border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
     `}
 `;
@@ -129,29 +136,35 @@ const Dropdown = styled.ul`
     z-index: 100;
     max-height: 30rem;
     overflow-y: auto;
-    background-color: var(--primary-dropdown-background-color);
-    border: 1px solid var(--primary-dropdown-border-color);
-    border-top: none;
+    background-color: var(--dropdown-list-background-color);
     border-radius: 0 0 var(--border-radius-sm) var(--border-radius-sm);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 1px 1px 1px var(--primary-dropdown-border-color),
+        -1px -1px 1px var(--primary-dropdown-border-color);
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 `;
 
 const Option = styled.li`
     display: flex;
     align-items: center;
     gap: 1.2rem;
-    padding: 1.2rem 1.6rem;
+    padding: 1rem 1.6rem;
     cursor: pointer;
+    background-color: var(--dropdown-list-background-color);
     transition: background-color 0.2s ease;
 
     &:hover {
-        background-color: var(--primary-dropdown-background-color-hover);
+        background-color: var(--dropdown-list-selected-background-color);
     }
 
     ${(props) =>
         props.$selected &&
         `
-        background-color: var(--color-brand-50);
+        background-color: var(--dropdown-list-selected-background-color);
     `}
 `;
 
@@ -237,6 +250,14 @@ function TeamSelector({
             .toUpperCase()
             .slice(0, 2);
 
+    // Helper to normalize team data (handle both flat and nested formats)
+    const getPlayer1Name = (team) => team.player1_name || team.player1?.name;
+    const getPlayer2Name = (team) => team.player2_name || team.player2?.name;
+    const getPlayer1Avatar = (team) =>
+        team.player1_avatar || team.player1?.avatar;
+    const getPlayer2Avatar = (team) =>
+        team.player2_avatar || team.player2?.avatar;
+
     return (
         <Container ref={ref}>
             <Toggle
@@ -263,8 +284,8 @@ function TeamSelector({
                             <TeamInfo>
                                 <TeamName>{selectedTeam.name}</TeamName>
                                 <TeamPlayers>
-                                    {selectedTeam.player1?.name} &{" "}
-                                    {selectedTeam.player2?.name}
+                                    {getPlayer1Name(selectedTeam)} &{" "}
+                                    {getPlayer2Name(selectedTeam)}
                                 </TeamPlayers>
                             </TeamInfo>
                         </SelectedTeam>
@@ -308,21 +329,21 @@ function TeamSelector({
                                             <Avatar
                                                 $size="xs"
                                                 src={
-                                                    team.player1?.avatar ||
+                                                    getPlayer1Avatar(team) ||
                                                     DEFAULT_AVATAR
                                                 }
                                             />
                                             <Avatar
                                                 $size="xs"
                                                 src={
-                                                    team.player2?.avatar ||
+                                                    getPlayer2Avatar(team) ||
                                                     DEFAULT_AVATAR
                                                 }
                                             />
                                         </PlayerAvatars>
                                         <span>
-                                            {team.player1?.name} &{" "}
-                                            {team.player2?.name}
+                                            {getPlayer1Name(team)} &{" "}
+                                            {getPlayer2Name(team)}
                                         </span>
                                     </OptionTeamMeta>
                                 </OptionTeamInfo>

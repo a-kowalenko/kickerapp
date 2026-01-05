@@ -419,17 +419,13 @@ export async function getCommentReadStatus(kickerId) {
  */
 export async function getMatchCommentReadStatus(matchId) {
     const { data, error } = await supabase
+        .schema(databaseSchema)
         .from("match_comment_read_status")
         .select("last_read_at")
         .eq("match_id", matchId)
-        .limit(1)
-        .single();
+        .maybeSingle();
 
     if (error) {
-        // PGRST116 = no rows returned, which is OK for new users/matches
-        if (error.code === "PGRST116") {
-            return null;
-        }
         throw new Error(error.message);
     }
 
