@@ -7,7 +7,7 @@ import { avatarHighlightsUrl } from "../services/supabase";
 // Avatar Highlight Assets - loaded from Supabase Storage
 const RedThunder = `${avatarHighlightsUrl}/sprites/RedThunder.png`;
 const HumiliationGif = `${avatarHighlightsUrl}/gifs/Humiliation.gif`;
-const ColdGif = `${avatarHighlightsUrl}/gifs/Cold.gif`;
+const ColdGif = `${avatarHighlightsUrl}/gifs/Cold1.gif`;
 const IceColdGif = `${avatarHighlightsUrl}/gifs/IceCold.gif`;
 const FrozenGif = `${avatarHighlightsUrl}/gifs/Frozen.gif`;
 const HotStreakGif = `${avatarHighlightsUrl}/gifs/HotStreak.gif`;
@@ -25,7 +25,7 @@ const SIZE_CONFIG = {
         overlayInset: -8, // Wie weit das Overlay übersteht
         overlayOffset: { top: 3, left: 3, bottom: 2, right: 0 }, // Feintuning
         frameInset: -6,
-        showEffects: true, // Bei xs keine Effekte anzeigen
+        showEffects: true,
     },
     small: {
         size: 3.4,
@@ -271,43 +271,43 @@ const STATUS_EFFECTS = {
         color: "rgba(255, 215, 0, 0.8)",
         sizeConfig: {
             xs: {
-                scale: 1,
+                scale: 8,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 6,
                 visible: true,
             },
             small: {
-                scale: 0.8,
+                scale: 5,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 5,
                 visible: true,
             },
             medium: {
-                scale: 0.5,
+                scale: 3.5,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 6,
                 visible: true,
             },
             large: {
-                scale: 0.3,
+                scale: 2,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 10,
                 visible: true,
             },
             huge: {
-                scale: 0.7,
+                scale: 4,
                 top: 0,
                 bottom: 0,
                 left: 0,
-                right: 0,
+                right: 7,
                 visible: true,
             },
         },
@@ -346,19 +346,19 @@ const STATUS_EFFECTS = {
                 visible: true,
             },
             large: {
-                scale: 0.1,
-                top: 0,
+                scale: 0.2,
+                top: 8,
                 bottom: 0,
                 left: 0,
-                right: 2,
+                right: 0,
                 visible: true,
             },
             huge: {
-                scale: 0.3,
-                top: 0,
+                scale: 1,
+                top: 10,
                 bottom: 0,
                 left: 0,
-                right: 4,
+                right: 0,
                 visible: true,
             },
         },
@@ -1072,7 +1072,7 @@ const spriteAnimation = keyframes`
 ----------------------------------------- */
 const OPACITY_BY_SIZE = {
     xs: 0.8,
-    small: 0.85,
+    small: 1,
     medium: 0.9,
     large: 1,
     huge: 1,
