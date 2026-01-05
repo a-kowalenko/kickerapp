@@ -21,8 +21,6 @@ const StyledAchievements = styled.div`
 `;
 
 const Content = styled.div`
-    padding: 0 2.4rem;
-
     @media (max-width: 768px) {
         padding: 0 1.2rem;
     }

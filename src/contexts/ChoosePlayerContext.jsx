@@ -19,6 +19,10 @@ const initialState = {
     isStarting: false,
     timer: START_MATCH_COUNTDOWN,
     originalPlayersBeforeBalance: null,
+    // Team match mode
+    isTeamMatchMode: false,
+    selectedTeam1: null,
+    selectedTeam2: null,
 };
 
 function reducer(state, action) {
@@ -123,6 +127,27 @@ function reducer(state, action) {
                 ...state,
                 originalPlayersBeforeBalance: null,
             };
+        case "toggle_team_match_mode":
+            return {
+                ...state,
+                isTeamMatchMode: action.payload,
+                selectedTeam1: null,
+                selectedTeam2: null,
+            };
+        case "select_team":
+            return {
+                ...state,
+                [`selectedTeam${action.payload.teamNumber}`]:
+                    action.payload.team,
+            };
+        case "clear_teams":
+            return {
+                ...state,
+                selectedTeam1: null,
+                selectedTeam2: null,
+            };
+        default:
+            return state;
     }
 }
 
@@ -138,6 +163,9 @@ function ChoosePlayerProvider({ children }) {
             filteredPlayers,
             filteredForPlayer3And4,
             originalPlayersBeforeBalance,
+            isTeamMatchMode,
+            selectedTeam1,
+            selectedTeam2,
         },
         dispatch,
     ] = useReducer(reducer, initialState);
@@ -193,13 +221,23 @@ function ChoosePlayerProvider({ children }) {
                 1000
             );
         } else if (timer === -1) {
-            const finalPlayers = {
-                player1: selectedPlayers[0],
-                player2: selectedPlayers[1],
-                player3: selectedPlayers[2],
-                player4: selectedPlayers[3],
-            };
-            createMatch(finalPlayers);
+            if (isTeamMatchMode && selectedTeam1 && selectedTeam2) {
+                // Team match mode - pass team information
+                createMatch({
+                    isTeamMatch: true,
+                    team1: selectedTeam1,
+                    team2: selectedTeam2,
+                });
+            } else {
+                // Individual match mode
+                const finalPlayers = {
+                    player1: selectedPlayers[0],
+                    player2: selectedPlayers[1],
+                    player3: selectedPlayers[2],
+                    player4: selectedPlayers[3],
+                };
+                createMatch(finalPlayers);
+            }
         }
 
         return () => {
@@ -212,6 +250,9 @@ function ChoosePlayerProvider({ children }) {
         selectedPlayers,
         countdownAudio,
         players,
+        isTeamMatchMode,
+        selectedTeam1,
+        selectedTeam2,
     ]);
 
     useEffect(() => {
@@ -279,9 +320,20 @@ function ChoosePlayerProvider({ children }) {
     }
 
     function startCountdown() {
-        if (!selectedPlayers[0] || !selectedPlayers[1]) {
-            toast.error("You must select player 1 and player 2");
-            return;
+        if (isTeamMatchMode) {
+            if (!selectedTeam1 || !selectedTeam2) {
+                toast.error("You must select both teams");
+                return;
+            }
+            if (selectedTeam1.id === selectedTeam2.id) {
+                toast.error("Teams must be different");
+                return;
+            }
+        } else {
+            if (!selectedPlayers[0] || !selectedPlayers[1]) {
+                toast.error("You must select player 1 and player 2");
+                return;
+            }
         }
 
         startTimer();
@@ -479,6 +531,27 @@ function ChoosePlayerProvider({ children }) {
             ? [{ text: "No player", value: null }, ...filteredPlayers]
             : filteredPlayers;
 
+    // Team match mode functions
+    function setTeamMatchMode(enabled) {
+        dispatch({ type: "toggle_team_match_mode", payload: enabled });
+        // Clear individual player selections when switching to team mode
+        if (enabled) {
+            searchParams.delete("player1");
+            searchParams.delete("player2");
+            searchParams.delete("player3");
+            searchParams.delete("player4");
+            setSearchParams(searchParams, { replace: true });
+        }
+    }
+
+    function selectTeam(team, teamNumber) {
+        dispatch({ type: "select_team", payload: { team, teamNumber } });
+    }
+
+    function clearTeams() {
+        dispatch({ type: "clear_teams" });
+    }
+
     return (
         <ChoosePlayerContext.Provider
             value={{
@@ -501,6 +574,13 @@ function ChoosePlayerProvider({ children }) {
                 balanceTeams,
                 canBalanceTeams,
                 isAlreadyBalanced,
+                // Team match mode
+                isTeamMatchMode,
+                setTeamMatchMode,
+                selectedTeam1,
+                selectedTeam2,
+                selectTeam,
+                clearTeams,
             }}
         >
             {children}

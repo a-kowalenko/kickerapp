@@ -27,6 +27,7 @@ export const media = {
 export const GAMEMODE_1ON1 = "1on1";
 export const GAMEMODE_2ON2 = "2on2";
 export const GAMEMODE_2ON1 = "2on1";
+export const GAMEMODE_TEAM = "team";
 export const MATCH_ACTIVE = "active";
 export const MATCH_ENDED = "ended";
 export const MATCH_ENDED_BY_CRON = "ended_by_cron";
@@ -55,6 +56,14 @@ export const COMMENT_REACTIONS = "comment_reactions";
 export const CHAT_MESSAGES = "chat_messages";
 export const CHAT_REACTIONS = "chat_reactions";
 export const CHAT_TYPING = "chat_typing";
+export const TEAMS = "teams";
+export const TEAM_INVITATIONS = "team_invitations";
+
+// TEAM CONSTANTS
+export const TEAM_STATUS_PENDING = "pending";
+export const TEAM_STATUS_ACTIVE = "active";
+export const TEAM_STATUS_DISSOLVED = "dissolved";
+export const TEAM_STARTING_MMR = 1000;
 
 // COMMENT CONSTANTS
 export const MAX_COMMENT_LENGTH = 1000;

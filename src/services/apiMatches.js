@@ -14,6 +14,8 @@ import {
     PLAYER,
     SEASON_RANKINGS,
     STANDARD_GOAL,
+    TEAMS,
+    GAMEMODE_TEAM,
 } from "../utils/constants";
 import { calculateMmrChange } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
@@ -263,8 +265,8 @@ export async function createMatch({ players, kicker }) {
         !player3 && !player4
             ? GAMEMODE_1ON1
             : player3 && player4
-            ? GAMEMODE_2ON2
-            : GAMEMODE_2ON1;
+              ? GAMEMODE_2ON2
+              : GAMEMODE_2ON1;
 
     const { data, error } = await supabase
         .from(MATCHES)
@@ -285,6 +287,70 @@ export async function createMatch({ players, kicker }) {
 
     if (error) {
         throw new Error("There was an error creating the match", error.message);
+    }
+
+    // Fetch the full match with populated player objects
+    return await getMatch({ matchId: data.id, kicker });
+}
+
+export async function createTeamMatch({ team1, team2, kicker }) {
+    // Check for active matches first
+    const { data: activeMatches, error: activeMatchesError } = await supabase
+        .from(MATCHES)
+        .select("*")
+        .eq("status", MATCH_ACTIVE)
+        .eq("kicker_id", kicker);
+
+    if (activeMatchesError) {
+        throw new Error(
+            "There was an error while checking for active matches",
+            activeMatchesError.message
+        );
+    }
+
+    if (activeMatches.length > 0) {
+        throw new Error("There already is an active match");
+    }
+
+    // Get current season from kicker
+    const { data: kickerData, error: kickerError } = await supabase
+        .from("kicker")
+        .select("current_season_id")
+        .eq("id", kicker)
+        .single();
+
+    if (kickerError) {
+        throw new Error("Error fetching kicker data", kickerError.message);
+    }
+
+    const currentSeasonId = kickerData?.current_season_id || null;
+
+    // Create the team match
+    // Team match is always 2on2 with fixed team structure
+    const { data, error } = await supabase
+        .from(MATCHES)
+        .insert([
+            {
+                player1: team1.player1_id,
+                player2: team2.player1_id,
+                player3: team1.player2_id,
+                player4: team2.player2_id,
+                team1_id: team1.id,
+                team2_id: team2.id,
+                gamemode: GAMEMODE_TEAM,
+                start_time: new Date(),
+                kicker_id: kicker,
+                season_id: currentSeasonId,
+            },
+        ])
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(
+            "There was an error creating the team match",
+            error.message
+        );
     }
 
     // Fetch the full match with populated player objects

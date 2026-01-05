@@ -59,7 +59,7 @@ const StyledTabSlider = styled.div`
 const TabContent = styled.div`
     display: block;
     background-color: transparent;
-    padding: 1rem 2.4rem;
+    padding: 1rem 0;
 
     ${media.tablet} {
         padding: 1rem 0rem;
