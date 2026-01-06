@@ -237,7 +237,7 @@ function MatchDetail() {
     }
 
     function handleEndMatch() {
-        if (match?.status !== "active") {
+        if (isLoadingEndMatch || match?.status !== "active") {
             return;
         }
 
@@ -561,6 +561,7 @@ function MatchDetail() {
                         $size="xlarge"
                         action={handleEndMatch}
                         icon={<HiArrowDownTray />}
+                        disabled={isLoadingEndMatch}
                     >
                         {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
                     </DelayedButton>

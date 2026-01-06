@@ -358,7 +358,7 @@ function MatchDetailMobile({ match, timer }) {
     }
 
     function handleEndMatch() {
-        if (isEnded) {
+        if (isLoadingEndMatch || isEnded) {
             return;
         }
 
@@ -634,6 +634,7 @@ function MatchDetailMobile({ match, timer }) {
                         <DelayedButton
                             action={handleEndMatch}
                             icon={<HiArrowDownTray />}
+                            disabled={isLoadingEndMatch}
                         >
                             {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
                         </DelayedButton>

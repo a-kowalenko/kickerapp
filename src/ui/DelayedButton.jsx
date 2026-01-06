@@ -1,7 +1,6 @@
 import styled, { css } from "styled-components";
 import { END_MATCH_PRESS_DELAY } from "../utils/constants";
-import { useRef } from "react";
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 const ButtonContainer = styled.div`
     position: relative;
@@ -151,20 +150,31 @@ const CircleProgress = styled.circle.attrs((props) => ({
     stroke-width: ${ProgressBarStrokeWidth};
 `;
 
-function DelayedButton({ action, children, icon, ...props }) {
+function DelayedButton({ action, children, icon, disabled, ...props }) {
     const [percentageComplete, setPercentageComplete] = useState(0);
     const timerRef = useRef(null);
     const startTimeRef = useRef(null);
+    const actionCalledRef = useRef(false);
+
+    // Cleanup interval on unmount to prevent orphaned intervals
+    useEffect(() => {
+        return () => {
+            clearInterval(timerRef.current);
+        };
+    }, []);
 
     function handleMouseDown(e) {
         e.stopPropagation();
+        if (disabled) return;
+        actionCalledRef.current = false;
         startTimeRef.current = Date.now();
         timerRef.current = setInterval(() => {
             const elapsed = Date.now() - startTimeRef.current;
             const progress = Math.min(elapsed / END_MATCH_PRESS_DELAY, 1) * 100;
             setPercentageComplete(progress);
-            if (progress >= 100) {
+            if (progress >= 100 && !actionCalledRef.current) {
                 clearInterval(timerRef.current);
+                actionCalledRef.current = true;
                 action();
             }
         }, 10);
@@ -190,6 +200,7 @@ function DelayedButton({ action, children, icon, ...props }) {
                 onMouseLeave={handleMouseLeave}
                 onTouchStart={handleMouseDown}
                 onTouchEnd={handleMouseUp}
+                disabled={disabled}
                 {...props}
             >
                 {percentageComplete > 0 ? (

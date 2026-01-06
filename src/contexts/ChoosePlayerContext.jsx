@@ -519,6 +519,34 @@ function ChoosePlayerProvider({ children }) {
         toast.success(`Teams balanced! MMR difference: ${minDiff}`);
     }
 
+    // Shuffle all 4 players randomly across the two teams
+    function shufflePlayers() {
+        if (!canBalanceTeams) {
+            toast.error("All 4 players must be selected to shuffle teams");
+            return;
+        }
+
+        // Clear original players when shuffling (it's a fresh random distribution)
+        dispatch({ type: "clear_original_players" });
+
+        const playersArr = [player1, player2, player3, player4];
+
+        // Fisher-Yates shuffle algorithm
+        for (let i = playersArr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [playersArr[i], playersArr[j]] = [playersArr[j], playersArr[i]];
+        }
+
+        // Assign shuffled players: Team 1 = [0] + [2], Team 2 = [1] + [3]
+        searchParams.set("player1", playersArr[0].id);
+        searchParams.set("player2", playersArr[1].id);
+        searchParams.set("player3", playersArr[2].id);
+        searchParams.set("player4", playersArr[3].id);
+        setSearchParams(searchParams, { replace: true });
+
+        toast.success("Teams shuffled!");
+    }
+
     // Create filtered options for Player 1 (with "No player" if Player 3 exists)
     const filteredForPlayer1 =
         isPlayer3Active && player3
@@ -574,6 +602,7 @@ function ChoosePlayerProvider({ children }) {
                 balanceTeams,
                 canBalanceTeams,
                 isAlreadyBalanced,
+                shufflePlayers,
                 // Team match mode
                 isTeamMatchMode,
                 setTeamMatchMode,

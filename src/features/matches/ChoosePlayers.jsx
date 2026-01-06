@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { HiArrowsRightLeft, HiPlus, HiScale } from "react-icons/hi2";
+import { PiShuffle } from "react-icons/pi";
 import Button from "../../ui/Button";
 import FormRow from "../../ui/FormRow";
 import Heading from "../../ui/Heading";
@@ -125,6 +126,7 @@ function ChoosePlayers() {
         balanceTeams,
         canBalanceTeams,
         isAlreadyBalanced,
+        shufflePlayers,
         selectedPlayers: [player1, player2, player3, player4],
     } = useChoosePlayers();
 
@@ -219,6 +221,15 @@ function ChoosePlayers() {
                             >
                                 <HiScale />
                             </BalanceButton>
+                        )}
+                        {canBalanceTeams && (
+                            <MidButton
+                                onClick={shufflePlayers}
+                                disabled={isStarting}
+                                title="Shuffle Players Randomly"
+                            >
+                                <PiShuffle />
+                            </MidButton>
                         )}
                         <MidButton
                             onClick={switchTeams}

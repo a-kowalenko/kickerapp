@@ -5,6 +5,7 @@ import Dropdown from "../../ui/Dropdown";
 import SpinnerMini from "../../ui/SpinnerMini";
 import Button from "../../ui/Button";
 import { HiArrowsUpDown, HiPlus, HiScale } from "react-icons/hi2";
+import { PiShuffle } from "react-icons/pi";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
 import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
@@ -92,6 +93,7 @@ function ChoosePlayersMobile() {
         balanceTeams,
         canBalanceTeams,
         isAlreadyBalanced,
+        shufflePlayers,
         selectedPlayers: [player1, player2, player3, player4],
     } = useChoosePlayers();
 
@@ -170,6 +172,15 @@ function ChoosePlayersMobile() {
                         >
                             <HiScale />
                         </BalanceButton>
+                    )}
+                    {canBalanceTeams && (
+                        <MidButton
+                            onClick={shufflePlayers}
+                            disabled={isStarting}
+                            title="Shuffle Players Randomly"
+                        >
+                            <PiShuffle />
+                        </MidButton>
                     )}
                     <MidButton onClick={switchTeams}>
                         <HiArrowsUpDown />
