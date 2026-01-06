@@ -354,8 +354,10 @@ function TeamSettings({ teamId, team, isTeamMember }) {
 
     const handleDissolve = () => {
         dissolveTeam(teamId, {
-            onSuccess: () => {
-                navigate("/teams");
+            onSuccess: (data) => {
+                if (data?.success) {
+                    navigate("/teams");
+                }
             },
         });
     };

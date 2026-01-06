@@ -281,23 +281,23 @@ DECLARE
     v_team RECORD;
     v_user_player_id BIGINT;
 BEGIN
-    -- Get current user's player ID
-    SELECT id INTO v_user_player_id
-    FROM public.player
-    WHERE user_id = auth.uid()
-    LIMIT 1;
-    
-    IF v_user_player_id IS NULL THEN
-        RETURN json_build_object('success', false, 'error', 'Player not found');
-    END IF;
-    
-    -- Get team
+    -- Get team first to know which kicker it belongs to
     SELECT * INTO v_team
     FROM public.teams
     WHERE id = p_team_id;
     
     IF v_team IS NULL THEN
         RETURN json_build_object('success', false, 'error', 'Team not found');
+    END IF;
+    
+    -- Get current user's player ID for the team's kicker
+    SELECT id INTO v_user_player_id
+    FROM public.player
+    WHERE user_id = auth.uid() AND kicker_id = v_team.kicker_id
+    LIMIT 1;
+    
+    IF v_user_player_id IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'Player not found');
     END IF;
     
     -- Check if user is a team member

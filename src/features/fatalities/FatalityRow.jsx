@@ -1,10 +1,12 @@
+import { useNavigate, Link } from "react-router-dom";
 import styled from "styled-components";
 import Table from "../../ui/Table";
 import { format } from "date-fns";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR, GAMEMODE_TEAM } from "../../utils/constants";
 import PlayerName from "../../ui/PlayerName";
-import { useNavigate, Link } from "react-router-dom";
+import TeamLogo from "../../ui/TeamLogo";
+import DefaultTeamLogo from "../../ui/DefaultTeamLogo";
 
 const Stat = styled.div`
     font-family: "Sono";
@@ -48,6 +50,16 @@ function FatalityRow({ fatality }) {
                         to={`/team/${loserTeam.id}`}
                         onClick={(e) => e.stopPropagation()}
                     >
+                        {loserTeam.logo_url ? (
+                            <TeamLogo
+                                src={loserTeam.logo_url}
+                                alt={loserTeam.name}
+                            />
+                        ) : (
+                            <DefaultTeamLogo>
+                                {loserTeam.name?.charAt(0)?.toUpperCase()}
+                            </DefaultTeamLogo>
+                        )}
                         {loserTeam.name}
                     </TeamLink>
                 </div>
@@ -57,6 +69,16 @@ function FatalityRow({ fatality }) {
                         to={`/team/${winnerTeam.id}`}
                         onClick={(e) => e.stopPropagation()}
                     >
+                        {winnerTeam.logo_url ? (
+                            <TeamLogo
+                                src={winnerTeam.logo_url}
+                                alt={winnerTeam.name}
+                            />
+                        ) : (
+                            <DefaultTeamLogo>
+                                {winnerTeam.name?.charAt(0)?.toUpperCase()}
+                            </DefaultTeamLogo>
+                        )}
                         {winnerTeam.name}
                     </TeamLink>
                 </div>
