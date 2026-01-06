@@ -756,7 +756,7 @@ export async function getTeamMmrHistory(teamId, limit = 50) {
 export async function getTeamOpponentStats(teamId) {
     // Ensure teamId is a number for comparison
     const numericTeamId = Number(teamId);
-    
+
     // Fetch all matches for this team
     const { data, error } = await supabase
         .schema(databaseSchema)
