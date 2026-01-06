@@ -543,7 +543,14 @@ export async function endMatch({ id, score1, score2, kicker }) {
         scoreTeam2,
         season_id,
     } = match;
-    const gameMode = !player3 && !player4 ? GAMEMODE_1ON1 : GAMEMODE_2ON2;
+
+    // Use actual gamemode from match - GAMEMODE_TEAM should NOT affect player 2on2 MMR
+    const isTeamMode = match.gamemode === GAMEMODE_TEAM;
+    const gameMode = isTeamMode
+        ? GAMEMODE_TEAM
+        : !player3 && !player4
+        ? GAMEMODE_1ON1
+        : GAMEMODE_2ON2;
 
     const finalScore1 = score1 ? score1 : scoreTeam1;
     const finalScore2 = score2 ? score2 : scoreTeam2;
@@ -562,7 +569,8 @@ export async function endMatch({ id, score1, score2, kicker }) {
     let seasonRankingsMap = {};
 
     // Get season rankings for MMR calculation (only if match has a season)
-    if (season_id) {
+    // For team matches, we skip player season_rankings but handle team_season_rankings separately
+    if (season_id && !isTeamMode) {
         const playerIds = [player1.id, player2.id];
         if (player3) playerIds.push(player3.id);
         if (player4) playerIds.push(player4.id);
@@ -678,6 +686,46 @@ export async function endMatch({ id, score1, score2, kicker }) {
         match.bountyTeam2 = bountyTeam2;
     }
 
+    // For team matches with a season, get team MMR from team_season_rankings
+    let teamSeasonRankingsMap = {};
+    if (season_id && isTeamMode && match.team1_id && match.team2_id) {
+        const { data: teamRankings, error: teamRankingsError } = await supabase
+            .from("team_season_rankings")
+            .select("*")
+            .eq("season_id", season_id)
+            .in("team_id", [match.team1_id, match.team2_id]);
+
+        if (teamRankingsError) {
+            console.error(
+                "Error fetching team season rankings:",
+                teamRankingsError
+            );
+        }
+
+        // Create a map for easy lookup
+        teamRankings?.forEach((r) => {
+            teamSeasonRankingsMap[r.team_id] = r;
+        });
+
+        // Calculate MMR change based on team season rankings
+        const team1SeasonMmr =
+            teamSeasonRankingsMap[match.team1_id]?.mmr || 1000;
+        const team2SeasonMmr =
+            teamSeasonRankingsMap[match.team2_id]?.mmr || 1000;
+
+        mmrChangeForTeam1 = calculateMmrChange(
+            team1SeasonMmr,
+            team2SeasonMmr,
+            team1Wins ? 1 : 0
+        );
+
+        if (isFatality) {
+            mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
+        }
+
+        mmrChangeForTeam2 = -mmrChangeForTeam1;
+    }
+
     // Update player table with wins/losses only (no MMR changes)
     if (gameMode === GAMEMODE_1ON1) {
         const newPlayer1Wins = team1Wins ? player1.wins + 1 : player1.wins;
@@ -770,8 +818,11 @@ export async function endMatch({ id, score1, score2, kicker }) {
     let bountyTeam2Team = 0;
 
     if (match.team1_id && match.team2_id) {
-        // Calculate team MMR change (use the same MMR change as players)
-        const teamMmrChange = Math.abs(mmrChangeForTeam1);
+        // For team matches, use the already calculated MMR change from team_season_rankings
+        // For 2on2 matches with teams, use the player-based MMR change
+        const teamMmrChange = isTeamMode
+            ? Math.abs(mmrChangeForTeam1)
+            : Math.abs(mmrChangeForTeam1);
 
         // Update all-time team stats (wins/losses/mmr on teams table)
         // Update winning team
@@ -854,14 +905,19 @@ export async function endMatch({ id, score1, score2, kicker }) {
             ? seasonRankingsMap[player4.id]?.mmr2on2
             : null;
 
+    // For team matches, always store MMR change (team MMR is always tracked)
+    // For regular matches, only store if there's a season
+    // Only store MMR change if there's a season (applies to all gamemodes including team)
+    const shouldStoreMmrChange = season_id ? true : false;
+
     const { data, error } = await supabase
         .from(MATCHES)
         .update({
             status: MATCH_ENDED,
             scoreTeam1: finalScore1,
             scoreTeam2: finalScore2,
-            mmrChangeTeam1: season_id ? mmrChangeForTeam1 : null,
-            mmrChangeTeam2: season_id ? mmrChangeForTeam2 : null,
+            mmrChangeTeam1: shouldStoreMmrChange ? mmrChangeForTeam1 : null,
+            mmrChangeTeam2: shouldStoreMmrChange ? mmrChangeForTeam2 : null,
             mmrPlayer1,
             mmrPlayer2,
             mmrPlayer3,

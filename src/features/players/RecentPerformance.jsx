@@ -97,7 +97,14 @@ const CardBody = styled.div`
     flex-direction: ${(props) => (props.$hasBoth ? "row" : "column")};
     justify-content: ${(props) => (props.$hasBoth ? "space-evenly" : "center")};
     align-items: ${(props) => (props.$hasBoth ? "flex-start" : "center")};
-    gap: 2.4rem;
+    gap: 3.6rem;
+    flex-wrap: wrap;
+
+    ${media.tablet} {
+        flex-direction: column;
+        align-items: center;
+        gap: 2.4rem;
+    }
 
     ${media.mobile} {
         padding: 1.6rem;
@@ -132,7 +139,7 @@ const ShieldsContainer = styled.div`
     align-items: center;
     justify-content: center;
     gap: 0.6rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 
     ${media.mobile} {
         gap: 0.4rem;

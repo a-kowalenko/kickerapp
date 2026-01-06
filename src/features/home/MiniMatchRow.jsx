@@ -29,21 +29,6 @@ const TeamContainer = styled.div`
     }
 `;
 
-const TeamName = styled.span`
-    font-weight: 600;
-    color: ${(props) =>
-        props.$won === null
-            ? "var(--primary-text-color)"
-            : props.$won === true
-            ? "var(--winner-name-color)"
-            : "var(--loser-name-color)"};
-    cursor: pointer;
-
-    &:hover {
-        text-decoration: underline;
-    }
-`;
-
 const MmrChange = styled.span`
     font-size: 1.2rem;
     margin-left: 0.4rem;
@@ -94,23 +79,33 @@ const BountyBadge = styled.span`
     margin-left: 0.4rem;
 `;
 
-const TeamModeBadge = styled.span`
+// Team name with special styling to indicate it's a team match
+const StyledTeamName = styled.span`
+    font-weight: 600;
+    color: ${(props) =>
+        props.$won === null
+            ? "var(--primary-text-color)"
+            : props.$won === true
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    padding: 0.2rem 0.5rem;
-    background-color: var(--color-purple-100, #ede9fe);
-    color: var(--color-purple-700, #6d28d9);
-    border-radius: 0.4rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-left: 0.6rem;
+    gap: 0.4rem;
+
+    &::before {
+        content: "👥";
+        font-size: 1.1rem;
+    }
+
+    &:hover {
+        text-decoration: underline;
+    }
 
     ${media.mobile} {
-        font-size: 0.9rem;
-        padding: 0.15rem 0.4rem;
+        &::before {
+            font-size: 1rem;
+        }
     }
 `;
 
@@ -143,7 +138,7 @@ function MiniMatchRow({ match }) {
             <MiniTable.Row onClick={handleClickRow} isTeamMatch={true}>
                 {showId && <div>{match.nr}</div>}
                 <TeamContainer $won={team1Won} $team="1">
-                    <TeamName
+                    <StyledTeamName
                         $won={team1Won}
                         onClick={(e) => handleTeamClick(e, team1.id)}
                     >
@@ -159,21 +154,20 @@ function MiniMatchRow({ match }) {
                                 +{match.bounty_team1_team}💰
                             </BountyBadge>
                         )}
-                    </TeamName>
+                    </StyledTeamName>
                 </TeamContainer>
 
                 <ScoreContainer>
                     <Score $team="1">{match.scoreTeam1}</Score>
                     &mdash;
                     <Score $team="2">{match.scoreTeam2}</Score>
-                    <TeamModeBadge>Team</TeamModeBadge>
                 </ScoreContainer>
 
                 <TeamContainer
                     $won={team1Won === null ? null : !team1Won}
                     $team="2"
                 >
-                    <TeamName
+                    <StyledTeamName
                         $won={team1Won === null ? null : !team1Won}
                         onClick={(e) => handleTeamClick(e, team2.id)}
                     >
@@ -189,7 +183,7 @@ function MiniMatchRow({ match }) {
                                 +{match.bounty_team2_team}💰
                             </BountyBadge>
                         )}
-                    </TeamName>
+                    </StyledTeamName>
                 </TeamContainer>
                 {showStartTime && (
                     <div>
