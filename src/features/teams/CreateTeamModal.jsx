@@ -393,7 +393,9 @@ function CreateTeamModal({ onClose }) {
                                             <SpinnerMini />
                                         </LoadingState>
                                     ) : availablePartners.length === 0 ? (
-                                        <InfoText>No players available</InfoText>
+                                        <InfoText>
+                                            No players available
+                                        </InfoText>
                                     ) : (
                                         availablePartners.map((player) => (
                                             <PlayerOption

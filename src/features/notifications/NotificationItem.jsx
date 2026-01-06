@@ -4,6 +4,7 @@ import { de } from "date-fns/locale";
 import {
     HiOutlineChatBubbleLeftRight,
     HiOutlineChatBubbleOvalLeft,
+    HiOutlineUserGroup,
 } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
@@ -216,6 +217,9 @@ function NotificationItem({ notification, onMarkAsRead }) {
         } else if (type === "chat") {
             // Navigate to home with chat tab and scroll-to message
             navigate(`/home?tab=chat&scrollTo=message-${source_id}`);
+        } else if (type === "team_invite") {
+            // Navigate to my teams page where invitations are shown
+            navigate("/teams/my");
         }
     }
 
@@ -230,6 +234,8 @@ function NotificationItem({ notification, onMarkAsRead }) {
                 <TypeBadge>
                     {type === "comment" ? (
                         <HiOutlineChatBubbleOvalLeft />
+                    ) : type === "team_invite" ? (
+                        <HiOutlineUserGroup />
                     ) : (
                         <HiOutlineChatBubbleLeftRight />
                     )}
@@ -251,6 +257,7 @@ function NotificationItem({ notification, onMarkAsRead }) {
                         <MatchInfo>{matchInfoString}</MatchInfo>
                     )}
                     {type === "chat" && <span>Chat</span>}
+                    {type === "team_invite" && <span>Team Invite</span>}
                 </MetaInfo>
             </ContentWrapper>
         </ItemContainer>
