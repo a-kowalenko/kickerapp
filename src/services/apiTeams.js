@@ -754,6 +754,9 @@ export async function getTeamMmrHistory(teamId, limit = 50) {
  * @returns {Promise<Array<{ teamId: number, teamName: string, wins: number, losses: number }>>}
  */
 export async function getTeamOpponentStats(teamId) {
+    // Ensure teamId is a number for comparison
+    const numericTeamId = Number(teamId);
+    
     // Fetch all matches for this team
     const { data, error } = await supabase
         .schema(databaseSchema)
@@ -780,12 +783,13 @@ export async function getTeamOpponentStats(teamId) {
     const opponentMap = new Map();
 
     (data || []).forEach((match) => {
-        const isTeam1 = match.team1_id === teamId;
+        const isTeam1 = match.team1_id === numericTeamId;
         const opponent = isTeam1 ? match.team2 : match.team1;
         const teamScore = isTeam1 ? match.scoreTeam1 : match.scoreTeam2;
         const opponentScore = isTeam1 ? match.scoreTeam2 : match.scoreTeam1;
 
-        if (!opponent?.id) return;
+        // Skip if opponent is missing or if opponent is the same team (self-match)
+        if (!opponent?.id || opponent.id === numericTeamId) return;
 
         if (!opponentMap.has(opponent.id)) {
             opponentMap.set(opponent.id, {

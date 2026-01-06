@@ -6039,6 +6039,7 @@ DECLARE
     v_parent_max_progress INTEGER;
     v_current_progress INTEGER;
     v_just_unlocked_ids BIGINT[] := ARRAY[]::BIGINT[];
+    v_effective_gamemode TEXT;
 BEGIN
     -- Skip goal removals/undos
     IF NEW.amount <= 0 AND NEW.goal_type != 'own_goal' THEN
@@ -6055,6 +6056,9 @@ BEGIN
     FROM kopecht.matches m
     WHERE m.id = NEW.match_id;
     
+    -- Normalize gamemode: "team" should be treated as "2on2" for achievement purposes
+    v_effective_gamemode := CASE WHEN NEW.gamemode = 'team' THEN '2on2' ELSE NEW.gamemode END;
+    
     -- Process all counter-based GOAL_SCORED achievements
     -- ORDER BY parent_id NULLS FIRST ensures parents are processed before children
     FOR v_achievement IN 
@@ -6069,8 +6073,8 @@ BEGIN
         v_gamemode_filter := v_achievement.condition->'filters'->>'gamemode';
         v_goal_type_filter := v_achievement.condition->'filters'->>'goal_type';
         
-        -- Check gamemode filter
-        IF v_gamemode_filter IS NOT NULL AND v_gamemode_filter != NEW.gamemode THEN
+        -- Check gamemode filter (using normalized gamemode: "team" -> "2on2")
+        IF v_gamemode_filter IS NOT NULL AND v_gamemode_filter != v_effective_gamemode THEN
             CONTINUE;
         END IF;
         
