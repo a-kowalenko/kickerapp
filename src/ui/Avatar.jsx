@@ -265,8 +265,8 @@ const STATUS_EFFECTS = {
     },
     legendary: {
         type: "gif",
-        asset: LegendaryGif, // TODO: Eigenes goldenes Feuer-Asset
-        zIndex: 11,
+        asset: LegendaryGif,
+        zIndex: 1,
         cssEffect: "legendary",
         color: "rgba(255, 215, 0, 0.8)",
         sizeConfig: {

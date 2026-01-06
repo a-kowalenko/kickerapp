@@ -122,6 +122,14 @@ export async function getActiveTeamsByPlayer(playerId, kickerId) {
 }
 
 /**
+ * Convert snake_case status keys to camelCase asset_keys
+ * e.g., 'warming_up' -> 'warmingUp', 'hot_streak' -> 'hotStreak'
+ */
+function snakeToCamelCase(str) {
+    return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+/**
  * Get a single team by ID
  * @param {number} teamId - Team ID
  * @returns {Promise<Object>}
@@ -134,7 +142,8 @@ export async function getTeamById(teamId) {
             `
             *,
             player1:player!teams_player1_id_fkey(id, name, avatar, user_id),
-            player2:player!teams_player2_id_fkey(id, name, avatar, user_id)
+            player2:player!teams_player2_id_fkey(id, name, avatar, user_id),
+            team_status(current_streak, current_bounty, active_statuses)
         `
         )
         .eq("id", teamId)
@@ -143,6 +152,50 @@ export async function getTeamById(teamId) {
     if (error) {
         console.error("[Teams] Error fetching team:", error);
         throw new Error(error.message || "Failed to fetch team");
+    }
+
+    // Flatten team_status for easier access
+    if (data && data.team_status) {
+        // team_status is returned as array (due to 1:1 relation), take first element
+        const status = Array.isArray(data.team_status)
+            ? data.team_status[0]
+            : data.team_status;
+        data.current_streak = status?.current_streak || 0;
+        data.current_bounty = status?.current_bounty || 0;
+        // Convert snake_case status keys to camelCase for StatusBadge component
+        const rawStatuses = status?.active_statuses || [];
+        data.active_statuses = rawStatuses.map(snakeToCamelCase);
+    } else {
+        data.current_streak = 0;
+        data.current_bounty = 0;
+        data.active_statuses = [];
+    }
+
+    return data;
+}
+
+/**
+ * Get team's season ranking data (MMR, wins, losses for a specific season)
+ * @param {number} teamId - Team ID
+ * @param {number} seasonId - Season ID
+ * @returns {Promise<Object|null>} Season ranking data or null if not found
+ */
+export async function getTeamSeasonRanking(teamId, seasonId) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .from("team_season_rankings")
+        .select("*")
+        .eq("team_id", teamId)
+        .eq("season_id", seasonId)
+        .single();
+
+    if (error) {
+        // Not found is expected for teams without season data
+        if (error.code === "PGRST116") {
+            return null;
+        }
+        console.error("[Teams] Error fetching team season ranking:", error);
+        return null;
     }
 
     return data;
@@ -615,8 +668,8 @@ export async function getTeamMatches(teamId, { page = 1, pageSize = 10 } = {}) {
         .select(
             `
             *,
-            team1:teams!matches_team1_id_fkey(id, name, logo_url),
-            team2:teams!matches_team2_id_fkey(id, name, logo_url),
+            team1:teams!matches_team1_id_fkey(id, name, logo_url, mmr),
+            team2:teams!matches_team2_id_fkey(id, name, logo_url, mmr),
             player1:player!matches_player1_fkey(id, name, avatar),
             player2:player!matches_player2_fkey(id, name, avatar),
             player3:player!matches_player3_fkey(id, name, avatar),

@@ -322,9 +322,10 @@ BEGIN
     PERFORM public.get_or_create_team_season_ranking(p_team_id, p_season_id);
     
     -- Update the ranking
+    -- Add bounty_claimed to MMR for winner (same as player bounty logic)
     UPDATE public.team_season_rankings
     SET 
-        mmr = mmr + p_mmr_change,
+        mmr = mmr + p_mmr_change + p_bounty_claimed,
         wins = CASE WHEN p_won THEN wins + 1 ELSE wins END,
         losses = CASE WHEN NOT p_won THEN losses + 1 ELSE losses END,
         bounty_claimed = bounty_claimed + p_bounty_claimed

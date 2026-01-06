@@ -24,18 +24,21 @@ const TeamContainer = styled.div`
             props.$won === null
                 ? "var(--primary-text-color)"
                 : props.$won === true
-                ? "var(--winner-name-color)"
-                : "var(--loser-name-color)"};
+                  ? "var(--winner-name-color)"
+                  : "var(--loser-name-color)"};
     }
 `;
 
 const MmrChange = styled.span`
-    font-size: 1.2rem;
-    margin-left: 0.4rem;
+    font-size: 1.6rem;
     color: ${(props) =>
         props.$positive
             ? "var(--winner-name-color)"
             : "var(--loser-name-color)"};
+
+    ${media.mobile} {
+        font-size: 1.4rem;
+    }
 `;
 
 const ScoreContainer = styled.div`
@@ -76,36 +79,46 @@ const DurationContainer = styled.div`
 const BountyBadge = styled.span`
     color: var(--color-yellow-600);
     font-size: 1.2rem;
-    margin-left: 0.4rem;
 `;
 
 // Team name with special styling to indicate it's a team match
 const StyledTeamName = styled.span`
+    display: flex;
+    flex-direction: row;
     font-weight: 600;
+    gap: 0.4rem;
     color: ${(props) =>
         props.$won === null
             ? "var(--primary-text-color)"
             : props.$won === true
-            ? "var(--winner-name-color)"
-            : "var(--loser-name-color)"};
+              ? "var(--winner-name-color)"
+              : "var(--loser-name-color)"};
     cursor: pointer;
     display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-
-    &::before {
-        content: "👥";
-        font-size: 1.1rem;
-    }
 
     &:hover {
         text-decoration: underline;
     }
 
     ${media.mobile} {
-        &::before {
-            font-size: 1rem;
-        }
+        font-size: 1.4rem;
+        gap: unset;
+        flex-direction: column;
+    }
+`;
+
+const TeamNameText = styled.span`
+    ${media.mobile} {
+        display: flex;
+        justify-content: ${(props) =>
+            props.$team === "1" ? "flex-end" : "flex-start"};
+    }
+`;
+const TeamMmrText = styled.span`
+    ${media.mobile} {
+        display: flex;
+        justify-content: ${(props) =>
+            props.$team === "1" ? "flex-end" : "flex-start"};
     }
 `;
 
@@ -134,6 +147,16 @@ function MiniMatchRow({ match }) {
 
     // Render team match display
     if (isTeamMatch) {
+        // Calculate pre-match MMR for teams (current MMR - change = pre-match MMR)
+        const team1PreMatchMmr =
+            team1.mmr && match.mmrChangeTeam1
+                ? Math.round(team1.mmr - match.mmrChangeTeam1)
+                : null;
+        const team2PreMatchMmr =
+            team2.mmr && match.mmrChangeTeam2
+                ? Math.round(team2.mmr - match.mmrChangeTeam2)
+                : null;
+
         return (
             <MiniTable.Row onClick={handleClickRow} isTeamMatch={true}>
                 {showId && <div>{match.nr}</div>}
@@ -142,18 +165,23 @@ function MiniMatchRow({ match }) {
                         $won={team1Won}
                         onClick={(e) => handleTeamClick(e, team1.id)}
                     >
-                        {team1.name}
-                        {match.mmrChangeTeam1 && (
-                            <MmrChange $positive={team1Won}>
-                                {team1Won ? "+" : ""}
-                                {match.mmrChangeTeam1}
-                            </MmrChange>
-                        )}
-                        {team1Won && match.bounty_team1_team > 0 && (
-                            <BountyBadge>
-                                +{match.bounty_team1_team}💰
-                            </BountyBadge>
-                        )}
+                        <TeamNameText $team="1">{team1.name}</TeamNameText>
+                        <TeamMmrText $team="1">
+                            {match.mmrChangeTeam1 && team1PreMatchMmr && (
+                                <>
+                                    ({team1PreMatchMmr})
+                                    <MmrChange $positive={team1Won}>
+                                        {team1Won ? "+" : ""}
+                                        {match.mmrChangeTeam1}
+                                    </MmrChange>
+                                </>
+                            )}
+                            {team1Won && match.bounty_team1_team > 0 && (
+                                <BountyBadge>
+                                    +{match.bounty_team1_team}💰
+                                </BountyBadge>
+                            )}
+                        </TeamMmrText>
                     </StyledTeamName>
                 </TeamContainer>
 
@@ -171,18 +199,23 @@ function MiniMatchRow({ match }) {
                         $won={team1Won === null ? null : !team1Won}
                         onClick={(e) => handleTeamClick(e, team2.id)}
                     >
-                        {team2.name}
-                        {match.mmrChangeTeam2 && (
-                            <MmrChange $positive={!team1Won}>
-                                {!team1Won ? "+" : ""}
-                                {match.mmrChangeTeam2}
-                            </MmrChange>
-                        )}
-                        {!team1Won && match.bounty_team2_team > 0 && (
-                            <BountyBadge>
-                                +{match.bounty_team2_team}💰
-                            </BountyBadge>
-                        )}
+                        <TeamNameText $team="2">{team2.name}</TeamNameText>
+                        <TeamMmrText $team="2">
+                            {match.mmrChangeTeam2 && team2PreMatchMmr && (
+                                <>
+                                    ({team2PreMatchMmr})
+                                    <MmrChange $positive={!team1Won}>
+                                        {!team1Won ? "+" : ""}
+                                        {match.mmrChangeTeam2}
+                                    </MmrChange>
+                                </>
+                            )}
+                            {!team1Won && match.bounty_team2_team > 0 && (
+                                <BountyBadge>
+                                    +{match.bounty_team2_team}💰
+                                </BountyBadge>
+                            )}
+                        </TeamMmrText>
                     </StyledTeamName>
                 </TeamContainer>
                 {showStartTime && (

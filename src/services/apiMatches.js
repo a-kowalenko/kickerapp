@@ -38,8 +38,8 @@ const MATCH_SELECT_QUERY = `
     player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
     player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
     player4: ${PLAYER}!${MATCHES}_player4_fkey (*),
-    team1: ${TEAMS}!${MATCHES}_team1_id_fkey (id, name, logo_url),
-    team2: ${TEAMS}!${MATCHES}_team2_id_fkey (id, name, logo_url)
+    team1: ${TEAMS}!${MATCHES}_team1_id_fkey (id, name, logo_url, mmr),
+    team2: ${TEAMS}!${MATCHES}_team2_id_fkey (id, name, logo_url, mmr)
 `;
 
 // Helper function to get total bounty for a team
@@ -312,8 +312,8 @@ export async function createMatch({ players, kicker }) {
         !player3 && !player4
             ? GAMEMODE_1ON1
             : player3 && player4
-            ? GAMEMODE_2ON2
-            : GAMEMODE_2ON1;
+              ? GAMEMODE_2ON2
+              : GAMEMODE_2ON1;
 
     const { data, error } = await supabase
         .from(MATCHES)
@@ -374,14 +374,20 @@ export async function createTeamMatch({ team1, team2, kicker }) {
 
     // Create the team match
     // Team match is always 2on2 with fixed team structure
+    // Support both flat (team.player1_id) and nested (team.player1.id) formats
+    const team1Player1Id = team1.player1_id ?? team1.player1?.id;
+    const team1Player2Id = team1.player2_id ?? team1.player2?.id;
+    const team2Player1Id = team2.player1_id ?? team2.player1?.id;
+    const team2Player2Id = team2.player2_id ?? team2.player2?.id;
+
     const { data, error } = await supabase
         .from(MATCHES)
         .insert([
             {
-                player1: team1.player1_id,
-                player2: team2.player1_id,
-                player3: team1.player2_id,
-                player4: team2.player2_id,
+                player1: team1Player1Id,
+                player2: team2Player1Id,
+                player3: team1Player2Id,
+                player4: team2Player2Id,
                 team1_id: team1.id,
                 team2_id: team2.id,
                 gamemode: GAMEMODE_TEAM,
@@ -549,8 +555,8 @@ export async function endMatch({ id, score1, score2, kicker }) {
     const gameMode = isTeamMode
         ? GAMEMODE_TEAM
         : !player3 && !player4
-        ? GAMEMODE_1ON1
-        : GAMEMODE_2ON2;
+          ? GAMEMODE_1ON1
+          : GAMEMODE_2ON2;
 
     const finalScore1 = score1 ? score1 : scoreTeam1;
     const finalScore2 = score2 ? score2 : scoreTeam2;

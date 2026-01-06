@@ -119,17 +119,27 @@ const LoadingContainer = styled.div`
 
 // Table styled components
 const TeamName = styled.span`
+    display: flex;
+    flex-direction: row;
+    font-size: 1.6rem;
+    gap: 0.4rem;
     font-weight: 600;
     color: ${(props) =>
         props.$won === null
             ? "var(--primary-text-color)"
             : props.$won === true
-            ? "var(--winner-name-color)"
-            : "var(--loser-name-color)"};
+              ? "var(--winner-name-color)"
+              : "var(--loser-name-color)"};
     cursor: pointer;
 
     &:hover {
         text-decoration: underline;
+    }
+
+    ${media.mobile} {
+        flex-direction: column;
+        font-size: 1.4rem;
+        gap: unset;
     }
 `;
 
@@ -141,18 +151,35 @@ const TeamContainer = styled.div`
 `;
 
 const MmrChange = styled.span`
-    font-size: 1.2rem;
-    margin-left: 0.4rem;
+    font-size: 1.6rem;
     color: ${(props) =>
         props.$positive
             ? "var(--winner-name-color)"
             : "var(--loser-name-color)"};
+
+    ${media.mobile} {
+        font-size: 1.4rem;
+    }
+`;
+
+const TeamNameText = styled.span`
+    ${media.mobile} {
+        display: flex;
+        justify-content: ${(props) =>
+            props.$team === "1" ? "flex-end" : "flex-start"};
+    }
+`;
+const TeamMmrText = styled.span`
+    ${media.mobile} {
+        display: flex;
+        justify-content: ${(props) =>
+            props.$team === "1" ? "flex-end" : "flex-start"};
+    }
 `;
 
 const BountyBadge = styled.span`
     color: var(--color-yellow-600);
     font-size: 1.2rem;
-    margin-left: 0.4rem;
 `;
 
 const ScoreContainer = styled.div`
@@ -215,6 +242,16 @@ function TeamMatchRow({ match, teamId }) {
         ? match.bounty_team2_team
         : match.bounty_team1_team;
 
+    // Calculate pre-match MMR (current MMR - change = pre-match MMR)
+    const ourPreMatchMmr =
+        ourTeam?.mmr && ourMmrChange
+            ? Math.round(ourTeam.mmr - ourMmrChange)
+            : null;
+    const opponentPreMatchMmr =
+        opponentTeam?.mmr && opponentMmrChange
+            ? Math.round(opponentTeam.mmr - opponentMmrChange)
+            : null;
+
     function handleClickRow(e) {
         e.stopPropagation();
         navigate(`/matches/${match.id}`);
@@ -233,16 +270,23 @@ function TeamMatchRow({ match, teamId }) {
                     $won={ourWon}
                     onClick={(e) => handleTeamClick(e, ourTeam?.id)}
                 >
-                    {ourTeam?.name || "Unknown"}
-                    {ourMmrChange && (
-                        <MmrChange $positive={ourWon}>
-                            {ourWon ? "+" : ""}
-                            {ourMmrChange}
-                        </MmrChange>
-                    )}
-                    {ourWon && ourBounty > 0 && (
-                        <BountyBadge>+{ourBounty}💰</BountyBadge>
-                    )}
+                    <TeamNameText $team="1">
+                        {ourTeam?.name || "Unknown"}
+                    </TeamNameText>
+                    <TeamMmrText $team="1">
+                        {ourMmrChange && ourPreMatchMmr && (
+                            <>
+                                ({ourPreMatchMmr})
+                                <MmrChange $positive={ourWon}>
+                                    {ourWon ? "+" : ""}
+                                    {ourMmrChange}
+                                </MmrChange>
+                            </>
+                        )}
+                        {ourWon && ourBounty > 0 && (
+                            <BountyBadge>+{ourBounty}💰</BountyBadge>
+                        )}
+                    </TeamMmrText>
                 </TeamName>
             </TeamContainer>
 
@@ -261,16 +305,24 @@ function TeamMatchRow({ match, teamId }) {
                     $won={!ourWon}
                     onClick={(e) => handleTeamClick(e, opponentTeam?.id)}
                 >
-                    {opponentTeam?.name || "Unknown"}
-                    {opponentMmrChange && (
-                        <MmrChange $positive={!ourWon}>
-                            {!ourWon ? "+" : ""}
-                            {opponentMmrChange}
-                        </MmrChange>
-                    )}
-                    {!ourWon && opponentBounty > 0 && (
-                        <BountyBadge>+{opponentBounty}💰</BountyBadge>
-                    )}
+                    <TeamNameText $team="2">
+                        {opponentTeam?.name || "Unknown"}
+                    </TeamNameText>
+                    <TeamMmrText $team="2">
+                        {opponentMmrChange && opponentPreMatchMmr && (
+                            <>
+                                ({opponentPreMatchMmr})
+                                <MmrChange $positive={!ourWon}>
+                                    {!ourWon ? "+" : ""}
+                                    {opponentMmrChange}
+                                </MmrChange>
+                            </>
+                        )}
+
+                        {!ourWon && opponentBounty > 0 && (
+                            <BountyBadge>+{opponentBounty}💰</BountyBadge>
+                        )}
+                    </TeamMmrText>
                 </TeamName>
             </TeamContainer>
 

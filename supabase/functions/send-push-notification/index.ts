@@ -262,10 +262,9 @@ async function handleTeamInvitation(
         .single();
 
     if (!invitedPlayerData?.user_id) {
-        return new Response(
-            JSON.stringify({ sent: 0, reason: "no_user_id" }),
-            { headers: { "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ sent: 0, reason: "no_user_id" }), {
+            headers: { "Content-Type": "application/json" },
+        });
     }
 
     const invitedUserId = invitedPlayerData.user_id;

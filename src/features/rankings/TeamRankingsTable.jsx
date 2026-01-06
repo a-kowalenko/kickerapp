@@ -9,7 +9,7 @@ import {
 } from "../../utils/constants";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import useWindowWidth from "../../hooks/useWindowWidth";
-import { useTeams } from "../teams/useTeams";
+import { useActiveTeams } from "../teams/useTeams";
 
 const Content = styled.div`
     @media (max-width: 768px) {
@@ -183,6 +183,12 @@ function TeamRankingsRow({ team, rank }) {
     const winrate =
         totalGames > 0 ? ((team.wins / totalGames) * 100).toFixed(0) : 0;
 
+    // Support both flat (from RPC) and nested (from teams table) player data
+    const player1Name = team.player1_name || team.player1?.name;
+    const player2Name = team.player2_name || team.player2?.name;
+    const player1Avatar = team.player1_avatar || team.player1?.avatar;
+    const player2Avatar = team.player2_avatar || team.player2?.avatar;
+
     const getInitials = (name) =>
         name
             .split(" ")
@@ -206,16 +212,16 @@ function TeamRankingsRow({ team, rank }) {
                         <PlayerAvatars>
                             <Avatar
                                 $size="xs"
-                                src={team.player1_avatar || DEFAULT_AVATAR}
+                                src={player1Avatar || DEFAULT_AVATAR}
                             />
                             <Avatar
                                 $size="xs"
-                                src={team.player2_avatar || DEFAULT_AVATAR}
+                                src={player2Avatar || DEFAULT_AVATAR}
                             />
                         </PlayerAvatars>
                         {!isMobile && (
                             <span>
-                                {team.player1_name} & {team.player2_name}
+                                {player1Name} & {player2Name}
                             </span>
                         )}
                     </TeamPlayers>
@@ -235,14 +241,11 @@ function TeamRankingsRow({ team, rank }) {
 }
 
 function TeamRankingsTable() {
-    const { teams, isLoading } = useTeams();
+    const { teams, isLoading } = useActiveTeams();
     const { isDesktop, isTablet, isMobile } = useWindowWidth();
 
-    // Filter only active teams and sort by MMR
-    const activeTeams =
-        teams
-            ?.filter((t) => t.status === TEAM_STATUS_ACTIVE)
-            ?.sort((a, b) => b.mmr - a.mmr) || [];
+    // Teams are already filtered (active only) and sorted by MMR from useActiveTeams
+    const activeTeams = teams || [];
 
     const columns = isDesktop
         ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"

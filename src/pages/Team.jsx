@@ -4,7 +4,7 @@ import Heading from "../ui/Heading";
 import TabView from "../ui/TabView";
 import LoadingSpinner from "../ui/LoadingSpinner";
 import Error from "../ui/Error";
-import { useTeam } from "../features/teams/useTeams";
+import { useTeam, useTeamRank } from "../features/teams/useTeams";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
 import TeamOverview from "../features/teams/TeamOverview";
 import TeamMatchHistoryTable from "../features/teams/TeamMatchHistoryTable";
@@ -34,9 +34,8 @@ function Team() {
         ownPlayer?.id === team?.player1?.id ||
         ownPlayer?.id === team?.player2?.id;
 
-    // Calculate team rank (would need proper ranking data)
-    // For now, we'll pass null and handle it in components
-    const teamRank = null;
+    // Get team rank (based on MMR position among active teams)
+    const { rank: teamRank } = useTeamRank(teamId);
 
     // Define base path for tabs
     const basePath = `/team/${teamId}`;
