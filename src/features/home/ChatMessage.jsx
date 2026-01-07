@@ -950,30 +950,11 @@ function ChatMessage({
                         <ReplyContent>
                             {/* Censor whisper content if this is a public reply to a whisper */}
                             {(() => {
-                                console.log("=== REPLY DEBUG ===");
-                                console.log(
-                                    "message.reply_to:",
-                                    message.reply_to
-                                );
-                                console.log(
-                                    "message.reply_to.recipient_id:",
-                                    message.reply_to?.recipient_id
-                                );
-                                console.log(
-                                    "isWhisper (current message):",
-                                    isWhisper
-                                );
-                                console.log(
-                                    "currentPlayerId:",
-                                    currentPlayerId
-                                );
-
                                 // If replying to a whisper in a public message
                                 if (
                                     message.reply_to.recipient_id &&
                                     !isWhisper
                                 ) {
-                                    console.log(">>> Inside censoring logic");
                                     // Check if current user was involved in the original whisper
                                     const isWhisperSender =
                                         message.reply_to.player?.id ===
@@ -983,15 +964,6 @@ function ChatMessage({
                                             currentPlayerId ||
                                         message.reply_to.recipient?.id ===
                                             currentPlayerId;
-
-                                    console.log(
-                                        "isWhisperSender:",
-                                        isWhisperSender
-                                    );
-                                    console.log(
-                                        "isWhisperRecipient:",
-                                        isWhisperRecipient
-                                    );
 
                                     // Only show content if user was involved in the whisper
                                     if (isWhisperSender || isWhisperRecipient) {
