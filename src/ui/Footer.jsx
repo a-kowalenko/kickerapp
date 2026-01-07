@@ -19,31 +19,21 @@ const StyledFooter = styled.footer`
 `;
 
 const FooterLayout = styled.div`
-    display: grid;
-    gap: 2.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4.8rem;
     margin-left: auto;
     margin-right: auto;
 
-    grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
-
-    @media (max-width: 1350px) {
-        grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-    }
-
-    @media (max-width: 1150px) {
-        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    }
-
-    @media (max-width: 1050px) {
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    }
-
     ${media.tablet} {
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 2.4rem;
     }
 
     ${media.mobile} {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        flex-direction: column;
+        align-items: center;
+        gap: 2.4rem;
     }
 `;
 
