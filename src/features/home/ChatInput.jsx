@@ -294,6 +294,7 @@ const ChatInput = forwardRef(function ChatInput(
         onCancelReply,
         lastWhisperFrom,
         onTyping,
+        stopTyping,
         onFocusInput,
     },
     ref
@@ -467,9 +468,9 @@ const ChatInput = forwardRef(function ChatInput(
     function handleContentChange(newValue) {
         setContent(newValue);
 
-        // Trigger typing indicator
+        // Trigger typing indicator with whisper recipient if set
         if (onTyping) {
-            onTyping();
+            onTyping(whisperRecipient?.id || null);
         }
 
         // If we already have a whisper recipient set, don't parse commands anymore
@@ -677,7 +678,15 @@ const ChatInput = forwardRef(function ChatInput(
     }
 
     function handleCancelWhisper() {
+        // Stop whisper typing indicator
+        if (stopTyping) {
+            stopTyping();
+        }
         setWhisperRecipient(null);
+        // Re-trigger public typing if there's content
+        if (content.trim() && onTyping) {
+            onTyping(null);
+        }
         inputRef.current?.focus();
     }
 

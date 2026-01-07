@@ -711,6 +711,7 @@ function ChatTab() {
                     onCancelReply={handleCancelReply}
                     lastWhisperFrom={lastWhisperFrom}
                     onTyping={onTyping}
+                    stopTyping={stopTyping}
                     onFocusInput={(fn) => {
                         focusInputRef.current = fn;
                     }}
