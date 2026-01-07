@@ -9,6 +9,9 @@ import SpinnerMini from "../../ui/SpinnerMini";
 import EmptyState from "../../ui/EmptyState";
 import useWindowWidth from "../../hooks/useWindowWidth";
 import { useTeamMatchHistoryPaginated } from "./useTeamMatchHistoryPaginated";
+import TeamLogoContainer from "../../ui/TeamLogoContainer";
+import TeamLogo from "../../ui/TeamLogo";
+import DefaultTeamLogo from "../../ui/DefaultTeamLogo";
 
 const StyledTeamMatchHistory = styled.div`
     display: flex;
@@ -266,28 +269,41 @@ function TeamMatchRow({ match, teamId }) {
         <Table.Row onClick={handleClickRow}>
             <Rank>{match.nr}</Rank>
             <TeamContainer $won={ourWon} $team="1">
-                <TeamName
-                    $won={ourWon}
-                    onClick={(e) => handleTeamClick(e, ourTeam?.id)}
-                >
-                    <TeamNameText $team="1">
-                        {ourTeam?.name || "Unknown"}
-                    </TeamNameText>
-                    <TeamMmrText $team="1">
-                        {ourMmrChange && ourPreMatchMmr && (
-                            <>
-                                ({ourPreMatchMmr})
-                                <MmrChange $positive={ourWon}>
-                                    {ourWon ? "+" : ""}
-                                    {ourMmrChange}
-                                </MmrChange>
-                            </>
-                        )}
-                        {ourWon && ourBounty > 0 && (
-                            <BountyBadge>+{ourBounty}💰</BountyBadge>
-                        )}
-                    </TeamMmrText>
-                </TeamName>
+                <TeamLogoContainer $team="1">
+                    {isDesktop &&
+                        (ourTeam.logo_url ? (
+                            <TeamLogo
+                                src={ourTeam.logo_url}
+                                alt={ourTeam.name}
+                            />
+                        ) : (
+                            <DefaultTeamLogo>
+                                {ourTeam.name?.charAt(0)?.toUpperCase()}
+                            </DefaultTeamLogo>
+                        ))}
+                    <TeamName
+                        $won={ourWon}
+                        onClick={(e) => handleTeamClick(e, ourTeam?.id)}
+                    >
+                        <TeamNameText $team="1">
+                            {ourTeam?.name || "Unknown"}
+                        </TeamNameText>
+                        <TeamMmrText $team="1">
+                            {ourMmrChange && ourPreMatchMmr && (
+                                <>
+                                    ({ourPreMatchMmr})
+                                    <MmrChange $positive={ourWon}>
+                                        {ourWon ? "+" : ""}
+                                        {ourMmrChange}
+                                    </MmrChange>
+                                </>
+                            )}
+                            {ourWon && ourBounty > 0 && (
+                                <BountyBadge>+{ourBounty}💰</BountyBadge>
+                            )}
+                        </TeamMmrText>
+                    </TeamName>
+                </TeamLogoContainer>
             </TeamContainer>
 
             <ScoreContainer>
@@ -301,29 +317,42 @@ function TeamMatchRow({ match, teamId }) {
             </ScoreContainer>
 
             <TeamContainer $won={!ourWon} $team="2">
-                <TeamName
-                    $won={!ourWon}
-                    onClick={(e) => handleTeamClick(e, opponentTeam?.id)}
-                >
-                    <TeamNameText $team="2">
-                        {opponentTeam?.name || "Unknown"}
-                    </TeamNameText>
-                    <TeamMmrText $team="2">
-                        {opponentMmrChange && opponentPreMatchMmr && (
-                            <>
-                                ({opponentPreMatchMmr})
-                                <MmrChange $positive={!ourWon}>
-                                    {!ourWon ? "+" : ""}
-                                    {opponentMmrChange}
-                                </MmrChange>
-                            </>
-                        )}
+                <TeamLogoContainer $team="2">
+                    {isDesktop &&
+                        (opponentTeam.logo_url ? (
+                            <TeamLogo
+                                src={opponentTeam.logo_url}
+                                alt={opponentTeam.name}
+                            />
+                        ) : (
+                            <DefaultTeamLogo>
+                                {opponentTeam.name?.charAt(0)?.toUpperCase()}
+                            </DefaultTeamLogo>
+                        ))}
+                    <TeamName
+                        $won={!ourWon}
+                        onClick={(e) => handleTeamClick(e, opponentTeam?.id)}
+                    >
+                        <TeamNameText $team="2">
+                            {opponentTeam?.name || "Unknown"}
+                        </TeamNameText>
+                        <TeamMmrText $team="2">
+                            {opponentMmrChange && opponentPreMatchMmr && (
+                                <>
+                                    ({opponentPreMatchMmr})
+                                    <MmrChange $positive={!ourWon}>
+                                        {!ourWon ? "+" : ""}
+                                        {opponentMmrChange}
+                                    </MmrChange>
+                                </>
+                            )}
 
-                        {!ourWon && opponentBounty > 0 && (
-                            <BountyBadge>+{opponentBounty}💰</BountyBadge>
-                        )}
-                    </TeamMmrText>
-                </TeamName>
+                            {!ourWon && opponentBounty > 0 && (
+                                <BountyBadge>+{opponentBounty}💰</BountyBadge>
+                            )}
+                        </TeamMmrText>
+                    </TeamName>
+                </TeamLogoContainer>
             </TeamContainer>
 
             {isDesktop && (
@@ -367,75 +396,58 @@ function TeamMatchHistoryTable({ teamId }) {
 
     return (
         <StyledTeamMatchHistory>
-            <Card>
-                <CardHeader>
-                    <IconWrapper>
-                        <HiOutlineTrophy />
-                    </IconWrapper>
-                    <HeaderContent>
-                        <CardTitle>Match History</CardTitle>
-                        <CardDescription>
-                            All team matches and results
-                        </CardDescription>
-                    </HeaderContent>
-                </CardHeader>
-                <CardBody>
-                    {isLoading ? (
-                        <LoadingContainer>
-                            <SpinnerMini />
-                        </LoadingContainer>
-                    ) : matches.length === 0 ? (
-                        <EmptyState
-                            icon="🎮"
-                            title="No matches yet"
-                            description="Start a team match to see your history here!"
-                        />
-                    ) : (
-                        <Table columns={columns}>
-                            <Table.Header>
-                                <div>Nr</div>
-                                <div
-                                    style={{
-                                        textAlign: isMobile
-                                            ? "center"
-                                            : "right",
-                                    }}
-                                >
-                                    Your Team
-                                </div>
-                                <div style={{ textAlign: "center" }}>Score</div>
-                                <div
-                                    style={{
-                                        textAlign: isMobile ? "center" : "",
-                                    }}
-                                >
-                                    Opponent
-                                </div>
-                                {isDesktop && (
-                                    <div style={{ textAlign: "center" }}>
-                                        Start Time
-                                    </div>
-                                )}
-                                {isDesktop && <div>Duration</div>}
-                            </Table.Header>
-                            <Table.Body
-                                noDataLabel="No matches available"
-                                data={matches}
-                                render={(match) => (
-                                    <TeamMatchRow
-                                        key={match.id}
-                                        match={match}
-                                        teamId={teamId}
-                                    />
-                                )}
+            {isLoading ? (
+                <LoadingContainer>
+                    <SpinnerMini />
+                </LoadingContainer>
+            ) : matches.length === 0 ? (
+                <EmptyState
+                    icon="🎮"
+                    title="No matches yet"
+                    description="Start a team match to see your history here!"
+                />
+            ) : (
+                <Table columns={columns}>
+                    <Table.Header>
+                        <div>Nr</div>
+                        <div
+                            style={{
+                                textAlign: isMobile ? "center" : "right",
+                            }}
+                        >
+                            Your Team
+                        </div>
+                        <div style={{ textAlign: "center" }}>Score</div>
+                        <div
+                            style={{
+                                textAlign: isMobile ? "center" : "",
+                            }}
+                        >
+                            Opponent
+                        </div>
+                        {isDesktop && (
+                            <div style={{ textAlign: "center" }}>
+                                Start Time
+                            </div>
+                        )}
+                        {isDesktop && <div>Duration</div>}
+                    </Table.Header>
+                    <Table.Body
+                        noDataLabel="No matches available"
+                        data={matches}
+                        render={(match) => (
+                            <TeamMatchRow
+                                key={match.id}
+                                match={match}
+                                teamId={teamId}
                             />
-                            <Table.Footer>
-                                <Pagination numEntries={totalCount} />
-                            </Table.Footer>
-                        </Table>
-                    )}
-                </CardBody>
-            </Card>
+                        )}
+                    />
+                    <Table.Footer>
+                        <Pagination numEntries={totalCount} />
+                    </Table.Footer>
+                </Table>
+            )}
         </StyledTeamMatchHistory>
     );
 }

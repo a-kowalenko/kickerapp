@@ -509,10 +509,10 @@ const RankIcon = styled.div`
         props.$variant === "gold"
             ? "linear-gradient(135deg, #FFD700 0%, #FFC107 100%)"
             : props.$variant === "silver"
-            ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
-            : props.$variant === "bronze"
-            ? "linear-gradient(135deg, #CD7F32 0%, #A0522D 100%)"
-            : "var(--color-grey-100)"};
+              ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
+              : props.$variant === "bronze"
+                ? "linear-gradient(135deg, #CD7F32 0%, #A0522D 100%)"
+                : "var(--color-grey-100)"};
 
     ${media.desktop} {
         width: 3.6rem;
@@ -531,10 +531,10 @@ const RankIcon = styled.div`
             props.$variant === "gold"
                 ? "#7a5c00"
                 : props.$variant === "silver"
-                ? "#616161"
-                : props.$variant === "bronze"
-                ? "#5D4037"
-                : "var(--color-grey-600)"};
+                  ? "#616161"
+                  : props.$variant === "bronze"
+                    ? "#5D4037"
+                    : "var(--color-grey-600)"};
 
         ${media.desktop} {
             width: 1.8rem;
@@ -748,6 +748,32 @@ function TeamOverview({ team, rank }) {
                                 )}
                             </TeamNameRow>
 
+                            <PlayersSection>
+                                <PlayerAvatars>
+                                    <Avatar
+                                        $size="small"
+                                        src={player1?.avatar || DEFAULT_AVATAR}
+                                    />
+                                    <Avatar
+                                        $size="small"
+                                        src={player2?.avatar || DEFAULT_AVATAR}
+                                    />
+                                </PlayerAvatars>
+                                <PlayerNames>
+                                    <PlayerLink
+                                        to={`/user/${player1?.name}/profile`}
+                                    >
+                                        {player1?.name}
+                                    </PlayerLink>
+                                    {" & "}
+                                    <PlayerLink
+                                        to={`/user/${player2?.name}/profile`}
+                                    >
+                                        {player2?.name}
+                                    </PlayerLink>
+                                </PlayerNames>
+                            </PlayersSection>
+
                             {/* Streak info text */}
                             {hasStreak && (
                                 <StreakInfo $cold={current_streak < 0}>
@@ -785,31 +811,6 @@ function TeamOverview({ team, rank }) {
                     </TeamStatusCard>
 
                     <InfoSection>
-                        <PlayersSection>
-                            <PlayerAvatars>
-                                <Avatar
-                                    $size="small"
-                                    src={player1?.avatar || DEFAULT_AVATAR}
-                                />
-                                <Avatar
-                                    $size="small"
-                                    src={player2?.avatar || DEFAULT_AVATAR}
-                                />
-                            </PlayerAvatars>
-                            <PlayerNames>
-                                <PlayerLink
-                                    to={`/user/${player1?.name}/profile`}
-                                >
-                                    {player1?.name}
-                                </PlayerLink>
-                                {" & "}
-                                <PlayerLink
-                                    to={`/user/${player2?.name}/profile`}
-                                >
-                                    {player2?.name}
-                                </PlayerLink>
-                            </PlayerNames>
-                        </PlayersSection>
                         <StatsGrid>
                             <StatCard>
                                 {rank && rank <= 3 && (
