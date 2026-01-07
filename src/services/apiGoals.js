@@ -24,14 +24,14 @@ export async function getGoalsByMatch(kicker, matchId, sortBy) {
     return { data, count };
 }
 
-export async function getGoalsByPlayer(kicker, playerId, sortBy) {
+export async function getGoalsByPlayer(kicker, playerId, sortBy, seasonId) {
     const filter = {
         method: "eq",
         field: "player_id",
         value: playerId,
     };
 
-    const { data, count } = await getGoals(kicker, filter, sortBy);
+    const { data, count } = await getGoals(kicker, filter, sortBy, seasonId);
 
     return { data, count };
 }
@@ -42,7 +42,8 @@ async function getGoals(
     sortBy = {
         field: "created_at",
         direction: "asc",
-    }
+    },
+    seasonId
 ) {
     let query = supabase
         .from(GOALS)
@@ -74,12 +75,21 @@ async function getGoals(
         throw new Error(error.message);
     }
 
-    return { data, count };
+    // Filter by season through the match relationship (client-side)
+    let filteredData = data;
+    if (seasonId !== undefined) {
+        // seasonId can be a string from URL params, so compare with == or convert
+        const seasonIdNum = seasonId === null ? null : Number(seasonId);
+        filteredData = data.filter((goal) => goal.match?.season_id === seasonIdNum);
+    }
+
+    return { data: filteredData, count: filteredData.length };
 }
 
 export async function getGoalStatisticsByPlayer(filter, playerName) {
     const gamemode = filter.value;
     const kicker = filter.kicker;
+    const seasonId = filter.seasonId;
     const player = await getPlayerByName({ name: playerName, kicker });
     const playerId = player.id;
 
@@ -88,7 +98,7 @@ export async function getGoalStatisticsByPlayer(filter, playerName) {
         direction: "asc",
     };
 
-    const { data } = await getGoalsByPlayer(kicker, playerId, sortBy);
+    const { data } = await getGoalsByPlayer(kicker, playerId, sortBy, seasonId);
 
     const playerGoalData = data.reduce((acc, cur) => {
         const { match } = cur;
