@@ -12,6 +12,7 @@ const ActiveMatchContainer = styled.div`
     gap: 2rem;
     font-size: 1.4rem;
     min-width: 25rem;
+    max-width: calc(100vw - 2rem);
     box-shadow: 1px 0 5px var(--pulse-color-heavily-transparent),
         0 1px 5px var(--pulse-color-heavily-transparent),
         -1px 0 5px var(--pulse-color-heavily-transparent),

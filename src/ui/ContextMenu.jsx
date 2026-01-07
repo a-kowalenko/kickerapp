@@ -6,6 +6,7 @@ const MenuContainer = styled.div`
     position: fixed;
     z-index: 9999;
     min-width: 18rem;
+    max-width: calc(100vw - 2rem);
     background-color: var(--secondary-background-color);
     border: 1px solid var(--primary-border-color);
     border-radius: var(--border-radius-md);

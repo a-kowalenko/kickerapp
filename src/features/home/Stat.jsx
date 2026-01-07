@@ -55,6 +55,10 @@ const Value = styled.p`
     font-weight: 600;
     font-size: 2.4rem;
     line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 
     ${media.tablet} {
         font-size: 2rem;
