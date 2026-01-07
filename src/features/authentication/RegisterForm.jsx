@@ -6,7 +6,11 @@ import styled, { keyframes } from "styled-components";
 import StyledLink from "../../ui/StyledLink";
 import SpinnerMini from "../../ui/SpinnerMini";
 import { validateUsername } from "../../utils/helpers";
-import { HiOutlineEnvelope, HiOutlineLockClosed, HiOutlineUser } from "react-icons/hi2";
+import {
+    HiOutlineEnvelope,
+    HiOutlineLockClosed,
+    HiOutlineUser,
+} from "react-icons/hi2";
 
 const fadeIn = keyframes`
     from {
@@ -274,7 +278,8 @@ function RegisterForm() {
                                 required: "The email is required",
                                 pattern: {
                                     value: /\S+@\S+\.\S+/,
-                                    message: "Please provide a valid email address",
+                                    message:
+                                        "Please provide a valid email address",
                                 },
                             })}
                         />
@@ -306,7 +311,9 @@ function RegisterForm() {
                 </InputGroup>
 
                 <InputGroup>
-                    <InputLabel htmlFor="passwordConfirm">Confirm Password</InputLabel>
+                    <InputLabel htmlFor="passwordConfirm">
+                        Confirm Password
+                    </InputLabel>
                     <InputWrapper>
                         <InputIcon>
                             <HiOutlineLockClosed />
