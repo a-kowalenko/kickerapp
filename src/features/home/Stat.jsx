@@ -49,6 +49,10 @@ const Title = styled(Heading)`
     ${media.tablet} {
         font-size: 1.2rem;
     }
+
+    ${media.mobile} {
+        font-size: 1.2rem;
+    }
 `;
 
 const Value = styled.p`
@@ -57,11 +61,15 @@ const Value = styled.p`
     line-height: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: wrap;
     min-width: 0;
 
     ${media.tablet} {
         font-size: 2rem;
+    }
+
+    ${media.mobile} {
+        font-size: 1.4rem;
     }
 `;
 
