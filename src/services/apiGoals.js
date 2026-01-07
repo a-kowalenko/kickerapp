@@ -80,7 +80,9 @@ async function getGoals(
     if (seasonId !== undefined) {
         // seasonId can be a string from URL params, so compare with == or convert
         const seasonIdNum = seasonId === null ? null : Number(seasonId);
-        filteredData = data.filter((goal) => goal.match?.season_id === seasonIdNum);
+        filteredData = data.filter(
+            (goal) => goal.match?.season_id === seasonIdNum
+        );
     }
 
     return { data: filteredData, count: filteredData.length };
