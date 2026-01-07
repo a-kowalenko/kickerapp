@@ -1,19 +1,15 @@
 import styled from "styled-components";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     HiOutlineCog6Tooth,
-    HiOutlinePhoto,
     HiOutlineTrash,
 } from "react-icons/hi2";
 import { media, TEAM_STATUS_ACTIVE } from "../../utils/constants";
-import {
-    useDissolveTeam,
-    useUploadTeamLogo,
-    useDeleteTeamLogo,
-} from "./useTeams";
+import { useDissolveTeam } from "./useTeams";
 import Button from "../../ui/Button";
 import SpinnerMini from "../../ui/SpinnerMini";
+import TeamLogoUpload from "./TeamLogoUpload";
 
 const StyledTeamSettings = styled.div`
     display: flex;
@@ -69,7 +65,9 @@ const IconWrapper = styled.div`
     height: 4rem;
     border-radius: 50%;
     background-color: ${(props) =>
-        props.$danger ? "var(--color-red-100)" : "var(--primary-button-color)"};
+        props.$danger
+            ? "var(--danger-button-color)"
+            : "var(--primary-button-color)"};
     color: ${(props) =>
         props.$danger
             ? "var(--color-red-600)"
@@ -124,97 +122,6 @@ const CardBody = styled.div`
     }
 `;
 
-// Logo Section
-const LogoSection = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-
-    ${media.mobile} {
-        flex-direction: column;
-        align-items: stretch;
-    }
-`;
-
-const CurrentLogo = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-
-    ${media.mobile} {
-        align-items: center;
-    }
-`;
-
-const LogoPreview = styled.img`
-    width: 10rem;
-    height: 10rem;
-    border-radius: var(--border-radius-lg);
-    object-fit: cover;
-    border: 3px solid var(--secondary-border-color);
-
-    ${media.mobile} {
-        width: 8rem;
-        height: 8rem;
-    }
-`;
-
-const DefaultLogo = styled.div`
-    width: 10rem;
-    height: 10rem;
-    border-radius: var(--border-radius-lg);
-    background: linear-gradient(
-        135deg,
-        var(--color-brand-100) 0%,
-        var(--color-brand-200) 100%
-    );
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 4rem;
-    font-weight: 700;
-    color: var(--color-brand-600);
-    border: 3px solid var(--secondary-border-color);
-
-    ${media.mobile} {
-        width: 8rem;
-        height: 8rem;
-        font-size: 3rem;
-    }
-`;
-
-const LogoActions = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-    flex: 1;
-
-    ${media.mobile} {
-        gap: 1rem;
-    }
-`;
-
-const LogoHelpText = styled.p`
-    font-size: 1.3rem;
-    color: var(--color-grey-500);
-    margin: 0;
-    line-height: 1.5;
-
-    ${media.mobile} {
-        font-size: 1.2rem;
-    }
-`;
-
-const ButtonGroup = styled.div`
-    display: flex;
-    gap: 1rem;
-
-    ${media.mobile} {
-        flex-direction: column;
-    }
-`;
-
 // Danger Zone
 const DangerCard = styled(Card)`
     border-color: var(--color-red-200);
@@ -223,6 +130,7 @@ const DangerCard = styled(Card)`
 const DangerZoneContent = styled.div`
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 1.6rem;
 `;
 
@@ -273,84 +181,13 @@ const DisabledMessage = styled.div`
     font-size: 1.4rem;
 `;
 
-const HiddenFileInput = styled.input`
-    display: none;
-`;
-
-const UploadButton = styled.button`
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 1rem 1.6rem;
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: var(--color-brand-600);
-    background-color: var(--color-brand-50);
-    border: 1px dashed var(--color-brand-300);
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover:not(:disabled) {
-        background-color: var(--color-brand-100);
-        border-color: var(--color-brand-400);
-    }
-
-    &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    ${media.mobile} {
-        font-size: 1.3rem;
-        padding: 0.8rem 1.2rem;
-    }
-`;
-
 function TeamSettings({ teamId, team, isTeamMember }) {
     const navigate = useNavigate();
-    const fileInputRef = useRef(null);
     const [showDissolveConfirm, setShowDissolveConfirm] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
 
     const { dissolveTeam, isLoading: isDissolving } = useDissolveTeam();
-    const { uploadLogo, isLoading: isUploading } = useUploadTeamLogo();
-    const { deleteLogo, isLoading: isDeleting } = useDeleteTeamLogo();
 
     const isActive = team?.status === TEAM_STATUS_ACTIVE;
-
-    const initials =
-        team?.name
-            ?.split(" ")
-            .map((word) => word[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2) || "??";
-
-    const handleFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-        }
-    };
-
-    const handleUploadLogo = () => {
-        if (!selectedFile || !teamId) return;
-
-        uploadLogo(
-            { teamId, file: selectedFile },
-            {
-                onSuccess: () => {
-                    setSelectedFile(null);
-                },
-            }
-        );
-    };
-
-    const handleDeleteLogo = () => {
-        if (!teamId || !team?.logo_url) return;
-        deleteLogo(teamId);
-    };
 
     const handleDissolve = () => {
         dissolveTeam(teamId, {
@@ -415,87 +252,21 @@ function TeamSettings({ teamId, team, isTeamMember }) {
 
     return (
         <StyledTeamSettings>
-            {/* Logo Settings */}
+            {/* Team Profile Settings */}
             <Card>
                 <CardHeader>
                     <IconWrapper>
-                        <HiOutlinePhoto />
+                        <HiOutlineCog6Tooth />
                     </IconWrapper>
                     <HeaderContent>
-                        <CardTitle>Team Logo</CardTitle>
+                        <CardTitle>Team Profile</CardTitle>
                         <CardDescription>
-                            Upload or change your team logo
+                            Customize logo and team name
                         </CardDescription>
                     </HeaderContent>
                 </CardHeader>
                 <CardBody>
-                    <LogoSection>
-                        <CurrentLogo>
-                            {team?.logo_url ? (
-                                <LogoPreview
-                                    src={team.logo_url}
-                                    alt={team.name}
-                                />
-                            ) : (
-                                <DefaultLogo>{initials}</DefaultLogo>
-                            )}
-                        </CurrentLogo>
-                        <LogoActions>
-                            <LogoHelpText>
-                                Upload a square image (recommended 512x512px).
-                                Supported formats: JPG, PNG, WebP, GIF. Max
-                                size: 2MB.
-                            </LogoHelpText>
-                            <HiddenFileInput
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,image/gif"
-                                onChange={handleFileChange}
-                                disabled={isUploading}
-                            />
-                            <UploadButton
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                            >
-                                <HiOutlinePhoto />
-                                Choose File
-                            </UploadButton>
-                            {selectedFile && (
-                                <LogoHelpText>
-                                    Selected: {selectedFile.name}
-                                </LogoHelpText>
-                            )}
-                            <ButtonGroup>
-                                <Button
-                                    $variation="primary"
-                                    $size="small"
-                                    onClick={handleUploadLogo}
-                                    disabled={!selectedFile || isUploading}
-                                >
-                                    {isUploading ? (
-                                        <SpinnerMini />
-                                    ) : (
-                                        "Upload Logo"
-                                    )}
-                                </Button>
-                                {team?.logo_url && (
-                                    <Button
-                                        $variation="danger"
-                                        $size="small"
-                                        onClick={handleDeleteLogo}
-                                        disabled={isDeleting}
-                                    >
-                                        {isDeleting ? (
-                                            <SpinnerMini />
-                                        ) : (
-                                            "Remove Logo"
-                                        )}
-                                    </Button>
-                                )}
-                            </ButtonGroup>
-                        </LogoActions>
-                    </LogoSection>
+                    <TeamLogoUpload team={team} teamId={teamId} />
                 </CardBody>
             </Card>
 
