@@ -1,6 +1,5 @@
 import styled, { css, keyframes } from "styled-components";
 import { useNavigate } from "react-router-dom";
-import Table from "../../ui/Table";
 import Avatar from "../../ui/Avatar";
 import {
     DEFAULT_AVATAR,
@@ -49,6 +48,10 @@ const Rank = styled.div`
     font-size: 1.6rem;
     font-weight: 600;
     color: var(--color-grey-600);
+
+    ${media.mobile} {
+        font-size: 1.2rem;
+    }
 `;
 
 const Stat = styled.div`
@@ -56,9 +59,46 @@ const Stat = styled.div`
     font-size: 1.6rem;
     font-weight: 500;
     text-align: center;
+
+    ${media.mobile} {
+        font-size: 1.2rem;
+    }
 `;
 
-const StyledRow = styled(Table.Row)`
+const DesktopTeamRow = styled.div`
+    display: grid;
+    grid-template-columns: 0.3fr 2fr 1fr 1fr 1fr 1fr 1fr;
+    column-gap: 2.4rem;
+    align-items: center;
+    padding: 1.2rem 2.4rem;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid var(--table-border-color);
+
+    &:hover {
+        background-color: var(--table-row-color-hover);
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    ${media.tablet} {
+        column-gap: 1.2rem;
+        grid-template-columns: 0.3fr 1.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr;
+    }
+`;
+
+const MobileTeamCard = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--table-background-color);
+    border: 1px solid var(--table-border-color);
+    border-radius: var(--border-radius-sm);
     cursor: pointer;
     transition: background-color 0.2s ease;
 
@@ -67,9 +107,49 @@ const StyledRow = styled(Table.Row)`
     }
 `;
 
+const MobileCardHeader = styled.div`
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    justify-content: space-between;
+`;
+
+const MobileCardStats = styled.div`
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    gap: 1rem;
+`;
+
+const MobileStatItem = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    align-items: center;
+`;
+
+const MobileStatLabel = styled.div`
+    font-size: 0.85rem;
+    color: var(--color-grey-500);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+`;
+
+const MobileStatValue = styled.div`
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--primary-text-color);
+    text-align: center;
+`;
+
 const MmrValue = styled.span`
     color: ${(props) => props.$color};
     font-weight: 600;
+    font-size: 1.6rem;
+
+    ${media.mobile} {
+        font-size: 1.2rem;
+    }
 
     /* Glow only on desktop */
     ${(props) =>
@@ -106,6 +186,10 @@ const TeamInfo = styled.div`
     display: flex;
     align-items: center;
     gap: 1.2rem;
+
+    ${media.mobile} {
+        gap: 0.8rem;
+    }
 `;
 
 const TeamLogo = styled.img`
@@ -113,6 +197,11 @@ const TeamLogo = styled.img`
     height: 4rem;
     border-radius: var(--border-radius-sm);
     object-fit: cover;
+
+    ${media.mobile} {
+        width: 3rem;
+        height: 3rem;
+    }
 `;
 
 const DefaultLogo = styled.div`
@@ -130,18 +219,36 @@ const DefaultLogo = styled.div`
     font-size: 1.4rem;
     font-weight: 700;
     color: var(--color-brand-600);
+
+    ${media.mobile} {
+        width: 3rem;
+        height: 3rem;
+        font-size: 1.1rem;
+    }
 `;
 
 const TeamDetails = styled.div`
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
+    min-width: 0;
+
+    ${media.mobile} {
+        gap: 0.3rem;
+    }
 `;
 
 const TeamName = styled.span`
     font-size: 1.4rem;
     font-weight: 600;
     color: var(--primary-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    ${media.mobile} {
+        font-size: 1.2rem;
+    }
 `;
 
 const TeamPlayers = styled.span`
@@ -150,6 +257,10 @@ const TeamPlayers = styled.span`
     display: flex;
     align-items: center;
     gap: 0.4rem;
+
+    ${media.tablet} {
+        display: none;
+    }
 `;
 
 const PlayerAvatars = styled.div`
@@ -197,8 +308,70 @@ function TeamRankingsRow({ team, rank }) {
             .toUpperCase()
             .slice(0, 2);
 
+    if (isMobile) {
+        return (
+            <MobileTeamCard onClick={() => navigate(`/team/${team.id}`)}>
+                <MobileCardHeader>
+                    <Rank>{rank}</Rank>
+                    <TeamInfo style={{ flex: 1 }}>
+                        {team.logo_url ? (
+                            <TeamLogo src={team.logo_url} alt={team.name} />
+                        ) : (
+                            <DefaultLogo>{getInitials(team.name)}</DefaultLogo>
+                        )}
+                        <TeamDetails>
+                            <TeamName>{team.name}</TeamName>
+                            <TeamPlayers>
+                                <PlayerAvatars>
+                                    <Avatar
+                                        $size="xs"
+                                        src={player1Avatar || DEFAULT_AVATAR}
+                                    />
+                                    <Avatar
+                                        $size="xs"
+                                        src={player2Avatar || DEFAULT_AVATAR}
+                                    />
+                                </PlayerAvatars>
+                            </TeamPlayers>
+                        </TeamDetails>
+                    </TeamInfo>
+                </MobileCardHeader>
+                <MobileCardStats>
+                    <MobileStatItem>
+                        <MobileStatLabel>W</MobileStatLabel>
+                        <MobileStatValue>{team.wins}</MobileStatValue>
+                    </MobileStatItem>
+                    <MobileStatItem>
+                        <MobileStatLabel>L</MobileStatLabel>
+                        <MobileStatValue>{team.losses}</MobileStatValue>
+                    </MobileStatItem>
+                    <MobileStatItem>
+                        <MobileStatLabel>T</MobileStatLabel>
+                        <MobileStatValue>{totalGames}</MobileStatValue>
+                    </MobileStatItem>
+                    <MobileStatItem>
+                        <MobileStatLabel>Wr</MobileStatLabel>
+                        <MobileStatValue>{winrate}%</MobileStatValue>
+                    </MobileStatItem>
+                    <MobileStatItem>
+                        <MobileStatLabel>MMR</MobileStatLabel>
+                        <MobileStatValue>
+                            <MmrValue
+                                $color={mmrColor}
+                                $glow={mmrGlow}
+                                $isGold={isGold}
+                            >
+                                {Math.round(team.mmr)}
+                            </MmrValue>
+                        </MobileStatValue>
+                    </MobileStatItem>
+                </MobileCardStats>
+            </MobileTeamCard>
+        );
+    }
+
     return (
-        <StyledRow onClick={() => navigate(`/team/${team.id}`)}>
+        <DesktopTeamRow onClick={() => navigate(`/team/${team.id}`)}>
             <Rank>{rank}</Rank>
             <TeamInfo>
                 {team.logo_url ? (
@@ -219,11 +392,9 @@ function TeamRankingsRow({ team, rank }) {
                                 src={player2Avatar || DEFAULT_AVATAR}
                             />
                         </PlayerAvatars>
-                        {!isMobile && (
-                            <span>
-                                {player1Name} & {player2Name}
-                            </span>
-                        )}
+                        <span>
+                            {player1Name} & {player2Name}
+                        </span>
                     </TeamPlayers>
                 </TeamDetails>
             </TeamInfo>
@@ -236,7 +407,7 @@ function TeamRankingsRow({ team, rank }) {
                     {Math.round(team.mmr)}
                 </MmrValue>
             </Stat>
-        </StyledRow>
+        </DesktopTeamRow>
     );
 }
 
@@ -247,51 +418,94 @@ function TeamRankingsTable() {
     // Teams are already filtered (active only) and sorted by MMR from useActiveTeams
     const activeTeams = teams || [];
 
-    const columns = isDesktop
-        ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"
-        : isTablet
-          ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"
-          : "0.5fr 1.6fr 0.4fr 0.4fr 0.4fr 1fr 0.8fr";
+    if (isMobile) {
+        return (
+            <Content>
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.8rem",
+                    }}
+                >
+                    {isLoading ? (
+                        <LoadingSpinner />
+                    ) : activeTeams.length === 0 ? (
+                        <NoTeamsMessage>
+                            No teams have been created yet. Create a team to get
+                            started!
+                        </NoTeamsMessage>
+                    ) : (
+                        activeTeams.map((team, index) => (
+                            <TeamRankingsRow
+                                key={team.id}
+                                team={team}
+                                rank={index + 1}
+                            />
+                        ))
+                    )}
+                </div>
+            </Content>
+        );
+    }
+
+    const columns = "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr";
 
     return (
         <Content>
-            <Table columns={columns}>
-                <Table.Header>
+            <div
+                style={{
+                    border: "1px solid var(--table-border-color)",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    boxShadow: "2px 2px 2px 1px rgba(0, 0, 0, 0.2)",
+                }}
+            >
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: isTablet
+                            ? "0.3fr 1.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr"
+                            : columns,
+                        columnGap: isTablet ? "1.2rem" : "2.4rem",
+                        alignItems: "center",
+                        padding: "1.6rem 2.4rem",
+                        backgroundColor: "var(--primary-background-color)",
+                        borderBottom: "1px solid var(--table-border-color)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.4px",
+                        color: "var(--primary-text-color)",
+                    }}
+                >
                     <div>Rank</div>
                     <div>Team</div>
-                    <div style={{ textAlign: "center" }}>
-                        {isMobile ? "W" : "Wins"}
-                    </div>
-                    <div style={{ textAlign: "center" }}>
-                        {isMobile ? "L" : "Losses"}
-                    </div>
-                    <div style={{ textAlign: "center" }}>
-                        {isMobile ? "T" : "Total"}
-                    </div>
+                    <div style={{ textAlign: "center" }}>Wins</div>
+                    <div style={{ textAlign: "center" }}>Losses</div>
+                    <div style={{ textAlign: "center" }}>Total</div>
                     <div style={{ textAlign: "center" }}>Winrate</div>
                     <div style={{ textAlign: "center" }}>MMR</div>
-                </Table.Header>
+                </div>
                 {isLoading ? (
-                    <LoadingSpinner />
+                    <div style={{ padding: "2rem", textAlign: "center" }}>
+                        <LoadingSpinner />
+                    </div>
                 ) : activeTeams.length === 0 ? (
                     <NoTeamsMessage>
                         No teams have been created yet. Create a team to get
                         started!
                     </NoTeamsMessage>
                 ) : (
-                    <Table.Body
-                        noDataLabel="No teams available"
-                        data={activeTeams}
-                        render={(team, index) => (
+                    <div>
+                        {activeTeams.map((team, index) => (
                             <TeamRankingsRow
                                 key={team.id}
                                 team={team}
                                 rank={index + 1}
                             />
-                        )}
-                    />
+                        ))}
+                    </div>
                 )}
-            </Table>
+            </div>
         </Content>
     );
 }

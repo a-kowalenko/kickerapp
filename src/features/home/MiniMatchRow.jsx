@@ -24,8 +24,8 @@ const TeamContainer = styled.div`
             props.$won === null
                 ? "var(--primary-text-color)"
                 : props.$won === true
-                  ? "var(--winner-name-color)"
-                  : "var(--loser-name-color)"};
+                ? "var(--winner-name-color)"
+                : "var(--loser-name-color)"};
     }
 `;
 
@@ -84,17 +84,19 @@ const BountyBadge = styled.span`
 // Team name with special styling to indicate it's a team match
 const StyledTeamName = styled.span`
     display: flex;
+    justify-content: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
     flex-direction: row;
+    flex-wrap: wrap;
     font-weight: 600;
     gap: 0.4rem;
     color: ${(props) =>
         props.$won === null
             ? "var(--primary-text-color)"
             : props.$won === true
-              ? "var(--winner-name-color)"
-              : "var(--loser-name-color)"};
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
     cursor: pointer;
-    display: inline-flex;
 
     &:hover {
         text-decoration: underline;
@@ -108,6 +110,8 @@ const StyledTeamName = styled.span`
 `;
 
 const TeamNameText = styled.span`
+    white-space: nowrap;
+
     ${media.mobile} {
         display: flex;
         justify-content: ${(props) =>
@@ -115,6 +119,8 @@ const TeamNameText = styled.span`
     }
 `;
 const TeamMmrText = styled.span`
+    white-space: nowrap;
+
     ${media.mobile} {
         display: flex;
         justify-content: ${(props) =>
@@ -164,6 +170,7 @@ function MiniMatchRow({ match }) {
                     <StyledTeamName
                         $won={team1Won}
                         onClick={(e) => handleTeamClick(e, team1.id)}
+                        $team="1"
                     >
                         <TeamNameText $team="1">{team1.name}</TeamNameText>
                         <TeamMmrText $team="1">
@@ -198,6 +205,7 @@ function MiniMatchRow({ match }) {
                     <StyledTeamName
                         $won={team1Won === null ? null : !team1Won}
                         onClick={(e) => handleTeamClick(e, team2.id)}
+                        $team="2"
                     >
                         <TeamNameText $team="2">{team2.name}</TeamNameText>
                         <TeamMmrText $team="2">

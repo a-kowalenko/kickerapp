@@ -69,8 +69,8 @@ const TeamContainer = styled.div`
             props.$won === null
                 ? "var(--primary-text-color)"
                 : props.$won === true
-                  ? "var(--winner-name-color)"
-                  : "var(--loser-name-color)"};
+                ? "var(--winner-name-color)"
+                : "var(--loser-name-color)"};
     }
 `;
 
@@ -98,13 +98,16 @@ const TeamName = styled.span`
     flex-direction: row;
     font-weight: 600;
     font-size: 1.6rem;
+    flex-wrap: wrap;
+    justify-content: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
 
     color: ${(props) =>
         props.$won === null
             ? "var(--primary-text-color)"
             : props.$won === true
-              ? "var(--winner-name-color)"
-              : "var(--loser-name-color)"};
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
     cursor: pointer;
 
     &:hover {
@@ -120,6 +123,7 @@ const TeamName = styled.span`
 const Name = styled.span`
     display: flex;
     padding: 0 0.4rem 0 0;
+    white-space: nowrap;
 
     ${media.mobile} {
         flex-wrap: nowrap;
@@ -127,6 +131,7 @@ const Name = styled.span`
 `;
 const MMRValues = styled.span`
     display: flex;
+    white-space: nowrap;
     align-items: center;
     justify-content: ${(props) =>
         props.$team === "1" ? "flex-end" : "flex-start"};
@@ -187,10 +192,10 @@ function MatchesRow({ match }) {
         !player3 && !player4
             ? "1 on 1"
             : !player3
-              ? "1 on 2"
-              : !player4
-                ? "2 on 1"
-                : "2 on 2";
+            ? "1 on 2"
+            : !player4
+            ? "2 on 1"
+            : "2 on 2";
 
     const team1Won =
         match.status !== MATCH_ENDED
@@ -239,6 +244,7 @@ function MatchesRow({ match }) {
                         <TeamName
                             $won={team1Won}
                             onClick={(e) => handleTeamClick(e, team1.id)}
+                            $team="1"
                         >
                             <Name>{team1.name}</Name>
                             <MMRValues $team="1">
@@ -286,6 +292,7 @@ function MatchesRow({ match }) {
                         <TeamName
                             $won={team1Won === null ? null : !team1Won}
                             onClick={(e) => handleTeamClick(e, team2.id)}
+                            $team="2"
                         >
                             <Name>{team2.name}</Name>
                             <MMRValues $team="2">

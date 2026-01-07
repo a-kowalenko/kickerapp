@@ -127,12 +127,15 @@ const TeamName = styled.span`
     font-size: 1.6rem;
     gap: 0.4rem;
     font-weight: 600;
+    flex-wrap: wrap;
+    justify-content: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
     color: ${(props) =>
         props.$won === null
             ? "var(--primary-text-color)"
             : props.$won === true
-              ? "var(--winner-name-color)"
-              : "var(--loser-name-color)"};
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
     cursor: pointer;
 
     &:hover {
@@ -166,6 +169,7 @@ const MmrChange = styled.span`
 `;
 
 const TeamNameText = styled.span`
+    white-space: nowrap;
     ${media.mobile} {
         display: flex;
         justify-content: ${(props) =>
@@ -173,6 +177,7 @@ const TeamNameText = styled.span`
     }
 `;
 const TeamMmrText = styled.span`
+    white-space: nowrap;
     ${media.mobile} {
         display: flex;
         justify-content: ${(props) =>
@@ -284,6 +289,7 @@ function TeamMatchRow({ match, teamId }) {
                     <TeamName
                         $won={ourWon}
                         onClick={(e) => handleTeamClick(e, ourTeam?.id)}
+                        $team="1"
                     >
                         <TeamNameText $team="1">
                             {ourTeam?.name || "Unknown"}
@@ -332,6 +338,7 @@ function TeamMatchRow({ match, teamId }) {
                     <TeamName
                         $won={!ourWon}
                         onClick={(e) => handleTeamClick(e, opponentTeam?.id)}
+                        $team="2"
                     >
                         <TeamNameText $team="2">
                             {opponentTeam?.name || "Unknown"}
