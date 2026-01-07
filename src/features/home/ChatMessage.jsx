@@ -60,9 +60,7 @@ const MessageContainer = styled.div`
             props.$isUnread && !props.$isWhisper
                 ? "var(--primary-button-color)"
                 : "transparent"};
-    transition:
-        background-color 0.2s,
-        border-left-color 0.2s;
+    transition: background-color 0.2s, border-left-color 0.2s;
     position: relative;
 
     /* Prevent text selection on mobile during long press */
@@ -118,9 +116,7 @@ const HoverToolbar = styled.div`
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     opacity: 0;
     visibility: hidden;
-    transition:
-        opacity 0.15s,
-        visibility 0.15s;
+    transition: opacity 0.15s, visibility 0.15s;
     z-index: 20;
 
     ${MessageContainer}:hover &:not([data-hidden="true"]) {
@@ -699,6 +695,8 @@ function ChatMessage({
     // Build message context menu items
     function getMessageMenuItems() {
         const items = [];
+        const player = message.player;
+        const isOwnMessage = message.player_id === currentPlayerId;
 
         // Copy - only show if text is selected
         if (contextMenu?.selectedText) {
@@ -718,6 +716,19 @@ function ChatMessage({
             disabled: isUpdating || isDeleting,
         });
 
+        // Reply privately (whisper) - only if not own message
+        if (!isOwnMessage) {
+            items.push({
+                label: "Reply privately",
+                icon: <HiChatBubbleLeftRight />,
+                onClick: () => {
+                    onWhisper?.(player);
+                    onReply(message);
+                },
+                disabled: isUpdating || isDeleting,
+            });
+        }
+
         // React
         items.push({
             label: "React",
@@ -727,8 +738,34 @@ function ChatMessage({
             disabled: isUpdating || isDeleting || isTogglingReaction,
         });
 
+        // Mention
+        items.push({
+            label: "Mention",
+            icon: <HiAtSymbol />,
+            onClick: () => onMention?.(player),
+        });
+
+        items.push({ type: "divider" });
+
+        // Whisper - only if not own message
+        if (!isOwnMessage) {
+            items.push({
+                label: "Whisper",
+                icon: <HiChatBubbleLeftRight />,
+                onClick: () => onWhisper?.(player),
+            });
+        }
+
+        // Profile
+        items.push({
+            label: "Profile",
+            icon: <HiUser />,
+            onClick: () => navigate(`/user/${player?.name}/profile`),
+        });
+
         // Edit - only if own message
         if (canEdit && !isEditing) {
+            items.push({ type: "divider" });
             items.push({
                 label: "Edit",
                 icon: <HiPencil />,
@@ -739,7 +776,9 @@ function ChatMessage({
 
         // Delete - only if admin
         if (canDelete) {
-            items.push({ type: "divider" });
+            if (!canEdit || isEditing) {
+                items.push({ type: "divider" });
+            }
             items.push({
                 label: "Delete",
                 icon: <HiTrash />,

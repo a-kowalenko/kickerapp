@@ -2,15 +2,6 @@ import styled from "styled-components";
 import { useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 
-const Overlay = styled.div`
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 9998;
-`;
-
 const MenuContainer = styled.div`
     position: fixed;
     z-index: 9999;
@@ -124,7 +115,7 @@ function ContextMenu({ items, position, onClose }) {
         return { x, y };
     }, [safePosition]);
 
-    // Handle escape key
+    // Handle escape key and outside clicks
     useEffect(() => {
         function handleKeyDown(e) {
             if (e.key === "Escape") {
@@ -132,8 +123,31 @@ function ContextMenu({ items, position, onClose }) {
             }
         }
 
+        function handleClickOutside(e) {
+            // Close menu if click is outside the menu
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                onClose();
+            }
+        }
+
+        function handleContextMenuOutside(e) {
+            // Close menu if right-click is outside the menu
+            // Don't prevent default - let the new context menu open
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                onClose();
+            }
+        }
+
+        // Use capture phase to handle events before they reach other handlers
         document.addEventListener("keydown", handleKeyDown);
-        return () => document.removeEventListener("keydown", handleKeyDown);
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("contextmenu", handleContextMenuOutside, true);
+        
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown);
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("contextmenu", handleContextMenuOutside, true);
+        };
     }, [onClose]);
 
     // Adjust position after initial render
@@ -152,40 +166,39 @@ function ContextMenu({ items, position, onClose }) {
     if (!isValidPosition || visibleItems.length === 0) return null;
 
     return createPortal(
-        <>
-            <Overlay
-                onClick={onClose}
-                onContextMenu={(e) => e.preventDefault()}
-            />
-            <MenuContainer
-                ref={menuRef}
-                style={{ left: position.x, top: position.y }}
-                onClick={(e) => e.stopPropagation()}
-            >
-                {visibleItems.map((item, index) => {
-                    if (item.type === "divider") {
-                        return <MenuDivider key={`divider-${index}`} />;
-                    }
+        <MenuContainer
+            ref={menuRef}
+            style={{ left: position.x, top: position.y }}
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => {
+                // Prevent context menu on the menu itself
+                e.preventDefault();
+                e.stopPropagation();
+            }}
+        >
+            {visibleItems.map((item, index) => {
+                if (item.type === "divider") {
+                    return <MenuDivider key={`divider-${index}`} />;
+                }
 
-                    return (
-                        <MenuItem
-                            key={item.label}
-                            onClick={() => {
-                                item.onClick?.();
-                                if (!item.keepOpen) {
-                                    onClose();
-                                }
-                            }}
-                            disabled={item.disabled}
-                            $danger={item.danger}
-                        >
-                            {item.icon}
-                            <MenuLabel>{item.label}</MenuLabel>
-                        </MenuItem>
-                    );
-                })}
-            </MenuContainer>
-        </>,
+                return (
+                    <MenuItem
+                        key={item.label}
+                        onClick={() => {
+                            item.onClick?.();
+                            if (!item.keepOpen) {
+                                onClose();
+                            }
+                        }}
+                        disabled={item.disabled}
+                        $danger={item.danger}
+                    >
+                        {item.icon}
+                        <MenuLabel>{item.label}</MenuLabel>
+                    </MenuItem>
+                );
+            })}
+        </MenuContainer>,
         document.body
     );
 }
