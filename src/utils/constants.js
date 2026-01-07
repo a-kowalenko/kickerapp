@@ -71,7 +71,8 @@ export const MAX_COMMENT_LENGTH = 1000;
 // CHAT CONSTANTS
 export const MAX_CHAT_MESSAGE_LENGTH = 500;
 export const CHAT_PAGE_SIZE = 50;
-export const TYPING_TIMEOUT = 500;
+export const TYPING_TIMEOUT = 2000;
+export const TYPING_DEBOUNCE = 1000;
 
 // SEASON FILTER VALUES
 export const SEASON_ALL_TIME = "all-time";

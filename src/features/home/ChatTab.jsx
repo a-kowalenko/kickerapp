@@ -80,12 +80,45 @@ const EmptyText = styled.p`
     font-size: 1.4rem;
 `;
 
-const TypingIndicator = styled.div`
+const TypingIndicatorContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     padding: 0.4rem 1rem;
     font-size: 1.2rem;
     color: var(--tertiary-text-color);
     font-style: italic;
     min-height: 2rem;
+    opacity: ${(props) => (props.$visible ? 1 : 0)};
+    transition: opacity 0.2s ease-in-out;
+`;
+
+const TypingDotsContainer = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+`;
+
+const TypingDot = styled.span`
+    width: 0.6rem;
+    height: 0.6rem;
+    background-color: var(--tertiary-text-color);
+    border-radius: 50%;
+    animation: typingBounce 1.4s ease-in-out infinite;
+    animation-delay: ${(props) => props.$delay || "0s"};
+
+    @keyframes typingBounce {
+        0%,
+        60%,
+        100% {
+            transform: scale(0.6);
+            opacity: 0.4;
+        }
+        30% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
 `;
 
 const NewMessagesBadge = styled.span`
@@ -615,7 +648,18 @@ function ChatTab() {
                     )}
                 </MessagesContainer>
 
-                <TypingIndicator>{typingText}</TypingIndicator>
+                <TypingIndicatorContainer $visible={!!typingText}>
+                    {typingText && (
+                        <>
+                            <span>{typingText}</span>
+                            <TypingDotsContainer>
+                                <TypingDot $delay="0s" />
+                                <TypingDot $delay="0.2s" />
+                                <TypingDot $delay="0.4s" />
+                            </TypingDotsContainer>
+                        </>
+                    )}
+                </TypingIndicatorContainer>
 
                 {showJumpToLatest && (
                     <JumpToLatestButton onClick={handleJumpToLatest}>
