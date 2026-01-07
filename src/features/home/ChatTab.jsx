@@ -27,6 +27,7 @@ const MessagesContainer = styled.div`
     flex-direction: column-reverse;
     gap: 0.6rem;
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
     padding: 1rem;
     position: relative;

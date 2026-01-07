@@ -7,10 +7,11 @@ const LONG_PRESS_DURATION = 500; // ms
  * @param {Function} onLongPress - Callback when long press is detected
  * @param {Object} options - Configuration options
  * @param {number} options.threshold - Movement threshold in pixels before canceling
+ * @param {React.RefObject} options.cancelRef - External ref to cancel long press (e.g., when swiping)
  * @returns {Object} Event handlers for touch events
  */
 export function useLongPress(onLongPress, options = {}) {
-    const { threshold = 10 } = options;
+    const { threshold = 10, cancelRef = null } = options;
 
     const timerRef = useRef(null);
     const touchStartRef = useRef(null);
@@ -43,6 +44,11 @@ export function useLongPress(onLongPress, options = {}) {
             isLongPressRef.current = false;
 
             timerRef.current = setTimeout(() => {
+                // Check if external cancel ref is set (e.g., swipe in progress)
+                if (cancelRef?.current) {
+                    clearTimer();
+                    return;
+                }
                 isLongPressRef.current = true;
                 onLongPress?.(e, {
                     x: touchStartRef.current.x,
@@ -50,7 +56,7 @@ export function useLongPress(onLongPress, options = {}) {
                 });
             }, LONG_PRESS_DURATION);
         },
-        [onLongPress]
+        [onLongPress, cancelRef, clearTimer]
     );
 
     const handleTouchMove = useCallback(
@@ -61,12 +67,12 @@ export function useLongPress(onLongPress, options = {}) {
             const moveX = Math.abs(touch.clientX - touchStartRef.current.x);
             const moveY = Math.abs(touch.clientY - touchStartRef.current.y);
 
-            // Cancel long press if moved too much
-            if (moveX > threshold || moveY > threshold) {
+            // Cancel long press if moved too much or external cancel ref is set
+            if (moveX > threshold || moveY > threshold || cancelRef?.current) {
                 clearTimer();
             }
         },
-        [threshold, clearTimer]
+        [threshold, clearTimer, cancelRef]
     );
 
     const handleTouchEnd = useCallback(() => {

@@ -64,7 +64,11 @@ const MessageContainer = styled.div`
         background-color 0.2s,
         border-left-color 0.2s;
     position: relative;
-    touch-action: pan-y;
+
+    /* Prevent text selection on mobile during long press */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
 
     &:hover {
         background-color: var(--tertiary-background-color) !important;
@@ -452,6 +456,8 @@ function ChatMessage({
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [contextMenu, setContextMenu] = useState(null); // { type: "player" | "message" | "react", position: { x, y }, selectedText: "" }
     const touchStartX = useRef(null);
+    const touchStartY = useRef(null);
+    const isSwipingRef = useRef(false);
     const containerRef = useRef(null);
     const addReactionRef = useRef(null);
 
@@ -502,14 +508,36 @@ function ChatMessage({
             return;
         }
         touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+        isSwipingRef.current = false;
     }
 
     function handleTouchMove(e) {
         if (touchStartX.current === null) return;
-        const diff = e.touches[0].clientX - touchStartX.current;
-        // Only allow swiping right
-        if (diff > 0 && diff < 100) {
-            setSwipeOffset(diff);
+
+        const diffX = e.touches[0].clientX - touchStartX.current;
+        const diffY = e.touches[0].clientY - touchStartY.current;
+
+        // Determine swipe direction on first significant movement
+        if (
+            !isSwipingRef.current &&
+            (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)
+        ) {
+            // If horizontal movement is greater, it's a swipe
+            if (Math.abs(diffX) > Math.abs(diffY) && diffX > 0) {
+                isSwipingRef.current = true;
+            } else {
+                // Vertical scroll - cancel swipe detection
+                touchStartX.current = null;
+                touchStartY.current = null;
+                return;
+            }
+        }
+
+        // Only proceed if we've determined this is a horizontal swipe
+        if (isSwipingRef.current && diffX > 0) {
+            // Clamp offset between 0 and 100
+            setSwipeOffset(Math.min(diffX, 100));
         }
     }
 
@@ -520,6 +548,8 @@ function ChatMessage({
         }
         setSwipeOffset(0);
         touchStartX.current = null;
+        touchStartY.current = null;
+        isSwipingRef.current = false;
     }
 
     function handleReplyPreviewClick() {
@@ -628,7 +658,10 @@ function ChatMessage({
         }
     }, []);
 
-    const longPressHandlers = useLongPress(handleLongPress, { threshold: 10 });
+    const longPressHandlers = useLongPress(handleLongPress, {
+        threshold: 10,
+        cancelRef: isSwipingRef,
+    });
 
     // Handle switching to emoji picker from context menu
     function handleOpenReactionPicker() {
@@ -915,7 +948,62 @@ function ChatMessage({
                             {message.reply_to.player?.name}
                         </ReplyAuthor>
                         <ReplyContent>
-                            {stripMentions(message.reply_to.content)}
+                            {/* Censor whisper content if this is a public reply to a whisper */}
+                            {(() => {
+                                console.log("=== REPLY DEBUG ===");
+                                console.log(
+                                    "message.reply_to:",
+                                    message.reply_to
+                                );
+                                console.log(
+                                    "message.reply_to.recipient_id:",
+                                    message.reply_to?.recipient_id
+                                );
+                                console.log(
+                                    "isWhisper (current message):",
+                                    isWhisper
+                                );
+                                console.log(
+                                    "currentPlayerId:",
+                                    currentPlayerId
+                                );
+
+                                // If replying to a whisper in a public message
+                                if (
+                                    message.reply_to.recipient_id &&
+                                    !isWhisper
+                                ) {
+                                    console.log(">>> Inside censoring logic");
+                                    // Check if current user was involved in the original whisper
+                                    const isWhisperSender =
+                                        message.reply_to.player?.id ===
+                                        currentPlayerId;
+                                    const isWhisperRecipient =
+                                        message.reply_to.recipient_id ===
+                                            currentPlayerId ||
+                                        message.reply_to.recipient?.id ===
+                                            currentPlayerId;
+
+                                    console.log(
+                                        "isWhisperSender:",
+                                        isWhisperSender
+                                    );
+                                    console.log(
+                                        "isWhisperRecipient:",
+                                        isWhisperRecipient
+                                    );
+
+                                    // Only show content if user was involved in the whisper
+                                    if (isWhisperSender || isWhisperRecipient) {
+                                        return stripMentions(
+                                            message.reply_to.content
+                                        );
+                                    }
+                                    return "Whispered message";
+                                }
+                                // Normal message or whisper reply to whisper
+                                return stripMentions(message.reply_to.content);
+                            })()}
                         </ReplyContent>
                     </ReplyPreview>
                 )}

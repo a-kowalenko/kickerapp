@@ -51,7 +51,7 @@ export async function getChatMessages(
         const { data: replyMessages } = await supabase
             .from(CHAT_MESSAGES)
             .select(
-                `id, content, player: ${PLAYER}!${CHAT_MESSAGES}_player_id_fkey (id, name, avatar)`
+                `id, content, recipient_id, player: ${PLAYER}!${CHAT_MESSAGES}_player_id_fkey (id, name, avatar), recipient: ${PLAYER}!${CHAT_MESSAGES}_recipient_id_fkey (id, name)`
             )
             .in("id", replyToIds);
 
