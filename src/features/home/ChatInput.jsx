@@ -1,10 +1,19 @@
 import styled from "styled-components";
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import {
+    useState,
+    useRef,
+    useEffect,
+    useMemo,
+    useCallback,
+    forwardRef,
+    useImperativeHandle,
+} from "react";
 import {
     HiOutlineFaceSmile,
     HiPaperAirplane,
     HiXMark,
     HiPhoto,
+    HiChatBubbleLeftRight,
 } from "react-icons/hi2";
 import { PiGifBold } from "react-icons/pi";
 import { usePlayers } from "../../hooks/usePlayers";
@@ -88,20 +97,28 @@ const WhisperBanner = styled.div`
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    padding: 0.6rem 1rem;
-    background-color: rgba(34, 197, 94, 0.1);
+    padding: 0.8rem 1rem;
+    background-color: rgba(34, 197, 94, 0.15);
     border-radius: var(--border-radius-sm);
     border-left: 3px solid var(--color-green-500);
+`;
+
+const WhisperIcon = styled(HiChatBubbleLeftRight)`
+    font-size: 1.6rem;
+    color: var(--color-green-500);
+    flex-shrink: 0;
 `;
 
 const WhisperLabel = styled.span`
     font-size: 1.2rem;
     color: var(--color-green-500);
+    font-weight: 500;
 `;
 
 const WhisperRecipient = styled.span`
-    font-weight: 600;
-    color: var(--color-green-500);
+    font-weight: 700;
+    color: var(--color-green-400);
+    font-size: 1.3rem;
 `;
 
 const InputRow = styled.div`
@@ -268,16 +285,19 @@ const ProgressFill = styled.div`
     width: ${(props) => props.$progress}%;
 `;
 
-function ChatInput({
-    onSubmit,
-    isSubmitting,
-    currentPlayer,
-    replyTo,
-    onCancelReply,
-    lastWhisperFrom,
-    onTyping,
-    onFocusInput,
-}) {
+const ChatInput = forwardRef(function ChatInput(
+    {
+        onSubmit,
+        isSubmitting,
+        currentPlayer,
+        replyTo,
+        onCancelReply,
+        lastWhisperFrom,
+        onTyping,
+        onFocusInput,
+    },
+    ref
+) {
     const [content, setContent] = useState("");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
@@ -302,6 +322,51 @@ function ChatInput({
     const { canUpload: canUploadImages } = useCanUploadImages();
     const { uploadImageFile, isUploading, progress } = useImageUpload();
 
+    // Expose methods to parent via ref (for context menu actions)
+    useImperativeHandle(
+        ref,
+        () => ({
+            setWhisperRecipient: (player) => {
+                setWhisperRecipient(player);
+                // Only clear content if starting fresh whisper, keep content if user typed something
+                if (!contentRef.current.trim()) {
+                    setContent("");
+                }
+                setTimeout(() => {
+                    inputRef.current?.focus();
+                    inputRef.current?.setCursorPosition(
+                        contentRef.current.length
+                    );
+                }, 10);
+            },
+            insertMention: (player) => {
+                // Directly append the mention to content (context menu action)
+                // Don't use RichTextInput's insertMention as it looks for @ trigger
+                let mentionText;
+                if (player.isEveryone) {
+                    mentionText = "@everyone ";
+                } else {
+                    mentionText = `@[${player.name}](${player.id}) `;
+                }
+
+                // Append to current content or start fresh
+                const currentContent = contentRef.current;
+                const trimmed = currentContent.trimEnd();
+                const newContent = trimmed
+                    ? `${trimmed} ${mentionText}`
+                    : mentionText;
+                setContent(newContent);
+
+                // Focus and move cursor to end after state update
+                setTimeout(() => {
+                    inputRef.current?.focus();
+                    inputRef.current?.setCursorPosition(newContent.length);
+                }, 50);
+            },
+        }),
+        []
+    );
+
     // Refocus input after submission completes (when isSubmitting goes from true to false)
     useEffect(() => {
         if (shouldRefocusAfterSubmit && !isSubmitting) {
@@ -310,11 +375,23 @@ function ChatInput({
         }
     }, [isSubmitting, shouldRefocusAfterSubmit]);
 
-    // Expose focus function to parent
+    // Use ref to track current content for focus function (avoids stale closure)
+    const contentRef = useRef(content);
+    useEffect(() => {
+        contentRef.current = content;
+    }, [content]);
+
+    // Expose focus function to parent (with cursor at end)
     useEffect(() => {
         if (onFocusInput) {
             onFocusInput(() => {
                 inputRef.current?.focus();
+                // Move cursor to end after focus
+                setTimeout(() => {
+                    inputRef.current?.setCursorPosition(
+                        contentRef.current.length
+                    );
+                }, 10);
             });
         }
     }, [onFocusInput]);
@@ -697,15 +774,23 @@ function ChatInput({
             )}
 
             {/* Whisper Banner */}
-            {whisperRecipient && !replyTo && (
+            {whisperRecipient && (
                 <WhisperBanner>
+                    <WhisperIcon />
+                    <Avatar
+                        src={whisperRecipient.avatar || DEFAULT_AVATAR}
+                        $size="small"
+                    />
                     <WhisperLabel>
                         Whispering to{" "}
                         <WhisperRecipient>
                             {whisperRecipient.name}
                         </WhisperRecipient>
                     </WhisperLabel>
-                    <CloseReplyButton onClick={handleCancelWhisper}>
+                    <CloseReplyButton
+                        onClick={handleCancelWhisper}
+                        style={{ marginLeft: "auto" }}
+                    >
                         <HiXMark />
                     </CloseReplyButton>
                 </WhisperBanner>
@@ -887,6 +972,6 @@ function ChatInput({
             </BottomRow>
         </InputContainer>
     );
-}
+});
 
 export default ChatInput;

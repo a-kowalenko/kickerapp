@@ -2,11 +2,14 @@ import { useInfiniteQuery, useQueryClient } from "react-query";
 import { useCallback, useEffect } from "react";
 import { getChatMessages, getChatMessageById } from "../../services/apiChat";
 import { useKicker } from "../../contexts/KickerContext";
+import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { CHAT_MESSAGES, CHAT_PAGE_SIZE } from "../../utils/constants";
 import supabase, { databaseSchema } from "../../services/supabase";
 
 export function useChatMessages() {
     const { currentKicker: kicker } = useKicker();
+    const { data: currentPlayer } = useOwnPlayer();
+    const currentPlayerId = currentPlayer?.id;
     const queryClient = useQueryClient();
 
     const {
@@ -17,11 +20,12 @@ export function useChatMessages() {
         hasNextPage,
         isFetchingNextPage,
     } = useInfiniteQuery({
-        queryKey: [CHAT_MESSAGES, kicker],
+        queryKey: [CHAT_MESSAGES, kicker, currentPlayerId],
         queryFn: ({ pageParam = 0 }) =>
             getChatMessages(kicker, {
                 offset: pageParam,
                 limit: CHAT_PAGE_SIZE,
+                currentPlayerId,
             }),
         getNextPageParam: (lastPage, allPages) => {
             // If we got fewer items than page size, there are no more pages
@@ -37,39 +41,52 @@ export function useChatMessages() {
 
     const handleRealtimeInsert = useCallback(
         async (payload) => {
-            // Fetch the full message with relations
+            // Fetch the full message with relations (includes whisper visibility check)
             try {
-                const newMessage = await getChatMessageById(payload.new.id);
+                const newMessage = await getChatMessageById(
+                    payload.new.id,
+                    currentPlayerId
+                );
 
-                queryClient.setQueryData([CHAT_MESSAGES, kicker], (oldData) => {
-                    if (!oldData) return oldData;
+                // If newMessage is null, the whisper isn't visible to this user
+                if (!newMessage) return;
 
-                    // Check if message already exists (prevent duplicates)
-                    const allMessages = oldData.pages.flat();
-                    if (allMessages.some((m) => m.id === newMessage.id)) {
-                        return oldData;
+                queryClient.setQueryData(
+                    [CHAT_MESSAGES, kicker, currentPlayerId],
+                    (oldData) => {
+                        if (!oldData) return oldData;
+
+                        // Check if message already exists (prevent duplicates)
+                        const allMessages = oldData.pages.flat();
+                        if (allMessages.some((m) => m.id === newMessage.id)) {
+                            return oldData;
+                        }
+
+                        // Add new message to the first page (most recent)
+                        const newPages = [...oldData.pages];
+                        newPages[0] = [newMessage, ...newPages[0]];
+                        return { ...oldData, pages: newPages };
                     }
-
-                    // Add new message to the first page (most recent)
-                    const newPages = [...oldData.pages];
-                    newPages[0] = [newMessage, ...newPages[0]];
-                    return { ...oldData, pages: newPages };
-                });
+                );
             } catch (err) {
                 // Fallback to just invalidating
-                queryClient.invalidateQueries([CHAT_MESSAGES, kicker]);
+                queryClient.invalidateQueries([
+                    CHAT_MESSAGES,
+                    kicker,
+                    currentPlayerId,
+                ]);
             }
         },
-        [queryClient, kicker]
+        [queryClient, kicker, currentPlayerId]
     );
 
     const handleRealtimeUpdate = useCallback(() => {
-        queryClient.invalidateQueries([CHAT_MESSAGES, kicker]);
-    }, [queryClient, kicker]);
+        queryClient.invalidateQueries([CHAT_MESSAGES, kicker, currentPlayerId]);
+    }, [queryClient, kicker, currentPlayerId]);
 
     const handleRealtimeDelete = useCallback(() => {
-        queryClient.invalidateQueries([CHAT_MESSAGES, kicker]);
-    }, [queryClient, kicker]);
+        queryClient.invalidateQueries([CHAT_MESSAGES, kicker, currentPlayerId]);
+    }, [queryClient, kicker, currentPlayerId]);
 
     useEffect(() => {
         if (!kicker) return;

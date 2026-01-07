@@ -19,7 +19,35 @@ const Overlay = styled.div`
 `;
 
 // Calculate position immediately (not in useEffect)
-function calculatePosition(triggerRef, position, align) {
+function calculatePosition(triggerRef, position, align, fixedPosition) {
+    // If fixedPosition is provided, use it directly with viewport bounds check
+    if (fixedPosition) {
+        const pickerHeight = 435;
+        const pickerWidth = 352;
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const padding = 10;
+
+        let top = fixedPosition.y;
+        let left = fixedPosition.x;
+
+        // Adjust if going off-screen
+        if (top + pickerHeight > viewportHeight - padding) {
+            top = viewportHeight - pickerHeight - padding;
+        }
+        if (top < padding) {
+            top = padding;
+        }
+        if (left + pickerWidth > viewportWidth - padding) {
+            left = viewportWidth - pickerWidth - padding;
+        }
+        if (left < padding) {
+            left = padding;
+        }
+
+        return { top, left };
+    }
+
     if (!triggerRef?.current) return { top: -9999, left: -9999 };
 
     const rect = triggerRef.current.getBoundingClientRect();
@@ -55,22 +83,25 @@ function EmojiPicker({
     position = "bottom",
     align = "left",
     triggerRef,
+    fixedPosition = null, // { x, y } for context menu positioning
 }) {
     const { isDarkMode } = useDarkMode();
     const pickerRef = useRef(null);
 
     // Calculate initial position synchronously
     const initialPosition = useMemo(
-        () => calculatePosition(triggerRef, position, align),
-        [triggerRef, position, align]
+        () => calculatePosition(triggerRef, position, align, fixedPosition),
+        [triggerRef, position, align, fixedPosition]
     );
 
     const [pickerPosition, setPickerPosition] = useState(initialPosition);
 
     // Update position if needed (e.g., window resize)
     useEffect(() => {
-        setPickerPosition(calculatePosition(triggerRef, position, align));
-    }, [triggerRef, position, align]);
+        setPickerPosition(
+            calculatePosition(triggerRef, position, align, fixedPosition)
+        );
+    }, [triggerRef, position, align, fixedPosition]);
 
     useEffect(() => {
         function handleClickOutside(event) {

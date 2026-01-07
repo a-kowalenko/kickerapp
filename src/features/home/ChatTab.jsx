@@ -31,6 +31,11 @@ const MessagesContainer = styled.div`
     padding: 1rem;
     position: relative;
 
+    /* Prevent browser context menu on messages container for custom menu */
+    & > * {
+        -webkit-touch-callout: none;
+    }
+
     /* Custom scrollbar */
     &::-webkit-scrollbar {
         width: 0.6rem;
@@ -147,6 +152,7 @@ function ChatTab() {
     const messagesContainerRef = useRef(null);
     const loadMoreRef = useRef(null);
     const focusInputRef = useRef(null);
+    const chatInputRef = useRef(null);
     const [showJumpToLatest, setShowJumpToLatest] = useState(false);
     const [newMessagesCount, setNewMessagesCount] = useState(0);
     const [replyTo, setReplyTo] = useState(null);
@@ -526,6 +532,26 @@ function ChatTab() {
         setReplyTo(null);
     }
 
+    // Context menu: start whisper to player
+    function handleWhisper(player) {
+        if (!player) return;
+        // Call the ChatInput's external whisper setter
+        chatInputRef.current?.setWhisperRecipient(player);
+        setTimeout(() => {
+            focusInputRef.current?.();
+        }, 50);
+    }
+
+    // Context menu: mention player in input
+    function handleMention(player) {
+        if (!player) return;
+        // Call the ChatInput's external mention inserter
+        chatInputRef.current?.insertMention(player);
+        setTimeout(() => {
+            focusInputRef.current?.();
+        }, 50);
+    }
+
     function handleToggleReaction({ messageId, reactionType }) {
         if (!currentPlayerId) return;
         toggleReaction({
@@ -632,6 +658,8 @@ function ChatTab() {
                                         }
                                         isGrouped={isGrouped}
                                         isUnread={isUnread}
+                                        onWhisper={handleWhisper}
+                                        onMention={handleMention}
                                     />
                                 );
                             })}
@@ -675,6 +703,7 @@ function ChatTab() {
 
             {currentPlayer && (
                 <ChatInput
+                    ref={chatInputRef}
                     onSubmit={handleCreateMessage}
                     isSubmitting={isCreating}
                     currentPlayer={currentPlayer}
