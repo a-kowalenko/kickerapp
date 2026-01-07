@@ -1,7 +1,14 @@
-import { createContext, useContext, useEffect, useReducer } from "react";
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useReducer,
+    useRef,
+} from "react";
 import { START_MATCH_COUNTDOWN } from "../utils/constants";
 import { useCreateMatch } from "../features/matches/useCreateMatch";
 import { usePlayers } from "../hooks/usePlayers";
+import { useActiveTeams } from "../features/teams/useTeams";
 import toast from "react-hot-toast";
 import { useAudio } from "../hooks/useAudio";
 import { useSearchParams } from "react-router-dom";
@@ -173,7 +180,9 @@ function ChoosePlayerProvider({ children }) {
     const countdownAudio = useAudio("/startMatchSound.mp3");
     const { createMatch } = useCreateMatch();
     const { players, isLoading: isLoadingPlayers } = usePlayers();
+    const { teams, isLoading: isLoadingTeams } = useActiveTeams();
     const [searchParams, setSearchParams] = useSearchParams();
+    const teamsInitializedRef = useRef(false);
 
     // Loading players
     useEffect(
@@ -304,6 +313,35 @@ function ChoosePlayerProvider({ children }) {
             handleSelect(null, 4);
         }
     }, [searchParams, isLoadingPlayers, players, selectedPlayers]);
+
+    // Handle team URL params for team match rematch
+    useEffect(() => {
+        if (isLoadingTeams || !teams || teamsInitializedRef.current) {
+            return;
+        }
+
+        const team1Param = Number(searchParams.get("team1"));
+        const team2Param = Number(searchParams.get("team2"));
+
+        if (team1Param > 0 && team2Param > 0) {
+            const team1 = teams.find((t) => t.id === team1Param);
+            const team2 = teams.find((t) => t.id === team2Param);
+
+            if (team1 && team2) {
+                // Switch to team match mode and pre-select the teams
+                dispatch({ type: "toggle_team_match_mode", payload: true });
+                dispatch({
+                    type: "select_team",
+                    payload: { team: team1, teamNumber: 1 },
+                });
+                dispatch({
+                    type: "select_team",
+                    payload: { team: team2, teamNumber: 2 },
+                });
+                teamsInitializedRef.current = true;
+            }
+        }
+    }, [searchParams, isLoadingTeams, teams]);
 
     function startTimer() {
         dispatch({ type: "timer_started" });

@@ -111,8 +111,8 @@ const PlayerName = styled.span`
         props.$winner === null
             ? "var(--primary-text-color)"
             : props.$winner === true
-            ? "var(--winner-name-color)"
-            : "var(--loser-name-color)"};
+              ? "var(--winner-name-color)"
+              : "var(--loser-name-color)"};
 
     & div {
         width: 100%;
@@ -371,12 +371,22 @@ function MatchDetailMobile({ match, timer }) {
     }
 
     function createRematch() {
-        navigate({
-            pathname: "/matches/create",
-            search: `?player1=${player1.id}&player2=${player2.id}${
-                player3 ? `&player3=${player3.id}` : ""
-            }${player4 ? `&player4=${player4.id}` : ""}`,
-        });
+        const isTeamMatch =
+            match.gamemode === "team" && match.team1_id && match.team2_id;
+
+        if (isTeamMatch) {
+            navigate({
+                pathname: "/matches/create",
+                search: `?team1=${match.team1_id}&team2=${match.team2_id}`,
+            });
+        } else {
+            navigate({
+                pathname: "/matches/create",
+                search: `?player1=${player1.id}&player2=${player2.id}${
+                    player3 ? `&player3=${player3.id}` : ""
+                }${player4 ? `&player4=${player4.id}` : ""}`,
+            });
+        }
     }
 
     function handleDeleteMatch() {
@@ -438,8 +448,8 @@ function MatchDetailMobile({ match, timer }) {
                                 !isEnded
                                     ? null
                                     : winner === "Team 1"
-                                    ? true
-                                    : false
+                                      ? true
+                                      : false
                             }
                         >
                             <Avatar
@@ -481,8 +491,8 @@ function MatchDetailMobile({ match, timer }) {
                                     !isEnded
                                         ? null
                                         : winner === "Team 1"
-                                        ? true
-                                        : false
+                                          ? true
+                                          : false
                                 }
                             >
                                 <Avatar
@@ -535,8 +545,8 @@ function MatchDetailMobile({ match, timer }) {
                                 !isEnded
                                     ? null
                                     : winner === "Team 2"
-                                    ? true
-                                    : false
+                                      ? true
+                                      : false
                             }
                         >
                             <Avatar
@@ -578,8 +588,8 @@ function MatchDetailMobile({ match, timer }) {
                                     !isEnded
                                         ? null
                                         : winner === "Team 2"
-                                        ? true
-                                        : false
+                                          ? true
+                                          : false
                                 }
                             >
                                 <Avatar
