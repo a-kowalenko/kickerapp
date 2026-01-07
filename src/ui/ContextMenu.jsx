@@ -141,12 +141,20 @@ function ContextMenu({ items, position, onClose }) {
         // Use capture phase to handle events before they reach other handlers
         document.addEventListener("keydown", handleKeyDown);
         document.addEventListener("mousedown", handleClickOutside);
-        document.addEventListener("contextmenu", handleContextMenuOutside, true);
-        
+        document.addEventListener(
+            "contextmenu",
+            handleContextMenuOutside,
+            true
+        );
+
         return () => {
             document.removeEventListener("keydown", handleKeyDown);
             document.removeEventListener("mousedown", handleClickOutside);
-            document.removeEventListener("contextmenu", handleContextMenuOutside, true);
+            document.removeEventListener(
+                "contextmenu",
+                handleContextMenuOutside,
+                true
+            );
         };
     }, [onClose]);
 
