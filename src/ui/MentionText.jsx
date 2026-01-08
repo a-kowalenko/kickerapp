@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { HiPlay } from "react-icons/hi2";
 import MatchLinkWithTooltip from "./MatchLinkWithTooltip";
 import MediaViewer from "./MediaViewer";
 
@@ -45,6 +46,185 @@ const UploadedImage = styled.img`
         opacity: 0.9;
     }
 `;
+
+// YouTube Embed Styled Components
+const YouTubeContainer = styled.div`
+    position: relative;
+    width: 100%;
+    max-width: ${(props) => (props.$isShort ? "24rem" : "48rem")};
+    aspect-ratio: ${(props) => (props.$isShort ? "9 / 16" : "16 / 9")};
+    max-height: ${(props) => (props.$isShort ? "42rem" : "30rem")};
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+    margin: 0.4rem 0;
+    background-color: #000;
+`;
+
+const YouTubeThumbnail = styled.img`
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+
+    &:hover {
+        opacity: 0.85;
+        transform: scale(1.02);
+    }
+`;
+
+const PlayButtonOverlay = styled.div`
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6.8rem;
+    height: 4.8rem;
+    background-color: rgba(255, 0, 0, 0.9);
+    border-radius: var(--border-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+    pointer-events: none;
+
+    & svg {
+        font-size: 2.8rem;
+        color: white;
+        margin-left: 0.3rem;
+    }
+
+    ${YouTubeContainer}:hover & {
+        background-color: rgba(255, 0, 0, 1);
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+`;
+
+const YouTubeIframe = styled.iframe`
+    width: 100%;
+    height: 100%;
+    border: none;
+`;
+
+const YouTubeWrapper = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+`;
+
+// Parse YouTube timestamp from various formats: t=123, t=1m30s, t=1h2m3s
+function parseYouTubeTimestamp(url) {
+    // Match t= parameter in URL
+    const timeMatch = url.match(/[?&]t=([^&]+)/);
+    if (!timeMatch) return 0;
+
+    const timeValue = timeMatch[1];
+
+    // Pure seconds format (e.g., t=123)
+    if (/^\d+s?$/.test(timeValue)) {
+        return parseInt(timeValue, 10);
+    }
+
+    // Complex format (e.g., 1h2m3s, 1m30s, 2m)
+    let totalSeconds = 0;
+    const hours = timeValue.match(/(\d+)h/);
+    const minutes = timeValue.match(/(\d+)m/);
+    const seconds = timeValue.match(/(\d+)s/);
+
+    if (hours) totalSeconds += parseInt(hours[1], 10) * 3600;
+    if (minutes) totalSeconds += parseInt(minutes[1], 10) * 60;
+    if (seconds) totalSeconds += parseInt(seconds[1], 10);
+
+    return totalSeconds;
+}
+
+// Extract YouTube video ID and metadata from URL
+function parseYouTubeUrl(url) {
+    // youtube.com/watch?v=VIDEO_ID
+    const watchMatch = url.match(
+        /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
+    );
+    if (watchMatch) {
+        return {
+            videoId: watchMatch[1],
+            isShort: false,
+            startTime: parseYouTubeTimestamp(url),
+        };
+    }
+
+    // youtu.be/VIDEO_ID
+    const shortUrlMatch = url.match(/(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (shortUrlMatch) {
+        return {
+            videoId: shortUrlMatch[1],
+            isShort: false,
+            startTime: parseYouTubeTimestamp(url),
+        };
+    }
+
+    // youtube.com/shorts/VIDEO_ID
+    const shortsMatch = url.match(
+        /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/
+    );
+    if (shortsMatch) {
+        return {
+            videoId: shortsMatch[1],
+            isShort: true,
+            startTime: parseYouTubeTimestamp(url),
+        };
+    }
+
+    return null;
+}
+
+// YouTube Embed Component with thumbnail preview
+function YouTubeEmbed({ videoId, isShort, startTime, originalUrl }) {
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1${
+        startTime ? `&start=${startTime}` : ""
+    }`;
+
+    function handleClick() {
+        setIsPlaying(true);
+    }
+
+    return (
+        <YouTubeWrapper>
+            <ExternalLink
+                href={originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                {originalUrl}
+            </ExternalLink>
+            <YouTubeContainer $isShort={isShort}>
+                {isPlaying ? (
+                    <YouTubeIframe
+                        src={embedUrl}
+                        title="YouTube video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    />
+                ) : (
+                    <>
+                        <YouTubeThumbnail
+                            src={thumbnailUrl}
+                            alt="YouTube video thumbnail"
+                            onClick={handleClick}
+                            loading="lazy"
+                        />
+                        <PlayButtonOverlay onClick={handleClick}>
+                            <HiPlay />
+                        </PlayButtonOverlay>
+                    </>
+                )}
+            </YouTubeContainer>
+        </YouTubeWrapper>
+    );
+}
 
 // Helper component for clickable images that open the viewer
 function ClickableImage({ src, onOpenViewer }) {
@@ -164,6 +344,9 @@ function MentionText({ content }) {
     }
 
     // Find URLs (but not those inside [gif:...] or [img:...])
+    // Track if we've already found a YouTube video (limit to 1 embed per message)
+    let hasYouTubeEmbed = false;
+
     urlRegex.lastIndex = 0;
     while ((match = urlRegex.exec(content)) !== null) {
         const url = match[0];
@@ -178,13 +361,29 @@ function MentionText({ content }) {
             Math.max(lastGifIndex, lastImgIndex) > lastCloseBracket;
 
         if (!isInsideTag) {
-            allMatches.push({
-                type: "url",
-                index: startIndex,
-                length: url.length,
-                url: url,
-                fullMatch: url,
-            });
+            // Check if this is a YouTube URL (only embed the first one)
+            const youtubeData = parseYouTubeUrl(url);
+            if (youtubeData && !hasYouTubeEmbed) {
+                hasYouTubeEmbed = true;
+                allMatches.push({
+                    type: "youtube",
+                    index: startIndex,
+                    length: url.length,
+                    url: url,
+                    videoId: youtubeData.videoId,
+                    isShort: youtubeData.isShort,
+                    startTime: youtubeData.startTime,
+                    fullMatch: url,
+                });
+            } else {
+                allMatches.push({
+                    type: "url",
+                    index: startIndex,
+                    length: url.length,
+                    url: url,
+                    fullMatch: url,
+                });
+            }
         }
     }
 
@@ -257,6 +456,16 @@ function MentionText({ content }) {
                 >
                     {m.url}
                 </ExternalLink>
+            );
+        } else if (m.type === "youtube") {
+            parts.push(
+                <YouTubeEmbed
+                    key={`youtube-${m.index}`}
+                    videoId={m.videoId}
+                    isShort={m.isShort}
+                    startTime={m.startTime}
+                    originalUrl={m.url}
+                />
             );
         }
 
