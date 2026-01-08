@@ -232,7 +232,7 @@ async function handleTeamInvitation(
 
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SECRET_API_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
         db: { schema: databaseSchema },
     });
@@ -484,7 +484,7 @@ serve(async (req) => {
 
         // Create Supabase client
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabaseServiceKey = Deno.env.get("SECRET_API_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey, {
             db: { schema: databaseSchema },
         });
