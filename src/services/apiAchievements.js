@@ -413,3 +413,215 @@ export async function getNextInChain(achievementId) {
 
     return data || null;
 }
+
+// ============== ACHIEVEMENT FEED ==============
+
+const ACHIEVEMENT_FEED_PAGE_SIZE = 30;
+
+/**
+ * Get achievement feed for a kicker (all unlocked achievements by kicker players)
+ * Grouped by match_id for display, filtered by current season
+ */
+export async function getKickerAchievementFeed(
+    kickerId,
+    seasonId,
+    { offset = 0, limit = ACHIEVEMENT_FEED_PAGE_SIZE } = {}
+) {
+    // First, get the player IDs for this kicker
+    const { data: kickerPlayers, error: playersError } = await supabase
+        .schema(databaseSchema)
+        .from("player")
+        .select("id")
+        .eq("kicker_id", kickerId);
+
+    if (playersError) {
+        throw new Error(playersError.message);
+    }
+
+    const playerIds = kickerPlayers?.map((p) => p.id) || [];
+
+    if (playerIds.length === 0) {
+        return [];
+    }
+
+    // Query player_achievements for these players
+    let query = supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .select(
+            `
+            id,
+            unlocked_at,
+            times_completed,
+            season_id,
+            match_id,
+            player_id,
+            achievement_id,
+            player!player_achievements_player_id_fkey(
+                id,
+                name,
+                avatar,
+                kicker_id
+            ),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievements_achievement_id_fkey(
+                id,
+                key,
+                name,
+                description,
+                points,
+                icon,
+                category:${ACHIEVEMENT_CATEGORIES}(
+                    id,
+                    name,
+                    icon
+                )
+            ),
+            match:matches!player_achievements_match_id_fkey(
+                id,
+                nr,
+                "scoreTeam1",
+                "scoreTeam2",
+                created_at
+            )
+        `
+        )
+        .in("player_id", playerIds)
+        .order("unlocked_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+    // Filter by season if provided
+    if (seasonId) {
+        query = query.eq("season_id", seasonId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    // If we have matches, fetch the match player names separately
+    const matchIds = [
+        ...new Set(data?.filter((d) => d.match_id).map((d) => d.match_id)),
+    ];
+
+    let matchPlayersMap = {};
+    if (matchIds.length > 0) {
+        const { data: matchesWithPlayers, error: matchError } = await supabase
+            .schema(databaseSchema)
+            .from("matches")
+            .select(
+                `
+                id,
+                player1:player(id, name),
+                player2:player!matches_player2_fkey(id, name),
+                player3:player!matches_player3_fkey(id, name),
+                player4:player!matches_player4_fkey(id, name)
+            `
+            )
+            .in("id", matchIds);
+
+        if (!matchError && matchesWithPlayers) {
+            matchPlayersMap = matchesWithPlayers.reduce((acc, m) => {
+                acc[m.id] = {
+                    player1: m.player1,
+                    player2: m.player2,
+                    player3: m.player3,
+                    player4: m.player4,
+                };
+                return acc;
+            }, {});
+        }
+    }
+
+    // Merge match player data
+    const enrichedData = data?.map((item) => ({
+        ...item,
+        match: item.match
+            ? {
+                  ...item.match,
+                  ...matchPlayersMap[item.match_id],
+              }
+            : null,
+    }));
+
+    return enrichedData || [];
+}
+
+/**
+ * Get a single achievement by ID (for realtime updates)
+ */
+export async function getPlayerAchievementById(achievementRecordId) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .select(
+            `
+            id,
+            unlocked_at,
+            times_completed,
+            season_id,
+            match_id,
+            player_id,
+            achievement_id,
+            player!player_achievements_player_id_fkey(
+                id,
+                name,
+                avatar,
+                kicker_id
+            ),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievements_achievement_id_fkey(
+                id,
+                key,
+                name,
+                description,
+                points,
+                icon,
+                category:${ACHIEVEMENT_CATEGORIES}(
+                    id,
+                    name,
+                    icon
+                )
+            ),
+            match:matches!player_achievements_match_id_fkey(
+                id,
+                nr,
+                "scoreTeam1",
+                "scoreTeam2",
+                created_at
+            )
+        `
+        )
+        .eq("id", achievementRecordId)
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    // Fetch match player names if match exists
+    if (data?.match_id) {
+        const { data: matchWithPlayers } = await supabase
+            .schema(databaseSchema)
+            .from("matches")
+            .select(
+                `
+                player1:player(id, name),
+                player2:player!matches_player2_fkey(id, name),
+                player3:player!matches_player3_fkey(id, name),
+                player4:player!matches_player4_fkey(id, name)
+            `
+            )
+            .eq("id", data.match_id)
+            .single();
+
+        if (matchWithPlayers) {
+            data.match = {
+                ...data.match,
+                ...matchWithPlayers,
+            };
+        }
+    }
+
+    return data;
+}
