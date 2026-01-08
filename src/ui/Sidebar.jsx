@@ -6,6 +6,7 @@ import { useLocalStorageState } from "../hooks/useLocalStorageState";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { isTouchDevice } from "../utils/helpers";
 import useWindowWidth from "../hooks/useWindowWidth";
+import { useState, useEffect } from "react";
 
 const StyledSidebar = styled.aside`
     display: flex;
@@ -18,6 +19,10 @@ const StyledSidebar = styled.aside`
     width: 24rem;
     overflow: auto;
     overflow-x: hidden;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    align-self: start;
 
     @media (max-width: 850px) {
         &.active {
@@ -73,9 +78,33 @@ function Sidebar() {
         "isOpenLeftSidebar"
     );
 
+    // Track header visibility for BurgerMenu sync on mobile
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+
+    useEffect(() => {
+        const handleHeaderVisibility = (e) => {
+            setIsHeaderVisible(e.detail.isVisible);
+        };
+
+        window.addEventListener(
+            "headerVisibilityChange",
+            handleHeaderVisibility
+        );
+        return () =>
+            window.removeEventListener(
+                "headerVisibilityChange",
+                handleHeaderVisibility
+            );
+    }, []);
+
     const close = () => {
         if (isTouchDevice()) {
             setIsOpen(false);
+            // Dispatch after state update with slight delay to ensure localStorage is updated
+            setTimeout(
+                () => window.dispatchEvent(new Event("sidebarToggle")),
+                0
+            );
         }
     };
 
@@ -84,11 +113,16 @@ function Sidebar() {
     const toggleSidebar = (e) => {
         e.stopPropagation();
         setIsOpen((open) => !open);
+        // Dispatch event so Header can update its position (after localStorage updates)
+        setTimeout(() => window.dispatchEvent(new Event("sidebarToggle")), 0);
     };
 
     return (
         <>
-            <BurgerMenu onClick={toggleSidebar} />
+            <BurgerMenu
+                onClick={toggleSidebar}
+                isHeaderVisible={isHeaderVisible}
+            />
             <StyledSidebar
                 ref={sidebarRef}
                 className={isOpen ? "active" : ""}

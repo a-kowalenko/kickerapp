@@ -237,6 +237,10 @@ function MatchDetail() {
     }
 
     function handleEndMatch() {
+        if (isLoadingEndMatch || match?.status !== "active") {
+            return;
+        }
+
         if (score1 === "" || score2 === "") {
             toast.error("Score is missing");
             return;
@@ -323,12 +327,24 @@ function MatchDetail() {
     );
 
     function createRematch() {
-        navigate({
-            pathname: "/matches/create",
-            search: `?player1=${player1.id}&player2=${player2.id}${
-                player3 ? `&player3=${player3.id}` : ""
-            }${player4 ? `&player4=${player4.id}` : ""}`,
-        });
+        const isTeamMatch =
+            finalMatch.gamemode === "team" &&
+            finalMatch.team1_id &&
+            finalMatch.team2_id;
+
+        if (isTeamMatch) {
+            navigate({
+                pathname: "/matches/create",
+                search: `?team1=${finalMatch.team1_id}&team2=${finalMatch.team2_id}`,
+            });
+        } else {
+            navigate({
+                pathname: "/matches/create",
+                search: `?player1=${player1.id}&player2=${player2.id}${
+                    player3 ? `&player3=${player3.id}` : ""
+                }${player4 ? `&player4=${player4.id}` : ""}`,
+            });
+        }
     }
 
     if (isLoading || isLoadingGoals) {
@@ -557,6 +573,7 @@ function MatchDetail() {
                         $size="xlarge"
                         action={handleEndMatch}
                         icon={<HiArrowDownTray />}
+                        disabled={isLoadingEndMatch}
                     >
                         {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
                     </DelayedButton>

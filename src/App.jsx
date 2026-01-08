@@ -12,12 +12,15 @@ import User from "./pages/User";
 import Kicker from "./pages/Kicker";
 import Match from "./pages/Match";
 import Tournament from "./pages/Tournament";
+import Teams from "./pages/Teams";
+import Team from "./pages/Team";
 import PageNotFound from "./pages/PageNotFound";
 import Rankings from "./pages/Rankings";
 import GlobalStyles from "./styles/GlobalStyles";
 import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
 import Fatalities from "./pages/Fatalities";
+import AchievementsPage from "./features/achievements/AchievementsPage";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
 import Players from "./pages/Players";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
@@ -29,6 +32,7 @@ import Start from "./pages/Start";
 import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
 import Testwiese from "./pages/Testwiese";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -69,7 +73,7 @@ function App() {
                                         element={<UpdatePassword />}
                                     />
                                     <Route
-                                        path="rankings"
+                                        path="rankings/*"
                                         element={<Rankings />}
                                     />
                                     <Route
@@ -87,6 +91,10 @@ function App() {
                                     <Route
                                         path="matches"
                                         element={<Matches />}
+                                    />
+                                    <Route
+                                        path="achievements/*"
+                                        element={<AchievementsPage />}
                                     />
                                     <Route
                                         path="players"
@@ -107,6 +115,15 @@ function App() {
                                     <Route
                                         path="tournament/:tourId"
                                         element={<Tournament />}
+                                    />
+                                    <Route path="teams/*" element={<Teams />} />
+                                    <Route
+                                        path="team/:teamId/*"
+                                        element={<Team />}
+                                    />
+                                    <Route
+                                        path="notifications"
+                                        element={<Notifications />}
                                     />
                                     <Route
                                         path="testwiese"

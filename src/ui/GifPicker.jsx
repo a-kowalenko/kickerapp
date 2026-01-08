@@ -28,6 +28,7 @@ const PickerWrapper = styled.div`
     position: fixed;
     z-index: 10000;
     width: 32rem;
+    max-width: calc(100vw - 2rem);
     max-height: 40rem;
     background-color: var(--secondary-background-color);
     border: 1px solid var(--primary-border-color);

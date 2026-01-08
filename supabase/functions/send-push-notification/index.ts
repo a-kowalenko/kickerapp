@@ -13,11 +13,16 @@ interface WebhookPayload {
     schema: string;
     record: {
         id: number;
-        content: string;
-        player_id: number;
-        kicker_id: number;
+        content?: string;
+        player_id?: number;
+        kicker_id?: number;
         match_id?: number;
         recipient_id?: number;
+        // Team invitation fields
+        team_id?: number;
+        inviting_player_id?: number;
+        invited_player_id?: number;
+        status?: string;
     };
     old_record: null;
 }
@@ -35,6 +40,8 @@ interface FCMMessage {
         url: string;
         title: string;
         body: string;
+        badge?: string;
+        teamId?: string;
     };
     webpush?: {
         headers?: {
@@ -206,6 +213,182 @@ async function sendFCMNotification(
     }
 }
 
+// Handle team invitation push notifications
+async function handleTeamInvitation(
+    webhook: WebhookPayload,
+    databaseSchema: string
+): Promise<Response> {
+    const { record } = webhook;
+    const invitingPlayerId = record.inviting_player_id!;
+    const invitedPlayerId = record.invited_player_id!;
+    const teamId = record.team_id!;
+
+    // Get service account from environment
+    const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT not configured");
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        db: { schema: databaseSchema },
+    });
+
+    // Get inviter name
+    const { data: inviterData } = await supabase
+        .from("player")
+        .select("name")
+        .eq("id", invitingPlayerId)
+        .single();
+    const inviterName = inviterData?.name || "Someone";
+
+    // Get team name and kicker_id
+    const { data: teamData } = await supabase
+        .from("teams")
+        .select("name, kicker_id")
+        .eq("id", teamId)
+        .single();
+    const teamName = teamData?.name || "a team";
+    const kickerId = teamData?.kicker_id;
+
+    // Get invited player's user_id
+    const { data: invitedPlayerData } = await supabase
+        .from("player")
+        .select("user_id")
+        .eq("id", invitedPlayerId)
+        .single();
+
+    if (!invitedPlayerData?.user_id) {
+        return new Response(JSON.stringify({ sent: 0, reason: "no_user_id" }), {
+            headers: { "Content-Type": "application/json" },
+        });
+    }
+
+    const invitedUserId = invitedPlayerData.user_id;
+
+    // Get FCM tokens for invited user
+    const { data: subscriptions, error: subError } = await supabase
+        .from("push_subscriptions")
+        .select("fcm_token, user_id")
+        .eq("user_id", invitedUserId);
+
+    if (subError) {
+        console.error("Error fetching subscriptions:", subError);
+        throw subError;
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+        return new Response(JSON.stringify({ sent: 0 }), {
+            headers: { "Content-Type": "application/json" },
+        });
+    }
+
+    // Get FCM access token
+    const accessToken = await getFCMAccessToken(serviceAccount);
+
+    // Build notification content
+    const title = `${inviterName} invited you to a team`;
+    const notificationBody = `Join team "${teamName}"`;
+    const url = "/teams/my";
+
+    // Send notifications
+    let sentCount = 0;
+    const invalidTokens: string[] = [];
+
+    for (const sub of subscriptions) {
+        // Get actual combined unread count for this user
+        let badgeCount = 1;
+        try {
+            const { data: unreadData } = await supabase.rpc(
+                "get_combined_unread_count_for_user",
+                { p_user_id: sub.user_id }
+            );
+            if (unreadData !== null && unreadData !== undefined) {
+                badgeCount = Math.max(1, Number(unreadData) + 1);
+            }
+        } catch (badgeError) {
+            console.error("Error getting unread count for badge:", badgeError);
+        }
+
+        const message: FCMMessage = {
+            token: sub.fcm_token,
+            data: {
+                type: "team_invite",
+                kickerId: kickerId?.toString() || "",
+                url,
+                title,
+                body: notificationBody,
+                badge: badgeCount.toString(),
+                teamId: teamId.toString(),
+            },
+            webpush: {
+                headers: {
+                    Urgency: "high",
+                },
+                fcm_options: {
+                    link: url,
+                },
+            },
+            apns: {
+                headers: {
+                    "apns-priority": "10",
+                },
+                payload: {
+                    aps: {
+                        alert: {
+                            title,
+                            body: notificationBody,
+                        },
+                        sound: "default",
+                        badge: badgeCount,
+                        "mutable-content": 1,
+                    },
+                },
+            },
+        };
+
+        const success = await sendFCMNotification(
+            accessToken,
+            serviceAccount.project_id,
+            message
+        );
+
+        if (success) {
+            sentCount++;
+        } else {
+            invalidTokens.push(sub.fcm_token);
+        }
+    }
+
+    // Clean up invalid tokens
+    if (invalidTokens.length > 0) {
+        console.log(`Removing ${invalidTokens.length} invalid tokens`);
+        await supabase
+            .from("push_subscriptions")
+            .delete()
+            .in("fcm_token", invalidTokens);
+    }
+
+    console.log(`Successfully sent ${sentCount} team invite notifications`);
+
+    return new Response(
+        JSON.stringify({
+            sent: sentCount,
+            total: subscriptions.length,
+            invalidRemoved: invalidTokens.length,
+        }),
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+    );
+}
+
 serve(async (req) => {
     // Handle CORS
     if (req.method === "OPTIONS") {
@@ -239,16 +422,22 @@ serve(async (req) => {
         let senderPlayerId: number;
         let kickerId: number;
         let matchId: number | null = null;
-        let notificationType: "comment" | "chat";
+        let notificationType: "comment" | "chat" | "team_invite";
         let databaseSchema: string;
 
         if (isWebhook) {
             // Database Webhook format
             const webhook = body as WebhookPayload;
-            content = webhook.record.content;
-            senderPlayerId = webhook.record.player_id;
-            kickerId = webhook.record.kicker_id;
             databaseSchema = webhook.schema || "public";
+
+            // Handle team_invitations table separately
+            if (webhook.table === "team_invitations") {
+                return await handleTeamInvitation(webhook, databaseSchema);
+            }
+
+            content = webhook.record.content!;
+            senderPlayerId = webhook.record.player_id!;
+            kickerId = webhook.record.kicker_id!;
 
             // Determine type based on table name
             if (webhook.table === "match_comments") {
@@ -410,11 +599,11 @@ serve(async (req) => {
         const invalidTokens: string[] = [];
 
         for (const sub of subscriptions) {
-            // Get actual unread count for this user (for iOS badge)
+            // Get actual combined unread count for this user (chat + comments, for iOS/Android badge)
             let badgeCount = 1;
             try {
                 const { data: unreadData } = await supabase.rpc(
-                    "get_unread_count_for_user",
+                    "get_combined_unread_count_for_user",
                     { p_user_id: sub.user_id }
                 );
                 if (unreadData !== null && unreadData !== undefined) {

@@ -8,6 +8,7 @@ function MatchesFilterRow() {
         { text: "1on1", value: "1on1" },
         { text: "2on2", value: "2on2" },
         { text: "2on1", value: "2on1" },
+        { text: "Team", value: "team" },
     ];
     const field = "gamemode";
 

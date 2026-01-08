@@ -1,7 +1,14 @@
-import { createContext, useContext, useEffect, useReducer } from "react";
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useReducer,
+    useRef,
+} from "react";
 import { START_MATCH_COUNTDOWN } from "../utils/constants";
 import { useCreateMatch } from "../features/matches/useCreateMatch";
 import { usePlayers } from "../hooks/usePlayers";
+import { useActiveTeams } from "../features/teams/useTeams";
 import toast from "react-hot-toast";
 import { useAudio } from "../hooks/useAudio";
 import { useSearchParams } from "react-router-dom";
@@ -19,6 +26,10 @@ const initialState = {
     isStarting: false,
     timer: START_MATCH_COUNTDOWN,
     originalPlayersBeforeBalance: null,
+    // Team match mode
+    isTeamMatchMode: false,
+    selectedTeam1: null,
+    selectedTeam2: null,
 };
 
 function reducer(state, action) {
@@ -123,6 +134,27 @@ function reducer(state, action) {
                 ...state,
                 originalPlayersBeforeBalance: null,
             };
+        case "toggle_team_match_mode":
+            return {
+                ...state,
+                isTeamMatchMode: action.payload,
+                selectedTeam1: null,
+                selectedTeam2: null,
+            };
+        case "select_team":
+            return {
+                ...state,
+                [`selectedTeam${action.payload.teamNumber}`]:
+                    action.payload.team,
+            };
+        case "clear_teams":
+            return {
+                ...state,
+                selectedTeam1: null,
+                selectedTeam2: null,
+            };
+        default:
+            return state;
     }
 }
 
@@ -138,6 +170,9 @@ function ChoosePlayerProvider({ children }) {
             filteredPlayers,
             filteredForPlayer3And4,
             originalPlayersBeforeBalance,
+            isTeamMatchMode,
+            selectedTeam1,
+            selectedTeam2,
         },
         dispatch,
     ] = useReducer(reducer, initialState);
@@ -145,7 +180,9 @@ function ChoosePlayerProvider({ children }) {
     const countdownAudio = useAudio("/startMatchSound.mp3");
     const { createMatch } = useCreateMatch();
     const { players, isLoading: isLoadingPlayers } = usePlayers();
+    const { teams, isLoading: isLoadingTeams } = useActiveTeams();
     const [searchParams, setSearchParams] = useSearchParams();
+    const teamsInitializedRef = useRef(false);
 
     // Loading players
     useEffect(
@@ -153,8 +190,13 @@ function ChoosePlayerProvider({ children }) {
             if (isLoadingPlayers) {
                 dispatch({ type: "loading_players" });
             } else {
+                // Get IDs of selected players for filtering
+                const selectedIds = selectedPlayers
+                    .filter((p) => p != null && p.id != null)
+                    .map((p) => p.id);
+
                 const filteredPlayers = players
-                    .filter((player) => !selectedPlayers.includes(player))
+                    .filter((player) => !selectedIds.includes(player.id))
                     .map((player) => ({ text: player.name, value: player.id }));
 
                 const filteredForPlayer3And4 = [...filteredPlayers];
@@ -188,13 +230,23 @@ function ChoosePlayerProvider({ children }) {
                 1000
             );
         } else if (timer === -1) {
-            const finalPlayers = {
-                player1: selectedPlayers[0],
-                player2: selectedPlayers[1],
-                player3: selectedPlayers[2],
-                player4: selectedPlayers[3],
-            };
-            createMatch(finalPlayers);
+            if (isTeamMatchMode && selectedTeam1 && selectedTeam2) {
+                // Team match mode - pass team information
+                createMatch({
+                    isTeamMatch: true,
+                    team1: selectedTeam1,
+                    team2: selectedTeam2,
+                });
+            } else {
+                // Individual match mode
+                const finalPlayers = {
+                    player1: selectedPlayers[0],
+                    player2: selectedPlayers[1],
+                    player3: selectedPlayers[2],
+                    player4: selectedPlayers[3],
+                };
+                createMatch(finalPlayers);
+            }
         }
 
         return () => {
@@ -207,6 +259,9 @@ function ChoosePlayerProvider({ children }) {
         selectedPlayers,
         countdownAudio,
         players,
+        isTeamMatchMode,
+        selectedTeam1,
+        selectedTeam2,
     ]);
 
     useEffect(() => {
@@ -259,6 +314,35 @@ function ChoosePlayerProvider({ children }) {
         }
     }, [searchParams, isLoadingPlayers, players, selectedPlayers]);
 
+    // Handle team URL params for team match rematch
+    useEffect(() => {
+        if (isLoadingTeams || !teams || teamsInitializedRef.current) {
+            return;
+        }
+
+        const team1Param = Number(searchParams.get("team1"));
+        const team2Param = Number(searchParams.get("team2"));
+
+        if (team1Param > 0 && team2Param > 0) {
+            const team1 = teams.find((t) => t.id === team1Param);
+            const team2 = teams.find((t) => t.id === team2Param);
+
+            if (team1 && team2) {
+                // Switch to team match mode and pre-select the teams
+                dispatch({ type: "toggle_team_match_mode", payload: true });
+                dispatch({
+                    type: "select_team",
+                    payload: { team: team1, teamNumber: 1 },
+                });
+                dispatch({
+                    type: "select_team",
+                    payload: { team: team2, teamNumber: 2 },
+                });
+                teamsInitializedRef.current = true;
+            }
+        }
+    }, [searchParams, isLoadingTeams, teams]);
+
     function startTimer() {
         dispatch({ type: "timer_started" });
     }
@@ -274,15 +358,50 @@ function ChoosePlayerProvider({ children }) {
     }
 
     function startCountdown() {
-        if (!selectedPlayers[0] || !selectedPlayers[1]) {
-            toast.error("You must select player 1 and player 2");
-            return;
+        if (isTeamMatchMode) {
+            if (!selectedTeam1 || !selectedTeam2) {
+                toast.error("You must select both teams");
+                return;
+            }
+            if (selectedTeam1.id === selectedTeam2.id) {
+                toast.error("Teams must be different");
+                return;
+            }
+        } else {
+            if (!selectedPlayers[0] || !selectedPlayers[1]) {
+                toast.error("You must select player 1 and player 2");
+                return;
+            }
         }
 
         startTimer();
     }
 
     function selectPlayer(playerId, playerNumber) {
+        // Handle "No player" selection for Player 1 - promote Player 3 to Player 1
+        if (!playerId && playerNumber === 1) {
+            const p3Params = Number(searchParams.get("player3"));
+            if (p3Params) {
+                // Move Player 3 to Player 1 position
+                searchParams.set("player1", p3Params);
+                searchParams.delete("player3");
+                setSearchParams(searchParams, { replace: true });
+                return;
+            }
+        }
+
+        // Handle "No player" selection for Player 2 - promote Player 4 to Player 2
+        if (!playerId && playerNumber === 2) {
+            const p4Params = Number(searchParams.get("player4"));
+            if (p4Params) {
+                // Move Player 4 to Player 2 position
+                searchParams.set("player2", p4Params);
+                searchParams.delete("player4");
+                setSearchParams(searchParams, { replace: true });
+                return;
+            }
+        }
+
         if (!playerId) {
             searchParams.delete(`player${playerNumber}`);
         } else {
@@ -438,6 +557,67 @@ function ChoosePlayerProvider({ children }) {
         toast.success(`Teams balanced! MMR difference: ${minDiff}`);
     }
 
+    // Shuffle all 4 players randomly across the two teams
+    function shufflePlayers() {
+        if (!canBalanceTeams) {
+            toast.error("All 4 players must be selected to shuffle teams");
+            return;
+        }
+
+        // Clear original players when shuffling (it's a fresh random distribution)
+        dispatch({ type: "clear_original_players" });
+
+        const playersArr = [player1, player2, player3, player4];
+
+        // Fisher-Yates shuffle algorithm
+        for (let i = playersArr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [playersArr[i], playersArr[j]] = [playersArr[j], playersArr[i]];
+        }
+
+        // Assign shuffled players: Team 1 = [0] + [2], Team 2 = [1] + [3]
+        searchParams.set("player1", playersArr[0].id);
+        searchParams.set("player2", playersArr[1].id);
+        searchParams.set("player3", playersArr[2].id);
+        searchParams.set("player4", playersArr[3].id);
+        setSearchParams(searchParams, { replace: true });
+
+        toast.success("Teams shuffled!");
+    }
+
+    // Create filtered options for Player 1 (with "No player" if Player 3 exists)
+    const filteredForPlayer1 =
+        isPlayer3Active && player3
+            ? [{ text: "No player", value: null }, ...filteredPlayers]
+            : filteredPlayers;
+
+    // Create filtered options for Player 2 (with "No player" if Player 4 exists)
+    const filteredForPlayer2 =
+        isPlayer4Active && player4
+            ? [{ text: "No player", value: null }, ...filteredPlayers]
+            : filteredPlayers;
+
+    // Team match mode functions
+    function setTeamMatchMode(enabled) {
+        dispatch({ type: "toggle_team_match_mode", payload: enabled });
+        // Clear individual player selections when switching to team mode
+        if (enabled) {
+            searchParams.delete("player1");
+            searchParams.delete("player2");
+            searchParams.delete("player3");
+            searchParams.delete("player4");
+            setSearchParams(searchParams, { replace: true });
+        }
+    }
+
+    function selectTeam(team, teamNumber) {
+        dispatch({ type: "select_team", payload: { team, teamNumber } });
+    }
+
+    function clearTeams() {
+        dispatch({ type: "clear_teams" });
+    }
+
     return (
         <ChoosePlayerContext.Provider
             value={{
@@ -450,6 +630,8 @@ function ChoosePlayerProvider({ children }) {
                 isPlayer3Active,
                 isPlayer4Active,
                 filteredPlayers,
+                filteredForPlayer1,
+                filteredForPlayer2,
                 filteredForPlayer3And4,
                 selectPlayer,
                 switchTeams,
@@ -458,6 +640,14 @@ function ChoosePlayerProvider({ children }) {
                 balanceTeams,
                 canBalanceTeams,
                 isAlreadyBalanced,
+                shufflePlayers,
+                // Team match mode
+                isTeamMatchMode,
+                setTeamMatchMode,
+                selectedTeam1,
+                selectedTeam2,
+                selectTeam,
+                clearTeams,
             }}
         >
             {children}

@@ -16,7 +16,7 @@ const LoadingBackground = styled.div`
 
 function ProtectedRoute({ children }) {
     const { user, isLoading: isUserLoading, isAuthenticated } = useUser();
-    const { currentKicker } = useKicker();
+    const { currentKicker, setCurrentKicker } = useKicker();
     const navigate = useNavigate();
 
     const {
@@ -33,6 +33,7 @@ function ProtectedRoute({ children }) {
         enabled: isAuthenticated && !!currentKicker && !!user?.id,
         onSuccess: (isMember) => {
             if (!isMember) {
+                setCurrentKicker(null); // Clear kicker to stop retry loop
                 toast.error(
                     "Unauthorized access attempt: User cannot enter this kicker."
                 );
@@ -40,6 +41,7 @@ function ProtectedRoute({ children }) {
             }
         },
         onError: () => {
+            setCurrentKicker(null); // Clear kicker to stop retry loop
             toast.error(
                 "Unauthorized access attempt: User cannot enter this kicker."
             );

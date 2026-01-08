@@ -7,6 +7,8 @@ import {
     HiOutlineListBullet,
     HiOutlinePlay,
     HiOutlineTrash,
+    HiOutlineTrophy,
+    HiOutlineUserGroup,
     HiPlus,
 } from "react-icons/hi2";
 import Divider from "./Divider";
@@ -48,7 +50,7 @@ const StyledNavLink = styled(NavLink)`
         color: var(--nav-link-color);
         font-size: 1.6rem;
         font-weight: 500;
-        padding: 1.2rem 2.4rem;
+        padding: 1.2rem 1.4rem;
         transition: all 0.3s;
     }
 
@@ -180,6 +182,22 @@ function MainNav({ close }) {
                     >
                         <HiOutlineBookOpen />
                         <span>Matches</span>
+                    </StyledNavLink>
+                </li>
+                <li>
+                    <StyledNavLink
+                        to="/achievements"
+                        title="Achievements"
+                        onClick={close}
+                    >
+                        <HiOutlineTrophy />
+                        <span>Achievements</span>
+                    </StyledNavLink>
+                </li>
+                <li>
+                    <StyledNavLink to="/teams" title="Teams" onClick={close}>
+                        <HiOutlineUserGroup />
+                        <span>Teams</span>
                     </StyledNavLink>
                 </li>
                 {/* <li>

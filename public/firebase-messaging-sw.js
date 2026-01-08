@@ -147,22 +147,20 @@ messaging.onBackgroundMessage(async (payload) => {
             : [],
     };
 
-    // Set badge count - use server-provided count or increment locally
+    // Set badge count - always use server-provided count (includes chat + comments)
     if (
         notificationData.type === "chat" ||
         notificationData.type === "comment"
     ) {
         const serverBadgeCount = parseInt(notificationData.badge, 10);
         if (!isNaN(serverBadgeCount) && serverBadgeCount > 0) {
-            // Use the server-provided badge count
+            // Use the server-provided badge count (combined chat + comments)
             console.log("[SW] Setting badge from server:", serverBadgeCount);
             await setBadgeCount(serverBadgeCount);
             await updateAppBadge(serverBadgeCount);
-        } else {
-            // Fallback to increment
-            console.log("[SW] Incrementing badge locally");
-            await incrementBadge();
         }
+        // No fallback increment - badge count should always come from server
+        // to ensure accuracy of combined chat + comments count
     }
 
     // Show the notification

@@ -358,6 +358,10 @@ function MatchDetailMobile({ match, timer }) {
     }
 
     function handleEndMatch() {
+        if (isLoadingEndMatch || isEnded) {
+            return;
+        }
+
         if (match.scoreTeam1 === 0 && match.scoreTeam2 === 0) {
             toast.error("Atleast one team must have a score above 0");
             return;
@@ -367,12 +371,22 @@ function MatchDetailMobile({ match, timer }) {
     }
 
     function createRematch() {
-        navigate({
-            pathname: "/matches/create",
-            search: `?player1=${player1.id}&player2=${player2.id}${
-                player3 ? `&player3=${player3.id}` : ""
-            }${player4 ? `&player4=${player4.id}` : ""}`,
-        });
+        const isTeamMatch =
+            match.gamemode === "team" && match.team1_id && match.team2_id;
+
+        if (isTeamMatch) {
+            navigate({
+                pathname: "/matches/create",
+                search: `?team1=${match.team1_id}&team2=${match.team2_id}`,
+            });
+        } else {
+            navigate({
+                pathname: "/matches/create",
+                search: `?player1=${player1.id}&player2=${player2.id}${
+                    player3 ? `&player3=${player3.id}` : ""
+                }${player4 ? `&player4=${player4.id}` : ""}`,
+            });
+        }
     }
 
     function handleDeleteMatch() {
@@ -630,6 +644,7 @@ function MatchDetailMobile({ match, timer }) {
                         <DelayedButton
                             action={handleEndMatch}
                             icon={<HiArrowDownTray />}
+                            disabled={isLoadingEndMatch}
                         >
                             {isLoadingEndMatch ? <SpinnerMini /> : "End match"}
                         </DelayedButton>

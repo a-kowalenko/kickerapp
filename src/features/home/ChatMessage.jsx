@@ -1,5 +1,5 @@
 import styled, { css, keyframes } from "styled-components";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import {
     HiPencil,
@@ -9,13 +9,22 @@ import {
     HiArrowUturnLeft,
     HiOutlineFaceSmile,
     HiPlus,
+    HiChatBubbleLeftRight,
+    HiAtSymbol,
+    HiUser,
+    HiClipboard,
 } from "react-icons/hi2";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
+import PlayerNameWithTitle from "../../ui/PlayerNameWithTitle";
+import { PlayerNameWithTooltip } from "../../ui/PlayerTooltip";
 import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
+import ContextMenu from "../../ui/ContextMenu";
 import { DEFAULT_AVATAR, MAX_CHAT_MESSAGE_LENGTH } from "../../utils/constants";
+import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
+import { useLongPress } from "../../hooks/useLongPress";
 
 // Quick reaction emojis (Discord-style)
 const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
@@ -43,32 +52,31 @@ const MessageContainer = styled.div`
     padding-left: ${(props) => (props.$isGrouped ? "5.4rem" : "1rem")};
     border-radius: var(--border-radius-md);
     background-color: ${(props) =>
-        props.$isWhisper
-            ? "rgba(34, 197, 94, 0.1)"
+        props.$isUnread
+            ? "rgba(59, 130, 246, 0.08)"
             : "var(--secondary-background-color)"};
-    transition: background-color 0.2s;
+    border-left: 3px solid
+        ${(props) =>
+            props.$isUnread && !props.$isWhisper
+                ? "var(--primary-button-color)"
+                : "transparent"};
+    transition: background-color 0.2s, border-left-color 0.2s;
     position: relative;
-    touch-action: pan-y;
+
+    /* Prevent text selection on mobile during long press */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+
+    &:hover {
+        background-color: var(--tertiary-background-color) !important;
+    }
 
     ${(props) =>
         props.$swipeOffset &&
         css`
             transform: translateX(${props.$swipeOffset}px);
         `}
-
-    &:hover {
-        background-color: ${(props) =>
-            props.$isWhisper
-                ? "rgba(34, 197, 94, 0.2) !important"
-                : "var(--tertiary-background-color) !important"};
-    }
-
-    &:hover {
-        background-color: ${(props) =>
-            props.$isWhisper
-                ? "rgba(34, 197, 94, 0.2) !important"
-                : "var(--tertiary-background-color) !important"};
-    }
 
     &.highlight {
         animation: ${highlightPulse} 2s ease-out;
@@ -111,9 +119,14 @@ const HoverToolbar = styled.div`
     transition: opacity 0.15s, visibility 0.15s;
     z-index: 20;
 
-    ${MessageContainer}:hover & {
+    ${MessageContainer}:hover &:not([data-hidden="true"]) {
         opacity: 1;
         visibility: visible;
+    }
+
+    &[data-hidden="true"] {
+        opacity: 0 !important;
+        visibility: hidden !important;
     }
 `;
 
@@ -204,10 +217,34 @@ const AuthorName = styled(Link)`
     }
 `;
 
-const WhisperLabel = styled.span`
-    font-size: 1.2rem;
-    color: var(--color-green-500);
-    font-style: italic;
+// Wrapper for avatar to handle context menu separately from Link
+const AvatarWrapper = styled.div`
+    cursor: pointer;
+`;
+
+// Wrapper for author name to handle context menu separately from Link
+const AuthorNameWrapper = styled.span`
+    display: inline;
+`;
+
+const WhisperBadge = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.6rem;
+    background-color: rgba(34, 197, 94, 0.2);
+    border-radius: var(--border-radius-pill);
+    font-size: 1.1rem;
+    color: var(--color-green-400);
+
+    & svg {
+        font-size: 1.2rem;
+    }
+`;
+
+const WhisperRecipientName = styled.span`
+    font-weight: 600;
+    color: var(--color-green-300);
 `;
 
 const Timestamp = styled.span`
@@ -268,9 +305,7 @@ const ReplyContent = styled.span`
 const MessageBody = styled.div`
     font-size: 1.4rem;
     color: ${(props) =>
-        props.$isWhisper
-            ? "var(--color-green-500)"
-            : "var(--primary-text-color)"};
+        props.$isWhisper ? "#3bcd43" : "var(--primary-text-color)"};
     line-height: 1.4;
     word-break: break-word;
     white-space: pre-wrap;
@@ -406,14 +441,26 @@ function ChatMessage({
     isTogglingReaction,
     onScrollToMessage,
     isGrouped = false,
+    isUnread = false,
+    onWhisper,
+    onMention,
 }) {
+    const navigate = useNavigate();
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(message.content);
     const [swipeOffset, setSwipeOffset] = useState(0);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [contextMenu, setContextMenu] = useState(null); // { type: "player" | "message" | "react", position: { x, y }, selectedText: "" }
     const touchStartX = useRef(null);
+    const touchStartY = useRef(null);
+    const isSwipingRef = useRef(false);
     const containerRef = useRef(null);
     const addReactionRef = useRef(null);
+
+    // Load bounty data for the message author (always show if any gamemode has bounty)
+    const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(
+        message.player?.id
+    );
 
     const isAuthor = message.player_id === currentPlayerId;
     const canEdit = isAuthor;
@@ -457,14 +504,36 @@ function ChatMessage({
             return;
         }
         touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+        isSwipingRef.current = false;
     }
 
     function handleTouchMove(e) {
         if (touchStartX.current === null) return;
-        const diff = e.touches[0].clientX - touchStartX.current;
-        // Only allow swiping right
-        if (diff > 0 && diff < 100) {
-            setSwipeOffset(diff);
+
+        const diffX = e.touches[0].clientX - touchStartX.current;
+        const diffY = e.touches[0].clientY - touchStartY.current;
+
+        // Determine swipe direction on first significant movement
+        if (
+            !isSwipingRef.current &&
+            (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)
+        ) {
+            // If horizontal movement is greater, it's a swipe
+            if (Math.abs(diffX) > Math.abs(diffY) && diffX > 0) {
+                isSwipingRef.current = true;
+            } else {
+                // Vertical scroll - cancel swipe detection
+                touchStartX.current = null;
+                touchStartY.current = null;
+                return;
+            }
+        }
+
+        // Only proceed if we've determined this is a horizontal swipe
+        if (isSwipingRef.current && diffX > 0) {
+            // Clamp offset between 0 and 100
+            setSwipeOffset(Math.min(diffX, 100));
         }
     }
 
@@ -475,6 +544,8 @@ function ChatMessage({
         }
         setSwipeOffset(0);
         touchStartX.current = null;
+        touchStartY.current = null;
+        isSwipingRef.current = false;
     }
 
     function handleReplyPreviewClick() {
@@ -488,19 +559,265 @@ function ChatMessage({
         return text?.replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1") || "";
     }
 
+    // Close context menu
+    const closeContextMenu = useCallback(() => {
+        setContextMenu(null);
+    }, []);
+
+    // Get selected text
+    function getSelectedText() {
+        const selection = window.getSelection();
+        return selection?.toString()?.trim() || "";
+    }
+
+    // Copy text to clipboard with fallback
+    async function handleCopy(text) {
+        try {
+            // Try modern clipboard API first
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                return;
+            }
+        } catch (err) {
+            console.warn("Clipboard API failed, trying fallback:", err);
+        }
+
+        // Fallback: use execCommand with temporary textarea
+        try {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            textarea.style.top = "-9999px";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+        } catch (fallbackErr) {
+            console.error("Fallback copy also failed:", fallbackErr);
+        }
+    }
+
+    // Handle player context menu (right-click on avatar/name)
+    function handlePlayerContextMenu(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        setContextMenu({
+            type: "player",
+            position: { x: e.clientX, y: e.clientY },
+            selectedText: "",
+        });
+    }
+
+    // Handle message context menu (right-click on message)
+    function handleMessageContextMenu(e) {
+        // Don't override if clicking on avatar or author name area
+        if (e.target.closest("[data-player-context]")) {
+            return;
+        }
+
+        e.preventDefault();
+
+        const selectedText = getSelectedText();
+
+        setContextMenu({
+            type: "message",
+            position: { x: e.clientX, y: e.clientY },
+            selectedText,
+        });
+    }
+
+    // Handle long press for mobile
+    const handleLongPress = useCallback((e, position) => {
+        // Prevent default context menu and text selection
+        e.preventDefault();
+
+        const target = e.target;
+
+        // Check if long-pressing on player avatar/name
+        if (target.closest("[data-player-context]")) {
+            setContextMenu({
+                type: "player",
+                position,
+                selectedText: "",
+            });
+        } else {
+            // Message context menu
+            const selectedText = getSelectedText();
+            setContextMenu({
+                type: "message",
+                position,
+                selectedText,
+            });
+        }
+    }, []);
+
+    const longPressHandlers = useLongPress(handleLongPress, {
+        threshold: 10,
+        cancelRef: isSwipingRef,
+    });
+
+    // Handle switching to emoji picker from context menu
+    function handleOpenReactionPicker() {
+        setContextMenu((prev) => ({
+            ...prev,
+            type: "react",
+        }));
+    }
+
+    // Build player context menu items
+    function getPlayerMenuItems() {
+        const player = message.player;
+        const isOwnMessage = message.player_id === currentPlayerId;
+
+        return [
+            // Only show whisper if not own message
+            !isOwnMessage && {
+                label: "Whisper",
+                icon: <HiChatBubbleLeftRight />,
+                onClick: () => onWhisper?.(player),
+            },
+            {
+                label: "Mention",
+                icon: <HiAtSymbol />,
+                onClick: () => onMention?.(player),
+            },
+            {
+                label: "Profile",
+                icon: <HiUser />,
+                onClick: () => navigate(`/user/${player?.name}/profile`),
+            },
+        ].filter(Boolean);
+    }
+
+    // Build message context menu items
+    function getMessageMenuItems() {
+        const items = [];
+        const player = message.player;
+        const isOwnMessage = message.player_id === currentPlayerId;
+
+        // Copy - only show if text is selected
+        if (contextMenu?.selectedText) {
+            items.push({
+                label: "Copy",
+                icon: <HiClipboard />,
+                onClick: () => handleCopy(contextMenu.selectedText),
+            });
+            items.push({ type: "divider" });
+        }
+
+        // Reply
+        items.push({
+            label: "Reply",
+            icon: <HiArrowUturnLeft />,
+            onClick: () => onReply(message),
+            disabled: isUpdating || isDeleting,
+        });
+
+        // Reply privately (whisper) - only if not own message
+        if (!isOwnMessage) {
+            items.push({
+                label: "Reply privately",
+                icon: <HiChatBubbleLeftRight />,
+                onClick: () => {
+                    onWhisper?.(player);
+                    onReply(message);
+                },
+                disabled: isUpdating || isDeleting,
+            });
+        }
+
+        // React
+        items.push({
+            label: "React",
+            icon: <HiOutlineFaceSmile />,
+            onClick: handleOpenReactionPicker,
+            keepOpen: true,
+            disabled: isUpdating || isDeleting || isTogglingReaction,
+        });
+
+        // Mention
+        items.push({
+            label: "Mention",
+            icon: <HiAtSymbol />,
+            onClick: () => onMention?.(player),
+        });
+
+        items.push({ type: "divider" });
+
+        // Whisper - only if not own message
+        if (!isOwnMessage) {
+            items.push({
+                label: "Whisper",
+                icon: <HiChatBubbleLeftRight />,
+                onClick: () => onWhisper?.(player),
+            });
+        }
+
+        // Profile
+        items.push({
+            label: "Profile",
+            icon: <HiUser />,
+            onClick: () => navigate(`/user/${player?.name}/profile`),
+        });
+
+        // Edit - only if own message
+        if (canEdit && !isEditing) {
+            items.push({ type: "divider" });
+            items.push({
+                label: "Edit",
+                icon: <HiPencil />,
+                onClick: () => setIsEditing(true),
+                disabled: isUpdating || isDeleting,
+            });
+        }
+
+        // Delete - only if admin
+        if (canDelete) {
+            if (!canEdit || isEditing) {
+                items.push({ type: "divider" });
+            }
+            items.push({
+                label: "Delete",
+                icon: <HiTrash />,
+                onClick: handleDelete,
+                danger: true,
+                disabled: isUpdating || isDeleting,
+            });
+        }
+
+        return items;
+    }
+
+    // Check if context menu is open (to hide hover toolbar)
+    const isContextMenuOpen = contextMenu !== null;
+
     return (
         <MessageContainer
             ref={containerRef}
             $isWhisper={isWhisper}
+            $isUnread={isUnread}
             $swipeOffset={swipeOffset}
             $isGrouped={isGrouped}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            onTouchStart={(e) => {
+                handleTouchStart(e);
+                longPressHandlers.onTouchStart(e);
+            }}
+            onTouchMove={(e) => {
+                handleTouchMove(e);
+                longPressHandlers.onTouchMove(e);
+            }}
+            onTouchEnd={(e) => {
+                handleTouchEnd(e);
+                longPressHandlers.onTouchEnd(e);
+            }}
+            onContextMenu={handleMessageContextMenu}
             data-message-id={message.id}
         >
             {/* Discord-style hover toolbar */}
-            <HoverToolbar>
+            <HoverToolbar data-hidden={isContextMenuOpen}>
                 {/* Quick reactions */}
                 {QUICK_REACTIONS.map((emoji) => (
                     <QuickReactionButton
@@ -598,29 +915,54 @@ function ChatMessage({
             )}
 
             {!isGrouped && (
-                <Link to={`/user/${message.player?.name}/profile`}>
+                <AvatarWrapper
+                    data-player-context
+                    onContextMenu={handlePlayerContextMenu}
+                    onClick={() =>
+                        navigate(`/user/${message.player?.name}/profile`)
+                    }
+                >
                     <Avatar
+                        player={message.player}
+                        showStatus={true}
                         $size="small"
                         src={message.player?.avatar || DEFAULT_AVATAR}
                         alt={message.player?.name}
                         $cursor="pointer"
+                        bountyData={{ bounty1on1, bounty2on2 }}
                     />
-                </Link>
+                </AvatarWrapper>
             )}
 
             <MessageContent>
                 {!isGrouped && (
                     <MessageHeader>
-                        <AuthorName
-                            to={`/user/${message.player?.name}/profile`}
-                            $isWhisper={isWhisper}
+                        <AuthorNameWrapper
+                            data-player-context
+                            onContextMenu={handlePlayerContextMenu}
                         >
-                            {message.player?.name}
-                        </AuthorName>
+                            <AuthorName
+                                to={`/user/${message.player?.name}/profile`}
+                                $isWhisper={isWhisper}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <PlayerNameWithTooltip player={message.player}>
+                                    <PlayerNameWithTitle
+                                        asText
+                                        name={message.player?.name}
+                                        playerId={message.player_id}
+                                    />
+                                </PlayerNameWithTooltip>
+                            </AuthorName>
+                        </AuthorNameWrapper>
                         {isWhisper && (
-                            <WhisperLabel>
-                                whispers to {message.recipient?.name}
-                            </WhisperLabel>
+                            <WhisperBadge>
+                                <HiChatBubbleLeftRight />
+                                <span>→</span>
+                                <WhisperRecipientName>
+                                    {message.recipient?.name}
+                                </WhisperRecipientName>
+                            </WhisperBadge>
                         )}
                         <Timestamp>
                             {format(
@@ -645,7 +987,34 @@ function ChatMessage({
                             {message.reply_to.player?.name}
                         </ReplyAuthor>
                         <ReplyContent>
-                            {stripMentions(message.reply_to.content)}
+                            {/* Censor whisper content if this is a public reply to a whisper */}
+                            {(() => {
+                                // If replying to a whisper in a public message
+                                if (
+                                    message.reply_to.recipient_id &&
+                                    !isWhisper
+                                ) {
+                                    // Check if current user was involved in the original whisper
+                                    const isWhisperSender =
+                                        message.reply_to.player?.id ===
+                                        currentPlayerId;
+                                    const isWhisperRecipient =
+                                        message.reply_to.recipient_id ===
+                                            currentPlayerId ||
+                                        message.reply_to.recipient?.id ===
+                                            currentPlayerId;
+
+                                    // Only show content if user was involved in the whisper
+                                    if (isWhisperSender || isWhisperRecipient) {
+                                        return stripMentions(
+                                            message.reply_to.content
+                                        );
+                                    }
+                                    return "Whispered message";
+                                }
+                                // Normal message or whisper reply to whisper
+                                return stripMentions(message.reply_to.content);
+                            })()}
                         </ReplyContent>
                     </ReplyPreview>
                 )}
@@ -726,6 +1095,38 @@ function ChatMessage({
                     </ReactionsRow>
                 )}
             </MessageContent>
+
+            {/* Context Menus */}
+            {contextMenu?.type === "player" && (
+                <ContextMenu
+                    items={getPlayerMenuItems()}
+                    position={contextMenu.position}
+                    onClose={closeContextMenu}
+                />
+            )}
+
+            {contextMenu?.type === "message" && (
+                <ContextMenu
+                    items={getMessageMenuItems()}
+                    position={contextMenu.position}
+                    onClose={closeContextMenu}
+                />
+            )}
+
+            {contextMenu?.type === "react" && (
+                <EmojiPicker
+                    onSelect={(emoji) => {
+                        onToggleReaction({
+                            messageId: message.id,
+                            reactionType: emoji,
+                        });
+                        closeContextMenu();
+                    }}
+                    onClose={closeContextMenu}
+                    position="fixed"
+                    fixedPosition={contextMenu.position}
+                />
+            )}
         </MessageContainer>
     );
 }

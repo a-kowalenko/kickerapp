@@ -92,6 +92,7 @@ function MatchCommentItem({
     isTogglingReaction,
     isGrouped = false,
     showMatchLabel = true,
+    isUnread = false,
 }) {
     const { team1, team2 } = formatTeamNames(comment.match);
     const matchDate = comment.match?.created_at
@@ -135,6 +136,7 @@ function MatchCommentItem({
                 isTogglingReaction={isTogglingReaction}
                 isGrouped={isGrouped}
                 disableHover={true}
+                isUnread={isUnread}
             />
         </CommentWrapper>
     );

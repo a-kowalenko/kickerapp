@@ -57,7 +57,8 @@ const ModalContainer = styled.div`
     padding: 4rem 4.8rem;
     z-index: 10000;
     animation: ${scaleIn} 0.4s ease-out forwards;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
         0 0 0 1px rgba(255, 255, 255, 0.1);
     text-align: center;
     max-width: 90vw;
@@ -117,7 +118,8 @@ const StyledButton = styled(Button)`
 
     &:hover {
         transform: scale(1.05);
-        box-shadow: 0 10px 30px -10px var(--color-brand-500),
+        box-shadow:
+            0 10px 30px -10px var(--color-brand-500),
             2px 2px 2px 1px rgba(0, 0, 0, 0.7);
     }
 
@@ -127,8 +129,6 @@ const StyledButton = styled(Button)`
 `;
 
 function NewSeasonModal({ seasonName, onClose }) {
-    console.log("Rendering NewSeasonModal for season:", seasonName);
-
     return (
         <>
             <Overlay onClick={onClose} />
