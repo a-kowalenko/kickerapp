@@ -27,9 +27,15 @@ const MessagesContainer = styled.div`
     flex-direction: column-reverse;
     gap: 0.6rem;
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
     padding: 1rem;
     position: relative;
+
+    /* Prevent browser context menu on messages container for custom menu */
+    & > * {
+        -webkit-touch-callout: none;
+    }
 
     /* Custom scrollbar */
     &::-webkit-scrollbar {
@@ -80,12 +86,45 @@ const EmptyText = styled.p`
     font-size: 1.4rem;
 `;
 
-const TypingIndicator = styled.div`
+const TypingIndicatorContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     padding: 0.4rem 1rem;
     font-size: 1.2rem;
     color: var(--tertiary-text-color);
     font-style: italic;
     min-height: 2rem;
+    opacity: ${(props) => (props.$visible ? 1 : 0)};
+    transition: opacity 0.2s ease-in-out;
+`;
+
+const TypingDotsContainer = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+`;
+
+const TypingDot = styled.span`
+    width: 0.6rem;
+    height: 0.6rem;
+    background-color: var(--tertiary-text-color);
+    border-radius: 50%;
+    animation: typingBounce 1.4s ease-in-out infinite;
+    animation-delay: ${(props) => props.$delay || "0s"};
+
+    @keyframes typingBounce {
+        0%,
+        60%,
+        100% {
+            transform: scale(0.6);
+            opacity: 0.4;
+        }
+        30% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
 `;
 
 const NewMessagesBadge = styled.span`
@@ -114,6 +153,7 @@ function ChatTab() {
     const messagesContainerRef = useRef(null);
     const loadMoreRef = useRef(null);
     const focusInputRef = useRef(null);
+    const chatInputRef = useRef(null);
     const [showJumpToLatest, setShowJumpToLatest] = useState(false);
     const [newMessagesCount, setNewMessagesCount] = useState(0);
     const [replyTo, setReplyTo] = useState(null);
@@ -493,6 +533,26 @@ function ChatTab() {
         setReplyTo(null);
     }
 
+    // Context menu: start whisper to player
+    function handleWhisper(player) {
+        if (!player) return;
+        // Call the ChatInput's external whisper setter
+        chatInputRef.current?.setWhisperRecipient(player);
+        setTimeout(() => {
+            focusInputRef.current?.();
+        }, 50);
+    }
+
+    // Context menu: mention player in input
+    function handleMention(player) {
+        if (!player) return;
+        // Call the ChatInput's external mention inserter
+        chatInputRef.current?.insertMention(player);
+        setTimeout(() => {
+            focusInputRef.current?.();
+        }, 50);
+    }
+
     function handleToggleReaction({ messageId, reactionType }) {
         if (!currentPlayerId) return;
         toggleReaction({
@@ -599,6 +659,8 @@ function ChatTab() {
                                         }
                                         isGrouped={isGrouped}
                                         isUnread={isUnread}
+                                        onWhisper={handleWhisper}
+                                        onMention={handleMention}
                                     />
                                 );
                             })}
@@ -615,7 +677,18 @@ function ChatTab() {
                     )}
                 </MessagesContainer>
 
-                <TypingIndicator>{typingText}</TypingIndicator>
+                <TypingIndicatorContainer $visible={!!typingText}>
+                    {typingText && (
+                        <>
+                            <span>{typingText}</span>
+                            <TypingDotsContainer>
+                                <TypingDot $delay="0s" />
+                                <TypingDot $delay="0.2s" />
+                                <TypingDot $delay="0.4s" />
+                            </TypingDotsContainer>
+                        </>
+                    )}
+                </TypingIndicatorContainer>
 
                 {showJumpToLatest && (
                     <JumpToLatestButton onClick={handleJumpToLatest}>
@@ -631,6 +704,7 @@ function ChatTab() {
 
             {currentPlayer && (
                 <ChatInput
+                    ref={chatInputRef}
                     onSubmit={handleCreateMessage}
                     isSubmitting={isCreating}
                     currentPlayer={currentPlayer}
@@ -638,6 +712,7 @@ function ChatTab() {
                     onCancelReply={handleCancelReply}
                     lastWhisperFrom={lastWhisperFrom}
                     onTyping={onTyping}
+                    stopTyping={stopTyping}
                     onFocusInput={(fn) => {
                         focusInputRef.current = fn;
                     }}

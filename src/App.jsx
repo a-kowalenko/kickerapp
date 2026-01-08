@@ -12,6 +12,8 @@ import User from "./pages/User";
 import Kicker from "./pages/Kicker";
 import Match from "./pages/Match";
 import Tournament from "./pages/Tournament";
+import Teams from "./pages/Teams";
+import Team from "./pages/Team";
 import PageNotFound from "./pages/PageNotFound";
 import Rankings from "./pages/Rankings";
 import GlobalStyles from "./styles/GlobalStyles";
@@ -71,7 +73,7 @@ function App() {
                                         element={<UpdatePassword />}
                                     />
                                     <Route
-                                        path="rankings"
+                                        path="rankings/*"
                                         element={<Rankings />}
                                     />
                                     <Route
@@ -113,6 +115,11 @@ function App() {
                                     <Route
                                         path="tournament/:tourId"
                                         element={<Tournament />}
+                                    />
+                                    <Route path="teams/*" element={<Teams />} />
+                                    <Route
+                                        path="team/:teamId/*"
+                                        element={<Team />}
                                     />
                                     <Route
                                         path="notifications"

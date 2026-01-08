@@ -97,7 +97,14 @@ const CardBody = styled.div`
     flex-direction: ${(props) => (props.$hasBoth ? "row" : "column")};
     justify-content: ${(props) => (props.$hasBoth ? "space-evenly" : "center")};
     align-items: ${(props) => (props.$hasBoth ? "flex-start" : "center")};
-    gap: 2.4rem;
+    gap: 3.6rem;
+    flex-wrap: wrap;
+
+    ${media.tablet} {
+        flex-direction: column;
+        align-items: center;
+        gap: 2.4rem;
+    }
 
     ${media.mobile} {
         padding: 1.6rem;
@@ -132,7 +139,7 @@ const ShieldsContainer = styled.div`
     align-items: center;
     justify-content: center;
     gap: 0.6rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 
     ${media.mobile} {
         gap: 0.4rem;
@@ -270,13 +277,23 @@ function ShieldIcon({ isWin, matchId, opacity }) {
     );
 }
 
-function GamemodePerformance({ title, matches, playerId }) {
+function GamemodePerformance({ title, matches, playerId, isTeamMode = false }) {
     if (!matches || matches.length === 0) {
         return null;
     }
 
     // Calculate total MMR change
     const totalMmrChange = matches.reduce((sum, match) => {
+        if (isTeamMode) {
+            // For team matches, check which team the player is on
+            const isTeam1 =
+                playerId === match.player1?.id ||
+                playerId === match.player3?.id;
+            const mmrChange = isTeam1
+                ? match.mmrChangeTeam1
+                : match.mmrChangeTeam2;
+            return sum + (mmrChange || 0);
+        }
         const isTeam1 =
             playerId === match.player1?.id || playerId === match.player3?.id;
         const mmrChange = isTeam1 ? match.mmrChangeTeam1 : match.mmrChangeTeam2;
@@ -326,14 +343,24 @@ function GamemodePerformance({ title, matches, playerId }) {
 }
 
 function RecentPerformance({ playerName, playerId }) {
-    const { matches1on1, matches2on2, isLoading } =
+    const { matches1on1, matches2on2, matchesTeam, isLoading } =
         useRecentPerformance(playerName);
 
-    const hasData = matches1on1?.length > 0 || matches2on2?.length > 0;
+    const hasData =
+        matches1on1?.length > 0 ||
+        matches2on2?.length > 0 ||
+        matchesTeam?.length > 0;
 
     if (!isLoading && !hasData) {
         return null;
     }
+
+    // Count how many gamemodes have data for layout
+    const gamemodesWithData = [
+        matches1on1?.length > 0,
+        matches2on2?.length > 0,
+        matchesTeam?.length > 0,
+    ].filter(Boolean).length;
 
     return (
         <Card>
@@ -353,11 +380,7 @@ function RecentPerformance({ playerName, playerId }) {
                     <LoadingSpinner />
                 </LoadingContainer>
             ) : (
-                <CardBody
-                    $hasBoth={
-                        matches1on1?.length > 0 && matches2on2?.length > 0
-                    }
-                >
+                <CardBody $hasBoth={gamemodesWithData >= 2}>
                     <GamemodePerformance
                         title="1v1"
                         matches={matches1on1}
@@ -367,6 +390,12 @@ function RecentPerformance({ playerName, playerId }) {
                         title="2v2"
                         matches={matches2on2}
                         playerId={playerId}
+                    />
+                    <GamemodePerformance
+                        title="Team"
+                        matches={matchesTeam}
+                        playerId={playerId}
+                        isTeamMode={true}
                     />
                 </CardBody>
             )}

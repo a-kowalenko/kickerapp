@@ -9,10 +9,12 @@ import ProfileAchievements from "../features/players/ProfileAchievements";
 import PlayerStatistics from "../features/players/PlayerStatistics";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
 import { usePrefetchProfileData } from "../features/players/usePrefetchProfileData";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 function User() {
     const { userId } = useParams();
     const { data: player, isLoading } = useOwnPlayer();
+    const { isMobile } = useWindowWidth();
     usePrefetchProfileData();
 
     if (isLoading) {
@@ -32,6 +34,7 @@ function User() {
         {
             path: `/user/${userId}/history`,
             label: "Match History",
+            mobileLabel: isMobile ? "Matches" : undefined,
             component: <ProfileMatches />,
         },
         {
@@ -42,6 +45,7 @@ function User() {
         {
             path: `/user/${userId}/statistics`,
             label: "Statistics",
+            mobileLabel: isMobile ? "Stats" : undefined,
             component: <PlayerStatistics />,
         },
     ];

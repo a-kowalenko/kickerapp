@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import styled from "styled-components";
 import { DEFAULT_AVATAR, media } from "../../utils/constants";
 import StatsTable from "./StatsTable";
+import ClickableAvatar from "../../ui/ClickableAvatar";
 import Avatar from "../../ui/Avatar";
 import { usePlayerName } from "./usePlayerName";
 import Error from "../../ui/Error";
@@ -165,7 +166,7 @@ const AvatarSection = styled.div`
     }
 `;
 
-const StyledAvatar = styled(Avatar)`
+const StyledAvatar = styled(ClickableAvatar)`
     width: 16rem;
     height: 16rem;
 
@@ -400,6 +401,7 @@ function Profile() {
                             <>
                                 <StyledAvatar
                                     src={player?.avatar || DEFAULT_AVATAR}
+                                    alt={`${player?.name}'s avatar`}
                                 />
                                 <PlayerName>{player?.name}</PlayerName>
                             </>

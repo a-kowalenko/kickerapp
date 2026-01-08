@@ -11,10 +11,11 @@ import supabase, { databaseSchema } from "./supabase";
 
 export async function getChatMessages(
     kicker,
-    { offset = 0, limit = CHAT_PAGE_SIZE } = {}
+    { offset = 0, limit = CHAT_PAGE_SIZE, currentPlayerId = null } = {}
 ) {
-    // First fetch messages with player and recipient joins
-    const { data: messages, error } = await supabase
+    // Build query with whisper filtering
+    // Public messages (recipient_id is null) OR whispers where user is sender/recipient
+    let query = supabase
         .from(CHAT_MESSAGES)
         .select(
             `*, 
@@ -24,6 +25,18 @@ export async function getChatMessages(
         .eq("kicker_id", kicker)
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
+
+    // Filter whispers: only show public messages OR whispers involving current player
+    if (currentPlayerId) {
+        query = query.or(
+            `recipient_id.is.null,recipient_id.eq.${currentPlayerId},player_id.eq.${currentPlayerId}`
+        );
+    } else {
+        // No player ID - only show public messages
+        query = query.is("recipient_id", null);
+    }
+
+    const { data: messages, error } = await query;
 
     if (error) {
         throw new Error(error.message);
@@ -38,7 +51,7 @@ export async function getChatMessages(
         const { data: replyMessages } = await supabase
             .from(CHAT_MESSAGES)
             .select(
-                `id, content, player: ${PLAYER}!${CHAT_MESSAGES}_player_id_fkey (id, name, avatar)`
+                `id, content, recipient_id, player: ${PLAYER}!${CHAT_MESSAGES}_player_id_fkey (id, name, avatar), recipient: ${PLAYER}!${CHAT_MESSAGES}_recipient_id_fkey (id, name)`
             )
             .in("id", replyToIds);
 
@@ -60,7 +73,7 @@ export async function getChatMessages(
     return messages;
 }
 
-export async function getChatMessageById(messageId) {
+export async function getChatMessageById(messageId, currentPlayerId = null) {
     const { data: message, error } = await supabase
         .from(CHAT_MESSAGES)
         .select(
@@ -73,6 +86,20 @@ export async function getChatMessageById(messageId) {
 
     if (error) {
         throw new Error(error.message);
+    }
+
+    // Check whisper visibility - if it's a whisper, user must be sender or recipient
+    if (message?.recipient_id && currentPlayerId) {
+        if (
+            message.recipient_id !== currentPlayerId &&
+            message.player_id !== currentPlayerId
+        ) {
+            // User shouldn't see this whisper
+            return null;
+        }
+    } else if (message?.recipient_id && !currentPlayerId) {
+        // No player ID and it's a whisper - don't show
+        return null;
     }
 
     // Fetch reply_to separately if exists

@@ -28,7 +28,9 @@ const TooltipContent = styled.div`
     border: 1px solid var(--secondary-border-color);
     border-radius: var(--border-radius-md);
     padding: 0.8rem 1.2rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.15),
+        0 4px 12px rgba(0, 0, 0, 0.1);
     min-width: 12rem;
 `;
 
@@ -261,15 +263,15 @@ export function StreakTooltipContent({
         (hasLosingStreak && !hasWinningStreak
             ? "Loss Streaks"
             : hasWinningStreak && !hasLosingStreak
-            ? "Win Streaks"
-            : "Streaks");
+              ? "Win Streaks"
+              : "Streaks");
     const displayIcon =
         icon ||
         (hasLosingStreak && !hasWinningStreak
             ? "❄️"
             : hasWinningStreak && !hasLosingStreak
-            ? "🔥"
-            : "📊");
+              ? "🔥"
+              : "📊");
 
     return (
         <TooltipContent>
@@ -431,8 +433,8 @@ const StreakIndicator = styled.span`
         props.$streak > 0
             ? "#EF4444"
             : props.$streak < 0
-            ? "#3B82F6"
-            : "var(--secondary-text-color)"};
+              ? "#3B82F6"
+              : "var(--secondary-text-color)"};
 `;
 
 const NoStatusText = styled.span`
@@ -467,7 +469,7 @@ export function StatusTooltipContent({
             <TooltipArrow />
             <TooltipHeader>
                 <TooltipIcon>📊</TooltipIcon>
-                <TooltipTitle>Aktive Status</TooltipTitle>
+                <TooltipTitle>Active Status</TooltipTitle>
             </TooltipHeader>
 
             {statuses1on1.length > 0 && (
@@ -544,6 +546,64 @@ export function StatusTooltip({
                 streak1on1={streak1on1}
                 streak2on2={streak2on2}
             />
+        </TooltipContainer>,
+        document.body
+    );
+}
+
+/* ----------------------------------------
+   TeamStatusTooltip Component
+   
+   Simplified tooltip for team statuses (no gamemode separation)
+   Props:
+   - isVisible: boolean
+   - position: { top, left }
+   - statuses: string[] - Active status keys
+   - streak: number - Current streak
+----------------------------------------- */
+export function TeamStatusTooltip({
+    isVisible,
+    position,
+    statuses = [],
+    streak = 0,
+}) {
+    if (!isVisible || statuses.length === 0) return null;
+
+    return createPortal(
+        <TooltipContainer
+            style={{
+                top: position.top,
+                left: position.left,
+            }}
+        >
+            <TooltipContent>
+                <TooltipArrow />
+                <TooltipHeader>
+                    <TooltipIcon>📊</TooltipIcon>
+                    <TooltipTitle>Active Status</TooltipTitle>
+                </TooltipHeader>
+                <GamemodeSection>
+                    <GamemodeHeader>
+                        <GamemodeTitle>Team (2on2)</GamemodeTitle>
+                        {streak !== 0 && (
+                            <StreakIndicator $streak={streak}>
+                                {streak > 0 ? "+" : ""}
+                                {streak}
+                            </StreakIndicator>
+                        )}
+                    </GamemodeHeader>
+                    {statuses.map((status) => (
+                        <StatusItem key={status}>
+                            <StatusIcon>
+                                {STATUS_ICONS_MAP[status] || "•"}
+                            </StatusIcon>
+                            <StatusLabel>
+                                {STATUS_LABELS_MAP[status] || status}
+                            </StatusLabel>
+                        </StatusItem>
+                    ))}
+                </GamemodeSection>
+            </TooltipContent>
         </TooltipContainer>,
         document.body
     );

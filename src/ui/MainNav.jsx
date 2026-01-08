@@ -8,6 +8,7 @@ import {
     HiOutlinePlay,
     HiOutlineTrash,
     HiOutlineTrophy,
+    HiOutlineUserGroup,
     HiPlus,
 } from "react-icons/hi2";
 import Divider from "./Divider";
@@ -191,6 +192,12 @@ function MainNav({ close }) {
                     >
                         <HiOutlineTrophy />
                         <span>Achievements</span>
+                    </StyledNavLink>
+                </li>
+                <li>
+                    <StyledNavLink to="/teams" title="Teams" onClick={close}>
+                        <HiOutlineUserGroup />
+                        <span>Teams</span>
                     </StyledNavLink>
                 </li>
                 {/* <li>

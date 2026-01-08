@@ -4,7 +4,12 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import PlayerName from "../../ui/PlayerName";
 import useWindowWidth from "../../hooks/useWindowWidth";
-import { MATCH_ACTIVE, MATCH_ENDED, media } from "../../utils/constants";
+import {
+    GAMEMODE_TEAM,
+    MATCH_ACTIVE,
+    MATCH_ENDED,
+    media,
+} from "../../utils/constants";
 
 const TeamContainer = styled.div`
     display: flex;
@@ -21,6 +26,18 @@ const TeamContainer = styled.div`
                 : props.$won === true
                 ? "var(--winner-name-color)"
                 : "var(--loser-name-color)"};
+    }
+`;
+
+const MmrChange = styled.span`
+    font-size: 1.6rem;
+    color: ${(props) =>
+        props.$positive
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
+
+    ${media.mobile} {
+        font-size: 1.4rem;
     }
 `;
 
@@ -62,12 +79,59 @@ const DurationContainer = styled.div`
 const BountyBadge = styled.span`
     color: var(--color-yellow-600);
     font-size: 1.2rem;
-    margin-left: 0.4rem;
+`;
+
+// Team name with special styling to indicate it's a team match
+const StyledTeamName = styled.span`
+    display: flex;
+    justify-content: ${(props) =>
+        props.$team === "1" ? "flex-end" : "flex-start"};
+    flex-direction: row;
+    flex-wrap: wrap;
+    font-weight: 600;
+    gap: 0.4rem;
+    color: ${(props) =>
+        props.$won === null
+            ? "var(--primary-text-color)"
+            : props.$won === true
+            ? "var(--winner-name-color)"
+            : "var(--loser-name-color)"};
+    cursor: pointer;
+
+    &:hover {
+        text-decoration: underline;
+    }
+
+    ${media.mobile} {
+        font-size: 1.4rem;
+        gap: unset;
+        flex-direction: column;
+    }
+`;
+
+const TeamNameText = styled.span`
+    white-space: nowrap;
+
+    ${media.mobile} {
+        display: flex;
+        justify-content: ${(props) =>
+            props.$team === "1" ? "flex-end" : "flex-start"};
+    }
+`;
+const TeamMmrText = styled.span`
+    white-space: nowrap;
+
+    ${media.mobile} {
+        display: flex;
+        justify-content: ${(props) =>
+            props.$team === "1" ? "flex-end" : "flex-start"};
+    }
 `;
 
 function MiniMatchRow({ match }) {
-    const { player1, player2, player3, player4 } = match;
+    const { player1, player2, player3, player4, team1, team2 } = match;
     const navigate = useNavigate();
+    const isTeamMatch = match.gamemode === GAMEMODE_TEAM && team1 && team2;
     const team1Won =
         match.status !== MATCH_ENDED
             ? null
@@ -82,6 +146,115 @@ function MiniMatchRow({ match }) {
         navigate(`/matches/${match.id}`);
     }
 
+    function handleTeamClick(e, teamId) {
+        e.stopPropagation();
+        navigate(`/team/${teamId}`);
+    }
+
+    // Render team match display
+    if (isTeamMatch) {
+        // Calculate pre-match MMR for teams (current MMR - change = pre-match MMR)
+        const team1PreMatchMmr =
+            team1.mmr && match.mmrChangeTeam1
+                ? Math.round(team1.mmr - match.mmrChangeTeam1)
+                : null;
+        const team2PreMatchMmr =
+            team2.mmr && match.mmrChangeTeam2
+                ? Math.round(team2.mmr - match.mmrChangeTeam2)
+                : null;
+
+        return (
+            <MiniTable.Row onClick={handleClickRow} isTeamMatch={true}>
+                {showId && <div>{match.nr}</div>}
+                <TeamContainer $won={team1Won} $team="1">
+                    <StyledTeamName
+                        $won={team1Won}
+                        onClick={(e) => handleTeamClick(e, team1.id)}
+                        $team="1"
+                    >
+                        <TeamNameText $team="1">{team1.name}</TeamNameText>
+                        <TeamMmrText $team="1">
+                            {match.mmrChangeTeam1 && team1PreMatchMmr && (
+                                <>
+                                    ({team1PreMatchMmr})
+                                    <MmrChange $positive={team1Won}>
+                                        {team1Won ? "+" : ""}
+                                        {match.mmrChangeTeam1}
+                                    </MmrChange>
+                                </>
+                            )}
+                            {team1Won && match.bounty_team1_team > 0 && (
+                                <BountyBadge>
+                                    +{match.bounty_team1_team}💰
+                                </BountyBadge>
+                            )}
+                        </TeamMmrText>
+                    </StyledTeamName>
+                </TeamContainer>
+
+                <ScoreContainer>
+                    <Score $team="1">{match.scoreTeam1}</Score>
+                    &mdash;
+                    <Score $team="2">{match.scoreTeam2}</Score>
+                </ScoreContainer>
+
+                <TeamContainer
+                    $won={team1Won === null ? null : !team1Won}
+                    $team="2"
+                >
+                    <StyledTeamName
+                        $won={team1Won === null ? null : !team1Won}
+                        onClick={(e) => handleTeamClick(e, team2.id)}
+                        $team="2"
+                    >
+                        <TeamNameText $team="2">{team2.name}</TeamNameText>
+                        <TeamMmrText $team="2">
+                            {match.mmrChangeTeam2 && team2PreMatchMmr && (
+                                <>
+                                    ({team2PreMatchMmr})
+                                    <MmrChange $positive={!team1Won}>
+                                        {!team1Won ? "+" : ""}
+                                        {match.mmrChangeTeam2}
+                                    </MmrChange>
+                                </>
+                            )}
+                            {!team1Won && match.bounty_team2_team > 0 && (
+                                <BountyBadge>
+                                    +{match.bounty_team2_team}💰
+                                </BountyBadge>
+                            )}
+                        </TeamMmrText>
+                    </StyledTeamName>
+                </TeamContainer>
+                {showStartTime && (
+                    <div>
+                        {format(
+                            new Date(match.start_time),
+                            "dd.MM.yyyy - HH:mm"
+                        )}
+                    </div>
+                )}
+                {showDuration && (
+                    <DurationContainer>
+                        {match.end_time && (
+                            <span>
+                                {format(
+                                    new Date(match.end_time) -
+                                        new Date(match.start_time),
+                                    "mm:ss"
+                                )}
+                            </span>
+                        )}
+                        {match.status === MATCH_ACTIVE && (
+                            <span>Is active</span>
+                        )}
+                    </DurationContainer>
+                )}
+            </MiniTable.Row>
+        );
+    }
+
+    // Render regular match display
     return (
         <MiniTable.Row onClick={handleClickRow}>
             {showId && <div>{match.nr}</div>}

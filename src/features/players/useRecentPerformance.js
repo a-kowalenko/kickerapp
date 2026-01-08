@@ -2,7 +2,7 @@ import { useQuery } from "react-query";
 import { getMatches } from "../../services/apiMatches";
 import { useKicker } from "../../contexts/KickerContext";
 import { useSelectedSeason } from "../seasons/useSelectedSeason";
-import { MATCH_ACTIVE } from "../../utils/constants";
+import { GAMEMODE_TEAM, MATCH_ACTIVE } from "../../utils/constants";
 
 /**
  * Hook to fetch the last N matches for a player per gamemode.
@@ -17,8 +17,8 @@ export function useRecentPerformance(playerName, limit = 10) {
         isLoading: isLoadingSeason,
     } = useSelectedSeason();
 
-    // Fetch more matches to ensure we have enough for both gamemodes
-    const fetchLimit = limit * 3;
+    // Fetch more matches to ensure we have enough for all gamemodes
+    const fetchLimit = limit * 4;
 
     const {
         data: { data: matches } = {},
@@ -55,9 +55,14 @@ export function useRecentPerformance(playerName, limit = 10) {
         .filter((m) => m.gamemode === "2on2" || m.gamemode === "2on1")
         .slice(0, limit);
 
+    const matchesTeam = completedMatches
+        .filter((m) => m.gamemode === GAMEMODE_TEAM)
+        .slice(0, limit);
+
     return {
         matches1on1,
         matches2on2,
+        matchesTeam,
         isLoading,
         error,
     };

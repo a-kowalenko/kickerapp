@@ -54,8 +54,34 @@ function GeneralSettings() {
     const { isDesktop, isTablet, isMobile } = useWindowWidth();
 
     function handleCopy() {
-        navigator.clipboard.writeText(kickerData.access_token);
-        toast.success("Access Token copied");
+        const text = kickerData?.access_token;
+        if (!text) {
+            toast.error("No access token available");
+            return;
+        }
+
+        // Modern clipboard API with fallback
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+                () => toast.success("Access Token copied"),
+                () => toast.error("Failed to copy")
+            );
+        } else {
+            // Fallback for older browsers or non-HTTPS contexts
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand("copy");
+                toast.success("Access Token copied");
+            } catch (err) {
+                toast.error("Failed to copy");
+            }
+            document.body.removeChild(textArea);
+        }
     }
 
     const CopyButton = (

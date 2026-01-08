@@ -6039,6 +6039,7 @@ DECLARE
     v_parent_max_progress INTEGER;
     v_current_progress INTEGER;
     v_just_unlocked_ids BIGINT[] := ARRAY[]::BIGINT[];
+    v_effective_gamemode TEXT;
 BEGIN
     -- Skip goal removals/undos
     IF NEW.amount <= 0 AND NEW.goal_type != 'own_goal' THEN
@@ -6055,6 +6056,9 @@ BEGIN
     FROM kopecht.matches m
     WHERE m.id = NEW.match_id;
     
+    -- Normalize gamemode: "team" should be treated as "2on2" for achievement purposes
+    v_effective_gamemode := CASE WHEN NEW.gamemode = 'team' THEN '2on2' ELSE NEW.gamemode END;
+    
     -- Process all counter-based GOAL_SCORED achievements
     -- ORDER BY parent_id NULLS FIRST ensures parents are processed before children
     FOR v_achievement IN 
@@ -6069,8 +6073,8 @@ BEGIN
         v_gamemode_filter := v_achievement.condition->'filters'->>'gamemode';
         v_goal_type_filter := v_achievement.condition->'filters'->>'goal_type';
         
-        -- Check gamemode filter
-        IF v_gamemode_filter IS NOT NULL AND v_gamemode_filter != NEW.gamemode THEN
+        -- Check gamemode filter (using normalized gamemode: "team" -> "2on2")
+        IF v_gamemode_filter IS NOT NULL AND v_gamemode_filter != v_effective_gamemode THEN
             CONTINUE;
         END IF;
         
@@ -6734,3 +6738,49 @@ GRANT EXECUTE ON FUNCTION kopecht.update_point_collector_progress(BIGINT, TEXT, 
 
 ALTER TABLE kopecht.season_rankings
 ADD COLUMN IF NOT EXISTS season_announcement_seen BOOLEAN DEFAULT FALSE;
+
+
+----- OPTIONAL, TESTEN OB NÖTIG ------
+-- Migration 050: Fix RLS policies for achievement tables (kopecht schema)
+-- The policies were using auth.role() = 'authenticated' which doesn't work correctly
+-- Changed to use TRUE for select (public read) since achievements are not sensitive
+
+SET search_path TO kopecht;
+
+-- ============================================
+-- FIX achievement_categories RLS policies
+-- ============================================
+DROP POLICY IF EXISTS "Authenticated users can view achievement categories" ON kopecht.achievement_categories;
+
+CREATE POLICY "Anyone can view achievement categories"
+    ON kopecht.achievement_categories FOR SELECT
+    USING (TRUE);
+
+-- ============================================
+-- FIX achievement_definitions RLS policies  
+-- ============================================
+DROP POLICY IF EXISTS "Authenticated users can view achievement definitions" ON kopecht.achievement_definitions;
+
+CREATE POLICY "Authenticated users can view achievement definitions"
+    ON kopecht.achievement_definitions FOR SELECT
+    USING (
+        auth.uid() IS NOT NULL
+        AND (
+            is_hidden = FALSE
+            OR EXISTS (
+                SELECT 1 FROM kopecht.player_achievements pa
+                JOIN kopecht.player p ON pa.player_id = p.id
+                WHERE pa.achievement_id = achievement_definitions.id
+                AND p.user_id = auth.uid()
+            )
+        )
+    );
+
+-- ============================================
+-- GRANT permissions to ensure access
+-- ============================================
+GRANT SELECT ON kopecht.achievement_categories TO authenticated;
+GRANT SELECT ON kopecht.achievement_categories TO anon;
+GRANT SELECT ON kopecht.achievement_definitions TO authenticated;
+GRANT SELECT ON kopecht.achievement_definitions TO anon;
+-- ============================================

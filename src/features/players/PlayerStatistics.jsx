@@ -8,7 +8,7 @@ import {
     YAxis,
 } from "recharts";
 import styled from "styled-components";
-import RankingsFilterRow from "../rankings/RankingsFilterRow";
+import ProfileStatisticsFilterRow from "./ProfileStatisticsFilterRow";
 import { useMmrHistory } from "./useMmrHistory";
 import OpponentStatsTable from "./OpponentStatsTable";
 import LoadingSpinner from "../../ui/LoadingSpinner";
@@ -35,71 +35,76 @@ function PlayerStatistics() {
         ? searchParams.get("gamemode")
         : "1on1";
 
+    // Team gamemode doesn't have player MMR history, only show opponent stats
+    const isTeamMode = filteredGamemode === "team";
+
     return (
         <StyledStatistics>
-            <RankingsFilterRow />
+            <ProfileStatisticsFilterRow />
             <StatisticsContent>
                 <OpponentStatsTable />
-                <ContentBox>
-                    <Row type="horizontal">
-                        <Heading as="h2">
-                            MMR Timeline &mdash; {filteredGamemode}
-                        </Heading>
-                    </Row>
-                    <ResponsiveContainer width="100%" height={350}>
-                        {isLoading ? (
-                            <LoadingSpinner />
-                        ) : (
-                            <LineChart
-                                width={600}
-                                height={300}
-                                data={data}
-                                margin={{
-                                    top: 5,
-                                    right: 20,
-                                    bottom: 20,
-                                    left: 20,
-                                }}
-                            >
-                                <Line
-                                    type="monotone"
-                                    dataKey="mmr"
-                                    stroke="var(--chart-line-color)"
-                                    activeDot={{ r: 4 }}
-                                    strokeWidth={2}
-                                />
-                                <CartesianGrid
-                                    stroke="var(--color-grey-300)"
-                                    strokeDasharray="5 5"
-                                />
-                                <XAxis
-                                    dataKey="date"
-                                    label={{
-                                        value: "Date",
-                                        position: "insideBottom",
-                                        dy: 20,
+                {!isTeamMode && (
+                    <ContentBox>
+                        <Row type="horizontal">
+                            <Heading as="h2">
+                                MMR Timeline &mdash; {filteredGamemode}
+                            </Heading>
+                        </Row>
+                        <ResponsiveContainer width="100%" height={350}>
+                            {isLoading ? (
+                                <LoadingSpinner />
+                            ) : (
+                                <LineChart
+                                    width={600}
+                                    height={300}
+                                    data={data}
+                                    margin={{
+                                        top: 5,
+                                        right: 20,
+                                        bottom: 20,
+                                        left: 20,
                                     }}
-                                    dy={5}
-                                    padding={{ left: 30, right: 30 }}
-                                />
-                                <YAxis
-                                    label={{
-                                        value: "MMR",
-                                        angle: -90,
-                                        position: "insideLeft",
-                                    }}
-                                    domain={["auto", "auto"]}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor:
-                                            "var(--tertiary-background-color)",
-                                    }}
-                                />
-                            </LineChart>
-                        )}
-                    </ResponsiveContainer>
-                </ContentBox>
+                                >
+                                    <Line
+                                        type="monotone"
+                                        dataKey="mmr"
+                                        stroke="var(--chart-line-color)"
+                                        activeDot={{ r: 4 }}
+                                        strokeWidth={2}
+                                    />
+                                    <CartesianGrid
+                                        stroke="var(--color-grey-300)"
+                                        strokeDasharray="5 5"
+                                    />
+                                    <XAxis
+                                        dataKey="date"
+                                        label={{
+                                            value: "Date",
+                                            position: "insideBottom",
+                                            dy: 20,
+                                        }}
+                                        dy={5}
+                                        padding={{ left: 30, right: 30 }}
+                                    />
+                                    <YAxis
+                                        label={{
+                                            value: "MMR",
+                                            angle: -90,
+                                            position: "insideLeft",
+                                        }}
+                                        domain={["auto", "auto"]}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor:
+                                                "var(--tertiary-background-color)",
+                                        }}
+                                    />
+                                </LineChart>
+                            )}
+                        </ResponsiveContainer>
+                    </ContentBox>
+                )}
             </StatisticsContent>
         </StyledStatistics>
     );

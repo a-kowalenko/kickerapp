@@ -18,6 +18,8 @@ const StyledAppLayout = styled.div`
 
     min-height: 100dvh;
     background-color: var(--secondary-background-color);
+    overflow-x: clip;
+    width: 100%;
 
     ${media.tablet} {
         grid-template-columns: 1fr;
