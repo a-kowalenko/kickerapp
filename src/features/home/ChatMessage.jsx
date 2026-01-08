@@ -309,6 +309,11 @@ const MessageBody = styled.div`
     line-height: 1.4;
     word-break: break-word;
     white-space: pre-wrap;
+
+    /* Re-enable text selection in message body */
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+    user-select: text;
 `;
 
 const EditActionButton = styled.button`
