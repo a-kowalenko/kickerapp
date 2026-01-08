@@ -111,22 +111,26 @@ ALTER TABLE match_comment_read_status ENABLE ROW LEVEL SECURITY;
 -- 3. RLS Policies
 
 -- Users can view their own read status
+DROP POLICY IF EXISTS "Users can view own match comment read status" ON match_comment_read_status;
 CREATE POLICY "Users can view own match comment read status"
 ON match_comment_read_status FOR SELECT
 USING (auth.uid() = user_id);
 
 -- Users can insert their own read status
+DROP POLICY IF EXISTS "Users can insert own match comment read status" ON match_comment_read_status;
 CREATE POLICY "Users can insert own match comment read status"
 ON match_comment_read_status FOR INSERT
 WITH CHECK (auth.uid() = user_id);
 
 -- Users can update their own read status
+DROP POLICY IF EXISTS "Users can update own match comment read status" ON match_comment_read_status;
 CREATE POLICY "Users can update own match comment read status"
 ON match_comment_read_status FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
 -- Users can delete their own read status
+DROP POLICY IF EXISTS "Users can delete own match comment read status" ON match_comment_read_status;
 CREATE POLICY "Users can delete own match comment read status"
 ON match_comment_read_status FOR DELETE
 USING (auth.uid() = user_id);
@@ -231,17 +235,20 @@ ALTER TABLE mention_notifications REPLICA IDENTITY FULL;
 -- 3. RLS Policies
 
 -- Users can view their own notifications
+DROP POLICY IF EXISTS "Users can view own mention notifications" ON mention_notifications;
 CREATE POLICY "Users can view own mention notifications"
 ON mention_notifications FOR SELECT
 USING (auth.uid() = user_id);
 
 -- Users can update their own notifications (mark as read)
+DROP POLICY IF EXISTS "Users can update own mention notifications" ON mention_notifications;
 CREATE POLICY "Users can update own mention notifications"
 ON mention_notifications FOR UPDATE
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
 -- Users can delete their own notifications
+DROP POLICY IF EXISTS "Users can delete own mention notifications" ON mention_notifications;
 CREATE POLICY "Users can delete own mention notifications"
 ON mention_notifications FOR DELETE
 USING (auth.uid() = user_id);
