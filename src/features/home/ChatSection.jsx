@@ -4,14 +4,17 @@ import { useSearchParams } from "react-router-dom";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
+    HiOutlineTrophy,
 } from "react-icons/hi2";
 import { useKicker } from "../../contexts/KickerContext";
 import { useUnreadCommentCount } from "./useUnreadCommentCount";
+import useWindowWidth from "../../hooks/useWindowWidth";
 import { useUser } from "../authentication/useUser";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
 import ChatTab from "./ChatTab";
 import MatchCommentsTab from "./MatchCommentsTab";
+import AchievementTickerTab from "./AchievementTickerTab";
 import { media } from "../../utils/constants";
 import ContentBox from "../../ui/ContentBox";
 
@@ -134,17 +137,25 @@ function ChatSection() {
         }
         // Check if tab param is set
         const tabParam = new URLSearchParams(window.location.search).get("tab");
-        if (tabParam === "chat" || tabParam === "comments") {
+        if (
+            tabParam === "chat" ||
+            tabParam === "comments" ||
+            tabParam === "achievements"
+        ) {
             return tabParam;
         }
         const saved = localStorage.getItem(CHAT_TAB_STORAGE_KEY);
-        return saved === "comments" ? "comments" : "chat";
+        if (saved === "comments" || saved === "achievements") {
+            return saved;
+        }
+        return "chat";
     });
     const { currentKicker } = useKicker();
     const { user } = useUser();
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+    const { isDesktop, isTablet, isMobile } = useWindowWidth();
 
     // Handle tab query param changes
     useEffect(() => {
@@ -154,7 +165,11 @@ function ChatSection() {
         // Switch to chat tab if scrollTo is for a message
         if (scrollTo?.startsWith("message-")) {
             setActiveTab("chat");
-        } else if (tabParam === "chat" || tabParam === "comments") {
+        } else if (
+            tabParam === "chat" ||
+            tabParam === "comments" ||
+            tabParam === "achievements"
+        ) {
             setActiveTab(tabParam);
         }
     }, [searchParams]);
@@ -230,23 +245,37 @@ function ChatSection() {
                         onClick={() => handleTabChange("chat")}
                     >
                         <HiChatBubbleLeftRight />
-                        Kicker Chat
+                        {isDesktop && "Kicker Chat"}
+                        {isTablet && "Kicker Chat"}
+                        {isMobile && "Chat"}
                     </TabButton>
                     <TabButton
                         $active={activeTab === "comments"}
                         onClick={() => handleTabChange("comments")}
                     >
                         <HiChatBubbleOvalLeftEllipsis />
-                        Match Comments
+                        {isDesktop && "Match Comments"}
+                        {isTablet && "Comments"}
+                        {isMobile && "Comments"}
                         {unreadCount > 0 && (
                             <UnreadBadge>{unreadCount}</UnreadBadge>
                         )}
+                    </TabButton>
+                    <TabButton
+                        $active={activeTab === "achievements"}
+                        onClick={() => handleTabChange("achievements")}
+                    >
+                        <HiOutlineTrophy />
+                        {isDesktop && "Achievement Ticker"}
+                        {isTablet && "Achievements"}
+                        {isMobile && "Achieves"}
                     </TabButton>
                 </TabBar>
 
                 <TabContent>
                     {activeTab === "chat" && <ChatTab />}
                     {activeTab === "comments" && <MatchCommentsTab />}
+                    {activeTab === "achievements" && <AchievementTickerTab />}
                 </TabContent>
             </ChatContainer>
         </StyledChatSection>
