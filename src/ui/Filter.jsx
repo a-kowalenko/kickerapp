@@ -65,9 +65,17 @@ const List = styled.ul`
 
     max-height: ${(props) => (props.$isOpen ? "300px" : "0")};
     max-width: ${(props) => (props.$isOpen ? "100%" : "0")};
-    overflow: hidden;
-    display: ${(props) => (props.$isOpen ? "flex" : "hidden")};
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: ${(props) => (props.$isOpen ? "flex" : "none")};
     transition: max-height 0.2s ease-in-out, max-width 0.2s ease-in-out;
+
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    &::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
 `;
 
 const Element = styled.div`
