@@ -428,7 +428,8 @@ function AchievementTickerItem({ group, isNew = false }) {
                                         >
                                             <AccordionInner>
                                                 <AccordionText>
-                                                    {item.achievement.description ||
+                                                    {item.achievement
+                                                        .description ||
                                                         "Keine Beschreibung verfügbar."}
                                                 </AccordionText>
                                             </AccordionInner>
