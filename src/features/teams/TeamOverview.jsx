@@ -517,10 +517,10 @@ const RankIcon = styled.div`
         props.$variant === "gold"
             ? "linear-gradient(135deg, #FFD700 0%, #FFC107 100%)"
             : props.$variant === "silver"
-              ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
-              : props.$variant === "bronze"
-                ? "linear-gradient(135deg, #CD7F32 0%, #A0522D 100%)"
-                : "var(--color-grey-100)"};
+            ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
+            : props.$variant === "bronze"
+            ? "linear-gradient(135deg, #CD7F32 0%, #A0522D 100%)"
+            : "var(--color-grey-100)"};
 
     ${media.desktop} {
         width: 3.6rem;
@@ -539,10 +539,10 @@ const RankIcon = styled.div`
             props.$variant === "gold"
                 ? "#7a5c00"
                 : props.$variant === "silver"
-                  ? "#616161"
-                  : props.$variant === "bronze"
-                    ? "#5D4037"
-                    : "var(--color-grey-600)"};
+                ? "#616161"
+                : props.$variant === "bronze"
+                ? "#5D4037"
+                : "var(--color-grey-600)"};
 
         ${media.desktop} {
             width: 1.8rem;
