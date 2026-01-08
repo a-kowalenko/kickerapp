@@ -20,6 +20,7 @@ import SpinnerMini from "../../ui/SpinnerMini";
 import { useTeam, useDissolveTeam, useTeamMatches } from "./useTeams";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import TeamRecentPerformance from "./TeamRecentPerformance";
+import MediaViewer from "../../ui/MediaViewer";
 
 /* ----------------------------------------
    MMR Color Helpers
@@ -159,6 +160,12 @@ const TeamLogo = styled.img`
     border-radius: var(--border-radius-lg);
     object-fit: cover;
     border: 3px solid var(--secondary-border-color);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover {
+        transform: scale(1.02);
+    }
 
     ${media.mobile} {
         width: 8rem;
@@ -395,6 +402,7 @@ function TeamProfile() {
     const { teamId } = useParams();
     const navigate = useNavigate();
     const [showDissolveConfirm, setShowDissolveConfirm] = useState(false);
+    const [viewerImage, setViewerImage] = useState(null);
 
     const { team, isLoading, error } = useTeam(teamId);
     const { matches, isLoading: isLoadingMatches } = useTeamMatches(teamId);
@@ -442,7 +450,11 @@ function TeamProfile() {
             <TeamHeaderCard>
                 <TeamHeaderContent>
                     {logo_url ? (
-                        <TeamLogo src={logo_url} alt={name} />
+                        <TeamLogo
+                            src={logo_url}
+                            alt={name}
+                            onClick={() => setViewerImage(logo_url)}
+                        />
                     ) : (
                         <DefaultLogo>{initials}</DefaultLogo>
                     )}
@@ -641,6 +653,14 @@ function TeamProfile() {
                     )}
                 </CardBody>
             </Card>
+
+            {viewerImage && (
+                <MediaViewer
+                    src={viewerImage}
+                    alt={name}
+                    onClose={() => setViewerImage(null)}
+                />
+            )}
         </PageContainer>
     );
 }

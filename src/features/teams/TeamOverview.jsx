@@ -1,8 +1,10 @@
 import styled, { css, keyframes } from "styled-components";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { HiOutlineUser, HiOutlineTrophy, HiOutlineFire } from "react-icons/hi2";
 import { TbSnowflake } from "react-icons/tb";
 import Avatar from "../../ui/Avatar";
+import MediaViewer from "../../ui/MediaViewer";
 import TeamRecentPerformance from "./TeamRecentPerformance";
 import { StatusBadge } from "../../ui/StatusBadge";
 import { useBountyTooltip, TeamStatusTooltip } from "../../ui/BountyTooltip";
@@ -233,6 +235,12 @@ const TeamLogo = styled.img`
     border-radius: var(--border-radius-md);
     object-fit: cover;
     border: 3px solid var(--secondary-border-color);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover {
+        transform: scale(1.02);
+    }
 
     ${media.mobile} {
         width: 10rem;
@@ -632,6 +640,9 @@ const QuickStatLabel = styled.span`
 `;
 
 function TeamOverview({ team, rank }) {
+    // State for image viewer
+    const [viewerImage, setViewerImage] = useState(null);
+
     // Status tooltip hook
     const {
         isHovered: isStatusHovered,
@@ -718,7 +729,11 @@ function TeamOverview({ team, rank }) {
                     >
                         <TeamLogoWrapper>
                             {logo_url ? (
-                                <TeamLogo src={logo_url} alt={name} />
+                                <TeamLogo
+                                    src={logo_url}
+                                    alt={name}
+                                    onClick={() => setViewerImage(logo_url)}
+                                />
                             ) : (
                                 <DefaultLogo>{initials}</DefaultLogo>
                             )}
@@ -874,6 +889,14 @@ function TeamOverview({ team, rank }) {
 
             {/* Recent Performance */}
             <TeamRecentPerformance teamId={team.id} />
+
+            {viewerImage && (
+                <MediaViewer
+                    src={viewerImage}
+                    alt={name}
+                    onClose={() => setViewerImage(null)}
+                />
+            )}
         </StyledTeamOverview>
     );
 }

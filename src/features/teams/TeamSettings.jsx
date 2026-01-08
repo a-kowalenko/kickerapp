@@ -1,10 +1,7 @@
 import styled from "styled-components";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-    HiOutlineCog6Tooth,
-    HiOutlineTrash,
-} from "react-icons/hi2";
+import { HiOutlineCog6Tooth, HiOutlineTrash } from "react-icons/hi2";
 import { media, TEAM_STATUS_ACTIVE } from "../../utils/constants";
 import { useDissolveTeam } from "./useTeams";
 import Button from "../../ui/Button";

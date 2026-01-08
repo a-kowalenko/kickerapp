@@ -2,75 +2,202 @@ import styled from "styled-components";
 import { useState, useRef, useEffect } from "react";
 import { HiOutlineCamera, HiOutlineTrash } from "react-icons/hi2";
 import { media } from "../../utils/constants";
-import { useUploadTeamLogo, useDeleteTeamLogo, useUpdateTeam } from "./useTeams";
+import {
+    useUploadTeamLogo,
+    useDeleteTeamLogo,
+    useUpdateTeam,
+} from "./useTeams";
 import { compressImage } from "../../services/apiImageUpload";
 import SpinnerMini from "../../ui/SpinnerMini";
 import toast from "react-hot-toast";
 
-const Container = styled.div`
+const FormContainer = styled.div`
     display: flex;
-    gap: 3rem;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: 2.4rem;
+`;
+
+const FormRow = styled.div`
+    display: grid;
+    grid-template-columns: 14rem 1fr;
+    gap: 2.4rem;
+    align-items: start;
 
     ${media.tablet} {
-        gap: 2.4rem;
+        grid-template-columns: 10rem 1fr;
+        gap: 2rem;
     }
+
+    ${media.mobile} {
+        grid-template-columns: 1fr;
+        gap: 1.6rem;
+    }
+`;
+
+const FormLabel = styled.label`
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--color-grey-700);
+    padding-top: 0.8rem;
+
+    ${media.mobile} {
+        padding-top: 0;
+    }
+`;
+
+const FormField = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+`;
+
+const FormHint = styled.span`
+    font-size: 1.2rem;
+    color: var(--color-grey-500);
+    line-height: 1.4;
+`;
+
+// Logo specific styles
+const LogoFieldContent = styled.div`
+    display: flex;
+    align-items: flex-start;
+    gap: 1.6rem;
 
     ${media.mobile} {
         flex-direction: column;
         align-items: center;
-        gap: 2.4rem;
     }
 `;
 
-const LogoContainer = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.6rem;
+const LogoWrapper = styled.div`
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &:hover > div {
+        opacity: 1;
+    }
 `;
 
-const TeamInfoContainer = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 1.6rem;
-    flex: 1;
-    min-width: 0;
+const StyledLogo = styled.img`
+    width: 10rem;
+    height: 10rem;
+    border-radius: var(--border-radius-lg);
+    object-fit: cover;
+    border: 2px solid var(--secondary-border-color);
+    transition: filter 0.2s ease;
+
+    ${LogoWrapper}:hover & {
+        filter: brightness(0.7);
+    }
 
     ${media.tablet} {
-        gap: 1.2rem;
+        width: 8rem;
+        height: 8rem;
     }
 
     ${media.mobile} {
-        width: 100%;
+        width: 10rem;
+        height: 10rem;
+    }
+`;
+
+const DefaultLogo = styled.div`
+    width: 10rem;
+    height: 10rem;
+    border-radius: var(--border-radius-lg);
+    background: linear-gradient(
+        135deg,
+        var(--color-brand-100) 0%,
+        var(--color-brand-200) 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: var(--color-brand-600);
+    border: 2px solid var(--secondary-border-color);
+    transition: filter 0.2s ease;
+
+    ${LogoWrapper}:hover & {
+        filter: brightness(0.7);
+    }
+
+    ${media.tablet} {
+        width: 8rem;
+        height: 8rem;
+        font-size: 2.8rem;
+    }
+
+    ${media.mobile} {
+        width: 10rem;
+        height: 10rem;
+        font-size: 3.2rem;
+    }
+`;
+
+const LogoOverlay = styled.div`
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    border-radius: var(--border-radius-lg);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+`;
+
+const CameraIcon = styled(HiOutlineCamera)`
+    width: 2.4rem;
+    height: 2.4rem;
+    color: white;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+`;
+
+const OverlayText = styled.span`
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+`;
+
+const LogoActions = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+
+    ${media.mobile} {
         align-items: center;
     }
 `;
 
-const TeamNameSection = styled.div`
+const LogoActionButtons = styled.div`
     display: flex;
-    flex-direction: column;
     gap: 0.8rem;
-    width: 100%;
+    flex-wrap: wrap;
+
+    ${media.mobile} {
+        justify-content: center;
+    }
 `;
 
-const TeamNameLabel = styled.label`
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: var(--color-grey-700);
+const HiddenInput = styled.input`
+    display: none;
 `;
 
-const TeamNameInputWrapper = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    width: 100%;
-`;
-
+// Team name specific styles
 const TeamNameInput = styled.input`
     width: 100%;
     padding: 1rem 1.4rem;
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     font-weight: 500;
     color: var(--color-grey-800);
     background-color: var(--color-grey-0);
@@ -93,208 +220,31 @@ const TeamNameInput = styled.input`
         font-size: 1.4rem;
         padding: 0.8rem 1.2rem;
     }
-
-    ${media.mobile} {
-        text-align: center;
-    }
 `;
 
-const TeamNameButtons = styled.div`
+const ActionButtons = styled.div`
     display: flex;
     gap: 0.8rem;
+    margin-top: 0.4rem;
 
     ${media.mobile} {
         justify-content: center;
     }
 `;
 
-const TeamNameHint = styled.span`
-    font-size: 1.2rem;
-    color: var(--color-grey-500);
-`;
-
-const LogoWrapper = styled.div`
-    position: relative;
-    cursor: pointer;
-
-    &:hover > div {
-        opacity: 1;
-    }
-`;
-
-const StyledLogo = styled.img`
-    width: 15rem;
-    height: 15rem;
-    border-radius: var(--border-radius-lg);
-    object-fit: cover;
-    border: 3px solid var(--secondary-border-color);
-    transition: filter 0.2s ease;
-
-    ${LogoWrapper}:hover & {
-        filter: brightness(0.7);
-    }
-
-    ${media.tablet} {
-        width: 9rem;
-        height: 9rem;
-    }
-
-    ${media.mobile} {
-        width: 8rem;
-        height: 8rem;
-    }
-`;
-
-const DefaultLogo = styled.div`
-    width: 10rem;
-    height: 10rem;
-    border-radius: var(--border-radius-lg);
-    background: linear-gradient(
-        135deg,
-        var(--color-brand-100) 0%,
-        var(--color-brand-200) 100%
-    );
-    display: flex;
+// Shared button styles
+const Button = styled.button`
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 4rem;
-    font-weight: 700;
-    color: var(--color-brand-600);
-    border: 3px solid var(--secondary-border-color);
-    transition: filter 0.2s ease;
-
-    ${LogoWrapper}:hover & {
-        filter: brightness(0.7);
-    }
-
-    ${media.tablet} {
-        width: 9rem;
-        height: 9rem;
-        font-size: 3.5rem;
-    }
-
-    ${media.mobile} {
-        width: 8rem;
-        height: 8rem;
-        font-size: 3rem;
-    }
-`;
-
-const LogoOverlay = styled.div`
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    border-radius: var(--border-radius-lg);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-`;
-
-const CameraIcon = styled(HiOutlineCamera)`
-    width: 2.8rem;
-    height: 2.8rem;
-    color: white;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-`;
-
-const OverlayText = styled.span`
-    font-size: 1.2rem;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    font-size: 1.3rem;
     font-weight: 500;
-    color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-`;
-
-const HiddenInput = styled.input`
-    display: none;
-`;
-
-const LogoInfo = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-`;
-
-const LogoLabel = styled.span`
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: var(--color-grey-700);
-`;
-
-const LogoHint = styled.span`
-    font-size: 1.2rem;
-    color: var(--color-grey-500);
-    text-align: center;
-`;
-
-const SaveButton = styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.8rem;
-    padding: 0.8rem 1.6rem;
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: var(--primary-button-color-text);
-    background-color: var(--primary-button-color);
-    border: none;
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     transition: all 0.2s ease;
-    min-width: 10rem;
-
-    &:hover:not(:disabled) {
-        background-color: var(--primary-button-color-hover);
-    }
-
-    &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-`;
-
-const CancelButton = styled.button`
-    padding: 0.8rem 1.6rem;
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: var(--color-grey-600);
-    background-color: transparent;
-    border: 1px solid var(--secondary-border-color);
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-        background-color: var(--color-grey-100);
-    }
-`;
-
-const DeleteButton = styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-    padding: 0.8rem 1.6rem;
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: var(--color-red-600);
-    background-color: transparent;
-    border: 1px solid var(--color-red-200);
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover:not(:disabled) {
-        background-color: var(--color-red-50);
-        border-color: var(--color-red-300);
-    }
+    white-space: nowrap;
 
     &:disabled {
         opacity: 0.6;
@@ -302,14 +252,51 @@ const DeleteButton = styled.button`
     }
 
     svg {
-        width: 1.6rem;
-        height: 1.6rem;
+        width: 1.4rem;
+        height: 1.4rem;
     }
 `;
 
-const ButtonGroup = styled.div`
-    display: flex;
-    gap: 1rem;
+const SaveButton = styled(Button)`
+    color: var(--primary-button-color-text);
+    background-color: var(--primary-button-color);
+    border: none;
+    min-width: 7rem;
+
+    &:hover:not(:disabled) {
+        background-color: var(--primary-button-color-hover);
+    }
+`;
+
+const CancelButton = styled(Button)`
+    color: var(--color-grey-600);
+    background-color: transparent;
+    border: 1px solid var(--secondary-border-color);
+
+    &:hover:not(:disabled) {
+        background-color: var(--color-grey-100);
+    }
+`;
+
+const DeleteButton = styled(Button)`
+    color: var(--color-red-600);
+    background-color: transparent;
+    border: 1px solid var(--color-red-200);
+
+    &:hover:not(:disabled) {
+        background-color: var(--color-red-50);
+        border-color: var(--color-red-300);
+    }
+`;
+
+const ConfirmDeleteButton = styled(Button)`
+    color: white;
+    background-color: var(--color-red-600);
+    border: none;
+
+    &:hover:not(:disabled) {
+        background-color: var(--color-red-700);
+    }
 `;
 
 function TeamLogoUpload({ team, teamId }) {
@@ -321,6 +308,7 @@ function TeamLogoUpload({ team, teamId }) {
     const [previewLogo, setPreviewLogo] = useState(null);
     const [newLogo, setNewLogo] = useState(null);
     const [hasLogoChanges, setHasLogoChanges] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // Team name state
     const [teamName, setTeamName] = useState(team?.name || "");
@@ -411,7 +399,22 @@ function TeamLogoUpload({ team, teamId }) {
 
     function handleLogoDelete() {
         if (!teamId || !team?.logo_url) return;
-        deleteLogo(teamId);
+        deleteLogo(
+            { teamId, logoUrl: team.logo_url },
+            {
+                onSuccess: () => {
+                    setShowDeleteConfirm(false);
+                },
+            }
+        );
+    }
+
+    function handleDeleteClick() {
+        setShowDeleteConfirm(true);
+    }
+
+    function handleDeleteCancel() {
+        setShowDeleteConfirm(false);
     }
 
     // Team name handlers
@@ -460,91 +463,138 @@ function TeamLogoUpload({ team, teamId }) {
     const isLogoLoading = isUploading || isDeleting;
 
     return (
-        <Container>
-            {/* Logo Section */}
-            <LogoContainer>
-                <LogoWrapper onClick={handleLogoClick}>
-                    {displayLogo ? (
-                        <StyledLogo src={displayLogo} alt={team?.name || "Team"} />
-                    ) : (
-                        <DefaultLogo>{initials}</DefaultLogo>
-                    )}
-                    <LogoOverlay>
-                        <CameraIcon />
-                        <OverlayText>Change</OverlayText>
-                    </LogoOverlay>
-                </LogoWrapper>
+        <FormContainer>
+            {/* Logo Row */}
+            <FormRow>
+                <FormLabel>Logo</FormLabel>
+                <FormField>
+                    <LogoFieldContent>
+                        <LogoWrapper onClick={handleLogoClick}>
+                            {displayLogo ? (
+                                <StyledLogo
+                                    src={displayLogo}
+                                    alt={team?.name || "Team"}
+                                />
+                            ) : (
+                                <DefaultLogo>{initials}</DefaultLogo>
+                            )}
+                            <LogoOverlay>
+                                <CameraIcon />
+                                <OverlayText>Change</OverlayText>
+                            </LogoOverlay>
+                        </LogoWrapper>
 
-                <HiddenInput
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={handleLogoChange}
-                    disabled={isLogoLoading}
-                />
-
-                <LogoInfo>
-                    <LogoLabel>Team Logo</LogoLabel>
-                    <LogoHint>Click to upload a new logo</LogoHint>
-                </LogoInfo>
-
-                {hasLogoChanges && (
-                    <ButtonGroup>
-                        <CancelButton onClick={handleLogoCancel} disabled={isLogoLoading}>
-                            Cancel
-                        </CancelButton>
-                        <SaveButton onClick={handleLogoSave} disabled={isLogoLoading}>
-                            {isUploading ? <SpinnerMini /> : "Save"}
-                        </SaveButton>
-                    </ButtonGroup>
-                )}
-
-                {!hasLogoChanges && team?.logo_url && (
-                    <DeleteButton onClick={handleLogoDelete} disabled={isLogoLoading}>
-                        {isDeleting ? (
-                            <SpinnerMini />
-                        ) : (
-                            <>
-                                <HiOutlineTrash />
-                                Remove Logo
-                            </>
-                        )}
-                    </DeleteButton>
-                )}
-            </LogoContainer>
-
-            {/* Team Name Section */}
-            <TeamInfoContainer>
-                <TeamNameSection>
-                    <TeamNameLabel htmlFor="teamName">Team Name</TeamNameLabel>
-                    <TeamNameInputWrapper>
-                        <TeamNameInput
-                            id="teamName"
-                            type="text"
-                            value={teamName}
-                            onChange={handleNameChange}
-                            onKeyDown={handleNameKeyDown}
-                            placeholder="Enter team name..."
-                            disabled={isUpdatingName}
-                            maxLength={50}
+                        <HiddenInput
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            onChange={handleLogoChange}
+                            disabled={isLogoLoading}
                         />
-                        {hasNameChanges && (
-                            <TeamNameButtons>
-                                <CancelButton onClick={handleNameCancel} disabled={isUpdatingName}>
-                                    Cancel
-                                </CancelButton>
-                                <SaveButton onClick={handleNameSave} disabled={isUpdatingName || !teamName.trim()}>
-                                    {isUpdatingName ? <SpinnerMini /> : "Save"}
-                                </SaveButton>
-                            </TeamNameButtons>
-                        )}
-                    </TeamNameInputWrapper>
-                    <TeamNameHint>
-                        The team name is displayed throughout the app (2-50 characters)
-                    </TeamNameHint>
-                </TeamNameSection>
-            </TeamInfoContainer>
-        </Container>
+
+                        <LogoActions>
+                            <FormHint>
+                                Click on the logo to upload a new image.
+                                <br />
+                                Recommended: 512×512px, max 2MB.
+                            </FormHint>
+
+                            <LogoActionButtons>
+                                {hasLogoChanges && (
+                                    <>
+                                        <CancelButton
+                                            onClick={handleLogoCancel}
+                                            disabled={isLogoLoading}
+                                        >
+                                            Cancel
+                                        </CancelButton>
+                                        <SaveButton
+                                            onClick={handleLogoSave}
+                                            disabled={isLogoLoading}
+                                        >
+                                            {isUploading ? (
+                                                <SpinnerMini />
+                                            ) : (
+                                                "Save"
+                                            )}
+                                        </SaveButton>
+                                    </>
+                                )}
+
+                                {!hasLogoChanges &&
+                                    team?.logo_url &&
+                                    !showDeleteConfirm && (
+                                        <DeleteButton
+                                            onClick={handleDeleteClick}
+                                            disabled={isLogoLoading}
+                                        >
+                                            <HiOutlineTrash />
+                                            Remove
+                                        </DeleteButton>
+                                    )}
+
+                                {showDeleteConfirm && (
+                                    <>
+                                        <CancelButton
+                                            onClick={handleDeleteCancel}
+                                            disabled={isDeleting}
+                                        >
+                                            Cancel
+                                        </CancelButton>
+                                        <ConfirmDeleteButton
+                                            onClick={handleLogoDelete}
+                                            disabled={isDeleting}
+                                        >
+                                            {isDeleting ? (
+                                                <SpinnerMini />
+                                            ) : (
+                                                "Confirm"
+                                            )}
+                                        </ConfirmDeleteButton>
+                                    </>
+                                )}
+                            </LogoActionButtons>
+                        </LogoActions>
+                    </LogoFieldContent>
+                </FormField>
+            </FormRow>
+
+            {/* Team Name Row */}
+            <FormRow>
+                <FormLabel htmlFor="teamName">Team Name</FormLabel>
+                <FormField>
+                    <TeamNameInput
+                        id="teamName"
+                        type="text"
+                        value={teamName}
+                        onChange={handleNameChange}
+                        onKeyDown={handleNameKeyDown}
+                        placeholder="Enter team name..."
+                        disabled={isUpdatingName}
+                        maxLength={50}
+                    />
+                    <FormHint>
+                        Displayed throughout the app. 2-50 characters.
+                    </FormHint>
+                    {hasNameChanges && (
+                        <ActionButtons>
+                            <CancelButton
+                                onClick={handleNameCancel}
+                                disabled={isUpdatingName}
+                            >
+                                Cancel
+                            </CancelButton>
+                            <SaveButton
+                                onClick={handleNameSave}
+                                disabled={isUpdatingName || !teamName.trim()}
+                            >
+                                {isUpdatingName ? <SpinnerMini /> : "Save"}
+                            </SaveButton>
+                        </ActionButtons>
+                    )}
+                </FormField>
+            </FormRow>
+        </FormContainer>
     );
 }
 
