@@ -197,6 +197,7 @@ const AchievementsList = styled.div`
 const AchievementWrapper = styled.div`
     display: flex;
     flex-direction: column;
+    contain: layout;
 `;
 
 const AchievementRow = styled.div`
@@ -209,9 +210,10 @@ const AchievementRow = styled.div`
         props.$isExpanded
             ? "var(--primary-border-color)"
             : "var(--tertiary-background-color)"};
-    transition: background-color 0.2s;
+    transition: background-color 0.15s;
     cursor: pointer;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
 
     &:hover {
         background-color: var(--primary-border-color);
@@ -227,19 +229,23 @@ const AchievementRow = styled.div`
 const ChevronIcon = styled(HiChevronDown)`
     font-size: 1.4rem;
     color: var(--tertiary-text-color);
-    transition: transform 0.2s ease;
+    transition: transform 0.15s ease-out;
     flex-shrink: 0;
     transform: ${(props) =>
         props.$isExpanded ? "rotate(180deg)" : "rotate(0)"};
+    will-change: transform;
 `;
 
 const AccordionContent = styled.div`
+    display: grid;
+    grid-template-rows: ${(props) => (props.$isExpanded ? "1fr" : "0fr")};
+    transition: grid-template-rows 0.2s ease-out;
+    will-change: grid-template-rows;
+`;
+
+const AccordionInner = styled.div`
     overflow: hidden;
-    max-height: ${(props) => (props.$isExpanded ? "200px" : "0")};
-    opacity: ${(props) => (props.$isExpanded ? 1 : 0)};
-    transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.2s ease;
-    padding: ${(props) =>
-        props.$isExpanded ? "0.6rem 0.6rem 0.4rem 3rem" : "0 0.6rem 0 3rem"};
+    min-height: 0;
 `;
 
 const AccordionText = styled.p`
@@ -247,6 +253,7 @@ const AccordionText = styled.p`
     color: var(--secondary-text-color);
     line-height: 1.5;
     margin: 0;
+    padding: 0.6rem 0.6rem 0.4rem 3rem;
 `;
 
 const AchievementIcon = styled.span`
@@ -419,10 +426,12 @@ function AchievementTickerItem({ group, isNew = false }) {
                                         <AccordionContent
                                             $isExpanded={isExpanded}
                                         >
-                                            <AccordionText>
-                                                {item.achievement.description ||
-                                                    "Keine Beschreibung verfügbar."}
-                                            </AccordionText>
+                                            <AccordionInner>
+                                                <AccordionText>
+                                                    {item.achievement.description ||
+                                                        "Keine Beschreibung verfügbar."}
+                                                </AccordionText>
+                                            </AccordionInner>
                                         </AccordionContent>
                                     </AchievementWrapper>
                                 );

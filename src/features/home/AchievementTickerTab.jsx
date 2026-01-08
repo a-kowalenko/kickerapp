@@ -26,6 +26,8 @@ const FeedContainer = styled.div`
     flex: 1;
     padding: 1rem;
     position: relative;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 
     /* Custom scrollbar */
     &::-webkit-scrollbar {
