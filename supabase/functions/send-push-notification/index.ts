@@ -57,10 +57,12 @@ interface FCMMessage {
         body: string;
         badge?: string;
         teamId?: string;
+        tag?: string;
     };
     webpush?: {
         headers?: {
             Urgency?: string;
+            TTL?: string;
         };
         notification?: {
             title: string;
@@ -70,12 +72,17 @@ interface FCMMessage {
             tag?: string;
             renotify?: boolean;
             requireInteraction?: boolean;
+            silent?: boolean;
+            vibrate?: number[];
         };
         fcm_options?: {
             link: string;
         };
     };
     apns?: {
+        headers?: {
+            "apns-priority"?: string;
+        };
         payload: {
             aps: {
                 alert: {
@@ -84,6 +91,7 @@ interface FCMMessage {
                 };
                 sound?: string;
                 badge?: number;
+                "mutable-content"?: number;
             };
         };
     };
@@ -311,6 +319,11 @@ async function handleChatAllNotification(
 
         const message: FCMMessage = {
             token: sub.fcm_token,
+            // Top-level notification - FCM will display this natively with sound
+            notification: {
+                title,
+                body: notificationBody,
+            },
             data: {
                 type: "chat_all",
                 kickerId: kickerId.toString(),
@@ -322,6 +335,16 @@ async function handleChatAllNotification(
             webpush: {
                 headers: {
                     Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: `chat-all-${Date.now()}`,
+                    renotify: true,
+                    silent: false,
+                    vibrate: [200, 100, 200],
                 },
                 fcm_options: {
                     link: url,
@@ -500,6 +523,11 @@ async function handleTeamInvitation(
 
         const message: FCMMessage = {
             token: sub.fcm_token,
+            // Top-level notification - FCM will display this natively with sound
+            notification: {
+                title,
+                body: notificationBody,
+            },
             data: {
                 type: "team_invite",
                 kickerId: kickerId?.toString() || "",
@@ -512,6 +540,16 @@ async function handleTeamInvitation(
             webpush: {
                 headers: {
                     Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: `team-invite-${teamId}-${Date.now()}`,
+                    renotify: true,
+                    silent: false,
+                    vibrate: [200, 100, 200],
                 },
                 fcm_options: {
                     link: url,
@@ -830,33 +868,45 @@ serve(async (req) => {
                 // Fall back to badge: 1 if RPC fails
             }
 
-            // Pure DATA-ONLY message - no notification field anywhere
-            // The service worker's onBackgroundMessage will handle displaying the notification
+            // Build the FCM message with proper notification for sound
             const message: FCMMessage = {
                 token: sub.fcm_token,
-                // Only data field - no notification field
+                // Top-level notification - FCM will display this natively with sound
+                notification: {
+                    title,
+                    body: notificationBody,
+                },
                 data: {
                     type: notificationType,
                     kickerId: kickerId.toString(),
                     url,
                     title,
                     body: notificationBody,
-                    badge: badgeCount.toString(), // Send badge count to service worker
+                    badge: badgeCount.toString(),
+                    tag: `${notificationType}-${matchId || "general"}-${Date.now()}`,
                     ...(matchId && { matchId: matchId.toString() }),
                 },
-                // Web push - only headers and link, NO notification
                 webpush: {
                     headers: {
                         Urgency: "high",
+                    },
+                    notification: {
+                        title,
+                        body: notificationBody,
+                        icon: "/android-chrome-192x192.png",
+                        badge: "/favicon-32x32.png",
+                        tag: `${notificationType}-${matchId || "general"}-${Date.now()}`,
+                        renotify: true,
+                        silent: false,
+                        vibrate: [200, 100, 200],
                     },
                     fcm_options: {
                         link: url,
                     },
                 },
-                // iOS/APNs specific options (for native iOS apps, not PWA)
                 apns: {
                     headers: {
-                        "apns-priority": "10", // High priority for immediate delivery
+                        "apns-priority": "10",
                     },
                     payload: {
                         aps: {

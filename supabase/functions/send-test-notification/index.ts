@@ -26,6 +26,16 @@ interface FCMMessage {
         headers?: {
             Urgency?: string;
         };
+        notification?: {
+            title: string;
+            body: string;
+            icon?: string;
+            badge?: string;
+            tag?: string;
+            renotify?: boolean;
+            silent?: boolean;
+            vibrate?: number[];
+        };
         fcm_options?: {
             link: string;
         };
@@ -271,11 +281,9 @@ serve(async (req) => {
         const url = "/settings";
         const uniqueTag = `test-${Date.now()}`; // Unique tag ensures notification always shows
 
-        // Use data-only message format (no notification field) to match how regular notifications work
-        // This ensures consistent behavior across platforms
+        // Build FCM message with proper notification for sound
         const message: FCMMessage = {
             token: subscription.fcm_token,
-            // NO notification field - use data-only message like regular notifications
             data: {
                 type: "test",
                 tag: uniqueTag,
@@ -286,6 +294,16 @@ serve(async (req) => {
             webpush: {
                 headers: {
                     Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: uniqueTag,
+                    renotify: true,
+                    silent: false,
+                    vibrate: [200, 100, 200],
                 },
                 fcm_options: {
                     link: url,

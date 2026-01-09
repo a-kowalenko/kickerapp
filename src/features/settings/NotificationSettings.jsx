@@ -1,3 +1,4 @@
+import { useState } from "react";
 import styled from "styled-components";
 import {
     HiBell,
@@ -9,6 +10,8 @@ import {
     HiComputerDesktop,
     HiTrash,
     HiBellAlert,
+    HiChevronDown,
+    HiChevronUp,
 } from "react-icons/hi2";
 import { useFCMToken } from "../../hooks/useFCMToken";
 import { useUser } from "../../features/authentication/useUser";
@@ -214,12 +217,11 @@ const DevicesList = styled.div`
 
 const DeviceCard = styled.div`
     display: flex;
-    align-items: center;
-    gap: 1.2rem;
-    padding: 1.2rem;
+    flex-direction: column;
     background-color: var(--secondary-background-color);
     border-radius: var(--border-radius-sm);
     border: 1px solid var(--primary-border-color);
+    overflow: hidden;
 
     ${(props) =>
         props.$isCurrentDevice &&
@@ -227,6 +229,19 @@ const DeviceCard = styled.div`
         border-color: var(--primary-button-color);
         background-color: var(--tertiary-background-color);
     `}
+`;
+
+const DeviceHeader = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.2rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+        background-color: var(--tertiary-background-color);
+    }
 
     ${media.mobile} {
         flex-direction: column;
@@ -328,23 +343,132 @@ const TestAllButton = styled(Button)`
     margin-top: 0.4rem;
 `;
 
+const ExpandIcon = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary-text-color);
+    transition: transform 0.2s ease;
+
+    & svg {
+        font-size: 1.6rem;
+    }
+`;
+
+const DevicePreferences = styled.div`
+    display: ${(props) => (props.$expanded ? "flex" : "none")};
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1.2rem;
+    padding-top: 0;
+    border-top: 1px solid var(--primary-border-color);
+    margin-top: 0;
+    padding-top: 1.2rem;
+`;
+
+const DevicePreferenceItem = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+`;
+
+const DevicePreferenceLabel = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    color: var(--secondary-text-color);
+    font-size: 1.2rem;
+
+    & svg {
+        font-size: 1.4rem;
+    }
+`;
+
+const PreferenceSummary = styled.div`
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+    flex-wrap: wrap;
+`;
+
+const PreferenceBadge = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 1rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 1rem;
+    background-color: ${(props) =>
+        props.$active
+            ? "var(--color-green-100)"
+            : "var(--secondary-background-color)"};
+    color: ${(props) =>
+        props.$active
+            ? "var(--color-green-700)"
+            : "var(--tertiary-text-color)"};
+    border: 1px solid
+        ${(props) =>
+            props.$active
+                ? "var(--color-green-700)"
+                : "var(--primary-border-color)"};
+
+    & svg {
+        font-size: 1rem;
+    }
+`;
+
 function parseDeviceInfo(deviceInfoJson) {
     try {
         const info = JSON.parse(deviceInfoJson || "{}");
         return {
             deviceType: info.deviceType || "desktop",
             os: info.os || "Unknown",
+            osVersion: info.osVersion || "",
             browser: info.browser || "Unknown",
+            browserVersion: info.browserVersion || "",
+            deviceModel: info.deviceModel || "",
             timestamp: info.timestamp || null,
         };
     } catch {
         return {
             deviceType: "desktop",
             os: "Unknown",
+            osVersion: "",
             browser: "Unknown",
+            browserVersion: "",
+            deviceModel: "",
             timestamp: null,
         };
     }
+}
+
+function formatDeviceName(deviceInfo) {
+    const parts = [];
+    
+    // Device model if available (e.g., "iPhone", "Samsung Galaxy S21")
+    if (deviceInfo.deviceModel) {
+        parts.push(deviceInfo.deviceModel);
+    }
+    
+    // OS with version (e.g., "iOS 17.2", "Windows 10/11", "Android 14")
+    let osStr = deviceInfo.os;
+    if (deviceInfo.osVersion) {
+        osStr += ` ${deviceInfo.osVersion}`;
+    }
+    parts.push(osStr);
+    
+    // Browser with version (e.g., "Chrome 120", "Safari 17.2")
+    let browserStr = deviceInfo.browser;
+    if (deviceInfo.browserVersion) {
+        // Only show major version for cleaner display
+        const majorVersion = deviceInfo.browserVersion.split(".")[0];
+        browserStr += ` ${majorVersion}`;
+    }
+    parts.push(browserStr);
+    
+    return parts.join(" • ");
 }
 
 function formatDate(dateString) {
@@ -380,6 +504,9 @@ function NotificationSettings() {
         sendTestToAllDevices,
     } = useFCMToken(user?.id);
 
+    // Track which device cards are expanded
+    const [expandedDevices, setExpandedDevices] = useState({});
+
     const isIOS = notificationStatus.isIOS;
     const isPWAInstalled = notificationStatus.isPWA;
     const needsPWAForIOS = isIOS && !isPWAInstalled;
@@ -390,35 +517,16 @@ function NotificationSettings() {
         notificationStatus.supported &&
         notificationStatus.permission === "denied";
 
-    // Get current preferences from current device subscription
-    const currentPrefs = currentDeviceSubscription || {
-        notify_all_chat: true,
-        notify_mentions: true,
-        notify_team_invites: true,
+    const toggleDeviceExpanded = (subscriptionId) => {
+        setExpandedDevices((prev) => ({
+            ...prev,
+            [subscriptionId]: !prev[subscriptionId],
+        }));
     };
 
-    // Build summary text
-    const buildSummaryText = () => {
-        if (!isEnabled) return null;
-
-        const activePrefs = [];
-        if (currentPrefs.notify_all_chat) activePrefs.push("All chat messages");
-        if (currentPrefs.notify_mentions) activePrefs.push("Mentions");
-        if (currentPrefs.notify_team_invites)
-            activePrefs.push("Team invitations");
-
-        if (activePrefs.length === 0) {
-            return "No notification types enabled for this device.";
-        }
-
-        return `Receiving push notifications for: ${activePrefs.join(", ")}`;
-    };
-
-    const handlePreferenceChange = (prefKey, value) => {
-        if (!currentDeviceSubscription) return;
-
+    const handlePreferenceChange = (subscriptionId, prefKey, value) => {
         updatePreferences({
-            subscriptionId: currentDeviceSubscription.id,
+            subscriptionId,
             notifyAllChat: prefKey === "notify_all_chat" ? value : undefined,
             notifyMentions: prefKey === "notify_mentions" ? value : undefined,
             notifyTeamInvites:
@@ -426,15 +534,12 @@ function NotificationSettings() {
         });
     };
 
-    const summaryText = buildSummaryText();
-
     return (
         <Container>
             <Section>
                 <SectionTitle>Push Notifications</SectionTitle>
 
-                {/* Live Summary */}
-                {summaryText && <SummaryText>{summaryText}</SummaryText>}
+
 
                 {/* Status Card */}
                 <StatusCard>
@@ -517,95 +622,7 @@ function NotificationSettings() {
                 )}
             </Section>
 
-            {/* Notification Preferences */}
-            {notificationStatus.supported && (
-                <Section>
-                    <SectionTitle>Notification Types</SectionTitle>
-                    <PreferencesSection $disabled={!isEnabled}>
-                        {/* All Chat Messages */}
-                        <PreferenceItem>
-                            <PreferenceIcon>
-                                <HiChatBubbleLeftRight />
-                            </PreferenceIcon>
-                            <PreferenceContent>
-                                <PreferenceTitle>
-                                    All Chat Messages
-                                </PreferenceTitle>
-                                <PreferenceDescription>
-                                    Get notified for every new chat message in
-                                    your kicker
-                                </PreferenceDescription>
-                            </PreferenceContent>
-                            <PreferenceToggle>
-                                <SwitchButton
-                                    value={currentPrefs.notify_all_chat}
-                                    onChange={(val) =>
-                                        handlePreferenceChange(
-                                            "notify_all_chat",
-                                            val
-                                        )
-                                    }
-                                    disabled={!isEnabled || isLoading}
-                                />
-                            </PreferenceToggle>
-                        </PreferenceItem>
 
-                        {/* Mentions */}
-                        <PreferenceItem>
-                            <PreferenceIcon>
-                                <HiAtSymbol />
-                            </PreferenceIcon>
-                            <PreferenceContent>
-                                <PreferenceTitle>Mentions</PreferenceTitle>
-                                <PreferenceDescription>
-                                    Get notified when someone mentions you with
-                                    @name or @everyone
-                                </PreferenceDescription>
-                            </PreferenceContent>
-                            <PreferenceToggle>
-                                <SwitchButton
-                                    value={currentPrefs.notify_mentions}
-                                    onChange={(val) =>
-                                        handlePreferenceChange(
-                                            "notify_mentions",
-                                            val
-                                        )
-                                    }
-                                    disabled={!isEnabled || isLoading}
-                                />
-                            </PreferenceToggle>
-                        </PreferenceItem>
-
-                        {/* Team Invitations */}
-                        <PreferenceItem>
-                            <PreferenceIcon>
-                                <HiUserGroup />
-                            </PreferenceIcon>
-                            <PreferenceContent>
-                                <PreferenceTitle>
-                                    Team Invitations
-                                </PreferenceTitle>
-                                <PreferenceDescription>
-                                    Get notified when you receive a team
-                                    invitation
-                                </PreferenceDescription>
-                            </PreferenceContent>
-                            <PreferenceToggle>
-                                <SwitchButton
-                                    value={currentPrefs.notify_team_invites}
-                                    onChange={(val) =>
-                                        handlePreferenceChange(
-                                            "notify_team_invites",
-                                            val
-                                        )
-                                    }
-                                    disabled={!isEnabled || isLoading}
-                                />
-                            </PreferenceToggle>
-                        </PreferenceItem>
-                    </PreferencesSection>
-                </Section>
-            )}
 
             {/* Registered Devices */}
             {isEnabled && subscriptions?.length > 0 && (
@@ -622,68 +639,176 @@ function NotificationSettings() {
                             const isTestingThisDevice =
                                 testingSubscriptionId === subscription.id;
 
+                            const isExpanded =
+                                expandedDevices[subscription.id] || false;
+
                             return (
                                 <DeviceCard
                                     key={subscription.id}
                                     $isCurrentDevice={isCurrentDevice}
                                 >
-                                    <DeviceIcon>
-                                        {deviceInfo.deviceType === "desktop" ? (
-                                            <HiComputerDesktop />
-                                        ) : (
-                                            <HiDevicePhoneMobile />
-                                        )}
-                                    </DeviceIcon>
-                                    <DeviceInfo>
-                                        <DeviceName>
-                                            {deviceInfo.os} -{" "}
-                                            {deviceInfo.browser}
-                                        </DeviceName>
-                                        <DeviceDetails>
-                                            Registered{" "}
-                                            {formatDate(
-                                                subscription.created_at
-                                            )}
-                                        </DeviceDetails>
-                                        {isCurrentDevice && (
-                                            <CurrentDeviceBadge>
-                                                Current device
-                                            </CurrentDeviceBadge>
-                                        )}
-                                    </DeviceInfo>
-                                    <DeviceActions>
-                                        <IconButton
-                                            $variant="test"
-                                            onClick={() =>
-                                                sendTestNotification(
-                                                    subscription.id
-                                                )
-                                            }
-                                            disabled={
-                                                isLoading ||
-                                                isSendingTest ||
-                                                isSendingToAll
-                                            }
-                                            title="Send test notification to this device"
-                                        >
-                                            {isTestingThisDevice ? (
-                                                <SpinnerMini />
+                                    <DeviceHeader
+                                        onClick={() =>
+                                            toggleDeviceExpanded(
+                                                subscription.id
+                                            )
+                                        }
+                                    >
+                                        <DeviceIcon>
+                                            {deviceInfo.deviceType ===
+                                            "desktop" ? (
+                                                <HiComputerDesktop />
                                             ) : (
-                                                <HiBellAlert />
+                                                <HiDevicePhoneMobile />
                                             )}
-                                        </IconButton>
-                                        <IconButton
-                                            onClick={() =>
-                                                deleteSubscriptionById(
-                                                    subscription.id
-                                                )
-                                            }
-                                            disabled={isLoading}
-                                            title="Remove device"
+                                        </DeviceIcon>
+                                        <DeviceInfo>
+                                            <DeviceName>
+                                                {formatDeviceName(deviceInfo)}
+                                            </DeviceName>
+                                            <DeviceDetails>
+                                                Registered{" "}
+                                                {formatDate(
+                                                    subscription.created_at
+                                                )}
+                                            </DeviceDetails>
+                                            {isCurrentDevice && (
+                                                <CurrentDeviceBadge>
+                                                    Current device
+                                                </CurrentDeviceBadge>
+                                            )}
+                                            {!isExpanded && (
+                                                <PreferenceSummary>
+                                                    <PreferenceBadge
+                                                        $active={
+                                                            subscription.notify_all_chat
+                                                        }
+                                                    >
+                                                        <HiChatBubbleLeftRight />
+                                                        Chat
+                                                    </PreferenceBadge>
+                                                    <PreferenceBadge
+                                                        $active={
+                                                            subscription.notify_mentions
+                                                        }
+                                                    >
+                                                        <HiAtSymbol />
+                                                        Mentions
+                                                    </PreferenceBadge>
+                                                    <PreferenceBadge
+                                                        $active={
+                                                            subscription.notify_team_invites
+                                                        }
+                                                    >
+                                                        <HiUserGroup />
+                                                        Teams
+                                                    </PreferenceBadge>
+                                                </PreferenceSummary>
+                                            )}
+                                        </DeviceInfo>
+                                        <DeviceActions
+                                            onClick={(e) => e.stopPropagation()}
                                         >
-                                            <HiTrash />
-                                        </IconButton>
-                                    </DeviceActions>
+                                            <IconButton
+                                                $variant="test"
+                                                onClick={() =>
+                                                    sendTestNotification(
+                                                        subscription.id
+                                                    )
+                                                }
+                                                disabled={
+                                                    isLoading ||
+                                                    isSendingTest ||
+                                                    isSendingToAll
+                                                }
+                                                title="Send test notification to this device"
+                                            >
+                                                {isTestingThisDevice ? (
+                                                    <SpinnerMini />
+                                                ) : (
+                                                    <HiBellAlert />
+                                                )}
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() =>
+                                                    deleteSubscriptionById(
+                                                        subscription.id
+                                                    )
+                                                }
+                                                disabled={isLoading}
+                                                title="Remove device"
+                                            >
+                                                <HiTrash />
+                                            </IconButton>
+                                        </DeviceActions>
+                                        <ExpandIcon>
+                                            {isExpanded ? (
+                                                <HiChevronUp />
+                                            ) : (
+                                                <HiChevronDown />
+                                            )}
+                                        </ExpandIcon>
+                                    </DeviceHeader>
+
+                                    <DevicePreferences $expanded={isExpanded}>
+                                        <DevicePreferenceItem>
+                                            <DevicePreferenceLabel>
+                                                <HiChatBubbleLeftRight />
+                                                All Chat Messages
+                                            </DevicePreferenceLabel>
+                                            <SwitchButton
+                                                value={
+                                                    subscription.notify_all_chat
+                                                }
+                                                onChange={(val) =>
+                                                    handlePreferenceChange(
+                                                        subscription.id,
+                                                        "notify_all_chat",
+                                                        val
+                                                    )
+                                                }
+                                                disabled={isLoading}
+                                            />
+                                        </DevicePreferenceItem>
+                                        <DevicePreferenceItem>
+                                            <DevicePreferenceLabel>
+                                                <HiAtSymbol />
+                                                Mentions (@name, @everyone)
+                                            </DevicePreferenceLabel>
+                                            <SwitchButton
+                                                value={
+                                                    subscription.notify_mentions
+                                                }
+                                                onChange={(val) =>
+                                                    handlePreferenceChange(
+                                                        subscription.id,
+                                                        "notify_mentions",
+                                                        val
+                                                    )
+                                                }
+                                                disabled={isLoading}
+                                            />
+                                        </DevicePreferenceItem>
+                                        <DevicePreferenceItem>
+                                            <DevicePreferenceLabel>
+                                                <HiUserGroup />
+                                                Team Invitations
+                                            </DevicePreferenceLabel>
+                                            <SwitchButton
+                                                value={
+                                                    subscription.notify_team_invites
+                                                }
+                                                onChange={(val) =>
+                                                    handlePreferenceChange(
+                                                        subscription.id,
+                                                        "notify_team_invites",
+                                                        val
+                                                    )
+                                                }
+                                                disabled={isLoading}
+                                            />
+                                        </DevicePreferenceItem>
+                                    </DevicePreferences>
                                 </DeviceCard>
                             );
                         })}
