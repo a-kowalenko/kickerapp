@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import supabase, { databaseSchema } from "../services/supabase";
 import {
@@ -20,6 +20,7 @@ const PUSH_SUBSCRIPTIONS_TABLE = "push_subscriptions";
 export function useFCMToken(userId) {
     const queryClient = useQueryClient();
     const [isRequesting, setIsRequesting] = useState(false);
+    const [currentFcmToken, setCurrentFcmToken] = useState(null);
 
     // Get notification status
     const notificationStatus = getNotificationStatus();
@@ -46,6 +47,12 @@ export function useFCMToken(userId) {
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
+    // Get current device's subscription
+    const currentDeviceSubscription = useMemo(() => {
+        if (!subscriptions || !currentFcmToken) return null;
+        return subscriptions.find((s) => s.fcm_token === currentFcmToken) || null;
+    }, [subscriptions, currentFcmToken]);
+
     // Mutation to save FCM token using RPC function
     const { mutate: saveToken, isLoading: isSaving } = useMutation({
         mutationFn: async ({ token, deviceInfo }) => {
@@ -60,6 +67,7 @@ export function useFCMToken(userId) {
                 });
 
             if (error) throw error;
+            setCurrentFcmToken(token);
             return { fcm_token: token };
         },
         onSuccess: () => {
@@ -70,7 +78,7 @@ export function useFCMToken(userId) {
         },
     });
 
-    // Mutation to delete subscription
+    // Mutation to delete all subscriptions for user
     const { mutate: deleteSubscription, isLoading: isDeleting } = useMutation({
         mutationFn: async () => {
             if (!userId) throw new Error("User not authenticated");
@@ -92,6 +100,103 @@ export function useFCMToken(userId) {
             toast.error("Failed to disable notifications");
         },
     });
+
+    // Mutation to delete a specific subscription by ID
+    const { mutate: deleteSubscriptionById, isLoading: isDeletingById } =
+        useMutation({
+            mutationFn: async (subscriptionId) => {
+                if (!userId) throw new Error("User not authenticated");
+
+                const { error } = await supabase
+                    .schema(databaseSchema)
+                    .rpc("delete_push_subscription", {
+                        p_subscription_id: subscriptionId,
+                    });
+
+                if (error) throw error;
+            },
+            onSuccess: () => {
+                queryClient.invalidateQueries(["pushSubscription", userId]);
+                toast.success("Device removed");
+            },
+            onError: (error) => {
+                console.error("Error deleting subscription:", error);
+                toast.error("Failed to remove device");
+            },
+        });
+
+    // Mutation to update notification preferences
+    const { mutate: updatePreferences, isLoading: isUpdatingPreferences } =
+        useMutation({
+            mutationFn: async ({
+                subscriptionId,
+                notifyAllChat,
+                notifyMentions,
+                notifyTeamInvites,
+            }) => {
+                if (!userId) throw new Error("User not authenticated");
+
+                const { error } = await supabase
+                    .schema(databaseSchema)
+                    .rpc("update_notification_preferences", {
+                        p_subscription_id: subscriptionId,
+                        p_notify_all_chat: notifyAllChat,
+                        p_notify_mentions: notifyMentions,
+                        p_notify_team_invites: notifyTeamInvites,
+                    });
+
+                if (error) throw error;
+            },
+            onSuccess: () => {
+                queryClient.invalidateQueries(["pushSubscription", userId]);
+                toast.success("Preferences updated");
+            },
+            onError: (error) => {
+                console.error("Error updating preferences:", error);
+                toast.error("Failed to update preferences");
+            },
+        });
+
+    // Mutation to send test notification
+    const { mutate: sendTestNotification, isLoading: isSendingTest } =
+        useMutation({
+            mutationFn: async (subscriptionId) => {
+                const { data: sessionData } = await supabase.auth.getSession();
+                const accessToken = sessionData?.session?.access_token;
+
+                if (!accessToken) throw new Error("Not authenticated");
+
+                const response = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-test-notification`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                        body: JSON.stringify({
+                            subscriptionId,
+                            databaseSchema,
+                        }),
+                    }
+                );
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || "Failed to send test notification");
+                }
+
+                return result;
+            },
+            onSuccess: () => {
+                toast.success("Test notification sent!");
+            },
+            onError: (error) => {
+                console.error("Error sending test notification:", error);
+                toast.error(error.message || "Failed to send test notification");
+            },
+        });
 
     // Get device info for subscription
     const getDeviceInfo = useCallback(() => {
@@ -186,17 +291,20 @@ export function useFCMToken(userId) {
 
         // Check if token has changed
         const checkToken = async () => {
-            const currentToken = await getCurrentToken();
-            if (!currentToken) return;
+            const token = await getCurrentToken();
+            if (!token) return;
+
+            // Store current token for device identification
+            setCurrentFcmToken(token);
 
             // Check if this token already exists in subscriptions
             const existingToken = subscriptions?.find(
-                (s) => s.fcm_token === currentToken
+                (s) => s.fcm_token === token
             );
             if (!existingToken) {
                 // Token is new or has changed, save it
                 saveToken({
-                    token: currentToken,
+                    token,
                     deviceInfo: getDeviceInfo(),
                 });
             }
@@ -262,14 +370,24 @@ export function useFCMToken(userId) {
     return {
         // State
         subscriptions,
+        currentDeviceSubscription,
         isEnabled: subscriptions?.length > 0,
-        isLoading: isLoadingSubscription || isSaving || isDeleting,
+        isLoading:
+            isLoadingSubscription ||
+            isSaving ||
+            isDeleting ||
+            isDeletingById ||
+            isUpdatingPreferences,
         isRequesting,
+        isSendingTest,
         notificationStatus,
 
         // Actions
         enableNotifications,
         disableNotifications,
+        deleteSubscriptionById,
+        updatePreferences,
+        sendTestNotification,
     };
 }
 
