@@ -40,6 +40,19 @@ const StyledRow = styled.div`
 
     border-bottom: 1px solid #6363633b;
 
+    ${(props) =>
+        props.$isTeamMatch &&
+        `
+        background: linear-gradient(
+            90deg,
+            rgba(138, 43, 226, 0.05) 0%,
+            transparent 20%,
+            transparent 80%,
+            rgba(138, 43, 226, 0.05) 100%
+        );
+        border-left: 3px solid var(--color-purple-500, #8b5cf6);
+    `}
+
     &:hover {
         background-color: var(--table-row-color-hover);
     }
@@ -47,6 +60,7 @@ const StyledRow = styled.div`
     ${media.mobile} {
         justify-content: space-between;
         padding: 0.6rem 0rem;
+        ${(props) => props.$isTeamMatch && `padding-left: 0.4rem;`}
     }
 `;
 
@@ -83,11 +97,16 @@ function Body({ data, render, noDataLabel = "No data available" }) {
     return <StyledBody>{data.map(render)}</StyledBody>;
 }
 
-function Row({ children, onClick }) {
+function Row({ children, onClick, isTeamMatch }) {
     const { columns } = useContext(MiniTableContext);
 
     return (
-        <StyledRow role="row" $columns={columns} onClick={onClick}>
+        <StyledRow
+            role="row"
+            $columns={columns}
+            onClick={onClick}
+            $isTeamMatch={isTeamMatch}
+        >
             {children}
         </StyledRow>
     );

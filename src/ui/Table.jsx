@@ -118,28 +118,28 @@ function Row({ children, onClick }) {
 }
 
 function Body({ data, render, noDataLabel = "No data available" }) {
-    const [maxHeight, setMaxHeight] = useState("50rem");
+    const [maxHeight, setMaxHeight] = useState("550rem");
     const ref = useRef(null);
 
-    useEffect(() => {
-        function updateMaxHeight() {
-            if (ref.current) {
-                const distanceToTop = ref.current.getBoundingClientRect().top;
-                const windowHeight = window.innerHeight;
-                const newMaxHeight = `${
-                    windowHeight - distanceToTop - 120 > 529
-                        ? 529
-                        : windowHeight - distanceToTop - 120
-                }px`;
-                setMaxHeight(newMaxHeight);
-            }
-        }
+    // useEffect(() => {
+    //     function updateMaxHeight() {
+    //         if (ref.current) {
+    //             const distanceToTop = ref.current.getBoundingClientRect().top;
+    //             const windowHeight = window.innerHeight;
+    //             const newMaxHeight = `${
+    //                 windowHeight - distanceToTop - 120 > 529
+    //                     ? 529
+    //                     : windowHeight - distanceToTop - 120
+    //             }px`;
+    //             setMaxHeight(newMaxHeight);
+    //         }
+    //     }
 
-        window.addEventListener("resize", updateMaxHeight);
-        updateMaxHeight();
+    //     window.addEventListener("resize", updateMaxHeight);
+    //     updateMaxHeight();
 
-        return () => window.removeEventListener("resize", updateMaxHeight);
-    }, []);
+    //     return () => window.removeEventListener("resize", updateMaxHeight);
+    // }, []);
 
     if (!data?.length) {
         return <StyledParagraph>{noDataLabel}</StyledParagraph>;

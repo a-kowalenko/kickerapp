@@ -1,16 +1,22 @@
 import styled from "styled-components";
-import { useState, useRef, useEffect } from "react";
-import { HiOutlineFaceSmile, HiPaperAirplane } from "react-icons/hi2";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { HiOutlineFaceSmile, HiPaperAirplane, HiPhoto } from "react-icons/hi2";
 import { PiGifBold } from "react-icons/pi";
 import { usePlayers } from "../../hooks/usePlayers";
+import { useKicker } from "../../contexts/KickerContext";
 import { MAX_COMMENT_LENGTH } from "../../utils/constants";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import EmojiPicker from "../../ui/EmojiPicker";
 import GifPicker from "../../ui/GifPicker";
+import MatchDropdown from "../../ui/MatchDropdown";
 import SpinnerMini from "../../ui/SpinnerMini";
 import MentionText from "../../ui/MentionText";
 import RichTextInput from "../../ui/RichTextInput";
+import { getMatch, formatMatchDisplay } from "../../services/apiMatches";
+import { useCanUploadImages } from "../../hooks/useCanUploadImages";
+import { useImageUpload } from "../../hooks/useImageUpload";
+import toast from "react-hot-toast";
 
 const InputContainer = styled.div`
     display: flex;
@@ -111,6 +117,36 @@ const PreviewLabel = styled.span`
     margin-bottom: 0.4rem;
 `;
 
+const HiddenFileInput = styled.input`
+    display: none;
+`;
+
+const UploadProgress = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6rem 1rem;
+    background-color: var(--tertiary-background-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 1.2rem;
+    color: var(--secondary-text-color);
+`;
+
+const ProgressBar = styled.div`
+    flex: 1;
+    height: 0.4rem;
+    background-color: var(--primary-border-color);
+    border-radius: 0.2rem;
+    overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+    height: 100%;
+    background-color: var(--primary-button-color);
+    transition: width 0.2s ease;
+    width: ${(props) => props.$progress}%;
+`;
+
 const MentionDropdown = styled.div`
     position: absolute;
     top: 100%;
@@ -162,12 +198,21 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+    const [showMatchDropdown, setShowMatchDropdown] = useState(false);
     const [mentionSearch, setMentionSearch] = useState("");
+    const [matchSearch, setMatchSearch] = useState("");
     const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+    const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
     const inputRef = useRef(null);
     const emojiButtonRef = useRef(null);
     const gifButtonRef = useRef(null);
+    const fileInputRef = useRef(null);
     const { players } = usePlayers();
+    const { currentKicker: kicker } = useKicker();
+
+    // Image upload permission and hook
+    const { canUpload: canUploadImages } = useCanUploadImages();
+    const { uploadImageFile, isUploading, progress } = useImageUpload();
 
     // Filter players and add @everyone option at the beginning
     const filteredPlayers = (() => {
@@ -207,13 +252,80 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
         if (search !== null && atIndex !== -1) {
             setMentionSearch(search);
             setShowMentionDropdown(true);
+            setShowMatchDropdown(false);
         } else {
             setShowMentionDropdown(false);
             setMentionSearch("");
         }
     }
 
+    // Handle # match trigger from RichTextInput
+    function handleMatchTrigger(search, hashIndex) {
+        if (search !== null && hashIndex !== -1) {
+            setMatchSearch(search);
+            setShowMatchDropdown(true);
+            setShowMentionDropdown(false);
+        } else {
+            setShowMatchDropdown(false);
+            setMatchSearch("");
+        }
+    }
+
+    // Handle match selection from dropdown
+    function handleSelectMatch(match, display) {
+        inputRef.current?.insertMatch(match, display);
+        setShowMatchDropdown(false);
+        setMatchSearch("");
+        setSelectedMatchIndex(0);
+    }
+
+    // Handle pasted match URLs - async resolution
+    const handleMatchPaste = useCallback(
+        async (matchIds) => {
+            for (const matchId of matchIds) {
+                try {
+                    const match = await getMatch({ matchId, kicker });
+                    if (match) {
+                        const display = formatMatchDisplay(match);
+                        inputRef.current?.replaceMatchPlaceholder(
+                            matchId,
+                            display
+                        );
+                    } else {
+                        // Match not found - show ID only
+                        inputRef.current?.replaceMatchPlaceholder(
+                            matchId,
+                            `Match ${matchId}`
+                        );
+                    }
+                } catch (error) {
+                    console.error("Failed to load match:", error);
+                    inputRef.current?.replaceMatchPlaceholder(
+                        matchId,
+                        `Match ${matchId}`
+                    );
+                }
+            }
+        },
+        [kicker]
+    );
+
     function handleKeyDown(e) {
+        // Handle match dropdown navigation
+        if (showMatchDropdown) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSelectedMatchIndex((prev) => prev + 1);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setSelectedMatchIndex((prev) => Math.max(0, prev - 1));
+            } else if (e.key === "Escape") {
+                setShowMatchDropdown(false);
+                setMatchSearch("");
+            }
+            return;
+        }
+
         if (showMentionDropdown && filteredPlayers?.length > 0) {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -254,9 +366,61 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
         setShowGifPicker(false);
     }
 
-    // Check if content has GIFs that need preview (mentions handled inline)
+    // Handle image file selection
+    async function handleImageSelect(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Reset file input for future selections
+        e.target.value = "";
+
+        try {
+            const imageTag = await uploadImageFile(file);
+            // Insert the image tag into the content
+            setContent((prev) => {
+                if (prev && !prev.endsWith(" ") && !prev.endsWith("\n")) {
+                    return prev + " " + imageTag;
+                }
+                return prev + imageTag;
+            });
+            inputRef.current?.focus();
+        } catch (err) {
+            toast.error(err.message || "Failed to upload image");
+        }
+    }
+
+    // Handle pasted images from clipboard
+    const handleImagePaste = useCallback(
+        async (file) => {
+            if (!canUploadImages) {
+                toast.error("You don't have permission to upload images");
+                return;
+            }
+
+            try {
+                const imageTag = await uploadImageFile(file);
+                setContent((prev) => {
+                    if (prev && !prev.endsWith(" ") && !prev.endsWith("\n")) {
+                        return prev + " " + imageTag;
+                    }
+                    return prev + imageTag;
+                });
+                inputRef.current?.focus();
+            } catch (err) {
+                toast.error(err.message || "Failed to upload image");
+            }
+        },
+        [canUploadImages, uploadImageFile]
+    );
+
+    function handleImageButtonClick() {
+        fileInputRef.current?.click();
+    }
+
+    // Check if content has GIFs or images that need preview (mentions handled inline)
     const hasGifs = /\[gif:[^\]]+\]/.test(content);
-    const needsPreview = hasGifs;
+    const hasImages = /\[img:[^\]]+\]/.test(content);
+    const needsPreview = hasGifs || hasImages;
 
     function handleSubmit() {
         if (!canSubmit) return;
@@ -276,6 +440,19 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                     <MentionText content={content} />
                 </ContentPreview>
             )}
+
+            {/* Upload Progress */}
+            {isUploading && (
+                <UploadProgress>
+                    <HiPhoto />
+                    <span>Uploading image...</span>
+                    <ProgressBar>
+                        <ProgressFill $progress={progress} />
+                    </ProgressBar>
+                    <span>{progress}%</span>
+                </UploadProgress>
+            )}
+
             <InputRow>
                 <Avatar
                     $size="small"
@@ -289,9 +466,19 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                         onChange={handleContentChange}
                         onKeyDown={handleKeyDown}
                         onMentionTrigger={handleMentionTrigger}
-                        placeholder="Write a comment... Use @ to mention players"
+                        onMatchTrigger={handleMatchTrigger}
+                        onMatchPaste={handleMatchPaste}
+                        onImagePaste={handleImagePaste}
+                        placeholder="Write a comment... @ mention, # match"
                         disabled={isSubmitting}
                     />
+                    {showMatchDropdown && (
+                        <MatchDropdown
+                            search={matchSearch}
+                            selectedIndex={selectedMatchIndex}
+                            onSelect={handleSelectMatch}
+                        />
+                    )}
                     {showMentionDropdown && filteredPlayers?.length > 0 && (
                         <MentionDropdown>
                             {filteredPlayers.map((player, index) => (
@@ -344,6 +531,22 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                     {content.length} / {MAX_COMMENT_LENGTH}
                 </CharacterCount>
                 <ButtonsRow>
+                    {/* Hidden file input for image upload */}
+                    <HiddenFileInput
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleImageSelect}
+                    />
+                    {canUploadImages && (
+                        <IconButton
+                            onClick={handleImageButtonClick}
+                            disabled={isSubmitting || isUploading}
+                            title="Upload image (max 1MB)"
+                        >
+                            <HiPhoto />
+                        </IconButton>
+                    )}
                     <IconButton
                         ref={gifButtonRef}
                         onClick={() => setShowGifPicker(!showGifPicker)}
@@ -380,7 +583,7 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                     )}
                     <SubmitButton
                         onClick={handleSubmit}
-                        disabled={!canSubmit}
+                        disabled={!canSubmit || isUploading}
                         title="Send comment"
                     >
                         {isSubmitting ? <SpinnerMini /> : <HiPaperAirplane />}

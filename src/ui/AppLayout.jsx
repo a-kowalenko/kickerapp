@@ -6,6 +6,8 @@ import { media } from "../utils/constants";
 import Footer from "./Footer";
 import NewSeasonModal from "./NewSeasonModal";
 import { useNewSeasonAnnouncement } from "../features/seasons/useNewSeasonAnnouncement";
+import useAchievementNotifications from "../features/achievements/useAchievementNotifications";
+import AchievementToast from "../features/achievements/AchievementToast";
 
 const StyledAppLayout = styled.div`
     @media (min-width: 850px) {
@@ -16,6 +18,8 @@ const StyledAppLayout = styled.div`
 
     min-height: 100dvh;
     background-color: var(--secondary-background-color);
+    overflow-x: clip;
+    width: 100%;
 
     ${media.tablet} {
         grid-template-columns: 1fr;
@@ -30,16 +34,15 @@ const Main = styled.main`
     grid-column: 2;
     min-height: 100dvh;
 
+    /* Space for fixed header */
+    margin-top: 66px;
+
     /* Removing scrollbars for webkit, firefox, and ms, respectively */
     /* &::-webkit-scrollbar {
         display: none;
     }
     scrollbar-width: none;
     -ms-overflow-style: none; */
-
-    @media (max-width: 850px) {
-        margin-top: 66px;
-    }
 
     ${media.tablet} {
         padding: 1.6rem 0rem;
@@ -49,6 +52,7 @@ const Main = styled.main`
 function AppLayout() {
     const { showAnnouncement, seasonName, acknowledgeNewSeason } =
         useNewSeasonAnnouncement();
+    const { currentToast, handleDismiss } = useAchievementNotifications();
 
     return (
         <StyledAppLayout>
@@ -56,6 +60,12 @@ function AppLayout() {
                 <NewSeasonModal
                     seasonName={seasonName}
                     onClose={acknowledgeNewSeason}
+                />
+            )}
+            {currentToast && (
+                <AchievementToast
+                    achievement={currentToast}
+                    onClose={handleDismiss}
                 />
             )}
             <Header />

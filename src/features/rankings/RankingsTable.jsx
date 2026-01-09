@@ -2,10 +2,19 @@ import { useSearchParams } from "react-router-dom";
 import styled from "styled-components";
 import Pagination from "../../ui/Pagination";
 import Table from "../../ui/Table";
+import Filter from "../../ui/Filter";
+import FilterRow from "../../ui/FilterRow";
 import RankingsRow from "./RankingsRow";
 import { useRankings } from "./useRankings";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import useWindowWidth from "../../hooks/useWindowWidth";
+import { PiGameControllerLight } from "react-icons/pi";
+
+const Content = styled.div`
+    @media (max-width: 768px) {
+        padding: 0 1.2rem;
+    }
+`;
 
 const UnrankedDivider = styled.div`
     display: flex;
@@ -46,75 +55,92 @@ function RankingsTable() {
     const rankedPlayers = rankings?.filter((p) => !p.isUnranked) || [];
     const unrankedPlayers = rankings?.filter((p) => p.isUnranked) || [];
 
+    const gamemodeOptions = [
+        { text: "1on1", value: "1on1" },
+        { text: "2on2", value: "2on2" },
+    ];
+
     return (
-        <Table columns={columns}>
-            <Table.Header>
-                <div>Rank</div>
-                <div>Player</div>
-                <div style={{ textAlign: "center" }}>
-                    {isMobile ? "W" : "Wins"}
-                </div>
-                <div style={{ textAlign: "center" }}>
-                    {isMobile ? "L" : "Losses"}
-                </div>
-                <div style={{ textAlign: "center" }}>
-                    {isMobile ? "T" : "Total"}
-                </div>
-                <div style={{ textAlign: "center" }}>Winrate</div>
-                <div style={{ textAlign: "center" }}>MMR</div>
-            </Table.Header>
-            {isLoadingRankings ? (
-                <LoadingSpinner />
-            ) : (
-                <>
-                    <Table.Body
-                        noDataLabel={
-                            unrankedPlayers.length > 0
-                                ? null
-                                : "No rankings available"
-                        }
-                        data={rankedPlayers}
-                        render={(player) => (
-                            <RankingsRow
-                                key={player.id}
-                                player={player}
-                                gamemode={gamemode}
-                            />
+        <Content>
+            <FilterRow>
+                <Filter
+                    name="rankings"
+                    options={gamemodeOptions}
+                    field="gamemode"
+                    icon={<PiGameControllerLight />}
+                />
+            </FilterRow>
+            <Table columns={columns}>
+                <Table.Header>
+                    <div>Rank</div>
+                    <div>Player</div>
+                    <div style={{ textAlign: "center" }}>
+                        {isMobile ? "W" : "Wins"}
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                        {isMobile ? "L" : "Losses"}
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                        {isMobile ? "T" : "Total"}
+                    </div>
+                    <div style={{ textAlign: "center" }}>Winrate</div>
+                    <div style={{ textAlign: "center" }}>MMR</div>
+                </Table.Header>
+                {isLoadingRankings ? (
+                    <LoadingSpinner />
+                ) : (
+                    <>
+                        <Table.Body
+                            noDataLabel={
+                                unrankedPlayers.length > 0
+                                    ? null
+                                    : "No rankings available"
+                            }
+                            data={rankedPlayers}
+                            render={(player) => (
+                                <RankingsRow
+                                    key={player.id}
+                                    player={player}
+                                    gamemode={gamemode}
+                                />
+                            )}
+                        />
+                        {unrankedPlayers.length > 0 && (
+                            <>
+                                <UnrankedDivider>
+                                    <DividerLine />
+                                    <span>
+                                        Unranked (min. 10 games required)
+                                    </span>
+                                    <DividerLine />
+                                </UnrankedDivider>
+                                <Table.Body
+                                    data={unrankedPlayers}
+                                    render={(player) => (
+                                        <RankingsRow
+                                            key={player.id}
+                                            player={player}
+                                            gamemode={gamemode}
+                                        />
+                                    )}
+                                />
+                            </>
                         )}
-                    />
-                    {unrankedPlayers.length > 0 && (
-                        <>
-                            <UnrankedDivider>
-                                <DividerLine />
-                                <span>Unranked (min. 10 games required)</span>
-                                <DividerLine />
-                            </UnrankedDivider>
-                            <Table.Body
-                                data={unrankedPlayers}
-                                render={(player) => (
-                                    <RankingsRow
-                                        key={player.id}
-                                        player={player}
-                                        gamemode={gamemode}
-                                    />
-                                )}
-                            />
-                        </>
-                    )}
-                    {rankedPlayers.length === 0 &&
-                        unrankedPlayers.length === 0 && (
-                            <Table.Body
-                                noDataLabel=""
-                                data={[]}
-                                render={() => null}
-                            />
-                        )}
-                </>
-            )}
-            <Table.Footer>
-                <Pagination numEntries={count} />
-            </Table.Footer>
-        </Table>
+                        {rankedPlayers.length === 0 &&
+                            unrankedPlayers.length === 0 && (
+                                <Table.Body
+                                    noDataLabel=""
+                                    data={[]}
+                                    render={() => null}
+                                />
+                            )}
+                    </>
+                )}
+                <Table.Footer>
+                    <Pagination numEntries={count} />
+                </Table.Footer>
+            </Table>
+        </Content>
     );
 }
 

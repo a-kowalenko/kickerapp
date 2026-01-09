@@ -11,10 +11,13 @@ export function useEndMatch() {
         mutationFn: ({ id, score1, score2 }) =>
             endMatchApi({ id, score1, score2, kicker }),
         onSuccess: (data) => {
-            toast.success(`Match ${data.id} finished`);
+            toast.success(`Match ${data.id} finished`, {
+                id: "endMatch-success",
+            });
             queryClient.invalidateQueries(["match", data.id, kicker]);
         },
-        onError: (err) => toast.error(err.message),
+        onError: (err) => toast.error(err.message, { id: "endMatch-error" }),
+        retry: false,
     });
 
     return { endMatch, isLoading };

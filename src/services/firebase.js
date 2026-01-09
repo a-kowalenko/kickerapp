@@ -76,10 +76,15 @@ export async function getCurrentToken() {
  */
 export function onForegroundMessage(callback) {
     if (!messaging) {
+        console.warn(
+            "[Firebase] Messaging not available for foreground handler"
+        );
         return () => {};
     }
 
+    console.log("[Firebase] Setting up foreground message handler");
     return onMessage(messaging, (payload) => {
+        console.log("[Firebase] Foreground message received:", payload);
         callback(payload);
     });
 }

@@ -5,10 +5,17 @@ import { useKickerComments } from "./useKickerComments";
 import { useKickerCommentReactions } from "./useKickerCommentReactions";
 import { useToggleKickerCommentReaction } from "./useToggleKickerCommentReaction";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
+import { useUser } from "../authentication/useUser";
+import { useKicker } from "../../contexts/KickerContext";
+import { useCommentReadStatus } from "../../hooks/useCommentReadStatus";
+import { updateCommentReadStatus } from "../../services/apiComments";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
+import { useUnreadCommentCount } from "./useUnreadCommentCount";
 import MatchCommentItem from "./MatchCommentItem";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
 import JumpToLatestButton from "../../ui/JumpToLatestButton";
+import { media } from "../../utils/constants";
 
 const ContentWrapper = styled.div`
     display: flex;
@@ -16,6 +23,10 @@ const ContentWrapper = styled.div`
     flex: 1;
     position: relative;
     min-height: 0;
+
+    ${media.tablet} {
+        height: 80rem;
+    }
 `;
 
 const CommentsContainer = styled.div`
@@ -99,6 +110,7 @@ function MatchCommentsTab() {
     const prevCommentCountRef = useRef(0);
     const isNearBottomRef = useRef(true);
     const prevFirstCommentIdRef = useRef(null);
+    const hasMarkedAsReadRef = useRef(false);
 
     // Hooks
     const {
@@ -111,7 +123,36 @@ function MatchCommentsTab() {
 
     // User/Player info
     const { data: currentPlayer } = useOwnPlayer();
+    const { user } = useUser();
+    const { currentKicker } = useKicker();
     const currentPlayerId = currentPlayer?.id;
+
+    // Unread badge hooks
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+    const { invalidate: invalidateUnreadCount } = useUnreadCommentCount();
+
+    // Get read status for unread markers
+    const { lastReadAt, invalidate: invalidateCommentReadStatus } =
+        useCommentReadStatus(currentKicker);
+
+    // Mark comments as read
+    const markAsRead = useCallback(async () => {
+        if (!currentKicker) return;
+        try {
+            await updateCommentReadStatus(currentKicker);
+            invalidateUnreadCount();
+            invalidateUnreadBadge();
+            // Invalidate comment read status so unread markers update immediately
+            invalidateCommentReadStatus();
+        } catch (error) {
+            console.error("Error marking comments as read:", error);
+        }
+    }, [
+        currentKicker,
+        invalidateUnreadCount,
+        invalidateUnreadBadge,
+        invalidateCommentReadStatus,
+    ]);
 
     // Get comment IDs for reactions
     const commentIds = useMemo(
@@ -133,15 +174,20 @@ function MatchCommentsTab() {
         const threshold = 100;
         // With column-reverse, scrollTop increases as user scrolls UP
         const nearBottom = Math.abs(container.scrollTop) < threshold;
+        const wasNearBottom = isNearBottomRef.current;
         isNearBottomRef.current = nearBottom;
 
         if (nearBottom) {
             setShowJumpToLatest(false);
             setNewCommentsCount(0);
+            // Mark as read when scrolling to bottom
+            if (!wasNearBottom && currentKicker) {
+                markAsRead();
+            }
         } else {
             setShowJumpToLatest(true);
         }
-    }, []);
+    }, [currentKicker, markAsRead]);
 
     // Infinite scroll - load more when scrolling to top
     useEffect(() => {
@@ -218,6 +264,35 @@ function MatchCommentsTab() {
         hasInitiallyScrolled,
     ]);
 
+    // Mark as read after initial scroll with delay (only once)
+    useEffect(() => {
+        if (
+            hasInitiallyScrolled &&
+            currentKicker &&
+            isNearBottomRef.current &&
+            !hasMarkedAsReadRef.current
+        ) {
+            hasMarkedAsReadRef.current = true;
+            const timer = setTimeout(async () => {
+                if (isNearBottomRef.current) {
+                    try {
+                        await updateCommentReadStatus(currentKicker);
+                        invalidateUnreadCount();
+                        invalidateUnreadBadge();
+                    } catch (error) {
+                        console.error("Error marking comments as read:", error);
+                    }
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [
+        hasInitiallyScrolled,
+        currentKicker,
+        invalidateUnreadCount,
+        invalidateUnreadBadge,
+    ]);
+
     function handleJumpToLatest() {
         const container = commentsContainerRef.current;
         if (container) {
@@ -289,6 +364,15 @@ function MatchCommentsTab() {
                                 nextComment &&
                                 shouldGroupWithPrevious(comment, nextComment);
 
+                            // Comment is unread if:
+                            // - Created after lastReadAt
+                            // - Not from the current user
+                            const isUnread =
+                                comment.player_id !== currentPlayerId &&
+                                lastReadAt &&
+                                new Date(comment.created_at) >
+                                    new Date(lastReadAt);
+
                             return (
                                 <MatchCommentItem
                                     key={comment.id}
@@ -300,6 +384,7 @@ function MatchCommentsTab() {
                                     onToggleReaction={handleToggleReaction}
                                     isTogglingReaction={isTogglingReaction}
                                     isGrouped={isGrouped}
+                                    isUnread={isUnread}
                                 />
                             );
                         })}

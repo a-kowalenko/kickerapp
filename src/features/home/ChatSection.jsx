@@ -1,14 +1,20 @@
 import styled from "styled-components";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
+    HiOutlineTrophy,
 } from "react-icons/hi2";
 import { useKicker } from "../../contexts/KickerContext";
 import { useUnreadCommentCount } from "./useUnreadCommentCount";
+import useWindowWidth from "../../hooks/useWindowWidth";
+import { useUser } from "../authentication/useUser";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
 import ChatTab from "./ChatTab";
 import MatchCommentsTab from "./MatchCommentsTab";
+import AchievementTickerTab from "./AchievementTickerTab";
 import { media } from "../../utils/constants";
 import ContentBox from "../../ui/ContentBox";
 
@@ -32,7 +38,7 @@ const ChatContainer = styled.div`
     border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
 
     ${media.tablet} {
-        height: 50rem;
+        height: 80rem;
     }
 `;
 
@@ -120,13 +126,53 @@ const TabContent = styled.div`
 `;
 
 function ChatSection() {
+    const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(() => {
+        // Check if there's a scrollTo param that specifies a message (should switch to chat tab)
+        const scrollTo = new URLSearchParams(window.location.search).get(
+            "scrollTo"
+        );
+        if (scrollTo?.startsWith("message-")) {
+            return "chat";
+        }
+        // Check if tab param is set
+        const tabParam = new URLSearchParams(window.location.search).get("tab");
+        if (
+            tabParam === "chat" ||
+            tabParam === "comments" ||
+            tabParam === "achievements"
+        ) {
+            return tabParam;
+        }
         const saved = localStorage.getItem(CHAT_TAB_STORAGE_KEY);
-        return saved === "comments" ? "comments" : "chat";
+        if (saved === "comments" || saved === "achievements") {
+            return saved;
+        }
+        return "chat";
     });
     const { currentKicker } = useKicker();
+    const { user } = useUser();
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+    const { isDesktop, isTablet, isMobile } = useWindowWidth();
+
+    // Handle tab query param changes
+    useEffect(() => {
+        const tabParam = searchParams.get("tab");
+        const scrollTo = searchParams.get("scrollTo");
+
+        // Switch to chat tab if scrollTo is for a message
+        if (scrollTo?.startsWith("message-")) {
+            setActiveTab("chat");
+        } else if (
+            tabParam === "chat" ||
+            tabParam === "comments" ||
+            tabParam === "achievements"
+        ) {
+            setActiveTab(tabParam);
+        }
+    }, [searchParams]);
 
     // Persist tab selection
     useEffect(() => {
@@ -140,15 +186,55 @@ function ChatSection() {
             // Mark comments as read when switching to comments tab
             if (tab === "comments" && currentKicker) {
                 try {
+                    console.log(
+                        "[ChatSection] Marking comments as read for kicker:",
+                        currentKicker
+                    );
                     await updateCommentReadStatus(currentKicker);
+                    console.log(
+                        "[ChatSection] updateCommentReadStatus completed"
+                    );
                     invalidateUnreadCount();
+                    // Also invalidate global badge to update browser tab title
+                    invalidateUnreadBadge();
                 } catch (error) {
                     console.error("Error marking comments as read:", error);
                 }
             }
         },
-        [currentKicker, invalidateUnreadCount]
+        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]
     );
+
+    // Mark comments as read if comments tab is already active on mount
+    // Using a ref to track if we've already run this once
+    const hasMarkedCommentsAsReadRef = useRef(false);
+
+    useEffect(() => {
+        if (
+            activeTab === "comments" &&
+            currentKicker &&
+            !hasMarkedCommentsAsReadRef.current
+        ) {
+            hasMarkedCommentsAsReadRef.current = true;
+            const timer = setTimeout(async () => {
+                try {
+                    console.log(
+                        "[ChatSection] Initial mark comments as read for kicker:",
+                        currentKicker
+                    );
+                    await updateCommentReadStatus(currentKicker);
+                    invalidateUnreadCount();
+                    invalidateUnreadBadge();
+                } catch (error) {
+                    console.error(
+                        "Error marking comments as read on mount:",
+                        error
+                    );
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [activeTab, currentKicker]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <StyledChatSection>
@@ -159,23 +245,37 @@ function ChatSection() {
                         onClick={() => handleTabChange("chat")}
                     >
                         <HiChatBubbleLeftRight />
-                        Kicker Chat
+                        {isDesktop && "Kicker Chat"}
+                        {isTablet && "Kicker Chat"}
+                        {isMobile && "Chat"}
                     </TabButton>
                     <TabButton
                         $active={activeTab === "comments"}
                         onClick={() => handleTabChange("comments")}
                     >
                         <HiChatBubbleOvalLeftEllipsis />
-                        Match Comments
+                        {isDesktop && "Match Comments"}
+                        {isTablet && "Comments"}
+                        {isMobile && "Comments"}
                         {unreadCount > 0 && (
                             <UnreadBadge>{unreadCount}</UnreadBadge>
                         )}
+                    </TabButton>
+                    <TabButton
+                        $active={activeTab === "achievements"}
+                        onClick={() => handleTabChange("achievements")}
+                    >
+                        <HiOutlineTrophy />
+                        {isDesktop && "Achievement Ticker"}
+                        {isTablet && "Achievements"}
+                        {isMobile && "Achieves"}
                     </TabButton>
                 </TabBar>
 
                 <TabContent>
                     {activeTab === "chat" && <ChatTab />}
                     {activeTab === "comments" && <MatchCommentsTab />}
+                    {activeTab === "achievements" && <AchievementTickerTab />}
                 </TabContent>
             </ChatContainer>
         </StyledChatSection>

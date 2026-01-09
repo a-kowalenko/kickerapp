@@ -71,6 +71,8 @@ export function usePlayerSeasonStats(userId) {
                 wins2on2: player.wins2on2,
                 losses2on2: player.losses2on2,
                 mmr2on2: player.mmr2on2,
+                bounty_claimed: player.bounty_claimed || 0,
+                bounty_claimed_2on2: player.bounty_claimed_2on2 || 0,
                 isAllTime: true,
             };
         } else if (seasonStats) {
@@ -82,6 +84,8 @@ export function usePlayerSeasonStats(userId) {
                 wins2on2: seasonStats.wins2on2,
                 losses2on2: seasonStats.losses2on2,
                 mmr2on2: seasonStats.mmr2on2,
+                bounty_claimed: seasonStats.bounty_claimed || 0,
+                bounty_claimed_2on2: seasonStats.bounty_claimed_2on2 || 0,
                 isAllTime: false,
             };
         } else {
@@ -93,6 +97,8 @@ export function usePlayerSeasonStats(userId) {
                 wins2on2: 0,
                 losses2on2: 0,
                 mmr2on2: 1000,
+                bounty_claimed: 0,
+                bounty_claimed_2on2: 0,
                 isAllTime: false,
             };
         }

@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { HiArrowsRightLeft, HiPlus, HiScale } from "react-icons/hi2";
+import { PiShuffle } from "react-icons/pi";
 import Button from "../../ui/Button";
 import FormRow from "../../ui/FormRow";
 import Heading from "../../ui/Heading";
@@ -9,6 +10,7 @@ import ContentBox from "../../ui/ContentBox";
 import { useChoosePlayers } from "../../contexts/ChoosePlayerContext";
 import Ruleset from "./Ruleset";
 import ClearPlayers from "../../ui/CustomIcons/ClearPlayers";
+import { DropdownProvider } from "../../contexts/DropdownContext";
 
 const Container = styled.div`
     max-width: 120rem;
@@ -116,13 +118,15 @@ function ChoosePlayers() {
         activatePlayer,
         isPlayer3Active,
         isPlayer4Active,
-        filteredPlayers,
+        filteredForPlayer1,
+        filteredForPlayer2,
         filteredForPlayer3And4,
         switchTeams,
         clearAllPlayers,
         balanceTeams,
         canBalanceTeams,
         isAlreadyBalanced,
+        shufflePlayers,
         selectedPlayers: [player1, player2, player3, player4],
     } = useChoosePlayers();
 
@@ -152,126 +156,140 @@ function ChoosePlayers() {
     const team2Mmr = getTeamMmrDisplay(player2, player4, isPlayer4Active);
 
     return (
-        <Container>
-            <Row type="horizontal">
-                <Heading as="h1">
-                    Team 1{team1Mmr !== null && ` (MMR ${team1Mmr})`}
-                </Heading>
-                <Heading as="h1">
-                    Team 2{team2Mmr !== null && ` (MMR ${team2Mmr})`}
-                </Heading>
-            </Row>
-            <PlayersContainer>
-                <TeamContainer>
-                    <PlayerContainer>
-                        <Heading as="h3">Player 1</Heading>
-                        <Dropdown
-                            initSelected={{
-                                text: player1?.name,
-                                value: player1?.id,
-                            }}
-                            options={filteredPlayers}
-                            onSelect={(playerId) => selectPlayer(playerId, 1)}
-                            isLoading={isLoading}
-                        />
-                    </PlayerContainer>
-                    {isPlayer3Active ? (
+        <DropdownProvider>
+            <Container>
+                <Row type="horizontal">
+                    <Heading as="h1">
+                        Team 1{team1Mmr !== null && ` (MMR ${team1Mmr})`}
+                    </Heading>
+                    <Heading as="h1">
+                        Team 2{team2Mmr !== null && ` (MMR ${team2Mmr})`}
+                    </Heading>
+                </Row>
+                <PlayersContainer>
+                    <TeamContainer>
                         <PlayerContainer>
-                            <Heading as="h3">Player 3</Heading>
+                            <Heading as="h3">Player 1</Heading>
                             <Dropdown
                                 initSelected={{
-                                    text: player3?.name,
-                                    value: player3?.id,
+                                    text: player1?.name,
+                                    value: player1?.id,
                                 }}
-                                options={filteredForPlayer3And4}
+                                options={filteredForPlayer1}
                                 onSelect={(playerId) =>
-                                    selectPlayer(playerId, 3)
+                                    selectPlayer(playerId, 1)
                                 }
                                 isLoading={isLoading}
                             />
                         </PlayerContainer>
-                    ) : (
-                        <AddButtonContainer>
-                            <Button onClick={() => activatePlayer(3)}>
-                                <HiPlus />
-                                <span>Add Player 3</span>
-                            </Button>
-                        </AddButtonContainer>
-                    )}
-                </TeamContainer>
+                        {isPlayer3Active ? (
+                            <PlayerContainer>
+                                <Heading as="h3">Player 3</Heading>
+                                <Dropdown
+                                    initSelected={{
+                                        text: player3?.name,
+                                        value: player3?.id,
+                                    }}
+                                    options={filteredForPlayer3And4}
+                                    onSelect={(playerId) =>
+                                        selectPlayer(playerId, 3)
+                                    }
+                                    isLoading={isLoading}
+                                />
+                            </PlayerContainer>
+                        ) : (
+                            <AddButtonContainer>
+                                <Button onClick={() => activatePlayer(3)}>
+                                    <HiPlus />
+                                    <span>Add Player 3</span>
+                                </Button>
+                            </AddButtonContainer>
+                        )}
+                    </TeamContainer>
 
-                <MidButtonsContainer>
-                    {canBalanceTeams && (
-                        <BalanceButton
-                            onClick={balanceTeams}
+                    <MidButtonsContainer>
+                        {canBalanceTeams && (
+                            <BalanceButton
+                                onClick={balanceTeams}
+                                disabled={isStarting}
+                                $isBalanced={isAlreadyBalanced}
+                                title={
+                                    isAlreadyBalanced
+                                        ? "Restore original teams"
+                                        : "Balance Teams by MMR"
+                                }
+                            >
+                                <HiScale />
+                            </BalanceButton>
+                        )}
+                        {canBalanceTeams && (
+                            <MidButton
+                                onClick={shufflePlayers}
+                                disabled={isStarting}
+                                title="Shuffle Players Randomly"
+                            >
+                                <PiShuffle />
+                            </MidButton>
+                        )}
+                        <MidButton
+                            onClick={switchTeams}
                             disabled={isStarting}
-                            $isBalanced={isAlreadyBalanced}
-                            title={
-                                isAlreadyBalanced
-                                    ? "Restore original teams"
-                                    : "Balance Teams by MMR"
-                            }
+                            title="Switch Teams"
                         >
-                            <HiScale />
-                        </BalanceButton>
-                    )}
-                    <MidButton
-                        onClick={switchTeams}
-                        disabled={isStarting}
-                        title="Switch Teams"
-                    >
-                        <HiArrowsRightLeft />
-                    </MidButton>
-                    <MidButton
-                        onClick={clearAllPlayers}
-                        disabled={isStarting}
-                        title="Clear Players"
-                    >
-                        <ClearPlayers />
-                    </MidButton>
-                </MidButtonsContainer>
+                            <HiArrowsRightLeft />
+                        </MidButton>
+                        <MidButton
+                            onClick={clearAllPlayers}
+                            disabled={isStarting}
+                            title="Clear Players"
+                        >
+                            <ClearPlayers />
+                        </MidButton>
+                    </MidButtonsContainer>
 
-                <TeamContainer>
-                    <PlayerContainer>
-                        <Heading as="h3">Player 2</Heading>
-                        <Dropdown
-                            initSelected={{
-                                text: player2?.name,
-                                value: player2?.id,
-                            }}
-                            options={filteredPlayers}
-                            onSelect={(playerId) => selectPlayer(playerId, 2)}
-                            isLoading={isLoading}
-                        />
-                    </PlayerContainer>
-                    {isPlayer4Active ? (
+                    <TeamContainer>
                         <PlayerContainer>
-                            <Heading as="h3">Player 4</Heading>
+                            <Heading as="h3">Player 2</Heading>
                             <Dropdown
                                 initSelected={{
-                                    text: player4?.name,
-                                    value: player4?.id,
+                                    text: player2?.name,
+                                    value: player2?.id,
                                 }}
-                                options={filteredForPlayer3And4}
+                                options={filteredForPlayer2}
                                 onSelect={(playerId) =>
-                                    selectPlayer(playerId, 4)
+                                    selectPlayer(playerId, 2)
                                 }
                                 isLoading={isLoading}
                             />
                         </PlayerContainer>
-                    ) : (
-                        <AddButtonContainer>
-                            <Button onClick={() => activatePlayer(4)}>
-                                <HiPlus />
-                                <span>Add Player 4</span>
-                            </Button>
-                        </AddButtonContainer>
-                    )}
-                </TeamContainer>
-            </PlayersContainer>
-            <SubmitRow>
-                <CheckboxContainer>
-                    {/* <div>
+                        {isPlayer4Active ? (
+                            <PlayerContainer>
+                                <Heading as="h3">Player 4</Heading>
+                                <Dropdown
+                                    initSelected={{
+                                        text: player4?.name,
+                                        value: player4?.id,
+                                    }}
+                                    options={filteredForPlayer3And4}
+                                    onSelect={(playerId) =>
+                                        selectPlayer(playerId, 4)
+                                    }
+                                    isLoading={isLoading}
+                                />
+                            </PlayerContainer>
+                        ) : (
+                            <AddButtonContainer>
+                                <Button onClick={() => activatePlayer(4)}>
+                                    <HiPlus />
+                                    <span>Add Player 4</span>
+                                </Button>
+                            </AddButtonContainer>
+                        )}
+                    </TeamContainer>
+                </PlayersContainer>
+                <SubmitRow>
+                    <CheckboxContainer>
+                        {/* <div>
                         <SwitchButton
                             label="Random teams (noch nicht implementiert)"
                             id="random-teams"
@@ -287,37 +305,38 @@ function ChoosePlayers() {
                             disabled={true}
                         />
                     </div> */}
-                </CheckboxContainer>
-                {!isStarting && (
-                    <FormRow>
-                        <Button $size="large" onClick={startCountdown}>
-                            Start match
-                        </Button>
-                    </FormRow>
-                )}
-                {isStarting && (
-                    <FormRow
-                        label={
-                            timer <= 0
-                                ? "Good luck have fun!"
-                                : `Starting in ${timer}`
-                        }
-                    >
-                        {timer > 0 && (
-                            <Button
-                                $size="large"
-                                $variation="secondary"
-                                type="button"
-                                onClick={cancelTimer}
-                            >
-                                Cancel match
+                    </CheckboxContainer>
+                    {!isStarting && (
+                        <FormRow>
+                            <Button $size="large" onClick={startCountdown}>
+                                Start match
                             </Button>
-                        )}
-                    </FormRow>
-                )}
-            </SubmitRow>
-            <Ruleset />
-        </Container>
+                        </FormRow>
+                    )}
+                    {isStarting && (
+                        <FormRow
+                            label={
+                                timer <= 0
+                                    ? "Good luck have fun!"
+                                    : `Starting in ${timer}`
+                            }
+                        >
+                            {timer > 0 && (
+                                <Button
+                                    $size="large"
+                                    $variation="secondary"
+                                    type="button"
+                                    onClick={cancelTimer}
+                                >
+                                    Cancel match
+                                </Button>
+                            )}
+                        </FormRow>
+                    )}
+                </SubmitRow>
+                <Ruleset />
+            </Container>
+        </DropdownProvider>
     );
 }
 

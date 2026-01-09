@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import styled from "styled-components";
 import { DEFAULT_AVATAR, media } from "../../utils/constants";
 import StatsTable from "./StatsTable";
+import ClickableAvatar from "../../ui/ClickableAvatar";
 import Avatar from "../../ui/Avatar";
 import { usePlayerName } from "./usePlayerName";
 import Error from "../../ui/Error";
@@ -12,6 +13,7 @@ import {
     HiOutlineTrophy,
     HiOutlineUser,
 } from "react-icons/hi2";
+import RecentPerformance from "./RecentPerformance";
 
 const StyledProfile = styled.div`
     display: flex;
@@ -164,7 +166,7 @@ const AvatarSection = styled.div`
     }
 `;
 
-const StyledAvatar = styled(Avatar)`
+const StyledAvatar = styled(ClickableAvatar)`
     width: 16rem;
     height: 16rem;
 
@@ -258,10 +260,10 @@ const RankIcon = styled.div`
         props.$variant === "gold"
             ? "linear-gradient(135deg, #FFD700 0%, #FFC107 100%)"
             : props.$variant === "silver"
-              ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
-              : props.$variant === "bronze"
-                ? "linear-gradient(135deg, #CD7F32 0%, #A0522D 100%)"
-                : "var(--color-grey-100)"};
+            ? "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)"
+            : props.$variant === "bronze"
+            ? "linear-gradient(135deg, #CD7F32 0%, #A0522D 100%)"
+            : "var(--color-grey-100)"};
 
     ${media.desktop} {
         width: 3.6rem;
@@ -280,10 +282,10 @@ const RankIcon = styled.div`
             props.$variant === "gold"
                 ? "#7a5c00"
                 : props.$variant === "silver"
-                  ? "#616161"
-                  : props.$variant === "bronze"
-                    ? "#5D4037"
-                    : "var(--color-grey-600)"};
+                ? "#616161"
+                : props.$variant === "bronze"
+                ? "#5D4037"
+                : "var(--color-grey-600)"};
 
         ${media.desktop} {
             width: 1.8rem;
@@ -399,6 +401,7 @@ function Profile() {
                             <>
                                 <StyledAvatar
                                     src={player?.avatar || DEFAULT_AVATAR}
+                                    alt={`${player?.name}'s avatar`}
                                 />
                                 <PlayerName>{player?.name}</PlayerName>
                             </>
@@ -465,6 +468,8 @@ function Profile() {
                     <StatsTable userId={userId} />
                 </CardBody>
             </StatsCard>
+
+            <RecentPerformance playerName={userId} playerId={player?.id} />
         </StyledProfile>
     );
 }

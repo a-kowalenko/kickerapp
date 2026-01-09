@@ -15,7 +15,9 @@ import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
 import { useKicker } from "../../contexts/KickerContext";
+import { useChatReadStatus } from "../../hooks/useChatReadStatus";
 import { updateChatReadStatus } from "../../services/apiChat";
+import useUnreadBadge from "../../hooks/useUnreadBadge";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import LoadingSpinner from "../../ui/LoadingSpinner";
@@ -27,9 +29,15 @@ const MessagesContainer = styled.div`
     flex-direction: column-reverse;
     gap: 0.6rem;
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
     padding: 1rem;
     position: relative;
+
+    /* Prevent browser context menu on messages container for custom menu */
+    & > * {
+        -webkit-touch-callout: none;
+    }
 
     /* Custom scrollbar */
     &::-webkit-scrollbar {
@@ -80,12 +88,45 @@ const EmptyText = styled.p`
     font-size: 1.4rem;
 `;
 
-const TypingIndicator = styled.div`
+const TypingIndicatorContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     padding: 0.4rem 1rem;
     font-size: 1.2rem;
     color: var(--tertiary-text-color);
     font-style: italic;
     min-height: 2rem;
+    opacity: ${(props) => (props.$visible ? 1 : 0)};
+    transition: opacity 0.2s ease-in-out;
+`;
+
+const TypingDotsContainer = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+`;
+
+const TypingDot = styled.span`
+    width: 0.6rem;
+    height: 0.6rem;
+    background-color: var(--tertiary-text-color);
+    border-radius: 50%;
+    animation: typingBounce 1.4s ease-in-out infinite;
+    animation-delay: ${(props) => props.$delay || "0s"};
+
+    @keyframes typingBounce {
+        0%,
+        60%,
+        100% {
+            transform: scale(0.6);
+            opacity: 0.4;
+        }
+        30% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
 `;
 
 const NewMessagesBadge = styled.span`
@@ -144,16 +185,50 @@ function ChatTab() {
     const messagesContainerRef = useRef(null);
     const loadMoreRef = useRef(null);
     const focusInputRef = useRef(null);
+    const chatInputRef = useRef(null);
     const [showJumpToLatest, setShowJumpToLatest] = useState(false);
     const [newMessagesCount, setNewMessagesCount] = useState(0);
     const [replyTo, setReplyTo] = useState(null);
     const [lastWhisperFrom, setLastWhisperFrom] = useState(null);
     const [scrollTrigger, setScrollTrigger] = useState(0);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
+    const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
     const prevMessageCountRef = useRef(0);
     const isNearBottomRef = useRef(true);
     const prevFirstMessageIdRef = useRef(null);
     const pendingScrollRef = useRef(false);
+    const hasMarkedAsReadRef = useRef(false);
+    const [searchParams] = useSearchParams();
+
+    // Parse deep link from query param (e.g., ?scrollTo=message-123)
+    const deepLinkMessageId = useMemo(() => {
+        const scrollToParam = searchParams.get("scrollTo");
+        if (scrollToParam && scrollToParam.startsWith("message-")) {
+            return scrollToParam.replace("message-", "");
+        }
+        return null;
+    }, [searchParams]);
+
+    // Scroll to deep-linked message
+    const scrollToMessage = useCallback((messageId) => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const messageElement = container.querySelector(
+            `[data-message-id="${messageId}"]`
+        );
+        if (messageElement) {
+            messageElement.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+            // Add highlight effect
+            messageElement.classList.add("highlight");
+            setTimeout(() => {
+                messageElement.classList.remove("highlight");
+            }, 2000);
+        }
+    }, []);
 
     // Hooks
     const {
@@ -189,34 +264,37 @@ function ChatTab() {
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
 
+    // Get invalidate function from unread badge hook
+    const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+
+    // Get invalidate function for read status
+    const { lastReadAt, invalidate: invalidateChatReadStatus } =
+        useChatReadStatus(currentKicker);
+
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
 
-    // Mark messages as read and clear badge when chat is viewed
+    // Mark messages as read and update both badge and read status
+    // Uses hasMarkedAsReadRef to prevent duplicate API calls
     const markAsRead = useCallback(async () => {
-        if (!currentKicker) return;
+        if (!currentKicker || hasMarkedAsReadRef.current) return;
+        hasMarkedAsReadRef.current = true;
         try {
             await updateChatReadStatus(currentKicker);
-
-            // Immediately clear document title badge
-            document.title = "KickerApp";
-
-            // Clear app badge (works for Android/Desktop PWA)
-            if ("clearAppBadge" in navigator) {
-                navigator.clearAppBadge().catch(() => {});
-            }
-
-            // Notify service worker to clear badge count
-            if (navigator.serviceWorker?.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: "CLEAR_BADGE",
-                });
-            }
+            // Invalidate badge queries to trigger refetch of combined unread count
+            invalidateUnreadBadge();
+            // Invalidate chat read status so unread markers update immediately
+            invalidateChatReadStatus();
         } catch (error) {
             console.error("Error marking chat as read:", error);
+        } finally {
+            // Reset after a short delay to allow subsequent reads (e.g., new messages)
+            setTimeout(() => {
+                hasMarkedAsReadRef.current = false;
+            }, 1000);
         }
-    }, [currentKicker]);
+    }, [currentKicker, invalidateUnreadBadge, invalidateChatReadStatus]);
 
     // Track if user is viewing the chat (at bottom of messages)
     const markAsReadIfAtBottom = useCallback(() => {
@@ -225,17 +303,16 @@ function ChatTab() {
         }
     }, [currentKicker, hasInitiallyScrolled, markAsRead]);
 
-    // Mark as read when user scrolls to bottom
+    // Mark as read when user scrolls to bottom OR when chat is initially loaded
+    // Note: markAsRead is intentionally excluded from deps to prevent infinite loops
+    // The hasMarkedAsReadRef guard ensures we don't make duplicate API calls
     useEffect(() => {
         if (hasInitiallyScrolled && currentKicker && isNearBottomRef.current) {
-            const timer = setTimeout(() => {
-                if (isNearBottomRef.current) {
-                    markAsRead();
-                }
-            }, 1000);
-            return () => clearTimeout(timer);
+            // Mark as read immediately when chat opens and user is at bottom
+            markAsRead();
         }
-    }, [hasInitiallyScrolled, currentKicker, markAsRead]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasInitiallyScrolled, currentKicker]);
 
     // Mark as read when tab becomes visible AND user is at bottom
     useEffect(() => {
@@ -394,15 +471,28 @@ function ChatTab() {
 
         const container = messagesContainerRef.current;
         if (container) {
-            container.scrollTop = 0;
+            // If there's a deep link, scroll to that message instead
+            if (deepLinkMessageId && !hasScrolledToDeepLink) {
+                setHasInitiallyScrolled(true);
+                setHasScrolledToDeepLink(true);
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    scrollToMessage(deepLinkMessageId);
+                }, 100);
+            } else {
+                container.scrollTop = 0;
+                setHasInitiallyScrolled(true);
+            }
             prevMessageCountRef.current = messages.length;
-            setHasInitiallyScrolled(true);
         }
     }, [
         isLoadingMessages,
         isLoadingReactions,
         messages.length,
         hasInitiallyScrolled,
+        deepLinkMessageId,
+        hasScrolledToDeepLink,
+        scrollToMessage,
     ]);
 
     function handleJumpToLatest() {
@@ -473,6 +563,26 @@ function ChatTab() {
 
     function handleCancelReply() {
         setReplyTo(null);
+    }
+
+    // Context menu: start whisper to player
+    function handleWhisper(player) {
+        if (!player) return;
+        // Call the ChatInput's external whisper setter
+        chatInputRef.current?.setWhisperRecipient(player);
+        setTimeout(() => {
+            focusInputRef.current?.();
+        }, 50);
+    }
+
+    // Context menu: mention player in input
+    function handleMention(player) {
+        if (!player) return;
+        // Call the ChatInput's external mention inserter
+        chatInputRef.current?.insertMention(player);
+        setTimeout(() => {
+            focusInputRef.current?.();
+        }, 50);
     }
 
     function handleToggleReaction({ messageId, reactionType }) {
@@ -627,7 +737,18 @@ function ChatTab() {
                     )}
                 </MessagesContainer>
 
-                <TypingIndicator>{typingText}</TypingIndicator>
+                <TypingIndicatorContainer $visible={!!typingText}>
+                    {typingText && (
+                        <>
+                            <span>{typingText}</span>
+                            <TypingDotsContainer>
+                                <TypingDot $delay="0s" />
+                                <TypingDot $delay="0.2s" />
+                                <TypingDot $delay="0.4s" />
+                            </TypingDotsContainer>
+                        </>
+                    )}
+                </TypingIndicatorContainer>
 
                 {showJumpToLatest && (
                     <JumpToLatestButton onClick={handleJumpToLatest}>
@@ -643,6 +764,7 @@ function ChatTab() {
 
             {currentPlayer && (
                 <ChatInput
+                    ref={chatInputRef}
                     onSubmit={handleCreateMessage}
                     isSubmitting={isCreating}
                     currentPlayer={currentPlayer}
@@ -650,6 +772,7 @@ function ChatTab() {
                     onCancelReply={handleCancelReply}
                     lastWhisperFrom={lastWhisperFrom}
                     onTyping={onTyping}
+                    stopTyping={stopTyping}
                     onFocusInput={(fn) => {
                         focusInputRef.current = fn;
                     }}

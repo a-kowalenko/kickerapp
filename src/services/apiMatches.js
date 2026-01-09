@@ -14,6 +14,8 @@ import {
     PLAYER,
     SEASON_RANKINGS,
     STANDARD_GOAL,
+    TEAMS,
+    GAMEMODE_TEAM,
 } from "../utils/constants";
 import { calculateMmrChange } from "../utils/helpers";
 import { getPlayerByName } from "./apiPlayer";
@@ -23,6 +25,76 @@ import {
     getGoalStatisticsByPlayer,
     getGoalsByMatch,
 } from "./apiGoals";
+import {
+    updateTeamMmr,
+    updateTeamSeasonRanking,
+    updateTeamSeasonRankingWithBounty,
+} from "./apiTeams";
+
+// Standard select query for matches including player and team data
+const MATCH_SELECT_QUERY = `
+    *,
+    player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
+    player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
+    player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
+    player4: ${PLAYER}!${MATCHES}_player4_fkey (*),
+    team1: ${TEAMS}!${MATCHES}_team1_id_fkey (id, name, logo_url, mmr),
+    team2: ${TEAMS}!${MATCHES}_team2_id_fkey (id, name, logo_url, mmr)
+`;
+
+// Helper function to get total bounty for a team
+async function getTeamBounty(playerIds, gamemode) {
+    const { data, error } = await supabase.rpc("get_team_bounty", {
+        p_player_ids: playerIds,
+        p_gamemode: gamemode,
+    });
+
+    if (error) {
+        console.error("Error fetching team bounty:", error);
+        return 0;
+    }
+
+    return data || 0;
+}
+
+// Helper function to get bounty for a permanent team (team gamemode)
+async function getTeamBountyForTeam(teamId) {
+    const { data, error } = await supabase.rpc("get_team_bounty_for_team", {
+        p_team_id: teamId,
+    });
+
+    if (error) {
+        console.error("Error fetching team bounty for team:", error);
+        return 0;
+    }
+
+    return data || 0;
+}
+
+// Helper function to update team status after match (bounty/streak)
+async function updateTeamStatusAfterMatch(
+    teamId,
+    matchId,
+    isWinner,
+    opponentTeamId
+) {
+    const { data, error } = await supabase.rpc(
+        "update_team_status_after_match",
+        {
+            p_team_id: teamId,
+            p_match_id: matchId,
+            p_is_winner: isWinner,
+            p_opponent_team_id: opponentTeamId,
+        }
+    );
+
+    if (error) {
+        console.error("Error updating team status:", error);
+        return { bounty_claimed: 0, bounty_victim_id: null };
+    }
+
+    return data?.[0] || { bounty_claimed: 0, bounty_victim_id: null };
+}
 
 // Helper function to update season rankings after a match ends
 async function updateSeasonRankings({
@@ -32,6 +104,8 @@ async function updateSeasonRankings({
     mmrChangeForTeam1,
     mmrChangeForTeam2,
     seasonRankingsMap,
+    bountyPerWinnerTeam1 = 0,
+    bountyPerWinnerTeam2 = 0,
 }) {
     const { player1, player2, player3, player4 } = match;
 
@@ -42,12 +116,18 @@ async function updateSeasonRankings({
         // Update player 1
         const p1Ranking = rankingsMap[player1.id];
         if (p1Ranking) {
+            // Add bounty bonus to MMR change for winner
+            const p1TotalMmrChange =
+                mmrChangeForTeam1 + (team1Wins ? bountyPerWinnerTeam1 : 0);
             await supabase
                 .from(SEASON_RANKINGS)
                 .update({
                     wins: team1Wins ? p1Ranking.wins + 1 : p1Ranking.wins,
                     losses: team1Wins ? p1Ranking.losses : p1Ranking.losses + 1,
-                    mmr: p1Ranking.mmr + mmrChangeForTeam1,
+                    mmr: p1Ranking.mmr + p1TotalMmrChange,
+                    bounty_claimed: team1Wins
+                        ? p1Ranking.bounty_claimed + bountyPerWinnerTeam1
+                        : p1Ranking.bounty_claimed,
                 })
                 .eq("id", p1Ranking.id);
         }
@@ -55,21 +135,29 @@ async function updateSeasonRankings({
         // Update player 2
         const p2Ranking = rankingsMap[player2.id];
         if (p2Ranking) {
+            // Add bounty bonus to MMR change for winner
+            const p2TotalMmrChange =
+                mmrChangeForTeam2 + (!team1Wins ? bountyPerWinnerTeam2 : 0);
             await supabase
                 .from(SEASON_RANKINGS)
                 .update({
                     wins: team1Wins ? p2Ranking.wins : p2Ranking.wins + 1,
                     losses: team1Wins ? p2Ranking.losses + 1 : p2Ranking.losses,
-                    mmr: p2Ranking.mmr + mmrChangeForTeam2,
+                    mmr: p2Ranking.mmr + p2TotalMmrChange,
+                    bounty_claimed: !team1Wins
+                        ? p2Ranking.bounty_claimed + bountyPerWinnerTeam2
+                        : p2Ranking.bounty_claimed,
                 })
                 .eq("id", p2Ranking.id);
         }
     }
 
     if (gameMode === GAMEMODE_2ON2) {
-        // Update player 1
+        // Update player 1 (Team 1)
         const p1Ranking = rankingsMap[player1.id];
         if (p1Ranking) {
+            const p1TotalMmrChange =
+                mmrChangeForTeam1 + (team1Wins ? bountyPerWinnerTeam1 : 0);
             await supabase
                 .from(SEASON_RANKINGS)
                 .update({
@@ -79,14 +167,19 @@ async function updateSeasonRankings({
                     losses2on2: team1Wins
                         ? p1Ranking.losses2on2
                         : p1Ranking.losses2on2 + 1,
-                    mmr2on2: p1Ranking.mmr2on2 + mmrChangeForTeam1,
+                    mmr2on2: p1Ranking.mmr2on2 + p1TotalMmrChange,
+                    bounty_claimed_2on2: team1Wins
+                        ? p1Ranking.bounty_claimed_2on2 + bountyPerWinnerTeam1
+                        : p1Ranking.bounty_claimed_2on2,
                 })
                 .eq("id", p1Ranking.id);
         }
 
-        // Update player 2
+        // Update player 2 (Team 2)
         const p2Ranking = rankingsMap[player2.id];
         if (p2Ranking) {
+            const p2TotalMmrChange =
+                mmrChangeForTeam2 + (!team1Wins ? bountyPerWinnerTeam2 : 0);
             await supabase
                 .from(SEASON_RANKINGS)
                 .update({
@@ -96,15 +189,20 @@ async function updateSeasonRankings({
                     losses2on2: team1Wins
                         ? p2Ranking.losses2on2 + 1
                         : p2Ranking.losses2on2,
-                    mmr2on2: p2Ranking.mmr2on2 + mmrChangeForTeam2,
+                    mmr2on2: p2Ranking.mmr2on2 + p2TotalMmrChange,
+                    bounty_claimed_2on2: !team1Wins
+                        ? p2Ranking.bounty_claimed_2on2 + bountyPerWinnerTeam2
+                        : p2Ranking.bounty_claimed_2on2,
                 })
                 .eq("id", p2Ranking.id);
         }
 
-        // Update player 3 if exists
+        // Update player 3 if exists (Team 1)
         if (player3) {
             const p3Ranking = rankingsMap[player3.id];
             if (p3Ranking) {
+                const p3TotalMmrChange =
+                    mmrChangeForTeam1 + (team1Wins ? bountyPerWinnerTeam1 : 0);
                 await supabase
                     .from(SEASON_RANKINGS)
                     .update({
@@ -114,16 +212,22 @@ async function updateSeasonRankings({
                         losses2on2: team1Wins
                             ? p3Ranking.losses2on2
                             : p3Ranking.losses2on2 + 1,
-                        mmr2on2: p3Ranking.mmr2on2 + mmrChangeForTeam1,
+                        mmr2on2: p3Ranking.mmr2on2 + p3TotalMmrChange,
+                        bounty_claimed_2on2: team1Wins
+                            ? p3Ranking.bounty_claimed_2on2 +
+                              bountyPerWinnerTeam1
+                            : p3Ranking.bounty_claimed_2on2,
                     })
                     .eq("id", p3Ranking.id);
             }
         }
 
-        // Update player 4 if exists
+        // Update player 4 if exists (Team 2)
         if (player4) {
             const p4Ranking = rankingsMap[player4.id];
             if (p4Ranking) {
+                const p4TotalMmrChange =
+                    mmrChangeForTeam2 + (!team1Wins ? bountyPerWinnerTeam2 : 0);
                 await supabase
                     .from(SEASON_RANKINGS)
                     .update({
@@ -133,7 +237,11 @@ async function updateSeasonRankings({
                         losses2on2: team1Wins
                             ? p4Ranking.losses2on2 + 1
                             : p4Ranking.losses2on2,
-                        mmr2on2: p4Ranking.mmr2on2 + mmrChangeForTeam2,
+                        mmr2on2: p4Ranking.mmr2on2 + p4TotalMmrChange,
+                        bounty_claimed_2on2: !team1Wins
+                            ? p4Ranking.bounty_claimed_2on2 +
+                              bountyPerWinnerTeam2
+                            : p4Ranking.bounty_claimed_2on2,
                     })
                     .eq("id", p4Ranking.id);
             }
@@ -171,15 +279,7 @@ export async function getPlayerById(id) {
 export async function createMatch({ players, kicker }) {
     const { data: activeMatches, activeMatchesError } = await supabase
         .from(MATCHES)
-        .select(
-            `
-        *,
-        player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
-        player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
-        player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
-        player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
-    `
-        )
+        .select(MATCH_SELECT_QUERY)
         .eq("status", MATCH_ACTIVE)
         .eq("kicker_id", kicker);
 
@@ -240,18 +340,80 @@ export async function createMatch({ players, kicker }) {
     return await getMatch({ matchId: data.id, kicker });
 }
 
+export async function createTeamMatch({ team1, team2, kicker }) {
+    // Check for active matches first
+    const { data: activeMatches, error: activeMatchesError } = await supabase
+        .from(MATCHES)
+        .select("*")
+        .eq("status", MATCH_ACTIVE)
+        .eq("kicker_id", kicker);
+
+    if (activeMatchesError) {
+        throw new Error(
+            "There was an error while checking for active matches",
+            activeMatchesError.message
+        );
+    }
+
+    if (activeMatches.length > 0) {
+        throw new Error("There already is an active match");
+    }
+
+    // Get current season from kicker
+    const { data: kickerData, error: kickerError } = await supabase
+        .from("kicker")
+        .select("current_season_id")
+        .eq("id", kicker)
+        .single();
+
+    if (kickerError) {
+        throw new Error("Error fetching kicker data", kickerError.message);
+    }
+
+    const currentSeasonId = kickerData?.current_season_id || null;
+
+    // Create the team match
+    // Team match is always 2on2 with fixed team structure
+    // Support both flat (team.player1_id) and nested (team.player1.id) formats
+    const team1Player1Id = team1.player1_id ?? team1.player1?.id;
+    const team1Player2Id = team1.player2_id ?? team1.player2?.id;
+    const team2Player1Id = team2.player1_id ?? team2.player1?.id;
+    const team2Player2Id = team2.player2_id ?? team2.player2?.id;
+
+    const { data, error } = await supabase
+        .from(MATCHES)
+        .insert([
+            {
+                player1: team1Player1Id,
+                player2: team2Player1Id,
+                player3: team1Player2Id,
+                player4: team2Player2Id,
+                team1_id: team1.id,
+                team2_id: team2.id,
+                gamemode: GAMEMODE_TEAM,
+                start_time: new Date(),
+                kicker_id: kicker,
+                season_id: currentSeasonId,
+            },
+        ])
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(
+            "There was an error creating the team match",
+            error.message
+        );
+    }
+
+    // Fetch the full match with populated player objects
+    return await getMatch({ matchId: data.id, kicker });
+}
+
 export async function getMatch({ matchId, kicker }) {
     const { data, error } = await supabase
         .from(MATCHES)
-        .select(
-            `
-            *,
-            player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
-            player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
-            player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
-            player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
-        `
-        )
+        .select(MATCH_SELECT_QUERY)
         .eq("kicker_id", kicker)
         .eq("id", matchId)
         .single();
@@ -266,19 +428,14 @@ export async function getMatch({ matchId, kicker }) {
     return data;
 }
 
-export async function getMatches({ currentPage, filter }) {
+export async function getMatches({
+    currentPage,
+    filter,
+    pageSize = PAGE_SIZE,
+}) {
     let query = supabase
         .from(MATCHES)
-        .select(
-            `
-        *,
-        player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
-        player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
-        player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
-        player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
-    `,
-            { count: "exact" }
-        )
+        .select(MATCH_SELECT_QUERY, { count: "exact" })
         .eq("kicker_id", filter.kicker);
 
     if (filter?.field) {
@@ -338,8 +495,8 @@ export async function getMatches({ currentPage, filter }) {
     query = query.order("start_time", { ascending: false });
 
     if (currentPage) {
-        const from = (currentPage - 1) * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
         query = query.range(from, to);
     }
 
@@ -358,15 +515,7 @@ export async function getMatches({ currentPage, filter }) {
 export async function getActiveMatch(kicker) {
     const { data, error } = await supabase
         .from(MATCHES)
-        .select(
-            `
-                *,
-                player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
-                player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
-                player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
-                player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
-            `
-        )
+        .select(MATCH_SELECT_QUERY)
         .eq("status", MATCH_ACTIVE)
         .eq("kicker_id", kicker);
 
@@ -400,7 +549,14 @@ export async function endMatch({ id, score1, score2, kicker }) {
         scoreTeam2,
         season_id,
     } = match;
-    const gameMode = !player3 && !player4 ? GAMEMODE_1ON1 : GAMEMODE_2ON2;
+
+    // Use actual gamemode from match - GAMEMODE_TEAM should NOT affect player 2on2 MMR
+    const isTeamMode = match.gamemode === GAMEMODE_TEAM;
+    const gameMode = isTeamMode
+        ? GAMEMODE_TEAM
+        : !player3 && !player4
+          ? GAMEMODE_1ON1
+          : GAMEMODE_2ON2;
 
     const finalScore1 = score1 ? score1 : scoreTeam1;
     const finalScore2 = score2 ? score2 : scoreTeam2;
@@ -419,7 +575,8 @@ export async function endMatch({ id, score1, score2, kicker }) {
     let seasonRankingsMap = {};
 
     // Get season rankings for MMR calculation (only if match has a season)
-    if (season_id) {
+    // For team matches, we skip player season_rankings but handle team_season_rankings separately
+    if (season_id && !isTeamMode) {
         const playerIds = [player1.id, player2.id];
         if (player3) playerIds.push(player3.id);
         if (player4) playerIds.push(player4.id);
@@ -487,7 +644,38 @@ export async function endMatch({ id, score1, score2, kicker }) {
             mmrChangeForTeam2 = -mmrChangeForTeam1;
         }
 
-        // Update season_rankings with MMR changes
+        // Fetch bounty from losing team
+        // Team 1 players: player1, player3
+        // Team 2 players: player2, player4
+        const team1PlayerIds = [player1.id];
+        if (player3) team1PlayerIds.push(player3.id);
+        const team2PlayerIds = [player2.id];
+        if (player4) team2PlayerIds.push(player4.id);
+
+        // Get gamemode string for bounty lookup
+        const gamemodeStr = gameMode === GAMEMODE_1ON1 ? "1on1" : "2on2";
+
+        // Get bounty from losing team
+        const losingTeamIds = team1Wins ? team2PlayerIds : team1PlayerIds;
+        const winningTeamIds = team1Wins ? team1PlayerIds : team2PlayerIds;
+        const totalLoserBounty = await getTeamBounty(
+            losingTeamIds,
+            gamemodeStr
+        );
+
+        // Calculate bounty per winner (split among winning team)
+        const winningTeamSize = winningTeamIds.length;
+        const bountyPerWinner = Math.floor(totalLoserBounty / winningTeamSize);
+
+        // Bounty for team 1 winners or team 2 winners
+        const bountyPerWinnerTeam1 = team1Wins ? bountyPerWinner : 0;
+        const bountyPerWinnerTeam2 = !team1Wins ? bountyPerWinner : 0;
+
+        // Total bounty earned by each team (for match record)
+        const bountyTeam1 = team1Wins ? totalLoserBounty : 0;
+        const bountyTeam2 = !team1Wins ? totalLoserBounty : 0;
+
+        // Update season_rankings with MMR changes and bounty
         await updateSeasonRankings({
             match,
             gameMode,
@@ -495,7 +683,53 @@ export async function endMatch({ id, score1, score2, kicker }) {
             mmrChangeForTeam1,
             mmrChangeForTeam2,
             seasonRankingsMap,
+            bountyPerWinnerTeam1,
+            bountyPerWinnerTeam2,
         });
+
+        // Store bounty info for match record
+        match.bountyTeam1 = bountyTeam1;
+        match.bountyTeam2 = bountyTeam2;
+    }
+
+    // For team matches with a season, get team MMR from team_season_rankings
+    let teamSeasonRankingsMap = {};
+    if (season_id && isTeamMode && match.team1_id && match.team2_id) {
+        const { data: teamRankings, error: teamRankingsError } = await supabase
+            .from("team_season_rankings")
+            .select("*")
+            .eq("season_id", season_id)
+            .in("team_id", [match.team1_id, match.team2_id]);
+
+        if (teamRankingsError) {
+            console.error(
+                "Error fetching team season rankings:",
+                teamRankingsError
+            );
+        }
+
+        // Create a map for easy lookup
+        teamRankings?.forEach((r) => {
+            teamSeasonRankingsMap[r.team_id] = r;
+        });
+
+        // Calculate MMR change based on team season rankings
+        const team1SeasonMmr =
+            teamSeasonRankingsMap[match.team1_id]?.mmr || 1000;
+        const team2SeasonMmr =
+            teamSeasonRankingsMap[match.team2_id]?.mmr || 1000;
+
+        mmrChangeForTeam1 = calculateMmrChange(
+            team1SeasonMmr,
+            team2SeasonMmr,
+            team1Wins ? 1 : 0
+        );
+
+        if (isFatality) {
+            mmrChangeForTeam1 = mmrChangeForTeam1 * FATALITY_FAKTOR;
+        }
+
+        mmrChangeForTeam2 = -mmrChangeForTeam1;
     }
 
     // Update player table with wins/losses only (no MMR changes)
@@ -585,6 +819,78 @@ export async function endMatch({ id, score1, score2, kicker }) {
         }
     }
 
+    // Update team stats if this is a team match (GAMEMODE_TEAM)
+    let bountyTeam1Team = 0;
+    let bountyTeam2Team = 0;
+
+    if (match.team1_id && match.team2_id) {
+        // For team matches, use the already calculated MMR change from team_season_rankings
+        // For 2on2 matches with teams, use the player-based MMR change
+        const teamMmrChange = isTeamMode
+            ? Math.abs(mmrChangeForTeam1)
+            : Math.abs(mmrChangeForTeam1);
+
+        // Update all-time team stats (wins/losses/mmr on teams table)
+        // Update winning team
+        await updateTeamMmr(
+            team1Wins ? match.team1_id : match.team2_id,
+            teamMmrChange,
+            true
+        );
+
+        // Update losing team
+        await updateTeamMmr(
+            team1Wins ? match.team2_id : match.team1_id,
+            -teamMmrChange,
+            false
+        );
+
+        // Handle team bounty for team gamemode matches
+        // Get bounty from both teams BEFORE updating status
+        const team1Bounty = await getTeamBountyForTeam(match.team1_id);
+        const team2Bounty = await getTeamBountyForTeam(match.team2_id);
+
+        // Store bounty values for match record (losing team's bounty goes to winner)
+        bountyTeam1Team = team1Wins ? team2Bounty : 0;
+        bountyTeam2Team = !team1Wins ? team1Bounty : 0;
+
+        // Update team status (streak, bounty) for both teams
+        // Winner team first (to claim bounty)
+        const winnerTeamId = team1Wins ? match.team1_id : match.team2_id;
+        const loserTeamId = team1Wins ? match.team2_id : match.team1_id;
+
+        const winnerResult = await updateTeamStatusAfterMatch(
+            winnerTeamId,
+            id,
+            true,
+            loserTeamId
+        );
+
+        // Loser team
+        await updateTeamStatusAfterMatch(loserTeamId, id, false, winnerTeamId);
+
+        // Update season-specific team stats (if match has a season)
+        if (season_id) {
+            // Update winning team season ranking with bounty claimed
+            await updateTeamSeasonRankingWithBounty(
+                winnerTeamId,
+                season_id,
+                teamMmrChange,
+                true,
+                winnerResult.bounty_claimed || 0
+            );
+
+            // Update losing team season ranking
+            await updateTeamSeasonRankingWithBounty(
+                loserTeamId,
+                season_id,
+                -teamMmrChange,
+                false,
+                0
+            );
+        }
+    }
+
     // Get MMR values for match record from season_rankings (or null if off-season)
     const mmrPlayer1 = season_id
         ? gameMode === GAMEMODE_1ON1
@@ -605,18 +911,27 @@ export async function endMatch({ id, score1, score2, kicker }) {
             ? seasonRankingsMap[player4.id]?.mmr2on2
             : null;
 
+    // For team matches, always store MMR change (team MMR is always tracked)
+    // For regular matches, only store if there's a season
+    // Only store MMR change if there's a season (applies to all gamemodes including team)
+    const shouldStoreMmrChange = season_id ? true : false;
+
     const { data, error } = await supabase
         .from(MATCHES)
         .update({
             status: MATCH_ENDED,
             scoreTeam1: finalScore1,
             scoreTeam2: finalScore2,
-            mmrChangeTeam1: season_id ? mmrChangeForTeam1 : null,
-            mmrChangeTeam2: season_id ? mmrChangeForTeam2 : null,
+            mmrChangeTeam1: shouldStoreMmrChange ? mmrChangeForTeam1 : null,
+            mmrChangeTeam2: shouldStoreMmrChange ? mmrChangeForTeam2 : null,
             mmrPlayer1,
             mmrPlayer2,
             mmrPlayer3,
             mmrPlayer4,
+            bounty_team1: match.bountyTeam1 || 0,
+            bounty_team2: match.bountyTeam2 || 0,
+            bounty_team1_team: bountyTeam1Team,
+            bounty_team2_team: bountyTeam2Team,
             end_time: new Date(),
         })
         .eq("id", id)
@@ -675,16 +990,7 @@ export async function endMatch({ id, score1, score2, kicker }) {
 export async function getFatalities({ filter }) {
     let query = supabase
         .from(MATCHES)
-        .select(
-            `
-        *,
-        player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
-        player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
-        player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
-        player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
-    `,
-            { count: "exact" }
-        )
+        .select(MATCH_SELECT_QUERY, { count: "exact" })
         .eq("kicker_id", filter.kicker)
         .or("scoreTeam1.eq.0, scoreTeam2.eq.0")
         .order("created_at", { ascending: false });
@@ -704,7 +1010,7 @@ export async function getFatalities({ filter }) {
         }
     }
 
-    if (filter?.month) {
+    if (typeof filter?.month === "number") {
         const start = new Date(
             filter.year || new Date().getFullYear(),
             filter.month,
@@ -877,25 +1183,61 @@ export async function getOpponentStats({ username, filter }) {
         filter: { name: username, ...filter },
     });
 
-    const stats = matches.reduce((acc, cur) => {
-        const { isWinner, opponents } = getResultData(username, cur);
-        for (const opponent of opponents) {
-            if (!acc[opponent.name]) {
-                acc[opponent.name] = { wins: 0, losses: 0, total: 0 };
-            }
+    const isTeamMode = filter?.value === GAMEMODE_TEAM;
 
-            if (isWinner) {
-                acc[opponent.name].wins += 1;
-            } else {
-                acc[opponent.name].losses += 1;
+    const stats = matches.reduce((acc, cur) => {
+        // For team mode, use team names as opponents
+        if (isTeamMode && cur.team1 && cur.team2) {
+            const { isWinner, opponentTeamName } = getTeamResultData(
+                username,
+                cur
+            );
+            if (opponentTeamName) {
+                if (!acc[opponentTeamName]) {
+                    acc[opponentTeamName] = {
+                        wins: 0,
+                        losses: 0,
+                        total: 0,
+                        isTeam: true,
+                    };
+                }
+
+                if (isWinner) {
+                    acc[opponentTeamName].wins += 1;
+                } else {
+                    acc[opponentTeamName].losses += 1;
+                }
+                acc[opponentTeamName].total += 1;
             }
-            acc[opponent.name].total += 1;
+        } else {
+            // Regular mode - use player names
+            const { isWinner, opponents } = getResultData(username, cur);
+            for (const opponent of opponents) {
+                if (!acc[opponent.name]) {
+                    acc[opponent.name] = {
+                        wins: 0,
+                        losses: 0,
+                        total: 0,
+                        isTeam: false,
+                    };
+                }
+
+                if (isWinner) {
+                    acc[opponent.name].wins += 1;
+                } else {
+                    acc[opponent.name].losses += 1;
+                }
+                acc[opponent.name].total += 1;
+            }
         }
 
         return acc;
     }, {});
 
-    const goalData = await getGoalStatisticsByPlayer(filter, username);
+    // For non-team modes, get goal data
+    const goalData = isTeamMode
+        ? {}
+        : await getGoalStatisticsByPlayer(filter, username);
 
     const data = Object.keys(stats).map((key) => {
         return {
@@ -906,6 +1248,7 @@ export async function getOpponentStats({ username, filter }) {
             total: stats[key].total,
             goals: goalData[key]?.standardGoals,
             ownGoals: goalData[key]?.ownGoals,
+            isTeam: stats[key].isTeam,
         };
     });
 
@@ -936,16 +1279,20 @@ export async function getPlaytime({ name, kicker, seasonId }) {
                 if (cur.gamemode === GAMEMODE_2ON2) {
                     acc.duo += duration;
                 }
+                if (cur.gamemode === GAMEMODE_TEAM) {
+                    acc.team += duration;
+                }
                 return acc;
             },
-            { solo: 0, duo: 0 }
+            { solo: 0, duo: 0, team: 0 }
         );
 
     const playtimeSolo = playtime.solo;
     const playtimeDuo = playtime.duo;
-    const playtimeOverall = playtime.solo + playtime.duo;
+    const playtimeTeam = playtime.team;
+    const playtimeOverall = playtime.solo + playtime.duo + playtime.team;
 
-    return { playtimeSolo, playtimeDuo, playtimeOverall };
+    return { playtimeSolo, playtimeDuo, playtimeTeam, playtimeOverall };
 }
 
 function getResultData(username, match) {
@@ -964,6 +1311,20 @@ function getResultData(username, match) {
         isWinner:
             playerNumber === 1 || playerNumber === 3 ? team1Won : !team1Won,
         opponents: opponents.filter(Boolean),
+    };
+}
+
+function getTeamResultData(username, match) {
+    const playerNumber = getPlayersNumberFromMatch(username, match);
+    const team1Won = match.scoreTeam1 > match.scoreTeam2;
+    const isInTeam1 = playerNumber === 1 || playerNumber === 3;
+
+    // Get opponent team name
+    const opponentTeamName = isInTeam1 ? match.team2?.name : match.team1?.name;
+
+    return {
+        isWinner: isInTeam1 ? team1Won : !team1Won,
+        opponentTeamName,
     };
 }
 
@@ -1031,15 +1392,7 @@ async function updateMatch(matchId, values) {
         .from(MATCHES)
         .update(values)
         .eq("id", matchId)
-        .select(
-            `
-            *,
-            player1: ${PLAYER}!${MATCHES}_player1_fkey (*),
-            player2: ${PLAYER}!${MATCHES}_player2_fkey (*),
-            player3: ${PLAYER}!${MATCHES}_player3_fkey (*),
-            player4: ${PLAYER}!${MATCHES}_player4_fkey (*)
-        `
-        )
+        .select(MATCH_SELECT_QUERY)
         .single();
 
     if (error) {
@@ -1130,6 +1483,111 @@ export async function deleteMatch({ matchId, kicker, userId }) {
     }
 
     return data;
+}
+
+/**
+ * Search for matches by match number or player names
+ * @param {Object} params - Search parameters
+ * @param {string} params.query - Search query (match number or player name)
+ * @param {number} params.kicker - Kicker ID
+ * @param {number} params.limit - Maximum number of results (default: 10)
+ * @returns {Promise<Array>} - Array of matches with player data
+ */
+export async function searchMatches({ query, kicker, limit = 10 }) {
+    // First try to search by match number
+    const matchNr = parseInt(query, 10);
+    const isNumeric = !isNaN(matchNr) && query.trim() !== "";
+
+    let results = [];
+
+    if (isNumeric) {
+        // Search by match number - convert number to string and use text search
+        const searchStr = String(matchNr);
+        const { data, error } = await supabase
+            .from(MATCHES)
+            .select(MATCH_SELECT_QUERY)
+            .eq("kicker_id", kicker)
+            .filter("nr", "gte", matchNr)
+            .filter(
+                "nr",
+                "lt",
+                matchNr + Math.pow(10, Math.max(1, 4 - searchStr.length))
+            )
+            .order("nr", { ascending: true })
+            .limit(limit);
+
+        if (error) {
+            console.error("Error searching matches by number:", error);
+        } else {
+            results = data || [];
+        }
+    }
+
+    // If no numeric results or query is not numeric, search by player names
+    if (results.length === 0 && query.trim()) {
+        const { data, error } = await supabase
+            .from(MATCHES)
+            .select(MATCH_SELECT_QUERY)
+            .eq("kicker_id", kicker)
+            .order("nr", { ascending: false })
+            .limit(100); // Get more to filter locally
+
+        if (error) {
+            console.error("Error searching matches:", error);
+        } else {
+            // Filter matches where any player name contains the query
+            const lowerQuery = query.toLowerCase();
+            results = (data || [])
+                .filter((match) => {
+                    const playerNames = [
+                        match.player1?.name,
+                        match.player2?.name,
+                        match.player3?.name,
+                        match.player4?.name,
+                    ]
+                        .filter(Boolean)
+                        .map((n) => n.toLowerCase());
+                    return playerNames.some((name) =>
+                        name.includes(lowerQuery)
+                    );
+                })
+                .slice(0, limit);
+        }
+    }
+
+    // If still no results and no query, return recent matches
+    if (results.length === 0 && !query.trim()) {
+        const { data, error } = await supabase
+            .from(MATCHES)
+            .select(MATCH_SELECT_QUERY)
+            .eq("kicker_id", kicker)
+            .order("nr", { ascending: false })
+            .limit(limit);
+
+        if (error) {
+            console.error("Error fetching recent matches:", error);
+        } else {
+            results = data || [];
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Format a match for display in match links
+ * @param {Object} match - Match object with player data
+ * @returns {string} - Formatted display string like "Match 801 Max vs Tim" or "Match 801 Max & Tom vs Tim & Jan"
+ */
+export function formatMatchDisplay(match) {
+    const team1 = match.player3
+        ? `${match.player1?.name} & ${match.player3?.name}`
+        : match.player1?.name;
+    const team2 = match.player4
+        ? `${match.player2?.name} & ${match.player4?.name}`
+        : match.player2?.name;
+
+    return `Match ${match.nr} ${team1} vs ${team2}`;
 }
 
 function isPlayerInTeam(playerId, ...teamPlayers) {

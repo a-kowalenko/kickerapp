@@ -14,7 +14,9 @@ import Avatar from "../../ui/Avatar";
 import MentionText from "../../ui/MentionText";
 import SpinnerMini from "../../ui/SpinnerMini";
 import EmojiPicker from "../../ui/EmojiPicker";
+import { PlayerNameWithTooltip } from "../../ui/PlayerTooltip";
 import { DEFAULT_AVATAR, MAX_COMMENT_LENGTH } from "../../utils/constants";
+import { usePlayerStatusForAvatar } from "../players/usePlayerStatus";
 
 // Quick reaction emojis (Discord-style)
 const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
@@ -28,8 +30,15 @@ const CommentContainer = styled.div`
     background-color: ${(props) =>
         props.$disableHover
             ? "transparent"
+            : props.$isUnread
+            ? "rgba(59, 130, 246, 0.08)"
             : "var(--secondary-background-color)"};
-    transition: background-color 0.2s;
+    border-left: 3px solid
+        ${(props) =>
+            props.$isUnread && !props.$disableHover
+                ? "var(--primary-button-color)"
+                : "transparent"};
+    transition: background-color 0.2s, border-left-color 0.2s;
     position: relative;
 
     &:hover {
@@ -311,11 +320,17 @@ function Comment({
     isTogglingReaction,
     isGrouped = false,
     disableHover = false,
+    isUnread = false,
 }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const addReactionRef = useRef(null);
+
+    // Load bounty data for the comment author (always show if any gamemode has bounty)
+    const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(
+        comment.player?.id
+    );
 
     const isAuthor = comment.player_id === currentPlayerId;
     const canEdit = isAuthor;
@@ -342,7 +357,11 @@ function Comment({
     }
 
     return (
-        <CommentContainer $isGrouped={isGrouped} $disableHover={disableHover}>
+        <CommentContainer
+            $isGrouped={isGrouped}
+            $disableHover={disableHover}
+            $isUnread={isUnread}
+        >
             {/* Discord-style hover toolbar */}
             <HoverToolbar>
                 {/* Quick reactions */}
@@ -429,20 +448,27 @@ function Comment({
             )}
 
             {!isGrouped && (
-                <Link to={`/players/${comment.player_id}`}>
+                <Link to={`/user/${comment.player?.name}/profile`}>
                     <Avatar
+                        player={comment.player}
+                        showStatus={true}
                         $size="small"
                         src={comment.player?.avatar || DEFAULT_AVATAR}
                         alt={comment.player?.name}
                         $cursor="pointer"
+                        bountyData={{ bounty1on1, bounty2on2 }}
                     />
                 </Link>
             )}
             <CommentContent>
                 {!isGrouped && (
                     <CommentHeader>
-                        <AuthorName to={`/players/${comment.player_id}`}>
-                            {comment.player?.name}
+                        <AuthorName
+                            to={`/user/${comment.player?.name}/profile`}
+                        >
+                            <PlayerNameWithTooltip player={comment.player}>
+                                {comment.player?.name}
+                            </PlayerNameWithTooltip>
                         </AuthorName>
                         <Timestamp>
                             {format(
