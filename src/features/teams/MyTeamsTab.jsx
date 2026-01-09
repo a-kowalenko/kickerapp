@@ -8,6 +8,7 @@ import { media, TEAM_STATUS_ACTIVE } from "../../utils/constants";
 import { useMyTeams } from "./useTeams";
 import TeamCard from "./TeamCard";
 import TeamInvitationBanner from "./TeamInvitationBanner";
+import SentInvitationsBanner from "./SentInvitationsBanner";
 import CreateTeamModal from "./CreateTeamModal";
 
 const Content = styled.div`
@@ -75,6 +76,8 @@ function MyTeamsTab() {
             </HeaderRow>
 
             <TeamInvitationBanner />
+
+            <SentInvitationsBanner />
 
             {activeTeams.length === 0 ? (
                 <EmptyState
