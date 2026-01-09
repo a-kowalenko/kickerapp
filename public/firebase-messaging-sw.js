@@ -115,6 +115,32 @@ async function clearBadge() {
 messaging.onBackgroundMessage(async (payload) => {
     console.log("[SW] Background message received:", payload);
 
+    // If there's a notification field, FCM has already displayed a native notification
+    // We should NOT show a duplicate notification from the service worker
+    if (payload.notification && payload.notification.title) {
+        console.log(
+            "[SW] Native notification already displayed by FCM, skipping duplicate"
+        );
+
+        // Still update badge count from data payload
+        const notificationData = payload.data || {};
+        if (
+            notificationData.type === "chat" ||
+            notificationData.type === "comment"
+        ) {
+            const serverBadgeCount = parseInt(notificationData.badge, 10);
+            if (!isNaN(serverBadgeCount) && serverBadgeCount > 0) {
+                console.log(
+                    "[SW] Setting badge from server:",
+                    serverBadgeCount
+                );
+                await setBadgeCount(serverBadgeCount);
+                await updateAppBadge(serverBadgeCount);
+            }
+        }
+        return; // Don't show duplicate notification
+    }
+
     const notificationData = payload.data || {};
     const notification = payload.notification || {};
 
