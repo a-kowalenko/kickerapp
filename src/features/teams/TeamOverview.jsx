@@ -7,6 +7,7 @@ import Avatar from "../../ui/Avatar";
 import MediaViewer from "../../ui/MediaViewer";
 import TeamRecentPerformance from "./TeamRecentPerformance";
 import { StatusBadge } from "../../ui/StatusBadge";
+import PlayerName from "../../ui/PlayerName";
 import { useBountyTooltip, TeamStatusTooltip } from "../../ui/BountyTooltip";
 import {
     DEFAULT_AVATAR,
@@ -775,11 +776,11 @@ function TeamOverview({ team, rank }) {
                                     />
                                 </PlayerAvatars>
                                 <PlayerNames>
-                                    <PlayerLink
+                                    <PlayerName
                                         to={`/user/${player1?.name}/profile`}
                                     >
                                         {player1?.name}
-                                    </PlayerLink>
+                                    </PlayerName>
                                     {" & "}
                                     <PlayerLink
                                         to={`/user/${player2?.name}/profile`}
