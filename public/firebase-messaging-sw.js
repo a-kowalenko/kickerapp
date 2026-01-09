@@ -130,7 +130,10 @@ messaging.onBackgroundMessage(async (payload) => {
         ) {
             const serverBadgeCount = parseInt(notificationData.badge, 10);
             if (!isNaN(serverBadgeCount) && serverBadgeCount > 0) {
-                console.log("[SW] Setting badge from server:", serverBadgeCount);
+                console.log(
+                    "[SW] Setting badge from server:",
+                    serverBadgeCount
+                );
                 await setBadgeCount(serverBadgeCount);
                 await updateAppBadge(serverBadgeCount);
             }

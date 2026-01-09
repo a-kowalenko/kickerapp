@@ -222,9 +222,12 @@ const DeviceCard = styled.div`
     border-radius: var(--border-radius-sm);
     border: 1px solid var(--primary-border-color);
     overflow: hidden;
+    opacity: ${(props) => (props.$disabled ? 0.6 : 1)};
+    transition: opacity 0.15s ease;
 
     ${(props) =>
         props.$isCurrentDevice &&
+        !props.$disabled &&
         `
         border-color: var(--primary-button-color);
         background-color: var(--tertiary-background-color);
@@ -257,7 +260,10 @@ const DeviceIcon = styled.div`
     height: 3.6rem;
     border-radius: 50%;
     background-color: var(--tertiary-background-color);
-    color: var(--primary-text-color);
+    color: ${(props) =>
+        props.$disabled
+            ? "var(--tertiary-text-color)"
+            : "var(--primary-text-color)"};
     flex-shrink: 0;
 
     & svg {
@@ -276,7 +282,10 @@ const DeviceInfo = styled.div`
 const DeviceName = styled.span`
     font-size: 1.3rem;
     font-weight: 500;
-    color: var(--primary-text-color);
+    color: ${(props) =>
+        props.$disabled
+            ? "var(--tertiary-text-color)"
+            : "var(--primary-text-color)"};
 `;
 
 const DeviceDetails = styled.span`
@@ -446,19 +455,19 @@ function parseDeviceInfo(deviceInfoJson) {
 
 function formatDeviceName(deviceInfo) {
     const parts = [];
-    
+
     // Device model if available (e.g., "iPhone", "Samsung Galaxy S21")
     if (deviceInfo.deviceModel) {
         parts.push(deviceInfo.deviceModel);
     }
-    
+
     // OS with version (e.g., "iOS 17.2", "Windows 10/11", "Android 14")
     let osStr = deviceInfo.os;
     if (deviceInfo.osVersion) {
         osStr += ` ${deviceInfo.osVersion}`;
     }
     parts.push(osStr);
-    
+
     // Browser with version (e.g., "Chrome 120", "Safari 17.2")
     let browserStr = deviceInfo.browser;
     if (deviceInfo.browserVersion) {
@@ -467,7 +476,7 @@ function formatDeviceName(deviceInfo) {
         browserStr += ` ${majorVersion}`;
     }
     parts.push(browserStr);
-    
+
     return parts.join(" • ");
 }
 
@@ -489,7 +498,8 @@ function NotificationSettings() {
     const {
         subscriptions,
         currentDeviceSubscription,
-        isEnabled,
+        globalNotificationsEnabled,
+        hasDevices,
         isLoading,
         isRequesting,
         isSendingTest,
@@ -497,7 +507,8 @@ function NotificationSettings() {
         testingSubscriptionId,
         notificationStatus,
         enableNotifications,
-        disableNotifications,
+        setGlobalNotificationsEnabled,
+        setDeviceEnabled,
         deleteSubscriptionById,
         updatePreferences,
         sendTestNotification,
@@ -534,28 +545,33 @@ function NotificationSettings() {
         });
     };
 
+    // Are notifications effectively enabled? (has devices AND global toggle on)
+    const isEffectivelyEnabled = hasDevices && globalNotificationsEnabled;
+
     return (
         <Container>
             <Section>
                 <SectionTitle>Push Notifications</SectionTitle>
 
-
-
                 {/* Status Card */}
                 <StatusCard>
-                    <StatusIcon $enabled={isEnabled}>
-                        {isEnabled ? <HiBell /> : <HiBellSlash />}
+                    <StatusIcon $enabled={isEffectivelyEnabled}>
+                        {isEffectivelyEnabled ? <HiBell /> : <HiBellSlash />}
                     </StatusIcon>
                     <StatusContent>
                         <StatusTitle>
-                            {isEnabled
+                            {!hasDevices
+                                ? "No devices registered"
+                                : globalNotificationsEnabled
                                 ? "Notifications enabled"
-                                : "Notifications disabled"}
+                                : "Notifications paused"}
                         </StatusTitle>
                         <StatusDescription>
-                            {isEnabled
-                                ? "You will receive push notifications based on your preferences below."
-                                : "Enable notifications to stay updated on mentions, chat messages, and team invites."}
+                            {!hasDevices
+                                ? "Add this device to receive push notifications."
+                                : globalNotificationsEnabled
+                                ? "You will receive push notifications based on your device settings below."
+                                : "Notifications are paused for all devices. Toggle on to resume."}
                         </StatusDescription>
                     </StatusContent>
                 </StatusCard>
@@ -587,45 +603,53 @@ function NotificationSettings() {
                     </WarningCard>
                 )}
 
-                {/* Master Toggle Switch */}
-                {!notificationStatus.supported ? (
-                    <InfoCard>
-                        <InfoText>
-                            Push notifications are not supported on this
-                            browser/device.
-                        </InfoText>
-                    </InfoCard>
-                ) : (
+                {/* Global Master Toggle - only show when there are devices */}
+                {hasDevices && notificationStatus.supported && (
                     <ToggleRow>
-                        {isLoading || isRequesting ? (
+                        {isLoading ? (
                             <SpinnerMini />
                         ) : (
                             <SwitchButton
-                                label={isEnabled ? "Enabled" : "Disabled"}
-                                value={isEnabled}
-                                onChange={(newValue) => {
-                                    if (newValue) {
-                                        enableNotifications();
-                                    } else {
-                                        disableNotifications();
-                                    }
-                                }}
-                                disabled={
-                                    isLoading ||
-                                    isRequesting ||
-                                    isBlocked ||
-                                    needsPWAForIOS
+                                label={
+                                    globalNotificationsEnabled
+                                        ? "All notifications enabled"
+                                        : "All notifications paused"
                                 }
+                                value={globalNotificationsEnabled}
+                                onChange={(newValue) => {
+                                    setGlobalNotificationsEnabled(newValue);
+                                }}
+                                disabled={isLoading}
                             />
                         )}
                     </ToggleRow>
                 )}
+
+                {/* Add Device Button - only show when current device is NOT registered */}
+                {notificationStatus.supported &&
+                    !needsPWAForIOS &&
+                    !isBlocked &&
+                    !currentDeviceSubscription && (
+                        <Button
+                            $variation="secondary"
+                            onClick={enableNotifications}
+                            disabled={isLoading || isRequesting}
+                        >
+                            {isRequesting ? (
+                                <>
+                                    <SpinnerMini /> Registering...
+                                </>
+                            ) : hasDevices ? (
+                                "Add This Device"
+                            ) : (
+                                "Enable Notifications"
+                            )}
+                        </Button>
+                    )}
             </Section>
 
-
-
             {/* Registered Devices */}
-            {isEnabled && subscriptions?.length > 0 && (
+            {hasDevices && subscriptions?.length > 0 && (
                 <Section>
                     <SectionTitle>Registered Devices</SectionTitle>
                     <DevicesList>
@@ -638,6 +662,8 @@ function NotificationSettings() {
                                 subscription.id;
                             const isTestingThisDevice =
                                 testingSubscriptionId === subscription.id;
+                            const isDeviceEnabled =
+                                subscription.enabled !== false;
 
                             const isExpanded =
                                 expandedDevices[subscription.id] || false;
@@ -646,6 +672,7 @@ function NotificationSettings() {
                                 <DeviceCard
                                     key={subscription.id}
                                     $isCurrentDevice={isCurrentDevice}
+                                    $disabled={!isDeviceEnabled}
                                 >
                                     <DeviceHeader
                                         onClick={() =>
@@ -654,7 +681,9 @@ function NotificationSettings() {
                                             )
                                         }
                                     >
-                                        <DeviceIcon>
+                                        <DeviceIcon
+                                            $disabled={!isDeviceEnabled}
+                                        >
                                             {deviceInfo.deviceType ===
                                             "desktop" ? (
                                                 <HiComputerDesktop />
@@ -663,8 +692,12 @@ function NotificationSettings() {
                                             )}
                                         </DeviceIcon>
                                         <DeviceInfo>
-                                            <DeviceName>
+                                            <DeviceName
+                                                $disabled={!isDeviceEnabled}
+                                            >
                                                 {formatDeviceName(deviceInfo)}
+                                                {!isDeviceEnabled &&
+                                                    " (paused)"}
                                             </DeviceName>
                                             <DeviceDetails>
                                                 Registered{" "}
@@ -677,7 +710,7 @@ function NotificationSettings() {
                                                     Current device
                                                 </CurrentDeviceBadge>
                                             )}
-                                            {!isExpanded && (
+                                            {!isExpanded && isDeviceEnabled && (
                                                 <PreferenceSummary>
                                                     <PreferenceBadge
                                                         $active={
@@ -719,7 +752,8 @@ function NotificationSettings() {
                                                 disabled={
                                                     isLoading ||
                                                     isSendingTest ||
-                                                    isSendingToAll
+                                                    isSendingToAll ||
+                                                    !isDeviceEnabled
                                                 }
                                                 title="Send test notification to this device"
                                             >
@@ -751,6 +785,34 @@ function NotificationSettings() {
                                     </DeviceHeader>
 
                                     <DevicePreferences $expanded={isExpanded}>
+                                        {/* Device Master Toggle */}
+                                        <DevicePreferenceItem
+                                            style={{
+                                                borderBottom:
+                                                    "1px solid var(--primary-border-color)",
+                                                paddingBottom: "1rem",
+                                                marginBottom: "0.4rem",
+                                            }}
+                                        >
+                                            <DevicePreferenceLabel
+                                                style={{ fontWeight: 600 }}
+                                            >
+                                                <HiBell />
+                                                Enable notifications
+                                            </DevicePreferenceLabel>
+                                            <SwitchButton
+                                                value={isDeviceEnabled}
+                                                onChange={(val) =>
+                                                    setDeviceEnabled({
+                                                        subscriptionId:
+                                                            subscription.id,
+                                                        enabled: val,
+                                                    })
+                                                }
+                                                disabled={isLoading}
+                                            />
+                                        </DevicePreferenceItem>
+
                                         <DevicePreferenceItem>
                                             <DevicePreferenceLabel>
                                                 <HiChatBubbleLeftRight />
@@ -767,7 +829,10 @@ function NotificationSettings() {
                                                         val
                                                     )
                                                 }
-                                                disabled={isLoading}
+                                                disabled={
+                                                    isLoading ||
+                                                    !isDeviceEnabled
+                                                }
                                             />
                                         </DevicePreferenceItem>
                                         <DevicePreferenceItem>
@@ -786,7 +851,10 @@ function NotificationSettings() {
                                                         val
                                                     )
                                                 }
-                                                disabled={isLoading}
+                                                disabled={
+                                                    isLoading ||
+                                                    !isDeviceEnabled
+                                                }
                                             />
                                         </DevicePreferenceItem>
                                         <DevicePreferenceItem>
@@ -805,7 +873,10 @@ function NotificationSettings() {
                                                         val
                                                     )
                                                 }
-                                                disabled={isLoading}
+                                                disabled={
+                                                    isLoading ||
+                                                    !isDeviceEnabled
+                                                }
                                             />
                                         </DevicePreferenceItem>
                                     </DevicePreferences>

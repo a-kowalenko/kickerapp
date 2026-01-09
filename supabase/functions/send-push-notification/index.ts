@@ -37,9 +37,15 @@ interface PushSubscription {
     id: number;
     fcm_token: string;
     user_id: string;
+    enabled: boolean;
     notify_all_chat: boolean;
     notify_mentions: boolean;
     notify_team_invites: boolean;
+}
+
+interface UserNotificationSettings {
+    user_id: string;
+    notifications_enabled: boolean;
 }
 
 interface FCMMessage {
@@ -204,6 +210,29 @@ async function getFCMAccessToken(serviceAccount: any): Promise<string> {
     return tokenData.access_token;
 }
 
+// Check if user has global notifications enabled
+async function isUserNotificationsEnabled(
+    supabase: any,
+    userId: string
+): Promise<boolean> {
+    const { data, error } = await supabase
+        .from("user_notification_settings")
+        .select("notifications_enabled")
+        .eq("user_id", userId)
+        .single();
+
+    if (error) {
+        // If no settings exist, default to enabled
+        if (error.code === "PGRST116") {
+            return true;
+        }
+        console.error("Error checking user notification settings:", error);
+        return true; // Default to enabled on error
+    }
+
+    return data?.notifications_enabled !== false;
+}
+
 // Send FCM notification
 async function sendFCMNotification(
     accessToken: string,
@@ -269,13 +298,26 @@ async function handleChatAllNotification(
         .single();
     const senderName = senderData?.name || "Someone";
 
-    // Get FCM tokens for this user (only where notify_all_chat is enabled)
+    // Check if user has global notifications enabled
+    const globalEnabled = await isUserNotificationsEnabled(supabase, userId);
+    if (!globalEnabled) {
+        return new Response(
+            JSON.stringify({
+                sent: 0,
+                reason: "global_notifications_disabled",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM tokens for this user (only where notify_all_chat is enabled AND device is enabled)
     const { data: subscriptions, error: subError } = await supabase
         .from("push_subscriptions")
         .select(
-            "id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites"
+            "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
         )
         .eq("user_id", userId)
+        .eq("enabled", true)
         .eq("notify_all_chat", true);
 
     if (subError) {
@@ -463,13 +505,29 @@ async function handleTeamInvitation(
 
     const invitedUserId = invitedPlayerData.user_id;
 
-    // Get FCM tokens for invited user (with preferences)
+    // Check if user has global notifications enabled
+    const globalEnabled = await isUserNotificationsEnabled(
+        supabase,
+        invitedUserId
+    );
+    if (!globalEnabled) {
+        return new Response(
+            JSON.stringify({
+                sent: 0,
+                reason: "global_notifications_disabled",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM tokens for invited user (with preferences, only enabled devices)
     const { data: subscriptions, error: subError } = await supabase
         .from("push_subscriptions")
         .select(
-            "id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites"
+            "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
         )
-        .eq("user_id", invitedUserId);
+        .eq("user_id", invitedUserId)
+        .eq("enabled", true);
 
     if (subError) {
         console.error("Error fetching subscriptions:", subError);
@@ -786,14 +844,34 @@ serve(async (req) => {
             });
         }
 
+        // Filter out users who have global notifications disabled
+        const usersWithGlobalEnabled: string[] = [];
+        for (const userId of userIdsToNotify) {
+            const globalEnabled = await isUserNotificationsEnabled(
+                supabase,
+                userId
+            );
+            if (globalEnabled) {
+                usersWithGlobalEnabled.push(userId);
+            }
+        }
+
+        if (usersWithGlobalEnabled.length === 0) {
+            return new Response(
+                JSON.stringify({ sent: 0, reason: "all_users_disabled" }),
+                { headers: { "Content-Type": "application/json" } }
+            );
+        }
+
         // Get FCM tokens for these users (using same schema as source data)
-        // Include preference columns for filtering
+        // Include preference columns for filtering, only enabled devices
         const { data: subscriptions, error: subError } = await supabase
             .from("push_subscriptions")
             .select(
-                "id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites"
+                "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
             )
-            .in("user_id", userIdsToNotify);
+            .in("user_id", usersWithGlobalEnabled)
+            .eq("enabled", true);
 
         if (subError) {
             console.error("Error fetching subscriptions:", subError);
@@ -883,7 +961,9 @@ serve(async (req) => {
                     title,
                     body: notificationBody,
                     badge: badgeCount.toString(),
-                    tag: `${notificationType}-${matchId || "general"}-${Date.now()}`,
+                    tag: `${notificationType}-${
+                        matchId || "general"
+                    }-${Date.now()}`,
                     ...(matchId && { matchId: matchId.toString() }),
                 },
                 webpush: {
@@ -895,7 +975,9 @@ serve(async (req) => {
                         body: notificationBody,
                         icon: "/android-chrome-192x192.png",
                         badge: "/favicon-32x32.png",
-                        tag: `${notificationType}-${matchId || "general"}-${Date.now()}`,
+                        tag: `${notificationType}-${
+                            matchId || "general"
+                        }-${Date.now()}`,
                         renotify: true,
                         silent: false,
                         vibrate: [200, 100, 200],

@@ -13,6 +13,7 @@ import { vapidKey } from "../services/firebaseConfig";
 import toast from "react-hot-toast";
 
 const PUSH_SUBSCRIPTIONS_TABLE = "push_subscriptions";
+const USER_NOTIFICATION_SETTINGS_TABLE = "user_notification_settings";
 
 /**
  * Hook to manage FCM token and push notification subscriptions
@@ -25,27 +26,123 @@ export function useFCMToken(userId) {
     // Get notification status
     const notificationStatus = getNotificationStatus();
 
+    // Query global notification settings for user
+    const { data: globalSettings, isLoading: isLoadingGlobalSettings } =
+        useQuery({
+            queryKey: ["globalNotificationSettings", userId],
+            queryFn: async () => {
+                if (!userId) return { notifications_enabled: true };
+
+                const { data, error } = await supabase
+                    .schema(databaseSchema)
+                    .from(USER_NOTIFICATION_SETTINGS_TABLE)
+                    .select("*")
+                    .eq("user_id", userId)
+                    .maybeSingle(); // Use maybeSingle to return null instead of error when no row exists
+
+                if (error) {
+                    console.error(
+                        "Error fetching global notification settings:",
+                        error
+                    );
+                    return { notifications_enabled: true };
+                }
+
+                // If no settings exist yet, default to enabled
+                if (!data) {
+                    return { notifications_enabled: true };
+                }
+
+                return data;
+            },
+            enabled: !!userId,
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        });
+
     // Query existing subscriptions for this user (can have multiple devices)
-    const { data: subscriptions, isLoading: isLoadingSubscription } = useQuery({
-        queryKey: ["pushSubscription", userId],
-        queryFn: async () => {
-            if (!userId) return [];
+    const { data: rawSubscriptions, isLoading: isLoadingSubscription } =
+        useQuery({
+            queryKey: ["pushSubscription", userId],
+            queryFn: async () => {
+                if (!userId) return [];
 
-            const { data, error } = await supabase
-                .schema(databaseSchema)
-                .from(PUSH_SUBSCRIPTIONS_TABLE)
-                .select("*")
-                .eq("user_id", userId);
+                const { data, error } = await supabase
+                    .schema(databaseSchema)
+                    .from(PUSH_SUBSCRIPTIONS_TABLE)
+                    .select("*")
+                    .eq("user_id", userId);
 
-            if (error) {
-                console.error("Error fetching push subscription:", error);
-                return [];
-            }
-            return data || [];
-        },
-        enabled: !!userId,
-        staleTime: 1000 * 60 * 5, // 5 minutes
-    });
+                if (error) {
+                    console.error("Error fetching push subscription:", error);
+                    return [];
+                }
+                return data || [];
+            },
+            enabled: !!userId,
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        });
+
+    // Sort subscriptions client-side by id to maintain stable order
+    const subscriptions = useMemo(() => {
+        if (!rawSubscriptions) return [];
+        return [...rawSubscriptions].sort((a, b) => a.id - b.id);
+    }, [rawSubscriptions]);
+
+    // Realtime subscription for push_subscriptions changes
+    useEffect(() => {
+        if (!userId) return;
+
+        const channel = supabase
+            .channel(`push_subscriptions_${userId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: databaseSchema,
+                    table: PUSH_SUBSCRIPTIONS_TABLE,
+                    filter: `user_id=eq.${userId}`,
+                },
+                (payload) => {
+                    console.log("[useFCMToken] Realtime update:", payload);
+                    // Invalidate queries to refetch
+                    queryClient.invalidateQueries(["pushSubscription", userId]);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userId, queryClient]);
+
+    // Realtime subscription for user_notification_settings changes
+    useEffect(() => {
+        if (!userId) return;
+
+        const channel = supabase
+            .channel(`notification_settings_${userId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: databaseSchema,
+                    table: USER_NOTIFICATION_SETTINGS_TABLE,
+                    filter: `user_id=eq.${userId}`,
+                },
+                (payload) => {
+                    console.log("[useFCMToken] Global settings update:", payload);
+                    queryClient.invalidateQueries([
+                        "globalNotificationSettings",
+                        userId,
+                    ]);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userId, queryClient]);
 
     // Get current device's subscription
     const currentDeviceSubscription = useMemo(() => {
@@ -80,7 +177,7 @@ export function useFCMToken(userId) {
         },
     });
 
-    // Mutation to delete all subscriptions for user
+    // Mutation to delete all subscriptions for user (legacy - not used anymore)
     const { mutate: deleteSubscription, isLoading: isDeleting } = useMutation({
         mutationFn: async () => {
             if (!userId) throw new Error("User not authenticated");
@@ -95,13 +192,77 @@ export function useFCMToken(userId) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries(["pushSubscription", userId]);
-            toast.success("Notifications disabled");
+            toast.success("All devices removed");
         },
         onError: (error) => {
             console.error("Error deleting subscription:", error);
-            toast.error("Failed to disable notifications");
+            toast.error("Failed to remove devices");
         },
     });
+
+    // Mutation to toggle global notifications (master toggle)
+    const {
+        mutate: setGlobalNotificationsEnabled,
+        isLoading: isTogglingGlobal,
+    } = useMutation({
+        mutationFn: async (enabled) => {
+            if (!userId) throw new Error("User not authenticated");
+
+            const { error } = await supabase
+                .schema(databaseSchema)
+                .rpc("set_global_notifications_enabled", {
+                    p_enabled: enabled,
+                });
+
+            if (error) throw error;
+            return enabled;
+        },
+        onSuccess: (enabled) => {
+            queryClient.invalidateQueries([
+                "globalNotificationSettings",
+                userId,
+            ]);
+            toast.success(
+                enabled
+                    ? "Notifications enabled"
+                    : "Notifications disabled for all devices"
+            );
+        },
+        onError: (error) => {
+            console.error("Error toggling global notifications:", error);
+            toast.error("Failed to update notification settings");
+        },
+    });
+
+    // Mutation to toggle device-specific notifications
+    const { mutate: setDeviceEnabled, isLoading: isTogglingDevice } =
+        useMutation({
+            mutationFn: async ({ subscriptionId, enabled }) => {
+                if (!userId) throw new Error("User not authenticated");
+
+                const { error } = await supabase
+                    .schema(databaseSchema)
+                    .rpc("set_device_notifications_enabled", {
+                        p_subscription_id: subscriptionId,
+                        p_enabled: enabled,
+                    });
+
+                if (error) throw error;
+                return { subscriptionId, enabled };
+            },
+            onSuccess: ({ enabled }) => {
+                queryClient.invalidateQueries(["pushSubscription", userId]);
+                toast.success(
+                    enabled
+                        ? "Device notifications enabled"
+                        : "Device notifications disabled"
+                );
+            },
+            onError: (error) => {
+                console.error("Error toggling device notifications:", error);
+                toast.error("Failed to update device settings");
+            },
+        });
 
     // Mutation to delete a specific subscription by ID
     const { mutate: deleteSubscriptionById, isLoading: isDeletingById } =
@@ -301,9 +462,9 @@ export function useFCMToken(userId) {
                 // Map NT version to Windows version
                 const versionMap = {
                     "10.0": "10/11",
-                    "6.3": "8.1",
-                    "6.2": "8",
-                    "6.1": "7",
+                    6.3: "8.1",
+                    6.2: "8",
+                    6.1: "7",
                 };
                 osVersion = versionMap[ntVersion] || ntVersion;
             }
@@ -412,10 +573,10 @@ export function useFCMToken(userId) {
         }
     }, [userId, notificationStatus.supported, saveToken, getDeviceInfo]);
 
-    // Disable notifications
+    // Disable notifications (legacy - now use setGlobalNotificationsEnabled)
     const disableNotifications = useCallback(() => {
-        deleteSubscription();
-    }, [deleteSubscription]);
+        setGlobalNotificationsEnabled(false);
+    }, [setGlobalNotificationsEnabled]);
 
     // Get current FCM token for device identification (doesn't save, just identifies)
     useEffect(() => {
@@ -538,13 +699,19 @@ export function useFCMToken(userId) {
         // State
         subscriptions,
         currentDeviceSubscription,
+        globalNotificationsEnabled:
+            globalSettings?.notifications_enabled ?? true,
         isEnabled: subscriptions?.length > 0,
+        hasDevices: subscriptions?.length > 0,
         isLoading:
             isLoadingSubscription ||
+            isLoadingGlobalSettings ||
             isSaving ||
             isDeleting ||
             isDeletingById ||
-            isUpdatingPreferences,
+            isUpdatingPreferences ||
+            isTogglingGlobal ||
+            isTogglingDevice,
         isRequesting,
         isSendingTest,
         isSendingToAll,
@@ -554,6 +721,8 @@ export function useFCMToken(userId) {
         // Actions
         enableNotifications,
         disableNotifications,
+        setGlobalNotificationsEnabled,
+        setDeviceEnabled,
         deleteSubscriptionById,
         updatePreferences,
         sendTestNotification,
