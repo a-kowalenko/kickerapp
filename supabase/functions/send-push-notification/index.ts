@@ -265,6 +265,388 @@ async function sendFCMNotification(
     }
 }
 
+// Handle mention notifications (chat, comment) from mention_notifications table
+async function handleMentionNotification(
+    webhook: WebhookPayload,
+    databaseSchema: string
+): Promise<Response> {
+    const { record } = webhook;
+    const userId = record.user_id!;
+    const senderPlayerId = record.sender_player_id!;
+    const kickerId = record.kicker_id!;
+    const contentPreview = record.content_preview || "";
+    const notificationType = record.type as string; // "chat" or "comment"
+    const matchId = record.match_id;
+    const sourceId = record.source_id;
+
+    // Get service account from environment
+    const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT not configured");
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SECRET_API_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        db: { schema: databaseSchema },
+    });
+
+    // Get sender name
+    const { data: senderData } = await supabase
+        .from("player")
+        .select("name")
+        .eq("id", senderPlayerId)
+        .single();
+    const senderName = senderData?.name || "Someone";
+
+    // Check if user has global notifications enabled
+    const globalEnabled = await isUserNotificationsEnabled(supabase, userId);
+    if (!globalEnabled) {
+        return new Response(
+            JSON.stringify({
+                sent: 0,
+                reason: "global_notifications_disabled",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM tokens for this user (only where notify_mentions is enabled AND device is enabled)
+    const { data: subscriptions, error: subError } = await supabase
+        .from("push_subscriptions")
+        .select(
+            "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
+        )
+        .eq("user_id", userId)
+        .eq("enabled", true)
+        .eq("notify_mentions", true);
+
+    if (subError) {
+        console.error("Error fetching subscriptions:", subError);
+        throw subError;
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+        return new Response(
+            JSON.stringify({ sent: 0, reason: "no_subscriptions_or_disabled" }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM access token
+    const accessToken = await getFCMAccessToken(serviceAccount);
+
+    // Build notification content based on type
+    const isComment = notificationType === "comment";
+    const title = isComment
+        ? `${senderName} mentioned you in a comment`
+        : `${senderName} mentioned you in chat`;
+    const notificationBody = contentPreview;
+    const url = isComment && matchId ? `/match/${matchId}` : "/home";
+    const tag = isComment
+        ? `comment-mention-${sourceId}`
+        : `chat-mention-${sourceId}`;
+
+    // Send notifications
+    let sentCount = 0;
+    const invalidTokens: string[] = [];
+
+    for (const sub of subscriptions as PushSubscription[]) {
+        // Get actual combined unread count for this user
+        let badgeCount = 1;
+        try {
+            const { data: unreadData } = await supabase.rpc(
+                "get_combined_unread_count_for_user",
+                { p_user_id: sub.user_id }
+            );
+            if (unreadData !== null && unreadData !== undefined) {
+                badgeCount = Math.max(1, Number(unreadData) + 1);
+            }
+        } catch (badgeError) {
+            console.error("Error getting unread count for badge:", badgeError);
+        }
+
+        const message: FCMMessage = {
+            token: sub.fcm_token,
+            notification: {
+                title,
+                body: notificationBody,
+            },
+            data: {
+                type: notificationType,
+                kickerId: kickerId.toString(),
+                matchId: matchId ? matchId.toString() : "",
+                sourceId: sourceId ? sourceId.toString() : "",
+                url,
+                title,
+                body: notificationBody,
+                badge: badgeCount.toString(),
+            },
+            webpush: {
+                headers: {
+                    Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag,
+                    renotify: true,
+                    silent: false,
+                    vibrate: [200, 100, 200],
+                },
+                fcm_options: {
+                    link: url,
+                },
+            },
+            apns: {
+                headers: {
+                    "apns-priority": "10",
+                },
+                payload: {
+                    aps: {
+                        alert: {
+                            title,
+                            body: notificationBody,
+                        },
+                        sound: "default",
+                        badge: badgeCount,
+                        "mutable-content": 1,
+                    },
+                },
+            },
+        };
+
+        const success = await sendFCMNotification(
+            accessToken,
+            serviceAccount.project_id,
+            message
+        );
+
+        if (success) {
+            sentCount++;
+        } else {
+            invalidTokens.push(sub.fcm_token);
+        }
+    }
+
+    // Clean up invalid tokens
+    if (invalidTokens.length > 0) {
+        console.log(`Removing ${invalidTokens.length} invalid tokens`);
+        await supabase
+            .from("push_subscriptions")
+            .delete()
+            .in("fcm_token", invalidTokens);
+    }
+
+    console.log(
+        `Successfully sent ${sentCount} ${notificationType} mention notifications`
+    );
+
+    return new Response(
+        JSON.stringify({
+            sent: sentCount,
+            total: subscriptions.length,
+            invalidRemoved: invalidTokens.length,
+            type: notificationType,
+        }),
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+    );
+}
+
+// Handle team_invite notifications from mention_notifications table
+async function handleTeamInviteFromMentionNotifications(
+    webhook: WebhookPayload,
+    databaseSchema: string
+): Promise<Response> {
+    const { record } = webhook;
+    const userId = record.user_id!;
+    const senderPlayerId = record.sender_player_id!;
+    const kickerId = record.kicker_id!;
+    const contentPreview = record.content_preview || "";
+
+    // Get service account from environment
+    const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT not configured");
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SECRET_API_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        db: { schema: databaseSchema },
+    });
+
+    // Get sender/team name
+    const { data: senderData } = await supabase
+        .from("player")
+        .select("name")
+        .eq("id", senderPlayerId)
+        .single();
+    const senderName = senderData?.name || "Someone";
+
+    // Check if user has global notifications enabled
+    const globalEnabled = await isUserNotificationsEnabled(supabase, userId);
+    if (!globalEnabled) {
+        return new Response(
+            JSON.stringify({
+                sent: 0,
+                reason: "global_notifications_disabled",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM tokens for this user (only where notify_team_invites is enabled AND device is enabled)
+    const { data: subscriptions, error: subError } = await supabase
+        .from("push_subscriptions")
+        .select(
+            "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
+        )
+        .eq("user_id", userId)
+        .eq("enabled", true)
+        .eq("notify_team_invites", true);
+
+    if (subError) {
+        console.error("Error fetching subscriptions:", subError);
+        throw subError;
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+        return new Response(
+            JSON.stringify({ sent: 0, reason: "no_subscriptions_or_disabled" }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM access token
+    const accessToken = await getFCMAccessToken(serviceAccount);
+
+    // Build notification content
+    const title = "Team Invitation";
+    const notificationBody =
+        contentPreview || `${senderName} invited you to join their team`;
+    const url = "/home";
+
+    // Send notifications
+    let sentCount = 0;
+    const invalidTokens: string[] = [];
+
+    for (const sub of subscriptions as PushSubscription[]) {
+        // Get actual combined unread count for this user
+        let badgeCount = 1;
+        try {
+            const { data: unreadData } = await supabase.rpc(
+                "get_combined_unread_count_for_user",
+                { p_user_id: sub.user_id }
+            );
+            if (unreadData !== null && unreadData !== undefined) {
+                badgeCount = Math.max(1, Number(unreadData) + 1);
+            }
+        } catch (badgeError) {
+            console.error("Error getting unread count for badge:", badgeError);
+        }
+
+        const message: FCMMessage = {
+            token: sub.fcm_token,
+            notification: {
+                title,
+                body: notificationBody,
+            },
+            data: {
+                type: "team_invite",
+                kickerId: kickerId.toString(),
+                url,
+                title,
+                body: notificationBody,
+                badge: badgeCount.toString(),
+            },
+            webpush: {
+                headers: {
+                    Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: `team-invite-${Date.now()}`,
+                    renotify: true,
+                    silent: false,
+                    vibrate: [200, 100, 200],
+                },
+                fcm_options: {
+                    link: url,
+                },
+            },
+            apns: {
+                headers: {
+                    "apns-priority": "10",
+                },
+                payload: {
+                    aps: {
+                        alert: {
+                            title,
+                            body: notificationBody,
+                        },
+                        sound: "default",
+                        badge: badgeCount,
+                        "mutable-content": 1,
+                    },
+                },
+            },
+        };
+
+        const success = await sendFCMNotification(
+            accessToken,
+            serviceAccount.project_id,
+            message
+        );
+
+        if (success) {
+            sentCount++;
+        } else {
+            invalidTokens.push(sub.fcm_token);
+        }
+    }
+
+    // Clean up invalid tokens
+    if (invalidTokens.length > 0) {
+        console.log(`Removing ${invalidTokens.length} invalid tokens`);
+        await supabase
+            .from("push_subscriptions")
+            .delete()
+            .in("fcm_token", invalidTokens);
+    }
+
+    console.log(`Successfully sent ${sentCount} team invite notifications`);
+
+    return new Response(
+        JSON.stringify({
+            sent: sentCount,
+            total: subscriptions.length,
+            invalidRemoved: invalidTokens.length,
+            type: "team_invite",
+        }),
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+    );
+}
+
 // Handle chat_all push notifications (triggered from mention_notifications table)
 async function handleChatAllNotification(
     webhook: WebhookPayload,
@@ -716,16 +1098,38 @@ serve(async (req) => {
                 return await handleTeamInvitation(webhook, databaseSchema);
             }
 
-            // Handle mention_notifications table for chat_all type
+            // Handle mention_notifications table - route to appropriate handler based on type
             if (webhook.table === "mention_notifications") {
-                // Only process chat_all type from mention_notifications
-                if (webhook.record.type !== "chat_all") {
+                const notifType = webhook.record.type;
+                console.log(
+                    `Processing mention_notifications with type: ${notifType}`
+                );
+
+                if (notifType === "chat_all") {
+                    return await handleChatAllNotification(
+                        webhook,
+                        databaseSchema
+                    );
+                } else if (notifType === "chat" || notifType === "comment") {
+                    return await handleMentionNotification(
+                        webhook,
+                        databaseSchema
+                    );
+                } else if (notifType === "team_invite") {
+                    return await handleTeamInviteFromMentionNotifications(
+                        webhook,
+                        databaseSchema
+                    );
+                } else {
                     return new Response(
-                        JSON.stringify({ sent: 0, reason: "not_chat_all" }),
+                        JSON.stringify({
+                            sent: 0,
+                            reason: "unknown_notification_type",
+                            type: notifType,
+                        }),
                         { headers: { "Content-Type": "application/json" } }
                     );
                 }
-                return await handleChatAllNotification(webhook, databaseSchema);
             }
 
             content = webhook.record.content!;

@@ -88,7 +88,6 @@ GRANT EXECUTE ON FUNCTION kopecht.update_notification_preferences TO authenticat
 GRANT EXECUTE ON FUNCTION kopecht.delete_push_subscription TO authenticated;
 
 
-
 -- Migration: Add chat_all notification type for "All Chat Messages" push notifications
 -- This creates notifications for ALL chat messages (not just mentions) for users who have enabled this option
 
@@ -167,7 +166,6 @@ CREATE TRIGGER trigger_chat_all
 
 -- 4. Update get_mention_notifications to support filtering by type (optional)
 -- The existing function already returns all types, frontend will filter if needed
-
 
 
 -- Migration 013: Exclude chat_all notifications from notification bell
@@ -276,6 +274,8 @@ $$;
 GRANT EXECUTE ON FUNCTION kopecht.get_mention_notifications(INT, INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION kopecht.get_unread_mention_count() TO authenticated;
 
+
+
 -- Fix upsert_fcm_token to allow multiple devices of the same type
 -- Previously it deleted all tokens with the same deviceType, now it uses a unique device fingerprint
 
@@ -337,3 +337,282 @@ $$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION kopecht.upsert_fcm_token(TEXT, TEXT) TO authenticated;
+
+
+
+-- Migration: Add enabled toggles for push notifications
+-- 1. Global master toggle per user (notifications_enabled on user level)
+-- 2. Per-device enabled toggle (enabled on subscription level)
+-- This allows disabling notifications without removing devices
+
+SET search_path TO kopecht;
+
+-- 1. Add enabled column to push_subscriptions (per-device toggle)
+ALTER TABLE kopecht.push_subscriptions
+ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;
+
+-- 2. Create a user_notification_settings table for global settings
+CREATE TABLE IF NOT EXISTS kopecht.user_notification_settings (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    notifications_enabled BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on user_notification_settings
+ALTER TABLE kopecht.user_notification_settings ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for user_notification_settings
+CREATE POLICY "Users can view their own notification settings"
+    ON kopecht.user_notification_settings FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own notification settings"
+    ON kopecht.user_notification_settings FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own notification settings"
+    ON kopecht.user_notification_settings FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- 3. RPC to toggle global notifications (master toggle)
+CREATE OR REPLACE FUNCTION kopecht.set_global_notifications_enabled(
+    p_enabled BOOLEAN
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Upsert the user's notification settings
+    INSERT INTO kopecht.user_notification_settings (user_id, notifications_enabled, updated_at)
+    VALUES (v_user_id, p_enabled, NOW())
+    ON CONFLICT (user_id) 
+    DO UPDATE SET 
+        notifications_enabled = p_enabled,
+        updated_at = NOW();
+    
+    RETURN TRUE;
+END;
+$$;
+
+-- 4. RPC to toggle device-specific notifications
+CREATE OR REPLACE FUNCTION kopecht.set_device_notifications_enabled(
+    p_subscription_id BIGINT,
+    p_enabled BOOLEAN
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Get the user_id of the subscription
+    SELECT user_id INTO v_user_id
+    FROM kopecht.push_subscriptions
+    WHERE id = p_subscription_id;
+    
+    -- Check if subscription exists and belongs to current user
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Subscription not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to update this subscription';
+    END IF;
+    
+    -- Update the enabled status
+    UPDATE kopecht.push_subscriptions
+    SET 
+        enabled = p_enabled,
+        updated_at = NOW()
+    WHERE id = p_subscription_id;
+    
+    RETURN TRUE;
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION kopecht.set_global_notifications_enabled(BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION kopecht.set_device_notifications_enabled(BIGINT, BOOLEAN) TO authenticated;
+
+
+
+-- Migration 014: Create trigger to send push notifications on mention_notifications INSERT (kopecht)
+-- This trigger calls the send-push-notification edge function via pg_net
+
+-- Create the trigger function that calls the edge function via pg_net
+CREATE OR REPLACE FUNCTION kopecht.trigger_send_push_notification()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_supabase_url TEXT;
+    v_service_role_key TEXT;
+    v_request_id BIGINT;
+BEGIN
+    -- Get Supabase URL and service role key from vault
+    SELECT decrypted_secret INTO v_supabase_url 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'supabase_url';
+    
+    SELECT decrypted_secret INTO v_service_role_key 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'service_role_key';
+    
+    -- Only send push if we have the secrets configured
+    IF v_supabase_url IS NOT NULL AND v_service_role_key IS NOT NULL THEN
+        SELECT net.http_post(
+            url := v_supabase_url || '/functions/v1/send-push-notification',
+            headers := jsonb_build_object(
+                'Content-Type', 'application/json',
+                'Authorization', 'Bearer ' || v_service_role_key
+            ),
+            body := jsonb_build_object(
+                'type', 'INSERT',
+                'table', 'mention_notifications',
+                'schema', 'kopecht',
+                'record', jsonb_build_object(
+                    'id', NEW.id,
+                    'user_id', NEW.user_id,
+                    'type', NEW.type,
+                    'source_id', NEW.source_id,
+                    'match_id', NEW.match_id,
+                    'kicker_id', NEW.kicker_id,
+                    'sender_player_id', NEW.sender_player_id,
+                    'content_preview', NEW.content_preview,
+                    'team_invitation_id', NEW.team_invitation_id,
+                    'is_read', NEW.is_read,
+                    'created_at', NEW.created_at
+                )
+            )
+        ) INTO v_request_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+-- Create trigger on mention_notifications table
+DROP TRIGGER IF EXISTS trigger_send_push_notification ON kopecht.mention_notifications;
+CREATE TRIGGER trigger_send_push_notification
+    AFTER INSERT ON kopecht.mention_notifications
+    FOR EACH ROW
+    EXECUTE FUNCTION kopecht.trigger_send_push_notification();
+
+
+-- Migration 015: Recreate missing triggers for mentions and team invites (kopecht)
+-- The trigger FUNCTIONS exist but the TRIGGERS on tables are missing
+
+-- 1. Recreate trigger on chat_messages for @mentions
+DROP TRIGGER IF EXISTS trigger_chat_mentions ON kopecht.chat_messages;
+CREATE TRIGGER trigger_chat_mentions
+    AFTER INSERT ON kopecht.chat_messages
+    FOR EACH ROW
+    EXECUTE FUNCTION kopecht.trigger_create_chat_mention_notifications();
+
+-- 2. Recreate trigger on match_comments for @mentions
+DROP TRIGGER IF EXISTS trigger_comment_mentions ON kopecht.match_comments;
+CREATE TRIGGER trigger_comment_mentions
+    AFTER INSERT ON kopecht.match_comments
+    FOR EACH ROW
+    EXECUTE FUNCTION kopecht.trigger_create_comment_mention_notifications();
+
+-- 3. Create trigger function for team_invitations to insert into mention_notifications
+CREATE OR REPLACE FUNCTION kopecht.trigger_create_team_invite_notification()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_invited_user_id UUID;
+    v_inviting_player_name TEXT;
+    v_team_name TEXT;
+BEGIN
+    -- Only process pending invitations
+    IF NEW.status != 'pending' THEN
+        RETURN NEW;
+    END IF;
+
+    -- Get the user_id of the invited player
+    SELECT user_id INTO v_invited_user_id
+    FROM kopecht.player
+    WHERE id = NEW.invited_player_id;
+
+    -- Skip if invited player has no user_id
+    IF v_invited_user_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Get inviting player name
+    SELECT name INTO v_inviting_player_name
+    FROM kopecht.player
+    WHERE id = NEW.inviting_player_id;
+
+    -- Get team name (table is called "teams" not "team")
+    SELECT name INTO v_team_name
+    FROM kopecht.teams
+    WHERE id = NEW.team_id;
+
+    -- Insert notification
+    INSERT INTO kopecht.mention_notifications (
+        user_id, type, source_id, kicker_id,
+        sender_player_id, content_preview, team_invitation_id, is_read, created_at
+    )
+    VALUES (
+        v_invited_user_id,
+        'team_invite',
+        NEW.id,
+        (SELECT kicker_id FROM kopecht.player WHERE id = NEW.inviting_player_id),
+        NEW.inviting_player_id,
+        v_inviting_player_name || ' invited you to join team "' || v_team_name || '"',
+        NEW.id,
+        FALSE,
+        NOW()
+    )
+    ON CONFLICT DO NOTHING;
+
+    RETURN NEW;
+END;
+$$;
+
+-- 4. Create trigger on team_invitations
+DROP TRIGGER IF EXISTS trigger_team_invite_notification ON kopecht.team_invitations;
+CREATE TRIGGER trigger_team_invite_notification
+    AFTER INSERT ON kopecht.team_invitations
+    FOR EACH ROW
+    EXECUTE FUNCTION kopecht.trigger_create_team_invite_notification();
+
+
+-- Migration 016: Fix team-related foreign key constraints (kopecht)
+-- Add ON DELETE CASCADE so related records are deleted properly
+
+-- 1. Fix mention_notifications -> team_invitations constraint
+ALTER TABLE kopecht.mention_notifications 
+DROP CONSTRAINT IF EXISTS mention_notifications_team_invitation_id_fkey;
+
+ALTER TABLE kopecht.mention_notifications
+ADD CONSTRAINT mention_notifications_team_invitation_id_fkey 
+FOREIGN KEY (team_invitation_id) 
+REFERENCES kopecht.team_invitations(id) 
+ON DELETE CASCADE;
+
+-- 2. Fix team_invitations -> teams constraint (so invitations are deleted when team is deleted)
+ALTER TABLE kopecht.team_invitations 
+DROP CONSTRAINT IF EXISTS team_invitations_team_id_fkey;
+
+ALTER TABLE kopecht.team_invitations
+ADD CONSTRAINT team_invitations_team_id_fkey 
+FOREIGN KEY (team_id) 
+REFERENCES kopecht.teams(id) 
+ON DELETE CASCADE;
