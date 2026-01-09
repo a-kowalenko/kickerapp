@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import supabase, { databaseSchema } from "../services/supabase";
+import supabase, { databaseSchema, supabaseUrl } from "../services/supabase";
 import {
     requestNotificationPermission,
     getCurrentToken,
@@ -13,6 +13,7 @@ import { vapidKey } from "../services/firebaseConfig";
 import toast from "react-hot-toast";
 
 const PUSH_SUBSCRIPTIONS_TABLE = "push_subscriptions";
+const USER_NOTIFICATION_SETTINGS_TABLE = "user_notification_settings";
 
 /**
  * Hook to manage FCM token and push notification subscriptions
@@ -20,31 +21,139 @@ const PUSH_SUBSCRIPTIONS_TABLE = "push_subscriptions";
 export function useFCMToken(userId) {
     const queryClient = useQueryClient();
     const [isRequesting, setIsRequesting] = useState(false);
+    const [currentFcmToken, setCurrentFcmToken] = useState(null);
 
     // Get notification status
     const notificationStatus = getNotificationStatus();
 
+    // Query global notification settings for user
+    const { data: globalSettings, isLoading: isLoadingGlobalSettings } =
+        useQuery({
+            queryKey: ["globalNotificationSettings", userId],
+            queryFn: async () => {
+                if (!userId) return { notifications_enabled: true };
+
+                const { data, error } = await supabase
+                    .schema(databaseSchema)
+                    .from(USER_NOTIFICATION_SETTINGS_TABLE)
+                    .select("*")
+                    .eq("user_id", userId)
+                    .maybeSingle(); // Use maybeSingle to return null instead of error when no row exists
+
+                if (error) {
+                    console.error(
+                        "Error fetching global notification settings:",
+                        error
+                    );
+                    return { notifications_enabled: true };
+                }
+
+                // If no settings exist yet, default to enabled
+                if (!data) {
+                    return { notifications_enabled: true };
+                }
+
+                return data;
+            },
+            enabled: !!userId,
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        });
+
     // Query existing subscriptions for this user (can have multiple devices)
-    const { data: subscriptions, isLoading: isLoadingSubscription } = useQuery({
-        queryKey: ["pushSubscription", userId],
-        queryFn: async () => {
-            if (!userId) return [];
+    const { data: rawSubscriptions, isLoading: isLoadingSubscription } =
+        useQuery({
+            queryKey: ["pushSubscription", userId],
+            queryFn: async () => {
+                if (!userId) return [];
 
-            const { data, error } = await supabase
-                .schema(databaseSchema)
-                .from(PUSH_SUBSCRIPTIONS_TABLE)
-                .select("*")
-                .eq("user_id", userId);
+                const { data, error } = await supabase
+                    .schema(databaseSchema)
+                    .from(PUSH_SUBSCRIPTIONS_TABLE)
+                    .select("*")
+                    .eq("user_id", userId);
 
-            if (error) {
-                console.error("Error fetching push subscription:", error);
-                return [];
-            }
-            return data || [];
-        },
-        enabled: !!userId,
-        staleTime: 1000 * 60 * 5, // 5 minutes
-    });
+                if (error) {
+                    console.error("Error fetching push subscription:", error);
+                    return [];
+                }
+                return data || [];
+            },
+            enabled: !!userId,
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        });
+
+    // Sort subscriptions client-side by id to maintain stable order
+    const subscriptions = useMemo(() => {
+        if (!rawSubscriptions) return [];
+        return [...rawSubscriptions].sort((a, b) => a.id - b.id);
+    }, [rawSubscriptions]);
+
+    // Realtime subscription for push_subscriptions changes
+    useEffect(() => {
+        if (!userId) return;
+
+        const channel = supabase
+            .channel(`push_subscriptions_${userId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: databaseSchema,
+                    table: PUSH_SUBSCRIPTIONS_TABLE,
+                    filter: `user_id=eq.${userId}`,
+                },
+                (payload) => {
+                    console.log("[useFCMToken] Realtime update:", payload);
+                    // Invalidate queries to refetch
+                    queryClient.invalidateQueries(["pushSubscription", userId]);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userId, queryClient]);
+
+    // Realtime subscription for user_notification_settings changes
+    useEffect(() => {
+        if (!userId) return;
+
+        const channel = supabase
+            .channel(`notification_settings_${userId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: databaseSchema,
+                    table: USER_NOTIFICATION_SETTINGS_TABLE,
+                    filter: `user_id=eq.${userId}`,
+                },
+                (payload) => {
+                    console.log(
+                        "[useFCMToken] Global settings update:",
+                        payload
+                    );
+                    queryClient.invalidateQueries([
+                        "globalNotificationSettings",
+                        userId,
+                    ]);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userId, queryClient]);
+
+    // Get current device's subscription
+    const currentDeviceSubscription = useMemo(() => {
+        if (!subscriptions || !currentFcmToken) return null;
+        return (
+            subscriptions.find((s) => s.fcm_token === currentFcmToken) || null
+        );
+    }, [subscriptions, currentFcmToken]);
 
     // Mutation to save FCM token using RPC function
     const { mutate: saveToken, isLoading: isSaving } = useMutation({
@@ -60,6 +169,7 @@ export function useFCMToken(userId) {
                 });
 
             if (error) throw error;
+            setCurrentFcmToken(token);
             return { fcm_token: token };
         },
         onSuccess: () => {
@@ -70,7 +180,7 @@ export function useFCMToken(userId) {
         },
     });
 
-    // Mutation to delete subscription
+    // Mutation to delete all subscriptions for user (legacy - not used anymore)
     const { mutate: deleteSubscription, isLoading: isDeleting } = useMutation({
         mutationFn: async () => {
             if (!userId) throw new Error("User not authenticated");
@@ -85,38 +195,330 @@ export function useFCMToken(userId) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries(["pushSubscription", userId]);
-            toast.success("Notifications disabled");
+            toast.success("All devices removed");
         },
         onError: (error) => {
             console.error("Error deleting subscription:", error);
-            toast.error("Failed to disable notifications");
+            toast.error("Failed to remove devices");
         },
     });
 
-    // Get device info for subscription
+    // Mutation to toggle global notifications (master toggle)
+    const {
+        mutate: setGlobalNotificationsEnabled,
+        isLoading: isTogglingGlobal,
+    } = useMutation({
+        mutationFn: async (enabled) => {
+            if (!userId) throw new Error("User not authenticated");
+
+            const { error } = await supabase
+                .schema(databaseSchema)
+                .rpc("set_global_notifications_enabled", {
+                    p_enabled: enabled,
+                });
+
+            if (error) throw error;
+            return enabled;
+        },
+        onSuccess: (enabled) => {
+            queryClient.invalidateQueries([
+                "globalNotificationSettings",
+                userId,
+            ]);
+            toast.success(
+                enabled
+                    ? "Notifications enabled"
+                    : "Notifications disabled for all devices"
+            );
+        },
+        onError: (error) => {
+            console.error("Error toggling global notifications:", error);
+            toast.error("Failed to update notification settings");
+        },
+    });
+
+    // Mutation to toggle device-specific notifications
+    const { mutate: setDeviceEnabled, isLoading: isTogglingDevice } =
+        useMutation({
+            mutationFn: async ({ subscriptionId, enabled }) => {
+                if (!userId) throw new Error("User not authenticated");
+
+                const { error } = await supabase
+                    .schema(databaseSchema)
+                    .rpc("set_device_notifications_enabled", {
+                        p_subscription_id: subscriptionId,
+                        p_enabled: enabled,
+                    });
+
+                if (error) throw error;
+                return { subscriptionId, enabled };
+            },
+            onSuccess: ({ enabled }) => {
+                queryClient.invalidateQueries(["pushSubscription", userId]);
+                toast.success(
+                    enabled
+                        ? "Device notifications enabled"
+                        : "Device notifications disabled"
+                );
+            },
+            onError: (error) => {
+                console.error("Error toggling device notifications:", error);
+                toast.error("Failed to update device settings");
+            },
+        });
+
+    // Mutation to delete a specific subscription by ID
+    const { mutate: deleteSubscriptionById, isLoading: isDeletingById } =
+        useMutation({
+            mutationFn: async (subscriptionId) => {
+                if (!userId) throw new Error("User not authenticated");
+
+                const { error } = await supabase
+                    .schema(databaseSchema)
+                    .rpc("delete_push_subscription", {
+                        p_subscription_id: subscriptionId,
+                    });
+
+                if (error) throw error;
+            },
+            onSuccess: () => {
+                queryClient.invalidateQueries(["pushSubscription", userId]);
+                toast.success("Device removed");
+            },
+            onError: (error) => {
+                console.error("Error deleting subscription:", error);
+                toast.error("Failed to remove device");
+            },
+        });
+
+    // Mutation to update notification preferences
+    const { mutate: updatePreferences, isLoading: isUpdatingPreferences } =
+        useMutation({
+            mutationFn: async ({
+                subscriptionId,
+                notifyAllChat,
+                notifyMentions,
+                notifyTeamInvites,
+            }) => {
+                if (!userId) throw new Error("User not authenticated");
+
+                const { error } = await supabase
+                    .schema(databaseSchema)
+                    .rpc("update_notification_preferences", {
+                        p_subscription_id: subscriptionId,
+                        p_notify_all_chat: notifyAllChat,
+                        p_notify_mentions: notifyMentions,
+                        p_notify_team_invites: notifyTeamInvites,
+                    });
+
+                if (error) throw error;
+            },
+            onSuccess: () => {
+                queryClient.invalidateQueries(["pushSubscription", userId]);
+                toast.success("Preferences updated");
+            },
+            onError: (error) => {
+                console.error("Error updating preferences:", error);
+                toast.error("Failed to update preferences");
+            },
+        });
+
+    // State to track which subscription is currently being tested
+    const [testingSubscriptionId, setTestingSubscriptionId] = useState(null);
+
+    // Mutation to send test notification to a single device
+    const { mutateAsync: sendTestNotificationAsync, isLoading: isSendingTest } =
+        useMutation({
+            mutationFn: async (subscriptionId) => {
+                const { data: sessionData } = await supabase.auth.getSession();
+                const accessToken = sessionData?.session?.access_token;
+
+                if (!accessToken) throw new Error("Not authenticated");
+
+                const response = await fetch(
+                    `${supabaseUrl}/functions/v1/send-test-notification`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                        body: JSON.stringify({
+                            subscriptionId,
+                            databaseSchema,
+                        }),
+                    }
+                );
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.error || "Failed to send test notification"
+                    );
+                }
+
+                return result;
+            },
+            onError: (error) => {
+                console.error("Error sending test notification:", error);
+                toast.error(
+                    error.message || "Failed to send test notification"
+                );
+            },
+        });
+
+    // Wrapper to send test to single device with tracking
+    const sendTestNotification = useCallback(
+        async (subscriptionId) => {
+            setTestingSubscriptionId(subscriptionId);
+            try {
+                await sendTestNotificationAsync(subscriptionId);
+                toast.success("Test notification sent!");
+            } finally {
+                setTestingSubscriptionId(null);
+            }
+        },
+        [sendTestNotificationAsync]
+    );
+
+    // State for sending to all devices
+    const [isSendingToAll, setIsSendingToAll] = useState(false);
+
+    // Send test notification to all devices
+    const sendTestToAllDevices = useCallback(async () => {
+        if (!subscriptions || subscriptions.length === 0) return;
+
+        setIsSendingToAll(true);
+        try {
+            const results = await Promise.allSettled(
+                subscriptions.map((sub) => sendTestNotificationAsync(sub.id))
+            );
+
+            const successCount = results.filter(
+                (r) => r.status === "fulfilled"
+            ).length;
+            const failCount = results.filter(
+                (r) => r.status === "rejected"
+            ).length;
+
+            if (failCount === 0) {
+                toast.success(
+                    `Test sent to ${successCount} device${
+                        successCount > 1 ? "s" : ""
+                    }!`
+                );
+            } else if (successCount > 0) {
+                toast.success(
+                    `Test sent to ${successCount}/${subscriptions.length} devices`
+                );
+            } else {
+                toast.error("Failed to send test notifications");
+            }
+        } finally {
+            setIsSendingToAll(false);
+        }
+    }, [subscriptions, sendTestNotificationAsync]);
+
+    // Get detailed device info for subscription
     const getDeviceInfo = useCallback(() => {
         const ua = navigator.userAgent;
         let deviceType = "desktop";
-        let os = "unknown";
+        let os = "Unknown";
+        let osVersion = "";
+        let browser = "Unknown";
+        let browserVersion = "";
+        let deviceModel = "";
 
-        if (/iPhone|iPad|iPod/.test(ua)) {
+        // Detect OS and version
+        if (/iPhone/.test(ua)) {
             deviceType = "ios";
             os = "iOS";
+            deviceModel = "iPhone";
+            const match = ua.match(/iPhone OS (\d+[._]\d+)/);
+            if (match) osVersion = match[1].replace("_", ".");
+        } else if (/iPad/.test(ua)) {
+            deviceType = "ios";
+            os = "iPadOS";
+            deviceModel = "iPad";
+            const match = ua.match(/CPU OS (\d+[._]\d+)/);
+            if (match) osVersion = match[1].replace("_", ".");
+        } else if (/iPod/.test(ua)) {
+            deviceType = "ios";
+            os = "iOS";
+            deviceModel = "iPod";
+            const match = ua.match(/iPhone OS (\d+[._]\d+)/);
+            if (match) osVersion = match[1].replace("_", ".");
         } else if (/Android/.test(ua)) {
             deviceType = "android";
             os = "Android";
-        } else if (/Windows/.test(ua)) {
+            const versionMatch = ua.match(/Android (\d+(\.\d+)?)/);
+            if (versionMatch) osVersion = versionMatch[1];
+            // Try to get device model
+            const modelMatch = ua.match(/;\s*([^;)]+)\s*Build/);
+            if (modelMatch) deviceModel = modelMatch[1].trim();
+        } else if (/Windows NT/.test(ua)) {
             os = "Windows";
-        } else if (/Mac/.test(ua)) {
+            const match = ua.match(/Windows NT (\d+\.\d+)/);
+            if (match) {
+                const ntVersion = match[1];
+                // Map NT version to Windows version
+                const versionMap = {
+                    "10.0": "10/11",
+                    6.3: "8.1",
+                    6.2: "8",
+                    6.1: "7",
+                };
+                osVersion = versionMap[ntVersion] || ntVersion;
+            }
+        } else if (/Mac OS X/.test(ua)) {
             os = "macOS";
+            const match = ua.match(/Mac OS X (\d+[._]\d+[._]?\d*)/);
+            if (match) osVersion = match[1].replace(/_/g, ".");
         } else if (/Linux/.test(ua)) {
             os = "Linux";
+        } else if (/CrOS/.test(ua)) {
+            os = "Chrome OS";
+        }
+
+        // Detect browser and version
+        if (/Edg\//.test(ua)) {
+            browser = "Edge";
+            const match = ua.match(/Edg\/(\d+(\.\d+)?)/);
+            if (match) browserVersion = match[1];
+        } else if (/OPR\//.test(ua) || /Opera/.test(ua)) {
+            browser = "Opera";
+            const match = ua.match(/(?:OPR|Opera)\/(\d+(\.\d+)?)/);
+            if (match) browserVersion = match[1];
+        } else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) {
+            browser = "Chrome";
+            const match = ua.match(/Chrome\/(\d+(\.\d+)?)/);
+            if (match) browserVersion = match[1];
+        } else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) {
+            browser = "Safari";
+            const match = ua.match(/Version\/(\d+(\.\d+)?)/);
+            if (match) browserVersion = match[1];
+        } else if (/Firefox\//.test(ua)) {
+            browser = "Firefox";
+            const match = ua.match(/Firefox\/(\d+(\.\d+)?)/);
+            if (match) browserVersion = match[1];
+        } else if (/MSIE|Trident/.test(ua)) {
+            browser = "Internet Explorer";
+            const match = ua.match(/(?:MSIE |rv:)(\d+(\.\d+)?)/);
+            if (match) browserVersion = match[1];
+        } else if (/SamsungBrowser/.test(ua)) {
+            browser = "Samsung Internet";
+            const match = ua.match(/SamsungBrowser\/(\d+(\.\d+)?)/);
+            if (match) browserVersion = match[1];
         }
 
         return JSON.stringify({
             deviceType,
             os,
-            browser: navigator.userAgent.split(" ").pop(),
+            osVersion,
+            browser,
+            browserVersion,
+            deviceModel,
             timestamp: new Date().toISOString(),
         });
     }, []);
@@ -174,29 +576,48 @@ export function useFCMToken(userId) {
         }
     }, [userId, notificationStatus.supported, saveToken, getDeviceInfo]);
 
-    // Disable notifications
+    // Disable notifications (legacy - now use setGlobalNotificationsEnabled)
     const disableNotifications = useCallback(() => {
-        deleteSubscription();
-    }, [deleteSubscription]);
+        setGlobalNotificationsEnabled(false);
+    }, [setGlobalNotificationsEnabled]);
 
-    // Check and refresh token on mount (for token rotation)
+    // Get current FCM token for device identification (doesn't save, just identifies)
     useEffect(() => {
         if (!userId || !notificationStatus.supported) return;
         if (notificationStatus.permission !== "granted") return;
 
+        const identifyCurrentDevice = async () => {
+            const token = await getCurrentToken();
+            if (token) {
+                setCurrentFcmToken(token);
+            }
+        };
+
+        identifyCurrentDevice();
+    }, [userId, notificationStatus.supported, notificationStatus.permission]);
+
+    // Check and refresh token on mount (for token rotation)
+    // Only refreshes if user already has subscriptions (doesn't auto-enable)
+    useEffect(() => {
+        if (!userId || !notificationStatus.supported) return;
+        if (notificationStatus.permission !== "granted") return;
+        // Only check for token rotation if user already has subscriptions
+        // This prevents auto-enabling after user explicitly disabled
+        if (!subscriptions || subscriptions.length === 0) return;
+
         // Check if token has changed
         const checkToken = async () => {
-            const currentToken = await getCurrentToken();
-            if (!currentToken) return;
+            const token = await getCurrentToken();
+            if (!token) return;
 
             // Check if this token already exists in subscriptions
             const existingToken = subscriptions?.find(
-                (s) => s.fcm_token === currentToken
+                (s) => s.fcm_token === token
             );
             if (!existingToken) {
                 // Token is new or has changed, save it
                 saveToken({
-                    token: currentToken,
+                    token,
                     deviceInfo: getDeviceInfo(),
                 });
             }
@@ -214,13 +635,28 @@ export function useFCMToken(userId) {
 
     // Set up foreground message handler
     useEffect(() => {
+        console.log("[useFCMToken] Setting up foreground message handler");
         const unsubscribe = onForegroundMessage((payload) => {
+            console.log(
+                "[useFCMToken] Foreground message callback triggered:",
+                payload
+            );
             // Get notification data - check both notification and data fields
             const notification = payload.notification || {};
             const data = payload.data || {};
 
             const title = notification.title || data.title || "KickerApp";
             const body = notification.body || data.body || "";
+            // Use unique tag from data, or generate one to ensure notification always shows
+            const tag =
+                data.tag || `${data.type || "notification"}-${Date.now()}`;
+
+            console.log("[useFCMToken] Showing notification:", {
+                title,
+                body,
+                tag,
+                permission: Notification.permission,
+            });
 
             // Show browser notification if permission granted
             if (Notification.permission === "granted") {
@@ -228,7 +664,7 @@ export function useFCMToken(userId) {
                     body,
                     icon: "/android-chrome-192x192.png",
                     badge: "/favicon-32x32.png",
-                    tag: data.type || "kicker-notification",
+                    tag: tag,
                     data: {
                         type: data.type,
                         matchId: data.matchId,
@@ -247,6 +683,9 @@ export function useFCMToken(userId) {
                 };
             } else {
                 // Fallback to toast if notification permission not granted
+                console.log(
+                    "[useFCMToken] Permission not granted, showing toast"
+                );
                 if (title) {
                     toast(body || title, {
                         icon: "🔔",
@@ -262,14 +701,35 @@ export function useFCMToken(userId) {
     return {
         // State
         subscriptions,
+        currentDeviceSubscription,
+        globalNotificationsEnabled:
+            globalSettings?.notifications_enabled ?? true,
         isEnabled: subscriptions?.length > 0,
-        isLoading: isLoadingSubscription || isSaving || isDeleting,
+        hasDevices: subscriptions?.length > 0,
+        isLoading:
+            isLoadingSubscription ||
+            isLoadingGlobalSettings ||
+            isSaving ||
+            isDeleting ||
+            isDeletingById ||
+            isUpdatingPreferences ||
+            isTogglingGlobal ||
+            isTogglingDevice,
         isRequesting,
+        isSendingTest,
+        isSendingToAll,
+        testingSubscriptionId,
         notificationStatus,
 
         // Actions
         enableNotifications,
         disableNotifications,
+        setGlobalNotificationsEnabled,
+        setDeviceEnabled,
+        deleteSubscriptionById,
+        updatePreferences,
+        sendTestNotification,
+        sendTestToAllDevices,
     };
 }
 

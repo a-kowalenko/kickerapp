@@ -23,8 +23,29 @@ interface WebhookPayload {
         inviting_player_id?: number;
         invited_player_id?: number;
         status?: string;
+        // Mention notification fields (for chat_all)
+        type?: string;
+        user_id?: string;
+        sender_player_id?: number;
+        source_id?: number;
+        content_preview?: string;
     };
     old_record: null;
+}
+
+interface PushSubscription {
+    id: number;
+    fcm_token: string;
+    user_id: string;
+    enabled: boolean;
+    notify_all_chat: boolean;
+    notify_mentions: boolean;
+    notify_team_invites: boolean;
+}
+
+interface UserNotificationSettings {
+    user_id: string;
+    notifications_enabled: boolean;
 }
 
 interface FCMMessage {
@@ -42,10 +63,12 @@ interface FCMMessage {
         body: string;
         badge?: string;
         teamId?: string;
+        tag?: string;
     };
     webpush?: {
         headers?: {
             Urgency?: string;
+            TTL?: string;
         };
         notification?: {
             title: string;
@@ -55,12 +78,17 @@ interface FCMMessage {
             tag?: string;
             renotify?: boolean;
             requireInteraction?: boolean;
+            silent?: boolean;
+            vibrate?: number[];
         };
         fcm_options?: {
             link: string;
         };
     };
     apns?: {
+        headers?: {
+            "apns-priority"?: string;
+        };
         payload: {
             aps: {
                 alert: {
@@ -69,6 +97,7 @@ interface FCMMessage {
                 };
                 sound?: string;
                 badge?: number;
+                "mutable-content"?: number;
             };
         };
     };
@@ -181,6 +210,29 @@ async function getFCMAccessToken(serviceAccount: any): Promise<string> {
     return tokenData.access_token;
 }
 
+// Check if user has global notifications enabled
+async function isUserNotificationsEnabled(
+    supabase: any,
+    userId: string
+): Promise<boolean> {
+    const { data, error } = await supabase
+        .from("user_notification_settings")
+        .select("notifications_enabled")
+        .eq("user_id", userId)
+        .single();
+
+    if (error) {
+        // If no settings exist, default to enabled
+        if (error.code === "PGRST116") {
+            return true;
+        }
+        console.error("Error checking user notification settings:", error);
+        return true; // Default to enabled on error
+    }
+
+    return data?.notifications_enabled !== false;
+}
+
 // Send FCM notification
 async function sendFCMNotification(
     accessToken: string,
@@ -211,6 +263,190 @@ async function sendFCMNotification(
         console.error("FCM send exception:", error);
         return false;
     }
+}
+
+// Handle chat_all push notifications (triggered from mention_notifications table)
+async function handleChatAllNotification(
+    webhook: WebhookPayload,
+    databaseSchema: string
+): Promise<Response> {
+    const { record } = webhook;
+    const userId = record.user_id!;
+    const senderPlayerId = record.sender_player_id!;
+    const kickerId = record.kicker_id!;
+    const contentPreview = record.content_preview || "";
+
+    // Get service account from environment
+    const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT not configured");
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SECRET_API_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        db: { schema: databaseSchema },
+    });
+
+    // Get sender name
+    const { data: senderData } = await supabase
+        .from("player")
+        .select("name")
+        .eq("id", senderPlayerId)
+        .single();
+    const senderName = senderData?.name || "Someone";
+
+    // Check if user has global notifications enabled
+    const globalEnabled = await isUserNotificationsEnabled(supabase, userId);
+    if (!globalEnabled) {
+        return new Response(
+            JSON.stringify({
+                sent: 0,
+                reason: "global_notifications_disabled",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM tokens for this user (only where notify_all_chat is enabled AND device is enabled)
+    const { data: subscriptions, error: subError } = await supabase
+        .from("push_subscriptions")
+        .select(
+            "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
+        )
+        .eq("user_id", userId)
+        .eq("enabled", true)
+        .eq("notify_all_chat", true);
+
+    if (subError) {
+        console.error("Error fetching subscriptions:", subError);
+        throw subError;
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+        return new Response(
+            JSON.stringify({ sent: 0, reason: "no_subscriptions_or_disabled" }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM access token
+    const accessToken = await getFCMAccessToken(serviceAccount);
+
+    // Build notification content
+    const title = `New message from ${senderName}`;
+    const notificationBody = contentPreview;
+    const url = "/home";
+
+    // Send notifications
+    let sentCount = 0;
+    const invalidTokens: string[] = [];
+
+    for (const sub of subscriptions as PushSubscription[]) {
+        // Get actual combined unread count for this user
+        let badgeCount = 1;
+        try {
+            const { data: unreadData } = await supabase.rpc(
+                "get_combined_unread_count_for_user",
+                { p_user_id: sub.user_id }
+            );
+            if (unreadData !== null && unreadData !== undefined) {
+                badgeCount = Math.max(1, Number(unreadData) + 1);
+            }
+        } catch (badgeError) {
+            console.error("Error getting unread count for badge:", badgeError);
+        }
+
+        const message: FCMMessage = {
+            token: sub.fcm_token,
+            // Top-level notification - FCM will display this natively with sound
+            notification: {
+                title,
+                body: notificationBody,
+            },
+            data: {
+                type: "chat_all",
+                kickerId: kickerId.toString(),
+                url,
+                title,
+                body: notificationBody,
+                badge: badgeCount.toString(),
+            },
+            webpush: {
+                headers: {
+                    Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: `chat-all-${Date.now()}`,
+                    renotify: true,
+                    silent: false,
+                    vibrate: [200, 100, 200],
+                },
+                fcm_options: {
+                    link: url,
+                },
+            },
+            apns: {
+                headers: {
+                    "apns-priority": "10",
+                },
+                payload: {
+                    aps: {
+                        alert: {
+                            title,
+                            body: notificationBody,
+                        },
+                        sound: "default",
+                        badge: badgeCount,
+                        "mutable-content": 1,
+                    },
+                },
+            },
+        };
+
+        const success = await sendFCMNotification(
+            accessToken,
+            serviceAccount.project_id,
+            message
+        );
+
+        if (success) {
+            sentCount++;
+        } else {
+            invalidTokens.push(sub.fcm_token);
+        }
+    }
+
+    // Clean up invalid tokens
+    if (invalidTokens.length > 0) {
+        console.log(`Removing ${invalidTokens.length} invalid tokens`);
+        await supabase
+            .from("push_subscriptions")
+            .delete()
+            .in("fcm_token", invalidTokens);
+    }
+
+    console.log(`Successfully sent ${sentCount} chat_all notifications`);
+
+    return new Response(
+        JSON.stringify({
+            sent: sentCount,
+            total: subscriptions.length,
+            invalidRemoved: invalidTokens.length,
+        }),
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+    );
 }
 
 // Handle team invitation push notifications
@@ -269,11 +505,29 @@ async function handleTeamInvitation(
 
     const invitedUserId = invitedPlayerData.user_id;
 
-    // Get FCM tokens for invited user
+    // Check if user has global notifications enabled
+    const globalEnabled = await isUserNotificationsEnabled(
+        supabase,
+        invitedUserId
+    );
+    if (!globalEnabled) {
+        return new Response(
+            JSON.stringify({
+                sent: 0,
+                reason: "global_notifications_disabled",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM tokens for invited user (with preferences, only enabled devices)
     const { data: subscriptions, error: subError } = await supabase
         .from("push_subscriptions")
-        .select("fcm_token, user_id")
-        .eq("user_id", invitedUserId);
+        .select(
+            "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
+        )
+        .eq("user_id", invitedUserId)
+        .eq("enabled", true);
 
     if (subError) {
         console.error("Error fetching subscriptions:", subError);
@@ -284,6 +538,18 @@ async function handleTeamInvitation(
         return new Response(JSON.stringify({ sent: 0 }), {
             headers: { "Content-Type": "application/json" },
         });
+    }
+
+    // Filter by team invite preference
+    const filteredSubs = (subscriptions as PushSubscription[]).filter(
+        (sub) => sub.notify_team_invites !== false
+    );
+
+    if (filteredSubs.length === 0) {
+        return new Response(
+            JSON.stringify({ sent: 0, reason: "preference_disabled" }),
+            { headers: { "Content-Type": "application/json" } }
+        );
     }
 
     // Get FCM access token
@@ -298,7 +564,7 @@ async function handleTeamInvitation(
     let sentCount = 0;
     const invalidTokens: string[] = [];
 
-    for (const sub of subscriptions) {
+    for (const sub of filteredSubs) {
         // Get actual combined unread count for this user
         let badgeCount = 1;
         try {
@@ -315,6 +581,11 @@ async function handleTeamInvitation(
 
         const message: FCMMessage = {
             token: sub.fcm_token,
+            // Top-level notification - FCM will display this natively with sound
+            notification: {
+                title,
+                body: notificationBody,
+            },
             data: {
                 type: "team_invite",
                 kickerId: kickerId?.toString() || "",
@@ -327,6 +598,16 @@ async function handleTeamInvitation(
             webpush: {
                 headers: {
                     Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: `team-invite-${teamId}-${Date.now()}`,
+                    renotify: true,
+                    silent: false,
+                    vibrate: [200, 100, 200],
                 },
                 fcm_options: {
                     link: url,
@@ -377,7 +658,7 @@ async function handleTeamInvitation(
     return new Response(
         JSON.stringify({
             sent: sentCount,
-            total: subscriptions.length,
+            total: filteredSubs.length,
             invalidRemoved: invalidTokens.length,
         }),
         {
@@ -422,7 +703,7 @@ serve(async (req) => {
         let senderPlayerId: number;
         let kickerId: number;
         let matchId: number | null = null;
-        let notificationType: "comment" | "chat" | "team_invite";
+        let notificationType: "comment" | "chat" | "chat_all" | "team_invite";
         let databaseSchema: string;
 
         if (isWebhook) {
@@ -433,6 +714,18 @@ serve(async (req) => {
             // Handle team_invitations table separately
             if (webhook.table === "team_invitations") {
                 return await handleTeamInvitation(webhook, databaseSchema);
+            }
+
+            // Handle mention_notifications table for chat_all type
+            if (webhook.table === "mention_notifications") {
+                // Only process chat_all type from mention_notifications
+                if (webhook.record.type !== "chat_all") {
+                    return new Response(
+                        JSON.stringify({ sent: 0, reason: "not_chat_all" }),
+                        { headers: { "Content-Type": "application/json" } }
+                    );
+                }
+                return await handleChatAllNotification(webhook, databaseSchema);
             }
 
             content = webhook.record.content!;
@@ -551,11 +844,34 @@ serve(async (req) => {
             });
         }
 
+        // Filter out users who have global notifications disabled
+        const usersWithGlobalEnabled: string[] = [];
+        for (const userId of userIdsToNotify) {
+            const globalEnabled = await isUserNotificationsEnabled(
+                supabase,
+                userId
+            );
+            if (globalEnabled) {
+                usersWithGlobalEnabled.push(userId);
+            }
+        }
+
+        if (usersWithGlobalEnabled.length === 0) {
+            return new Response(
+                JSON.stringify({ sent: 0, reason: "all_users_disabled" }),
+                { headers: { "Content-Type": "application/json" } }
+            );
+        }
+
         // Get FCM tokens for these users (using same schema as source data)
+        // Include preference columns for filtering, only enabled devices
         const { data: subscriptions, error: subError } = await supabase
             .from("push_subscriptions")
-            .select("fcm_token, user_id")
-            .in("user_id", userIdsToNotify);
+            .select(
+                "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites"
+            )
+            .in("user_id", usersWithGlobalEnabled)
+            .eq("enabled", true);
 
         if (subError) {
             console.error("Error fetching subscriptions:", subError);
@@ -566,6 +882,18 @@ serve(async (req) => {
             return new Response(JSON.stringify({ sent: 0 }), {
                 headers: { "Content-Type": "application/json" },
             });
+        }
+
+        // Filter by mentions preference
+        const filteredSubscriptions = (
+            subscriptions as PushSubscription[]
+        ).filter((sub) => sub.notify_mentions !== false);
+
+        if (filteredSubscriptions.length === 0) {
+            return new Response(
+                JSON.stringify({ sent: 0, reason: "preference_disabled" }),
+                { headers: { "Content-Type": "application/json" } }
+            );
         }
 
         // Get FCM access token
@@ -598,7 +926,7 @@ serve(async (req) => {
         let sentCount = 0;
         const invalidTokens: string[] = [];
 
-        for (const sub of subscriptions) {
+        for (const sub of filteredSubscriptions) {
             // Get actual combined unread count for this user (chat + comments, for iOS/Android badge)
             let badgeCount = 1;
             try {
@@ -618,33 +946,49 @@ serve(async (req) => {
                 // Fall back to badge: 1 if RPC fails
             }
 
-            // Pure DATA-ONLY message - no notification field anywhere
-            // The service worker's onBackgroundMessage will handle displaying the notification
+            // Build the FCM message with proper notification for sound
             const message: FCMMessage = {
                 token: sub.fcm_token,
-                // Only data field - no notification field
+                // Top-level notification - FCM will display this natively with sound
+                notification: {
+                    title,
+                    body: notificationBody,
+                },
                 data: {
                     type: notificationType,
                     kickerId: kickerId.toString(),
                     url,
                     title,
                     body: notificationBody,
-                    badge: badgeCount.toString(), // Send badge count to service worker
+                    badge: badgeCount.toString(),
+                    tag: `${notificationType}-${
+                        matchId || "general"
+                    }-${Date.now()}`,
                     ...(matchId && { matchId: matchId.toString() }),
                 },
-                // Web push - only headers and link, NO notification
                 webpush: {
                     headers: {
                         Urgency: "high",
+                    },
+                    notification: {
+                        title,
+                        body: notificationBody,
+                        icon: "/android-chrome-192x192.png",
+                        badge: "/favicon-32x32.png",
+                        tag: `${notificationType}-${
+                            matchId || "general"
+                        }-${Date.now()}`,
+                        renotify: true,
+                        silent: false,
+                        vibrate: [200, 100, 200],
                     },
                     fcm_options: {
                         link: url,
                     },
                 },
-                // iOS/APNs specific options (for native iOS apps, not PWA)
                 apns: {
                     headers: {
-                        "apns-priority": "10", // High priority for immediate delivery
+                        "apns-priority": "10",
                     },
                     payload: {
                         aps: {
@@ -676,7 +1020,7 @@ serve(async (req) => {
         // Clean up invalid tokens
         if (invalidTokens.length > 0) {
             console.log(`Removing ${invalidTokens.length} invalid tokens`);
-            await supabasePublic
+            await supabase
                 .from("push_subscriptions")
                 .delete()
                 .in("fcm_token", invalidTokens);
@@ -687,7 +1031,7 @@ serve(async (req) => {
         return new Response(
             JSON.stringify({
                 sent: sentCount,
-                total: subscriptions.length,
+                total: filteredSubscriptions.length,
                 invalidRemoved: invalidTokens.length,
             }),
             {
