@@ -418,11 +418,21 @@ export async function getCommentReadStatus(kickerId) {
  * Used to determine which comments are unread for visual marking in match detail view
  */
 export async function getMatchCommentReadStatus(matchId) {
+    // Get current user ID
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        return null;
+    }
+
     const { data, error } = await supabase
         .schema(databaseSchema)
         .from("match_comment_read_status")
         .select("last_read_at")
         .eq("match_id", matchId)
+        .eq("user_id", user.id)
         .maybeSingle();
 
     if (error) {
