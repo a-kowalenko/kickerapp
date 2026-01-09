@@ -8,6 +8,7 @@ import {
     HiUserGroup,
     HiComputerDesktop,
     HiTrash,
+    HiBellAlert,
 } from "react-icons/hi2";
 import { useFCMToken } from "../../hooks/useFCMToken";
 import { useUser } from "../../features/authentication/useUser";
@@ -299,9 +300,18 @@ const IconButton = styled.button`
     transition: all 0.15s ease;
 
     &:hover:not(:disabled) {
-        background-color: var(--color-red-100);
-        border-color: var(--color-red-700);
-        color: var(--color-red-700);
+        background-color: ${(props) =>
+            props.$variant === "test"
+                ? "var(--color-blue-100)"
+                : "var(--color-red-100)"};
+        border-color: ${(props) =>
+            props.$variant === "test"
+                ? "var(--color-blue-700)"
+                : "var(--color-red-700)"};
+        color: ${(props) =>
+            props.$variant === "test"
+                ? "var(--color-blue-700)"
+                : "var(--color-red-700)"};
     }
 
     &:disabled {
@@ -312,6 +322,10 @@ const IconButton = styled.button`
     & svg {
         font-size: 1.4rem;
     }
+`;
+
+const TestAllButton = styled(Button)`
+    margin-top: 0.4rem;
 `;
 
 function parseDeviceInfo(deviceInfoJson) {
@@ -355,12 +369,15 @@ function NotificationSettings() {
         isLoading,
         isRequesting,
         isSendingTest,
+        isSendingToAll,
+        testingSubscriptionId,
         notificationStatus,
         enableNotifications,
         disableNotifications,
         deleteSubscriptionById,
         updatePreferences,
         sendTestNotification,
+        sendTestToAllDevices,
     } = useFCMToken(user?.id);
 
     const isIOS = notificationStatus.isIOS;
@@ -407,11 +424,6 @@ function NotificationSettings() {
             notifyTeamInvites:
                 prefKey === "notify_team_invites" ? value : undefined,
         });
-    };
-
-    const handleSendTest = () => {
-        if (!currentDeviceSubscription) return;
-        sendTestNotification(currentDeviceSubscription.id);
     };
 
     const summaryText = buildSummaryText();
@@ -607,6 +619,8 @@ function NotificationSettings() {
                             const isCurrentDevice =
                                 currentDeviceSubscription?.id ===
                                 subscription.id;
+                            const isTestingThisDevice =
+                                testingSubscriptionId === subscription.id;
 
                             return (
                                 <DeviceCard
@@ -639,6 +653,26 @@ function NotificationSettings() {
                                     </DeviceInfo>
                                     <DeviceActions>
                                         <IconButton
+                                            $variant="test"
+                                            onClick={() =>
+                                                sendTestNotification(
+                                                    subscription.id
+                                                )
+                                            }
+                                            disabled={
+                                                isLoading ||
+                                                isSendingTest ||
+                                                isSendingToAll
+                                            }
+                                            title="Send test notification to this device"
+                                        >
+                                            {isTestingThisDevice ? (
+                                                <SpinnerMini />
+                                            ) : (
+                                                <HiBellAlert />
+                                            )}
+                                        </IconButton>
+                                        <IconButton
                                             onClick={() =>
                                                 deleteSubscriptionById(
                                                     subscription.id
@@ -655,19 +689,23 @@ function NotificationSettings() {
                         })}
                     </DevicesList>
 
-                    {/* Test Notification Button */}
-                    {currentDeviceSubscription && (
-                        <Button
+                    {/* Send Test to All Devices Button */}
+                    {subscriptions.length > 1 && (
+                        <TestAllButton
                             $variation="secondary"
-                            onClick={handleSendTest}
-                            disabled={isSendingTest || isLoading}
+                            onClick={sendTestToAllDevices}
+                            disabled={
+                                isSendingTest || isSendingToAll || isLoading
+                            }
                         >
-                            {isSendingTest ? (
-                                <SpinnerMini />
+                            {isSendingToAll ? (
+                                <>
+                                    <SpinnerMini /> Sending...
+                                </>
                             ) : (
-                                "Send Test Notification"
+                                `Send Test to All ${subscriptions.length} Devices`
                             )}
-                        </Button>
+                        </TestAllButton>
                     )}
                 </Section>
             )}

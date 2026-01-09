@@ -11,8 +11,13 @@ interface RequestBody {
 
 interface FCMMessage {
     token: string;
+    notification?: {
+        title: string;
+        body: string;
+    };
     data: {
         type: string;
+        tag?: string;
         title: string;
         body: string;
         url: string;
@@ -36,6 +41,7 @@ interface FCMMessage {
                     body: string;
                 };
                 sound?: string;
+                "mutable-content"?: number;
             };
         };
     };
@@ -114,7 +120,7 @@ async function sendFCMNotification(
     accessToken: string,
     projectId: string,
     message: FCMMessage
-): Promise<boolean> {
+): Promise<{ success: boolean; error?: string }> {
     try {
         const response = await fetch(
             `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
@@ -128,29 +134,34 @@ async function sendFCMNotification(
             }
         );
 
+        const responseText = await response.text();
+        console.log("FCM response status:", response.status);
+        console.log("FCM response body:", responseText);
+
         if (!response.ok) {
-            const error = await response.text();
-            console.error("FCM send error:", error);
-            return false;
+            console.error("FCM send error:", responseText);
+            return { success: false, error: responseText };
         }
 
-        return true;
+        return { success: true };
     } catch (error) {
         console.error("FCM send exception:", error);
-        return false;
+        return { success: false, error: String(error) };
     }
 }
 
+// CORS headers for all responses
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers":
+        "authorization, x-client-info, apikey, content-type",
+};
+
 serve(async (req) => {
-    // Handle CORS
+    // Handle CORS preflight
     if (req.method === "OPTIONS") {
-        return new Response(null, {
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            },
-        });
+        return new Response("ok", { headers: corsHeaders });
     }
 
     try {
@@ -159,7 +170,7 @@ serve(async (req) => {
         if (!authHeader) {
             return new Response(JSON.stringify({ error: "Unauthorized" }), {
                 status: 401,
-                headers: { "Content-Type": "application/json" },
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
 
@@ -172,7 +183,10 @@ serve(async (req) => {
                 JSON.stringify({ error: "subscriptionId is required" }),
                 {
                     status: 400,
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        ...corsHeaders,
+                        "Content-Type": "application/json",
+                    },
                 }
             );
         }
@@ -210,7 +224,10 @@ serve(async (req) => {
                 }),
                 {
                     status: 404,
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        ...corsHeaders,
+                        "Content-Type": "application/json",
+                    },
                 }
             );
         }
@@ -224,7 +241,7 @@ serve(async (req) => {
         if (userError || !user) {
             return new Response(JSON.stringify({ error: "Unauthorized" }), {
                 status: 401,
-                headers: { "Content-Type": "application/json" },
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
 
@@ -236,7 +253,10 @@ serve(async (req) => {
                 }),
                 {
                     status: 403,
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        ...corsHeaders,
+                        "Content-Type": "application/json",
+                    },
                 }
             );
         }
@@ -244,16 +264,21 @@ serve(async (req) => {
         // Get FCM access token
         const accessToken = await getFCMAccessToken(serviceAccount);
 
-        // Build test notification
+        // Build test notification with unique tag to ensure it always shows
         const title = "🔔 Test Notification";
         const notificationBody =
             "If you see this, push notifications are working!";
         const url = "/settings";
+        const uniqueTag = `test-${Date.now()}`; // Unique tag ensures notification always shows
 
+        // Use data-only message format (no notification field) to match how regular notifications work
+        // This ensures consistent behavior across platforms
         const message: FCMMessage = {
             token: subscription.fcm_token,
+            // NO notification field - use data-only message like regular notifications
             data: {
                 type: "test",
+                tag: uniqueTag,
                 title,
                 body: notificationBody,
                 url,
@@ -277,18 +302,21 @@ serve(async (req) => {
                             body: notificationBody,
                         },
                         sound: "default",
+                        "mutable-content": 1,
                     },
                 },
             },
         };
 
-        const success = await sendFCMNotification(
+        console.log("Sending FCM message:", JSON.stringify(message, null, 2));
+
+        const result = await sendFCMNotification(
             accessToken,
             serviceAccount.project_id,
             message
         );
 
-        if (success) {
+        if (result.success) {
             console.log(
                 `Test notification sent successfully to subscription ${subscriptionId}`
             );
@@ -299,24 +327,26 @@ serve(async (req) => {
                 }),
                 {
                     headers: {
+                        ...corsHeaders,
                         "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",
                     },
                 }
             );
         } else {
+            console.error(`Failed to send test notification: ${result.error}`);
             // Token might be invalid, but don't delete it - let user know
             return new Response(
                 JSON.stringify({
                     success: false,
                     message:
                         "Failed to send notification. The device token may be invalid.",
+                    details: result.error,
                 }),
                 {
                     status: 500,
                     headers: {
+                        ...corsHeaders,
                         "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",
                     },
                 }
             );
@@ -325,10 +355,7 @@ serve(async (req) => {
         console.error("Error in send-test-notification:", error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
-            headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     }
 });

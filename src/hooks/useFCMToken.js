@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import supabase, { databaseSchema } from "../services/supabase";
+import supabase, { databaseSchema, supabaseUrl } from "../services/supabase";
 import {
     requestNotificationPermission,
     getCurrentToken,
@@ -159,8 +159,11 @@ export function useFCMToken(userId) {
             },
         });
 
-    // Mutation to send test notification
-    const { mutate: sendTestNotification, isLoading: isSendingTest } =
+    // State to track which subscription is currently being tested
+    const [testingSubscriptionId, setTestingSubscriptionId] = useState(null);
+
+    // Mutation to send test notification to a single device
+    const { mutateAsync: sendTestNotificationAsync, isLoading: isSendingTest } =
         useMutation({
             mutationFn: async (subscriptionId) => {
                 const { data: sessionData } = await supabase.auth.getSession();
@@ -169,9 +172,7 @@ export function useFCMToken(userId) {
                 if (!accessToken) throw new Error("Not authenticated");
 
                 const response = await fetch(
-                    `${
-                        import.meta.env.VITE_SUPABASE_URL
-                    }/functions/v1/send-test-notification`,
+                    `${supabaseUrl}/functions/v1/send-test-notification`,
                     {
                         method: "POST",
                         headers: {
@@ -195,9 +196,6 @@ export function useFCMToken(userId) {
 
                 return result;
             },
-            onSuccess: () => {
-                toast.success("Test notification sent!");
-            },
             onError: (error) => {
                 console.error("Error sending test notification:", error);
                 toast.error(
@@ -205,6 +203,58 @@ export function useFCMToken(userId) {
                 );
             },
         });
+
+    // Wrapper to send test to single device with tracking
+    const sendTestNotification = useCallback(
+        async (subscriptionId) => {
+            setTestingSubscriptionId(subscriptionId);
+            try {
+                await sendTestNotificationAsync(subscriptionId);
+                toast.success("Test notification sent!");
+            } finally {
+                setTestingSubscriptionId(null);
+            }
+        },
+        [sendTestNotificationAsync]
+    );
+
+    // State for sending to all devices
+    const [isSendingToAll, setIsSendingToAll] = useState(false);
+
+    // Send test notification to all devices
+    const sendTestToAllDevices = useCallback(async () => {
+        if (!subscriptions || subscriptions.length === 0) return;
+
+        setIsSendingToAll(true);
+        try {
+            const results = await Promise.allSettled(
+                subscriptions.map((sub) => sendTestNotificationAsync(sub.id))
+            );
+
+            const successCount = results.filter(
+                (r) => r.status === "fulfilled"
+            ).length;
+            const failCount = results.filter(
+                (r) => r.status === "rejected"
+            ).length;
+
+            if (failCount === 0) {
+                toast.success(
+                    `Test sent to ${successCount} device${
+                        successCount > 1 ? "s" : ""
+                    }!`
+                );
+            } else if (successCount > 0) {
+                toast.success(
+                    `Test sent to ${successCount}/${subscriptions.length} devices`
+                );
+            } else {
+                toast.error("Failed to send test notifications");
+            }
+        } finally {
+            setIsSendingToAll(false);
+        }
+    }, [subscriptions, sendTestNotificationAsync]);
 
     // Get device info for subscription
     const getDeviceInfo = useCallback(() => {
@@ -292,18 +342,34 @@ export function useFCMToken(userId) {
         deleteSubscription();
     }, [deleteSubscription]);
 
-    // Check and refresh token on mount (for token rotation)
+    // Get current FCM token for device identification (doesn't save, just identifies)
     useEffect(() => {
         if (!userId || !notificationStatus.supported) return;
         if (notificationStatus.permission !== "granted") return;
+
+        const identifyCurrentDevice = async () => {
+            const token = await getCurrentToken();
+            if (token) {
+                setCurrentFcmToken(token);
+            }
+        };
+
+        identifyCurrentDevice();
+    }, [userId, notificationStatus.supported, notificationStatus.permission]);
+
+    // Check and refresh token on mount (for token rotation)
+    // Only refreshes if user already has subscriptions (doesn't auto-enable)
+    useEffect(() => {
+        if (!userId || !notificationStatus.supported) return;
+        if (notificationStatus.permission !== "granted") return;
+        // Only check for token rotation if user already has subscriptions
+        // This prevents auto-enabling after user explicitly disabled
+        if (!subscriptions || subscriptions.length === 0) return;
 
         // Check if token has changed
         const checkToken = async () => {
             const token = await getCurrentToken();
             if (!token) return;
-
-            // Store current token for device identification
-            setCurrentFcmToken(token);
 
             // Check if this token already exists in subscriptions
             const existingToken = subscriptions?.find(
@@ -330,13 +396,28 @@ export function useFCMToken(userId) {
 
     // Set up foreground message handler
     useEffect(() => {
+        console.log("[useFCMToken] Setting up foreground message handler");
         const unsubscribe = onForegroundMessage((payload) => {
+            console.log(
+                "[useFCMToken] Foreground message callback triggered:",
+                payload
+            );
             // Get notification data - check both notification and data fields
             const notification = payload.notification || {};
             const data = payload.data || {};
 
             const title = notification.title || data.title || "KickerApp";
             const body = notification.body || data.body || "";
+            // Use unique tag from data, or generate one to ensure notification always shows
+            const tag =
+                data.tag || `${data.type || "notification"}-${Date.now()}`;
+
+            console.log("[useFCMToken] Showing notification:", {
+                title,
+                body,
+                tag,
+                permission: Notification.permission,
+            });
 
             // Show browser notification if permission granted
             if (Notification.permission === "granted") {
@@ -344,7 +425,7 @@ export function useFCMToken(userId) {
                     body,
                     icon: "/android-chrome-192x192.png",
                     badge: "/favicon-32x32.png",
-                    tag: data.type || "kicker-notification",
+                    tag: tag,
                     data: {
                         type: data.type,
                         matchId: data.matchId,
@@ -363,6 +444,9 @@ export function useFCMToken(userId) {
                 };
             } else {
                 // Fallback to toast if notification permission not granted
+                console.log(
+                    "[useFCMToken] Permission not granted, showing toast"
+                );
                 if (title) {
                     toast(body || title, {
                         icon: "🔔",
@@ -388,6 +472,8 @@ export function useFCMToken(userId) {
             isUpdatingPreferences,
         isRequesting,
         isSendingTest,
+        isSendingToAll,
+        testingSubscriptionId,
         notificationStatus,
 
         // Actions
@@ -396,6 +482,7 @@ export function useFCMToken(userId) {
         deleteSubscriptionById,
         updatePreferences,
         sendTestNotification,
+        sendTestToAllDevices,
     };
 }
 
