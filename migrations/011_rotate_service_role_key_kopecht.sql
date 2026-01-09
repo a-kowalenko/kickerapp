@@ -2,10 +2,11 @@
 -- Schema: kopecht
 -- 
 -- INSTRUCTIONS:
--- 1. Replace <DEIN_NEUER_SERVICE_ROLE_KEY> with your new secret key from:
+-- 1. Replace <DEIN_NEUER_SECRET_KEY> with your new secret key from:
 --    Supabase Dashboard → Settings → API Keys → Secret keys → "default"
+--    (The key starting with sb_secret_...)
 -- 2. Run this migration in the Supabase SQL Editor
--- 3. Then disable legacy keys in the Dashboard
+-- 3. Then disable legacy JWT keys in the Dashboard
 --
 -- ⚠️  DO NOT COMMIT THIS FILE WITH THE ACTUAL KEY! ⚠️
 
@@ -19,7 +20,8 @@ BEGIN
             url := 'https://dixhaxicjwqchhautpje.supabase.co/functions/v1/send-push-notification',
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
-                'Authorization', 'Bearer <DEIN_NEUER_SERVICE_ROLE_KEY>'
+                'apikey', '<DEIN_NEUER_SECRET_KEY>',
+                'Authorization', 'Bearer <DEIN_NEUER_SECRET_KEY>'
             ),
             body := jsonb_build_object(
                 'type', 'INSERT',
@@ -39,20 +41,16 @@ CREATE OR REPLACE FUNCTION "kopecht"."trigger_process_achievement"() RETURNS "tr
     SET "search_path" TO 'kopecht', 'extensions'
     AS $$
 declare
-  -- Configuration
   endpoint_url text := 'https://dixhaxicjwqchhautpje.supabase.co/functions/v1/process-achievement';
-  
-  -- Authentication - New rotated service_role key
-  service_role_key text := '<DEIN_NEUER_SERVICE_ROLE_KEY>';
-  
+  secret_key text := '<DEIN_NEUER_SECRET_KEY>';
   webhook_name text := TG_ARGV[0];
-  
 begin
   perform net.http_post(
       url := endpoint_url,
       headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'Authorization', 'Bearer ' || service_role_key
+          'apikey', secret_key,
+          'Authorization', 'Bearer ' || secret_key
       ),
       body := jsonb_build_object(
           'webhook_name', webhook_name, 
@@ -63,7 +61,6 @@ begin
           'old_record', old             
       )
   );
-  
   return new;
 end;
 $$;
