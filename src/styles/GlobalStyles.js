@@ -152,6 +152,10 @@ const GlobalStyles = createGlobalStyle`
 
     // Statistics
     --chart-line-color: #5dc3f5;
+
+    // Mentions
+    --everyone-mention-color: rgb(252, 211, 77);
+    --player-mention-color: rgb(252, 211, 77);
     
     
     --color-grey-0: #18212f;
@@ -277,6 +281,10 @@ const GlobalStyles = createGlobalStyle`
 
     // Statistics
     --chart-line-color: #0c00f3;
+
+    // Mentions
+    --everyone-mention-color: #1c62b9;
+    --player-mention-color: #1c62b9;
 
 
 
