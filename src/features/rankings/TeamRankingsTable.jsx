@@ -1,11 +1,8 @@
 import styled, { css, keyframes } from "styled-components";
 import { useNavigate } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
-import {
-    DEFAULT_AVATAR,
-    media,
-    TEAM_STATUS_ACTIVE,
-} from "../../utils/constants";
+import Table from "../../ui/Table";
+import { DEFAULT_AVATAR, media } from "../../utils/constants";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import useWindowWidth from "../../hooks/useWindowWidth";
 import { useActiveTeams } from "../teams/useTeams";
@@ -62,32 +59,6 @@ const Stat = styled.div`
 
     ${media.mobile} {
         font-size: 1.2rem;
-    }
-`;
-
-const DesktopTeamRow = styled.div`
-    display: grid;
-    grid-template-columns: 0.3fr 2fr 1fr 1fr 1fr 1fr 1fr;
-    column-gap: 2.4rem;
-    align-items: center;
-    padding: 1.2rem 2.4rem;
-    position: relative;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    border-bottom: 1px solid var(--table-border-color);
-
-    &:hover {
-        background-color: var(--table-row-color-hover);
-        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-
-    &:last-child {
-        border-bottom: none;
-    }
-
-    ${media.tablet} {
-        column-gap: 1.2rem;
-        grid-template-columns: 0.3fr 1.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr;
     }
 `;
 
@@ -272,17 +243,6 @@ const PlayerAvatars = styled.div`
     }
 `;
 
-const NoTeamsMessage = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    text-align: center;
-    color: var(--tertiary-text-color);
-    font-size: 1.4rem;
-`;
-
 function TeamRankingsRow({ team, rank }) {
     const navigate = useNavigate();
     const { isMobile } = useWindowWidth();
@@ -371,7 +331,7 @@ function TeamRankingsRow({ team, rank }) {
     }
 
     return (
-        <DesktopTeamRow onClick={() => navigate(`/team/${team.id}`)}>
+        <Table.Row onClick={() => navigate(`/team/${team.id}`)}>
             <Rank>{rank}</Rank>
             <TeamInfo>
                 {team.logo_url ? (
@@ -407,13 +367,13 @@ function TeamRankingsRow({ team, rank }) {
                     {Math.round(team.mmr)}
                 </MmrValue>
             </Stat>
-        </DesktopTeamRow>
+        </Table.Row>
     );
 }
 
 function TeamRankingsTable() {
     const { teams, isLoading } = useActiveTeams();
-    const { isDesktop, isTablet, isMobile } = useWindowWidth();
+    const { isDesktop, isMobile } = useWindowWidth();
 
     // Teams are already filtered (active only) and sorted by MMR from useActiveTeams
     const activeTeams = teams || [];
@@ -431,10 +391,17 @@ function TeamRankingsTable() {
                     {isLoading ? (
                         <LoadingSpinner />
                     ) : activeTeams.length === 0 ? (
-                        <NoTeamsMessage>
+                        <p
+                            style={{
+                                textAlign: "center",
+                                fontSize: "1.4rem",
+                                color: "var(--tertiary-text-color)",
+                                padding: "4rem 2rem",
+                            }}
+                        >
                             No teams have been created yet. Create a team to get
                             started!
-                        </NoTeamsMessage>
+                        </p>
                     ) : (
                         activeTeams.map((team, index) => (
                             <TeamRankingsRow
@@ -449,34 +416,14 @@ function TeamRankingsTable() {
         );
     }
 
-    const columns = "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr";
+    const columns = isDesktop
+        ? "0.3fr 2fr 1fr 1fr 1fr 1fr 1fr"
+        : "0.3fr 1.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr";
 
     return (
         <Content>
-            <div
-                style={{
-                    border: "1px solid var(--table-border-color)",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    boxShadow: "2px 2px 2px 1px rgba(0, 0, 0, 0.2)",
-                }}
-            >
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: isTablet
-                            ? "0.3fr 1.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr"
-                            : columns,
-                        columnGap: isTablet ? "1.2rem" : "2.4rem",
-                        alignItems: "center",
-                        padding: "1.6rem 2.4rem",
-                        backgroundColor: "var(--primary-background-color)",
-                        borderBottom: "1px solid var(--table-border-color)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.4px",
-                        color: "var(--primary-text-color)",
-                    }}
-                >
+            <Table columns={columns}>
+                <Table.Header>
                     <div>Rank</div>
                     <div>Team</div>
                     <div style={{ textAlign: "center" }}>Wins</div>
@@ -484,28 +431,24 @@ function TeamRankingsTable() {
                     <div style={{ textAlign: "center" }}>Total</div>
                     <div style={{ textAlign: "center" }}>Winrate</div>
                     <div style={{ textAlign: "center" }}>MMR</div>
-                </div>
+                </Table.Header>
                 {isLoading ? (
-                    <div style={{ padding: "2rem", textAlign: "center" }}>
-                        <LoadingSpinner />
-                    </div>
-                ) : activeTeams.length === 0 ? (
-                    <NoTeamsMessage>
-                        No teams have been created yet. Create a team to get
-                        started!
-                    </NoTeamsMessage>
+                    <LoadingSpinner />
                 ) : (
-                    <div>
-                        {activeTeams.map((team, index) => (
+                    <Table.Body
+                        noDataLabel="No teams have been created yet. Create a team to get started!"
+                        data={activeTeams}
+                        render={(team, index) => (
                             <TeamRankingsRow
                                 key={team.id}
                                 team={team}
                                 rank={index + 1}
                             />
-                        ))}
-                    </div>
+                        )}
+                    />
                 )}
-            </div>
+                <Table.Footer />
+            </Table>
         </Content>
     );
 }
