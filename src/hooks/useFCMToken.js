@@ -130,7 +130,10 @@ export function useFCMToken(userId) {
                     filter: `user_id=eq.${userId}`,
                 },
                 (payload) => {
-                    console.log("[useFCMToken] Global settings update:", payload);
+                    console.log(
+                        "[useFCMToken] Global settings update:",
+                        payload
+                    );
                     queryClient.invalidateQueries([
                         "globalNotificationSettings",
                         userId,
