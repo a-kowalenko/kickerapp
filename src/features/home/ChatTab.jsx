@@ -1,5 +1,8 @@
+import React from "react";
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { HiChatBubbleLeftRight, HiChevronDoubleDown } from "react-icons/hi2";
 import { useChatMessages } from "./useChatMessages";
 import { useCreateChatMessage } from "./useCreateChatMessage";
@@ -106,6 +109,36 @@ const ContentWrapper = styled.div`
     position: relative;
     min-height: 0;
 `;
+
+const DateDividerContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+    margin: 0.4rem 0;
+
+    &::before,
+    &::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background-color: var(--primary-border-color);
+    }
+`;
+
+const DateLabel = styled.span`
+    font-size: 1.2rem;
+    color: var(--tertiary-text-color);
+    font-weight: 500;
+    white-space: nowrap;
+`;
+
+// Helper function to format date for dividers
+function formatDateDivider(date) {
+    if (isToday(date)) return "Today";
+    if (isYesterday(date)) return "Yesterday";
+    return format(date, "d. MMMM yyyy");
+}
 
 function ChatTab() {
     const messagesContainerRef = useRef(null);
@@ -509,28 +542,76 @@ function ChatTab() {
                                         nextMessage
                                     );
 
+                                // Message is unread if:
+                                // - Created after lastReadAt
+                                // - Not from the current user
+                                // - lastReadAt must be a valid date string
+                                // - If no lastReadAt exists (null), all messages are considered READ
+                                // TEMPORARILY DISABLED - all messages shown as read
+                                const isUnread = false;
+                                // const isUnread = Boolean(
+                                //     currentPlayerId &&
+                                //         message.player_id !== currentPlayerId &&
+                                //         lastReadAt &&
+                                //         typeof lastReadAt === "string" &&
+                                //         lastReadAt.length > 0 &&
+                                //         new Date(message.created_at) >
+                                //             new Date(lastReadAt)
+                                // );
+
+                                // Check if we need a date divider
+                                // Due to column-reverse, nextMessage is chronologically BEFORE current
+                                // Show divider when this message is on a different day than the next (older) one
+                                const currentDate = new Date(
+                                    message.created_at
+                                );
+                                const nextDate = nextMessage
+                                    ? new Date(nextMessage.created_at)
+                                    : null;
+                                const showDateDivider =
+                                    !nextDate ||
+                                    !isSameDay(currentDate, nextDate);
+
                                 return (
-                                    <ChatMessage
-                                        key={message.id}
-                                        message={message}
-                                        currentPlayerId={currentPlayerId}
-                                        isAdmin={isAdmin}
-                                        onUpdate={updateChatMessage}
-                                        onDelete={deleteChatMessage}
-                                        isUpdating={isUpdating}
-                                        isDeleting={isDeleting}
-                                        messageReactions={
-                                            messageReactionsMap[message.id] ||
-                                            {}
-                                        }
-                                        onToggleReaction={handleToggleReaction}
-                                        isTogglingReaction={isTogglingReaction}
-                                        onReply={handleReply}
-                                        onScrollToMessage={
-                                            handleScrollToMessage
-                                        }
-                                        isGrouped={isGrouped}
-                                    />
+                                    <React.Fragment key={message.id}>
+                                        <ChatMessage
+                                            message={message}
+                                            currentPlayerId={currentPlayerId}
+                                            isAdmin={isAdmin}
+                                            onUpdate={updateChatMessage}
+                                            onDelete={deleteChatMessage}
+                                            isUpdating={isUpdating}
+                                            isDeleting={isDeleting}
+                                            messageReactions={
+                                                messageReactionsMap[
+                                                    message.id
+                                                ] || {}
+                                            }
+                                            onToggleReaction={
+                                                handleToggleReaction
+                                            }
+                                            isTogglingReaction={
+                                                isTogglingReaction
+                                            }
+                                            onReply={handleReply}
+                                            onScrollToMessage={
+                                                handleScrollToMessage
+                                            }
+                                            isGrouped={isGrouped}
+                                            isUnread={isUnread}
+                                            onWhisper={handleWhisper}
+                                            onMention={handleMention}
+                                        />
+                                        {showDateDivider && (
+                                            <DateDividerContainer>
+                                                <DateLabel>
+                                                    {formatDateDivider(
+                                                        currentDate
+                                                    )}
+                                                </DateLabel>
+                                            </DateDividerContainer>
+                                        )}
+                                    </React.Fragment>
                                 );
                             })}
                             {hasNextPage && (
