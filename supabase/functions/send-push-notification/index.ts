@@ -344,7 +344,7 @@ async function handleMentionNotification(
         ? `${senderName} mentioned you in a comment`
         : `${senderName} mentioned you in chat`;
     const notificationBody = contentPreview;
-    const url = isComment && matchId ? `/match/${matchId}` : "/home";
+    const url = isComment && matchId ? `/matches/${matchId}` : "/home";
     const tag = isComment
         ? `comment-mention-${sourceId}`
         : `chat-mention-${sourceId}`;
@@ -718,7 +718,7 @@ async function handleChatAllNotification(
     const accessToken = await getFCMAccessToken(serviceAccount);
 
     // Build notification content
-    const title = `New message from ${senderName}`;
+    const title = `[Chat] ${senderName}`;
     const notificationBody = contentPreview;
     const url = "/home";
 
