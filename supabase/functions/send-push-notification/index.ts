@@ -264,7 +264,9 @@ async function handleChatAllNotification(
     // Get FCM tokens for this user (only where notify_all_chat is enabled)
     const { data: subscriptions, error: subError } = await supabase
         .from("push_subscriptions")
-        .select("id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites")
+        .select(
+            "id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites"
+        )
         .eq("user_id", userId)
         .eq("notify_all_chat", true);
 
@@ -441,7 +443,9 @@ async function handleTeamInvitation(
     // Get FCM tokens for invited user (with preferences)
     const { data: subscriptions, error: subError } = await supabase
         .from("push_subscriptions")
-        .select("id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites")
+        .select(
+            "id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites"
+        )
         .eq("user_id", invitedUserId);
 
     if (subError) {
@@ -748,7 +752,9 @@ serve(async (req) => {
         // Include preference columns for filtering
         const { data: subscriptions, error: subError } = await supabase
             .from("push_subscriptions")
-            .select("id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites")
+            .select(
+                "id, fcm_token, user_id, notify_all_chat, notify_mentions, notify_team_invites"
+            )
             .in("user_id", userIdsToNotify);
 
         if (subError) {
@@ -763,9 +769,9 @@ serve(async (req) => {
         }
 
         // Filter by mentions preference
-        const filteredSubscriptions = (subscriptions as PushSubscription[]).filter(
-            (sub) => sub.notify_mentions !== false
-        );
+        const filteredSubscriptions = (
+            subscriptions as PushSubscription[]
+        ).filter((sub) => sub.notify_mentions !== false);
 
         if (filteredSubscriptions.length === 0) {
             return new Response(

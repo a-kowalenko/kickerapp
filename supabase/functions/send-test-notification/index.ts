@@ -74,7 +74,9 @@ async function getFCMAccessToken(serviceAccount: any): Promise<string> {
         .replace("-----END PRIVATE KEY-----", "")
         .replace(/\s/g, "");
 
-    const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+    const binaryKey = Uint8Array.from(atob(pemContents), (c) =>
+        c.charCodeAt(0)
+    );
 
     const key = await crypto.subtle.importKey(
         "pkcs8",
@@ -185,7 +187,7 @@ serve(async (req) => {
         // Create Supabase client with user's auth token to verify ownership
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseServiceKey = Deno.env.get("SECRET_API_KEY")!;
-        
+
         // Use service key but verify user owns the subscription
         const supabase = createClient(supabaseUrl, supabaseServiceKey, {
             db: { schema: databaseSchema },
@@ -203,7 +205,9 @@ serve(async (req) => {
 
         if (subError || !subscription) {
             return new Response(
-                JSON.stringify({ error: "Subscription not found or not authorized" }),
+                JSON.stringify({
+                    error: "Subscription not found or not authorized",
+                }),
                 {
                     status: 404,
                     headers: { "Content-Type": "application/json" },
@@ -212,8 +216,11 @@ serve(async (req) => {
         }
 
         // Get the authenticated user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+
         if (userError || !user) {
             return new Response(JSON.stringify({ error: "Unauthorized" }), {
                 status: 401,
@@ -224,7 +231,9 @@ serve(async (req) => {
         // Verify user owns this subscription
         if (subscription.user_id !== user.id) {
             return new Response(
-                JSON.stringify({ error: "Not authorized to send test to this device" }),
+                JSON.stringify({
+                    error: "Not authorized to send test to this device",
+                }),
                 {
                     status: 403,
                     headers: { "Content-Type": "application/json" },
@@ -237,7 +246,8 @@ serve(async (req) => {
 
         // Build test notification
         const title = "🔔 Test Notification";
-        const notificationBody = "If you see this, push notifications are working!";
+        const notificationBody =
+            "If you see this, push notifications are working!";
         const url = "/settings";
 
         const message: FCMMessage = {
@@ -279,9 +289,14 @@ serve(async (req) => {
         );
 
         if (success) {
-            console.log(`Test notification sent successfully to subscription ${subscriptionId}`);
+            console.log(
+                `Test notification sent successfully to subscription ${subscriptionId}`
+            );
             return new Response(
-                JSON.stringify({ success: true, message: "Test notification sent" }),
+                JSON.stringify({
+                    success: true,
+                    message: "Test notification sent",
+                }),
                 {
                     headers: {
                         "Content-Type": "application/json",
@@ -292,9 +307,10 @@ serve(async (req) => {
         } else {
             // Token might be invalid, but don't delete it - let user know
             return new Response(
-                JSON.stringify({ 
-                    success: false, 
-                    message: "Failed to send notification. The device token may be invalid." 
+                JSON.stringify({
+                    success: false,
+                    message:
+                        "Failed to send notification. The device token may be invalid.",
                 }),
                 {
                     status: 500,

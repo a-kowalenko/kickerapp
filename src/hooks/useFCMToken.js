@@ -50,7 +50,9 @@ export function useFCMToken(userId) {
     // Get current device's subscription
     const currentDeviceSubscription = useMemo(() => {
         if (!subscriptions || !currentFcmToken) return null;
-        return subscriptions.find((s) => s.fcm_token === currentFcmToken) || null;
+        return (
+            subscriptions.find((s) => s.fcm_token === currentFcmToken) || null
+        );
     }, [subscriptions, currentFcmToken]);
 
     // Mutation to save FCM token using RPC function
@@ -167,7 +169,9 @@ export function useFCMToken(userId) {
                 if (!accessToken) throw new Error("Not authenticated");
 
                 const response = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-test-notification`,
+                    `${
+                        import.meta.env.VITE_SUPABASE_URL
+                    }/functions/v1/send-test-notification`,
                     {
                         method: "POST",
                         headers: {
@@ -184,7 +188,9 @@ export function useFCMToken(userId) {
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.error || "Failed to send test notification");
+                    throw new Error(
+                        result.error || "Failed to send test notification"
+                    );
                 }
 
                 return result;
@@ -194,7 +200,9 @@ export function useFCMToken(userId) {
             },
             onError: (error) => {
                 console.error("Error sending test notification:", error);
-                toast.error(error.message || "Failed to send test notification");
+                toast.error(
+                    error.message || "Failed to send test notification"
+                );
             },
         });
 
