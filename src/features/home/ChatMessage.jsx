@@ -57,8 +57,7 @@ const HighlightOverlay = styled.div`
         rgba(99, 160, 255, 0.3) 50%,
         rgba(59, 130, 246, 0.25) 100%
     );
-    box-shadow: 
-        0 0 20px 0 rgba(59, 130, 246, 0.3),
+    box-shadow: 0 0 20px 0 rgba(59, 130, 246, 0.3),
         inset 0 0 20px 0 rgba(255, 255, 255, 0.1);
     border-radius: inherit;
     pointer-events: none;
