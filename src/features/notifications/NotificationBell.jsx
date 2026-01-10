@@ -1,12 +1,12 @@
 import styled from "styled-components";
-import { useRef, useCallback } from "react";
-import { HiOutlineBell } from "react-icons/hi2";
+import { useRef, useCallback, useState, useMemo } from "react";
+import { HiOutlineBell, HiArrowRight } from "react-icons/hi2";
+import { useNavigate } from "react-router-dom";
 import { useOutsideClick } from "../../hooks/useOutsideClick";
 import { useNotifications } from "./useNotifications";
 import NotificationItem from "./NotificationItem";
 import ButtonIcon from "../../ui/ButtonIcon";
 import SpinnerMini from "../../ui/SpinnerMini";
-import { useState } from "react";
 
 const NotificationWrapper = styled.div`
     position: relative;
@@ -86,6 +86,43 @@ const MarkAllReadButton = styled.button`
     }
 `;
 
+const FilterTabs = styled.div`
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.8rem 1.4rem;
+    border-bottom: 1px solid var(--primary-border-color);
+    background-color: var(--secondary-background-color);
+    overflow-x: auto;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+`;
+
+const FilterTab = styled.button`
+    background: ${(props) =>
+        props.$isActive
+            ? "var(--primary-button-color)"
+            : "var(--tertiary-background-color)"};
+    border: none;
+    color: ${(props) =>
+        props.$isActive ? "white" : "var(--secondary-text-color)"};
+    font-size: 1.2rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-pill);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+
+    &:hover {
+        background: ${(props) =>
+            props.$isActive
+                ? "var(--primary-button-color)"
+                : "var(--quaternary-background-color)"};
+    }
+`;
+
 const NotificationList = styled.div`
     max-height: 45rem;
     overflow-y: auto;
@@ -147,9 +184,57 @@ const LoadMoreTrigger = styled.div`
     font-size: 1.3rem;
 `;
 
+const DropdownFooter = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 1.4rem;
+    border-top: 1px solid var(--primary-border-color);
+    background-color: var(--secondary-background-color);
+`;
+
+const ViewAllButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background: transparent;
+    border: none;
+    color: var(--primary-button-color);
+    font-size: 1.3rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.8rem 1.6rem;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.15s ease;
+    width: 100%;
+
+    &:hover {
+        background-color: rgba(99, 102, 241, 0.1);
+    }
+
+    &:active {
+        background-color: rgba(99, 102, 241, 0.15);
+    }
+
+    & svg {
+        width: 1.4rem;
+        height: 1.4rem;
+    }
+`;
+
+const FILTER_OPTIONS = [
+    { value: "all", label: "All" },
+    { value: "chat", label: "Chat" },
+    { value: "comment", label: "Comments" },
+    { value: "team_invite", label: "Invites" },
+];
+
 function NotificationBell() {
     const [isOpen, setIsOpen] = useState(false);
+    const [filter, setFilter] = useState("all");
     const listRef = useRef(null);
+    const navigate = useNavigate();
 
     const {
         notifications,
@@ -163,6 +248,12 @@ function NotificationBell() {
         isMarkingAllAsRead,
     } = useNotifications();
 
+    // Filter notifications based on selected filter
+    const filteredNotifications = useMemo(() => {
+        if (filter === "all") return notifications;
+        return notifications.filter((n) => n.type === filter);
+    }, [notifications, filter]);
+
     const close = useCallback(() => setIsOpen(false), []);
     const dropdownRef = useOutsideClick(close);
 
@@ -172,6 +263,11 @@ function NotificationBell() {
 
     function handleMarkAllAsRead() {
         markAllAsRead();
+    }
+
+    function handleViewAll() {
+        setIsOpen(false);
+        navigate("/notifications");
     }
 
     function handleScroll(e) {
@@ -210,29 +306,46 @@ function NotificationBell() {
                                 {isMarkingAllAsRead ? (
                                     <SpinnerMini />
                                 ) : (
-                                    "Mark all as read"
+                                    "Mark all read"
                                 )}
                             </MarkAllReadButton>
                         )}
                     </DropdownHeader>
+
+                    <FilterTabs>
+                        {FILTER_OPTIONS.map((option) => (
+                            <FilterTab
+                                key={option.value}
+                                $isActive={filter === option.value}
+                                onClick={() => setFilter(option.value)}
+                            >
+                                {option.label}
+                            </FilterTab>
+                        ))}
+                    </FilterTabs>
 
                     <NotificationList ref={listRef} onScroll={handleScroll}>
                         {isLoading ? (
                             <LoadingContainer>
                                 <SpinnerMini />
                             </LoadingContainer>
-                        ) : notifications.length === 0 ? (
+                        ) : filteredNotifications.length === 0 ? (
                             <EmptyState>
                                 <HiOutlineBell />
-                                <p>No notifications</p>
+                                <p>
+                                    {filter === "all"
+                                        ? "No notifications"
+                                        : "No notifications in this category"}
+                                </p>
                             </EmptyState>
                         ) : (
                             <>
-                                {notifications.map((notification) => (
+                                {filteredNotifications.map((notification) => (
                                     <NotificationItem
                                         key={notification.id}
                                         notification={notification}
                                         onMarkAsRead={markAsRead}
+                                        onClose={close}
                                     />
                                 ))}
                                 {isFetchingNextPage && (
@@ -240,14 +353,22 @@ function NotificationBell() {
                                         <SpinnerMini />
                                     </LoadMoreTrigger>
                                 )}
-                                {!hasNextPage && notifications.length > 0 && (
-                                    <LoadMoreTrigger>
-                                        No more notifications
-                                    </LoadMoreTrigger>
-                                )}
+                                {!hasNextPage &&
+                                    filteredNotifications.length > 0 && (
+                                        <LoadMoreTrigger>
+                                            No more notifications
+                                        </LoadMoreTrigger>
+                                    )}
                             </>
                         )}
                     </NotificationList>
+
+                    <DropdownFooter>
+                        <ViewAllButton onClick={handleViewAll}>
+                            View all notifications
+                            <HiArrowRight />
+                        </ViewAllButton>
+                    </DropdownFooter>
                 </Dropdown>
             )}
         </NotificationWrapper>

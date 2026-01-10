@@ -1,6 +1,5 @@
 import styled, { keyframes } from "styled-components";
 import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
 import {
     HiOutlineChatBubbleLeftRight,
     HiOutlineChatBubbleOvalLeft,
@@ -24,7 +23,7 @@ const ItemContainer = styled.div`
     gap: 1.2rem;
     padding: 1.2rem 1.4rem;
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, transform 0.1s ease;
     border-left: 3px solid
         ${(props) => (props.$isUnread ? "var(--color-red-700)" : "transparent")};
     background-color: ${(props) =>
@@ -32,6 +31,11 @@ const ItemContainer = styled.div`
 
     &:hover {
         background-color: var(--tertiary-background-color);
+    }
+
+    &:active {
+        transform: scale(0.98);
+        background-color: var(--quaternary-background-color);
     }
 
     &:not(:last-child) {
@@ -179,7 +183,7 @@ function cleanContentPreview(content) {
     return content.replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1");
 }
 
-function NotificationItem({ notification, onMarkAsRead }) {
+function NotificationItem({ notification, onMarkAsRead, onClose }) {
     const navigate = useNavigate();
 
     const {
@@ -198,7 +202,6 @@ function NotificationItem({ notification, onMarkAsRead }) {
 
     const timeAgo = formatDistanceToNow(new Date(created_at), {
         addSuffix: true,
-        locale: de,
     });
 
     const matchInfoString = formatMatchInfo(match_info);
@@ -210,15 +213,18 @@ function NotificationItem({ notification, onMarkAsRead }) {
             onMarkAsRead(id);
         }
 
+        // Close dropdown if provided (from NotificationBell)
+        onClose?.();
+
         // Navigate to the source
         if (type === "comment" && match_id) {
-            // Navigate to match with scroll-to comment
             navigate(`/matches/${match_id}?scrollTo=comment-${source_id}`);
         } else if (type === "chat") {
-            // Navigate to home with chat tab and scroll-to message
-            navigate(`/home?tab=chat&scrollTo=message-${source_id}`);
+            // Use URL param with timestamp for reliable scroll - works even for older messages
+            navigate(
+                `/home?tab=chat&scrollTo=message-${source_id}&_t=${Date.now()}`
+            );
         } else if (type === "team_invite") {
-            // Navigate to my teams page where invitations are shown
             navigate("/teams/my");
         }
     }

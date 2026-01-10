@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
@@ -127,6 +127,7 @@ const TabContent = styled.div`
 
 function ChatSection() {
     const [searchParams] = useSearchParams();
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState(() => {
         // Check if there's a scrollTo param that specifies a message (should switch to chat tab)
         const scrollTo = new URLSearchParams(window.location.search).get(
@@ -173,6 +174,14 @@ function ChatSection() {
             setActiveTab(tabParam);
         }
     }, [searchParams]);
+
+    // Handle navigation from notification clicks (via location.state)
+    // This ensures the chat tab is activated even when already on /home
+    useEffect(() => {
+        if (location.state?.scrollToMessageId && location.state?.scrollKey) {
+            setActiveTab("chat");
+        }
+    }, [location.state?.scrollToMessageId, location.state?.scrollKey]);
 
     // Persist tab selection
     useEffect(() => {

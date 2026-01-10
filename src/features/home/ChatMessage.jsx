@@ -1,5 +1,5 @@
 import styled, { css, keyframes } from "styled-components";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import {
     HiPencil,
@@ -29,19 +29,41 @@ import { useLongPress } from "../../hooks/useLongPress";
 // Quick reaction emojis (Discord-style)
 const QUICK_REACTIONS = ["❤️", "👍", "💩", "🤡"];
 
-const highlightPulse = keyframes`
+const highlightFade = keyframes`
     0% {
-        background-color: var(--primary-button-color-light);
-        box-shadow: 0 0 0 0 var(--primary-button-color);
+        opacity: 0;
+        transform: scale(1.02);
     }
-    50% {
-        background-color: var(--primary-button-color-light);
-        box-shadow: 0 0 8px 2px var(--primary-button-color);
+    20% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1);
     }
     100% {
-        background-color: transparent;
-        box-shadow: 0 0 0 0 transparent;
+        opacity: 0;
+        transform: scale(1);
     }
+`;
+
+const HighlightOverlay = styled.div`
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(
+        135deg,
+        rgba(59, 130, 246, 0.25) 0%,
+        rgba(99, 160, 255, 0.3) 50%,
+        rgba(59, 130, 246, 0.25) 100%
+    );
+    box-shadow: 
+        0 0 20px 0 rgba(59, 130, 246, 0.3),
+        inset 0 0 20px 0 rgba(255, 255, 255, 0.1);
+    border-radius: inherit;
+    pointer-events: none;
+    animation: ${highlightFade} 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    z-index: 0;
 `;
 
 const MessageContainer = styled.div`
@@ -60,7 +82,7 @@ const MessageContainer = styled.div`
             props.$isUnread && !props.$isWhisper
                 ? "var(--primary-button-color)"
                 : "transparent"};
-    transition: background-color 0.2s, border-left-color 0.2s;
+    transition: border-left-color 0.2s;
     position: relative;
 
     /* Prevent text selection on mobile during long press */
@@ -77,10 +99,6 @@ const MessageContainer = styled.div`
         css`
             transform: translateX(${props.$swipeOffset}px);
         `}
-
-    &.highlight {
-        animation: ${highlightPulse} 2s ease-out;
-    }
 `;
 
 const SwipeIndicator = styled.div`
@@ -447,6 +465,8 @@ function ChatMessage({
     onScrollToMessage,
     isGrouped = false,
     isUnread = false,
+    isHighlighted = false,
+    onHighlightEnd,
     onWhisper,
     onMention,
 }) {
@@ -475,6 +495,26 @@ function ChatMessage({
     const isOverLimit = editContent.length > MAX_CHAT_MESSAGE_LENGTH;
     const reactionEntries = Object.values(messageReactions || {});
     const hasReactions = reactionEntries.length > 0;
+
+    // Track highlight overlay ref for animation end
+    const highlightRef = useRef(null);
+
+    // Handle highlight animation end
+    useEffect(() => {
+        if (!isHighlighted) return;
+
+        const overlay = highlightRef.current;
+        if (!overlay) return;
+
+        const handleAnimationEnd = () => {
+            onHighlightEnd?.();
+        };
+
+        overlay.addEventListener("animationend", handleAnimationEnd);
+        return () => {
+            overlay.removeEventListener("animationend", handleAnimationEnd);
+        };
+    }, [isHighlighted, onHighlightEnd, message.id]);
 
     function handleSaveEdit() {
         if (!editContent.trim() || editContent.length > MAX_CHAT_MESSAGE_LENGTH)
@@ -821,6 +861,9 @@ function ChatMessage({
             onContextMenu={handleMessageContextMenu}
             data-message-id={message.id}
         >
+            {/* Highlight overlay for notification scroll */}
+            {isHighlighted && <HighlightOverlay ref={highlightRef} />}
+
             {/* Discord-style hover toolbar */}
             <HoverToolbar data-hidden={isContextMenuOpen}>
                 {/* Quick reactions */}

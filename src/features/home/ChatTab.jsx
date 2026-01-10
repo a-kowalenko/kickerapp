@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { HiChatBubbleLeftRight, HiChevronDoubleDown } from "react-icons/hi2";
 import { useChatMessages } from "./useChatMessages";
@@ -192,15 +192,23 @@ function ChatTab() {
     const [lastWhisperFrom, setLastWhisperFrom] = useState(null);
     const [scrollTrigger, setScrollTrigger] = useState(0);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
-    const [hasScrolledToDeepLink, setHasScrolledToDeepLink] = useState(false);
+    const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+    const [pendingScrollToMessageId, setPendingScrollToMessageId] =
+        useState(null);
     const prevMessageCountRef = useRef(0);
     const isNearBottomRef = useRef(true);
     const prevFirstMessageIdRef = useRef(null);
     const pendingScrollRef = useRef(false);
     const hasMarkedAsReadRef = useRef(false);
+    const lastScrollRequestRef = useRef(null);
     const [searchParams] = useSearchParams();
+    const location = useLocation();
 
-    // Parse deep link from query param (e.g., ?scrollTo=message-123)
+    // Get scroll target from location state (for same-page navigation)
+    const scrollFromState = location.state?.scrollToMessageId;
+    const scrollKey = location.state?.scrollKey;
+
+    // Parse deep link from query param (e.g., ?scrollTo=message-123&_t=timestamp)
     const deepLinkMessageId = useMemo(() => {
         const scrollToParam = searchParams.get("scrollTo");
         if (scrollToParam && scrollToParam.startsWith("message-")) {
@@ -209,26 +217,8 @@ function ChatTab() {
         return null;
     }, [searchParams]);
 
-    // Scroll to deep-linked message
-    const scrollToMessage = useCallback((messageId) => {
-        const container = messagesContainerRef.current;
-        if (!container) return;
-
-        const messageElement = container.querySelector(
-            `[data-message-id="${messageId}"]`
-        );
-        if (messageElement) {
-            messageElement.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-            });
-            // Add highlight effect
-            messageElement.classList.add("highlight");
-            setTimeout(() => {
-                messageElement.classList.remove("highlight");
-            }, 2000);
-        }
-    }, []);
+    // Get timestamp param to detect new scroll requests for the same message
+    const scrollTimestamp = searchParams.get("_t");
 
     // Hooks
     const {
@@ -274,6 +264,82 @@ function ChatTab() {
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
+
+    // Detect new scroll request from URL params or location state
+    useEffect(() => {
+        const targetMessageId = deepLinkMessageId || scrollFromState;
+        const scrollIdentifier = `${targetMessageId}-${
+            scrollTimestamp || scrollKey
+        }`;
+
+        if (!targetMessageId) return;
+        if (lastScrollRequestRef.current === scrollIdentifier) return;
+
+        // New scroll request detected
+        lastScrollRequestRef.current = scrollIdentifier;
+        setPendingScrollToMessageId(targetMessageId);
+        setHighlightedMessageId(null);
+    }, [deepLinkMessageId, scrollTimestamp, scrollFromState, scrollKey]);
+
+    // Handle pending scroll - try to find and scroll to message, or load more
+    useEffect(() => {
+        if (!pendingScrollToMessageId) return;
+        if (isLoadingMessages || isFetchingNextPage) return;
+        if (!messages?.length) return;
+
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        // Check if message exists in current messages
+        const messageExists = messages.some(
+            (m) => String(m.id) === String(pendingScrollToMessageId)
+        );
+
+        if (messageExists) {
+            // Message found - scroll to it immediately
+            const messageElement = container.querySelector(
+                `[data-message-id="${pendingScrollToMessageId}"]`
+            );
+
+            if (messageElement) {
+                // Use instant scroll to avoid issues with column-reverse layout
+                messageElement.scrollIntoView({
+                    behavior: "instant",
+                    block: "center",
+                });
+                setHighlightedMessageId(String(pendingScrollToMessageId));
+            }
+            setPendingScrollToMessageId(null);
+
+            // Clean up URL params (keep tab, remove scrollTo and _t)
+            const currentParams = new URLSearchParams(window.location.search);
+            currentParams.delete("scrollTo");
+            currentParams.delete("_t");
+            const newSearch = currentParams.toString();
+            window.history.replaceState(
+                null,
+                "",
+                `${window.location.pathname}${newSearch ? `?${newSearch}` : ""}`
+            );
+        } else if (hasNextPage) {
+            // Message not in current batch - load more
+            fetchNextPage();
+        } else {
+            // No more pages, message not found
+            console.log(
+                "[ChatTab] Message not found:",
+                pendingScrollToMessageId
+            );
+            setPendingScrollToMessageId(null);
+        }
+    }, [
+        pendingScrollToMessageId,
+        isLoadingMessages,
+        isFetchingNextPage,
+        messages,
+        hasNextPage,
+        fetchNextPage,
+    ]);
 
     // Mark messages as read and update both badge and read status
     // Uses hasMarkedAsReadRef to prevent duplicate API calls
@@ -462,7 +528,7 @@ function ChatTab() {
         prevFirstMessageIdRef.current = currentFirstMessageId;
     }, [messages, currentPlayerId]);
 
-    // Initial scroll
+    // Initial scroll - just scroll to top when first loaded
     useEffect(() => {
         if (isLoadingMessages || !messages.length || hasInitiallyScrolled)
             return;
@@ -471,18 +537,11 @@ function ChatTab() {
 
         const container = messagesContainerRef.current;
         if (container) {
-            // If there's a deep link, scroll to that message instead
-            if (deepLinkMessageId && !hasScrolledToDeepLink) {
-                setHasInitiallyScrolled(true);
-                setHasScrolledToDeepLink(true);
-                // Small delay to ensure DOM is ready
-                setTimeout(() => {
-                    scrollToMessage(deepLinkMessageId);
-                }, 100);
-            } else {
+            // Don't interfere if there's a deep link - let the scroll effect handle it
+            if (!deepLinkMessageId) {
                 container.scrollTop = 0;
-                setHasInitiallyScrolled(true);
             }
+            setHasInitiallyScrolled(true);
             prevMessageCountRef.current = messages.length;
         }
     }, [
@@ -491,8 +550,6 @@ function ChatTab() {
         messages.length,
         hasInitiallyScrolled,
         deepLinkMessageId,
-        hasScrolledToDeepLink,
-        scrollToMessage,
     ]);
 
     function handleJumpToLatest() {
@@ -709,6 +766,13 @@ function ChatTab() {
                                             }
                                             isGrouped={isGrouped}
                                             isUnread={isUnread}
+                                            isHighlighted={
+                                                String(message.id) ===
+                                                highlightedMessageId
+                                            }
+                                            onHighlightEnd={() =>
+                                                setHighlightedMessageId(null)
+                                            }
                                             onWhisper={handleWhisper}
                                             onMention={handleMention}
                                         />
