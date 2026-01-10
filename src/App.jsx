@@ -59,10 +59,7 @@ function App() {
                                 <Route path="login" element={<Login />} />
                                 <Route path="register" element={<Register />} />
                                 <Route path="recovery" element={<Recovery />} />
-                                <Route
-                                    path="imprint"
-                                    element={<Impressum />}
-                                />
+                                <Route path="imprint" element={<Impressum />} />
                                 <Route
                                     path="privacy"
                                     element={<Datenschutz />}

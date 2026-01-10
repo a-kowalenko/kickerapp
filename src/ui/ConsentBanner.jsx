@@ -191,9 +191,7 @@ function ConsentBanner() {
                     <Title>{t.title}</Title>
                     <Description>
                         {t.description}{" "}
-                        <PrivacyLink to="/privacy">
-                            {t.learnMore}
-                        </PrivacyLink>
+                        <PrivacyLink to="/privacy">{t.learnMore}</PrivacyLink>
                     </Description>
                 </TextContent>
 
