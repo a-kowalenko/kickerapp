@@ -98,6 +98,8 @@ const List = styled.ul`
 
 const StyledElement = styled.div`
     display: flex;
+    align-items: center;
+    gap: 0.8rem;
     width: 100%;
     padding: 0.6rem 1.2rem;
     background-color: var(--dropdown-list-background-color);
@@ -113,9 +115,37 @@ const StyledElement = styled.div`
             : ""}
 `;
 
-function Element({ text, onSelect, isSelected }) {
+const DropdownAvatar = styled.img`
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+`;
+
+const AvatarPlaceholder = styled.div`
+    width: 2.4rem;
+    height: 2.4rem;
+    flex-shrink: 0;
+`;
+
+const ToggleContent = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+function Element({ text, avatar, showAvatarPlaceholder, onSelect, isSelected }) {
     return (
         <StyledElement onClick={onSelect} $isSelected={isSelected}>
+            {avatar ? (
+                <DropdownAvatar src={avatar} alt="" />
+            ) : showAvatarPlaceholder ? (
+                <AvatarPlaceholder />
+            ) : null}
             <div>{text}</div>
         </StyledElement>
     );
@@ -128,10 +158,14 @@ function Dropdown({
     initSelected = null,
     isLoading = false,
     minWidth = null,
+    showAvatars = false,
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState(initSelected);
     const dropdownContext = useDropdownContext();
+
+    // Check if any option has an avatar
+    const hasAnyAvatar = showAvatars || options.some((opt) => opt.avatar);
 
     const close = useCallback(() => setIsOpen(false), []);
     const ref = useOutsideClick(close, false);
@@ -174,7 +208,14 @@ function Dropdown({
                 $variation={disabled ? "disabled" : "default"}
                 $minWidth={minWidth}
             >
-                {selected?.text || "Select an option"}
+                <ToggleContent>
+                    {selected?.avatar ? (
+                        <DropdownAvatar src={selected.avatar} alt="" />
+                    ) : hasAnyAvatar ? (
+                        <AvatarPlaceholder />
+                    ) : null}
+                    {selected?.text || "Select an option"}
+                </ToggleContent>
                 <RotateIcon $isOpen={isOpen} />
             </Toggle>
             {!disabled && (
@@ -185,6 +226,8 @@ function Dropdown({
                         options.map((option) => (
                             <Element
                                 text={option.text}
+                                avatar={option.avatar}
+                                showAvatarPlaceholder={hasAnyAvatar}
                                 onSelect={() => handleSelect(option)}
                                 key={option.value}
                                 isSelected={option.value === selected?.value}

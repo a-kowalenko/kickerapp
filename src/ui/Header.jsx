@@ -210,11 +210,13 @@ function Header() {
                             options={kickers.map((kicker) => ({
                                 text: kicker.name,
                                 value: kicker.id,
+                                avatar: kicker.avatar || undefined,
                             }))}
                             onSelect={handleKickerSelect}
                             initSelected={{
                                 text: kickerData.name,
                                 value: kickerData.id,
+                                avatar: kickerData.avatar || undefined,
                             }}
                         />
                         <SeasonBadge />

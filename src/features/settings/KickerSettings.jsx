@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { HiOutlineCamera, HiOutlinePencil } from "react-icons/hi2";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUpdateKicker } from "../kicker/useUpdateKicker";
@@ -194,7 +194,7 @@ function KickerSettings() {
     const fileInputRef = useRef(null);
 
     // Initialize name when data loads
-    useState(() => {
+    useEffect(() => {
         if (kickerData?.name) {
             setName(kickerData.name);
         }
@@ -241,12 +241,8 @@ function KickerSettings() {
         setIsUploadingAvatar(true);
 
         try {
-            // Compress the image
-            const compressedFile = await compressImage(file, {
-                maxWidth: 400,
-                maxHeight: 400,
-                quality: 0.85,
-            });
+            // Compress the image (uses default compression settings from apiImageUpload)
+            const compressedFile = await compressImage(file);
 
             // Generate unique filename
             const fileExt = file.type === "image/gif" ? "gif" : "webp";

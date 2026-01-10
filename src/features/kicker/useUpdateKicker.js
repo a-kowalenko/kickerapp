@@ -9,7 +9,7 @@ export function useUpdateKicker() {
         mutationFn: updateKickerApi,
         onSuccess: (data) => {
             queryClient.invalidateQueries(["kicker"]);
-            queryClient.invalidateQueries(["kickerInfo"]);
+            queryClient.invalidateQueries(["kicker-info"]);
             toast.success("Kicker updated successfully");
         },
         onError: (error) => {
