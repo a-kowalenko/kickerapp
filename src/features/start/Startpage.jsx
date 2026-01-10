@@ -53,6 +53,9 @@ const KickerList = styled.ul`
 const KickerListElement = styled.li`
     cursor: pointer;
     padding: 0.8rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
 
     border-radius: 3px;
 
@@ -61,6 +64,20 @@ const KickerListElement = styled.li`
     &:hover {
         background-color: var(--nav-link-background-color-active);
     }
+`;
+
+const KickerAvatar = styled.img`
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+`;
+
+const AvatarPlaceholder = styled.div`
+    width: 2.4rem;
+    height: 2.4rem;
+    flex-shrink: 0;
 `;
 
 const BurgerMenuContainer = styled.div`
@@ -401,16 +418,31 @@ function Startpage() {
                             <KickerListTitle>Your Kickers</KickerListTitle>
                             {kickers?.length > 0 ? (
                                 <KickerList>
-                                    {kickers.map((kicker) => (
-                                        <KickerListElement
-                                            key={kicker.id}
-                                            onClick={() =>
-                                                handleKickerSelect(kicker.id)
-                                            }
-                                        >
-                                            {kicker.name}
-                                        </KickerListElement>
-                                    ))}
+                                    {(() => {
+                                        const hasAnyAvatar = kickers.some(
+                                            (k) => k.avatar
+                                        );
+                                        return kickers.map((kicker) => (
+                                            <KickerListElement
+                                                key={kicker.id}
+                                                onClick={() =>
+                                                    handleKickerSelect(
+                                                        kicker.id
+                                                    )
+                                                }
+                                            >
+                                                {kicker.avatar ? (
+                                                    <KickerAvatar
+                                                        src={kicker.avatar}
+                                                        alt=""
+                                                    />
+                                                ) : hasAnyAvatar ? (
+                                                    <AvatarPlaceholder />
+                                                ) : null}
+                                                {kicker.name}
+                                            </KickerListElement>
+                                        ));
+                                    })()}
                                 </KickerList>
                             ) : (
                                 <SidebarInfoMessage>

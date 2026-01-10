@@ -138,7 +138,13 @@ const ToggleContent = styled.div`
     white-space: nowrap;
 `;
 
-function Element({ text, avatar, showAvatarPlaceholder, onSelect, isSelected }) {
+function Element({
+    text,
+    avatar,
+    showAvatarPlaceholder,
+    onSelect,
+    isSelected,
+}) {
     return (
         <StyledElement onClick={onSelect} $isSelected={isSelected}>
             {avatar ? (
