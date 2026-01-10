@@ -7,7 +7,7 @@ import { media } from "../utils/constants";
 
 const StyledFooter = styled.footer`
     grid-column: 1 / -1;
-    padding: 2.4rem;
+    padding: 2.4rem 9.6rem;
 
     font-size: 1rem;
     text-align: center;
@@ -16,25 +16,29 @@ const StyledFooter = styled.footer`
     width: 100%;
     border-top: 1px solid var(--primary-border-color);
     background-color: var(--primary-background-color);
+    overflow-x: auto;
+
+    ${media.tablet} {
+        padding: 2.4rem;
+    }
 `;
 
 const FooterLayout = styled.div`
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 4.8rem;
     max-width: 100rem;
     margin-left: auto;
     margin-right: auto;
 
     ${media.tablet} {
-        grid-template-columns: repeat(2, 1fr);
         gap: 3.2rem;
+        justify-content: flex-start;
     }
 
     ${media.mobile} {
-        grid-template-columns: 1fr;
         gap: 2.4rem;
-        text-align: center;
     }
 `;
 
@@ -43,9 +47,13 @@ const Container = styled.div`
     flex-direction: column;
     justify-content: flex-start;
     align-items: flex-start;
+    min-width: 14.7rem;
+    flex: 0 0 auto;
 
     ${media.mobile} {
-        align-items: center;
+        /* align-items: center;
+        text-align: center; */
+        min-width: 100%;
     }
 `;
 

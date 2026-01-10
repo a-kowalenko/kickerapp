@@ -167,6 +167,10 @@ const FooterLinks = styled.div`
     margin-top: 0.5rem;
     font-size: 1.2rem;
 
+    ${media.tablet} {
+        margin-bottom: 1.5rem;
+    }
+
     & a {
         color: var(--secondary-text-color);
         transition: color 0.2s ease;
