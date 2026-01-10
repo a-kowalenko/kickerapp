@@ -33,6 +33,9 @@ import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
 import Testwiese from "./pages/Testwiese";
 import Notifications from "./pages/Notifications";
+import Impressum from "./pages/Impressum";
+import Datenschutz from "./pages/Datenschutz";
+import ConsentBanner from "./ui/ConsentBanner";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -56,6 +59,14 @@ function App() {
                                 <Route path="login" element={<Login />} />
                                 <Route path="register" element={<Register />} />
                                 <Route path="recovery" element={<Recovery />} />
+                                <Route
+                                    path="imprint"
+                                    element={<Impressum />}
+                                />
+                                <Route
+                                    path="privacy"
+                                    element={<Datenschutz />}
+                                />
 
                                 <Route
                                     element={
@@ -132,6 +143,7 @@ function App() {
                                 </Route>
                                 <Route path="*" element={<PageNotFound />} />
                             </Routes>
+                            <ConsentBanner />
                         </BrowserRouter>
 
                         <Toaster

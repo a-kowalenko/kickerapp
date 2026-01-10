@@ -4,7 +4,7 @@ import DarkModeToggle from "../../ui/DarkModeToggle";
 import { useDarkMode } from "../../contexts/DarkModeContext";
 import Button from "../../ui/Button";
 import Input from "../../ui/Input";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, Link } from "react-router-dom";
 import { useUser } from "../../features/authentication/useUser";
 import Spinner from "../../ui/Spinner";
 import { useLogout } from "../../features/authentication/useLogout";
@@ -158,6 +158,23 @@ const Footer = styled.footer`
     bottom: 0;
     width: 100%;
     border-top: 1px solid var(--primary-border-color);
+`;
+
+const FooterLinks = styled.div`
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+    font-size: 1.2rem;
+
+    & a {
+        color: var(--secondary-text-color);
+        transition: color 0.2s ease;
+
+        &:hover {
+            color: var(--primary-text-color);
+        }
+    }
 `;
 
 const ResponsiveNavButtonsContainer = styled(NavButtonsContainer)`
@@ -430,7 +447,14 @@ function Startpage() {
                     </JoinKickerContainer>
                 </ColumnsContainer>
             </Main>
-            <Footer>© 2023-{new Date().getFullYear()} Andreas Kowalenko</Footer>
+            <Footer>
+                <div>© 2023-{new Date().getFullYear()} Andreas Kowalenko</div>
+                <FooterLinks>
+                    <Link to="/imprint">Imprint</Link>
+                    <span>|</span>
+                    <Link to="/privacy">Privacy</Link>
+                </FooterLinks>
+            </Footer>
         </StyledStartpage>
     );
 }
