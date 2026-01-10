@@ -169,3 +169,65 @@ export async function setLastKicker(kickerId) {
 
     return data;
 }
+
+// ============================================
+// Session Management Functions
+// ============================================
+
+export async function getActiveSessions() {
+    const { data, error } = await supabase.rpc("get_user_sessions");
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+export async function getCurrentSessionId() {
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+        return null;
+    }
+
+    // Decode the JWT to get the session_id from the payload
+    try {
+        const payload = JSON.parse(atob(session.access_token.split(".")[1]));
+        return payload.session_id;
+    } catch {
+        return null;
+    }
+}
+
+export async function terminateSession(sessionId) {
+    const { data, error } = await supabase.rpc("terminate_session", {
+        target_session_id: sessionId,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+export async function terminateOtherSessions() {
+    const currentSessionId = await getCurrentSessionId();
+
+    if (!currentSessionId) {
+        throw new Error("Could not determine current session");
+    }
+
+    const { data, error } = await supabase.rpc("terminate_other_sessions", {
+        current_session_id: currentSessionId,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}

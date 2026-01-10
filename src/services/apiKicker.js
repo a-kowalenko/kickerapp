@@ -144,3 +144,40 @@ export async function getKickerInfo(kickerId) {
 
     return data;
 }
+
+export async function updateKicker({ kickerId, name, avatar }) {
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
+    if (Object.keys(updateData).length === 0) {
+        throw new Error("No data to update");
+    }
+
+    const { data, error } = await supabase
+        .from(KICKER)
+        .update(updateData)
+        .eq("id", kickerId)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+export async function getKickerInvitePreview({ token, inviterId }) {
+    const { data, error } = await supabase.rpc("get_kicker_invite_preview", {
+        invite_token: token,
+        inviter_player_id: inviterId || null,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    // RPC returns an array, get first item
+    return data?.[0] || null;
+}

@@ -27,6 +27,7 @@ import { DarkModeProvider } from "./contexts/DarkModeContext";
 import { SoundProvider } from "./contexts/SoundContext";
 import Recovery from "./pages/Recovery";
 import UpdatePassword from "./pages/UpdatePassword";
+import InvitePage from "./pages/InvitePage";
 import { KickerProvider } from "./contexts/KickerContext";
 import Start from "./pages/Start";
 import Settings from "./pages/Settings";
@@ -59,6 +60,10 @@ function App() {
                                 <Route path="login" element={<Login />} />
                                 <Route path="register" element={<Register />} />
                                 <Route path="recovery" element={<Recovery />} />
+                                <Route
+                                    path="invite/:token"
+                                    element={<InvitePage />}
+                                />
                                 <Route path="imprint" element={<Impressum />} />
                                 <Route
                                     path="privacy"
