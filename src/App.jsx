@@ -69,6 +69,10 @@ function App() {
                                         element={<Recovery />}
                                     />
                                     <Route
+                                        path="update-password"
+                                        element={<UpdatePassword />}
+                                    />
+                                    <Route
                                         path="invite/:token"
                                         element={<InvitePage />}
                                     />
@@ -92,10 +96,6 @@ function App() {
                                         }
                                     >
                                         <Route path="home" element={<Home />} />
-                                        <Route
-                                            path="update-password"
-                                            element={<UpdatePassword />}
-                                        />
                                         <Route
                                             path="rankings/*"
                                             element={<Rankings />}

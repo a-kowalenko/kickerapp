@@ -188,7 +188,7 @@ function ProfileSettings() {
                     </HeaderContent>
                 </CardHeader>
                 <CardBody>
-                    <UpdatePasswordForm />
+                    <UpdatePasswordForm variant="settings" />
                 </CardBody>
             </Card>
         </StyledProfileSettings>

@@ -52,12 +52,13 @@ export async function getCurrentUser() {
     const { data, error } = await supabase.auth.getUser();
 
     if (error) {
-        // If the session is invalid/stale (e.g., deleted server-side), sign out and return null
+        // If the session is invalid/stale (e.g., deleted server-side), sign out locally and return null
+        // Use scope: 'local' to avoid API call that would also fail with 403
         if (
             error.status === 403 ||
             error.message?.includes("session_id claim in JWT does not exist")
         ) {
-            await supabase.auth.signOut();
+            await supabase.auth.signOut({ scope: "local" });
             return null;
         }
         throw new Error(error.message);
