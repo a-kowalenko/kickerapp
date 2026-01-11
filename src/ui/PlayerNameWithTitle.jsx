@@ -21,7 +21,7 @@ const Title = styled.span`
  * Title display can be disabled via showTitle prop.
  *
  * @param {Object} props
- * @param {string} props.to - Link destination (usually /profile/username)
+ * @param {string} props.to - Link destination (usually /user/username/profile)
  * @param {string} props.name - Player name to display
  * @param {number} props.playerId - Player ID to fetch rewards for
  * @param {boolean} props.showTitle - Whether to show the title (default: true)

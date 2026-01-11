@@ -1,3 +1,4 @@
+import { useState } from "react";
 import styled from "styled-components";
 import { Link } from "react-router-dom";
 import {
@@ -10,6 +11,7 @@ import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useSeasons } from "../seasons/useSeasons";
 import { usePlayers } from "../../hooks/usePlayers";
 import Avatar from "../../ui/Avatar";
+import MediaViewer from "../../ui/MediaViewer";
 import Spinner from "../../ui/Spinner";
 import { DEFAULT_AVATAR, media } from "../../utils/constants";
 
@@ -71,6 +73,13 @@ const KickerAvatar = styled.img`
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid var(--primary-button-color);
+    cursor: ${(props) => (props.$isClickable ? "pointer" : "default")};
+    transition: filter 0.2s ease;
+
+    &:hover {
+        filter: ${(props) =>
+            props.$isClickable ? "brightness(0.85)" : "none"};
+    }
 
     ${media.mobile} {
         width: 8rem;
@@ -139,10 +148,22 @@ const AdminLabel = styled.span`
     letter-spacing: 0.05em;
 `;
 
-const AdminName = styled.span`
+const AdminName = styled(Link)`
     font-size: 1.4rem;
     font-weight: 500;
     color: var(--primary-text-color);
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    text-decoration: none;
+    transition: color 0.2s;
+
+    &:hover {
+        /* color: var(--color-brand-700); */
+        text-decoration: underline;
+    }
 `;
 
 const SeasonsList = styled.div`
@@ -258,6 +279,7 @@ const EmptyText = styled.p`
 `;
 
 function KickerInfo() {
+    const [showAvatarViewer, setShowAvatarViewer] = useState(false);
     const { data: kickerData, isLoading: isLoadingKicker } = useKickerInfo();
     const { seasons, isLoading: isLoadingSeasons } = useSeasons();
     const { players, isLoading: isLoadingPlayers } = usePlayers();
@@ -287,8 +309,16 @@ function KickerInfo() {
 
     const formatDate = (dateString) => {
         if (!dateString) return null;
-        return new Date(dateString).toLocaleDateString();
+        return new Date(dateString).toLocaleDateString("en-GB", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
     };
+
+    const kickerAvatarSrc = kickerData?.avatar || DEFAULT_AVATAR;
+    const isAvatarClickable =
+        kickerAvatarSrc && kickerAvatarSrc !== DEFAULT_AVATAR;
 
     return (
         <Container>
@@ -297,8 +327,12 @@ function KickerInfo() {
                 <Card>
                     <KickerHeader>
                         <KickerAvatar
-                            src={kickerData?.avatar || DEFAULT_AVATAR}
+                            src={kickerAvatarSrc}
                             alt={kickerData?.name}
+                            $isClickable={isAvatarClickable}
+                            onClick={() =>
+                                isAvatarClickable && setShowAvatarViewer(true)
+                            }
                         />
                         <KickerDetails>
                             <KickerName>{kickerData?.name}</KickerName>
@@ -333,7 +367,11 @@ function KickerInfo() {
                             <Avatar player={adminPlayer} $size="medium" />
                             <AdminInfo>
                                 <AdminLabel>Kicker Admin</AdminLabel>
-                                <AdminName>{adminPlayer.name}</AdminName>
+                                <AdminName
+                                    to={`/user/${adminPlayer.name}/profile`}
+                                >
+                                    {adminPlayer.name}
+                                </AdminName>
                             </AdminInfo>
                         </AdminCard>
                     ) : (
@@ -422,6 +460,15 @@ function KickerInfo() {
                     )}
                 </Card>
             </Section>
+
+            {/* MediaViewer for Kicker Avatar */}
+            {showAvatarViewer && (
+                <MediaViewer
+                    src={kickerAvatarSrc}
+                    alt={kickerData?.name}
+                    onClose={() => setShowAvatarViewer(false)}
+                />
+            )}
         </Container>
     );
 }
