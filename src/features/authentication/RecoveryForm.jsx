@@ -229,7 +229,7 @@ function RecoveryForm() {
     }
 
     function handleRecoverySubmitted() {
-        toast.success(`An recovery email has been sent to ${email}`);
+        toast.success(`A recovery email has been sent to ${email}`);
         setIsEmailSent(true);
     }
 
