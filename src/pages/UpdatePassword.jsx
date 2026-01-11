@@ -147,7 +147,8 @@ function UpdatePassword() {
 
             const error = queryError || hashError;
             const errorCode = queryErrorCode || hashErrorCode;
-            const errorDescription = queryErrorDescription || hashErrorDescription;
+            const errorDescription =
+                queryErrorDescription || hashErrorDescription;
 
             if (error || errorCode) {
                 console.log("URL error detected:", {
@@ -185,7 +186,7 @@ function UpdatePassword() {
         async function verifyRecoveryToken() {
             // Mark as verifying immediately
             isVerifyingRef.current = true;
-            
+
             try {
                 // Check for token in query params (from custom email template)
                 const token = searchParams.get("token");
@@ -219,12 +220,17 @@ function UpdatePassword() {
                     }
 
                     if (data?.session) {
-                        console.log("Recovery token verified successfully, session:", data.session);
+                        console.log(
+                            "Recovery token verified successfully, session:",
+                            data.session
+                        );
                         setIsValidSession(true);
                         return;
                     } else {
                         // Token was valid but no session returned - shouldn't happen
-                        console.log("No session in response, checking current session...");
+                        console.log(
+                            "No session in response, checking current session..."
+                        );
                     }
                 }
 
@@ -278,7 +284,9 @@ function UpdatePassword() {
                 <ErrorContainer>
                     <LoadingContainer>
                         <SpinnerMini />
-                        <LoadingText>Verifying your recovery link...</LoadingText>
+                        <LoadingText>
+                            Verifying your recovery link...
+                        </LoadingText>
                     </LoadingContainer>
                 </ErrorContainer>
             </StyledUpdatePassword>
@@ -306,7 +314,8 @@ function UpdatePassword() {
             },
         };
 
-        const { title, text } = errorMessages[errorType] || errorMessages.invalid;
+        const { title, text } =
+            errorMessages[errorType] || errorMessages.invalid;
 
         return (
             <StyledUpdatePassword>

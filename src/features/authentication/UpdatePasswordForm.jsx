@@ -362,9 +362,7 @@ const SettingsInput = styled(Input)`
 
     &:hover:not(:focus):not(:disabled) {
         border-color: ${(props) =>
-            props.$hasError
-                ? "var(--error-color)"
-                : "var(--color-grey-400)"};
+            props.$hasError ? "var(--error-color)" : "var(--color-grey-400)"};
         background: var(--secondary-background-color);
     }
 
@@ -490,7 +488,9 @@ function UpdatePasswordForm({ onPasswordUpdated, variant = "recovery" }) {
         return (
             <SettingsForm onSubmit={handleSubmit(onSubmit)}>
                 <SettingsInputGroup>
-                    <SettingsLabel htmlFor="password">New Password</SettingsLabel>
+                    <SettingsLabel htmlFor="password">
+                        New Password
+                    </SettingsLabel>
                     <SettingsInput
                         type="password"
                         id="password"
@@ -501,15 +501,19 @@ function UpdatePasswordForm({ onPasswordUpdated, variant = "recovery" }) {
                             required: "A new password is required",
                             minLength: {
                                 value: 8,
-                                message: "Password needs a minimum of 8 characters",
+                                message:
+                                    "Password needs a minimum of 8 characters",
                             },
                             validate: {
                                 hasUppercase: (value) =>
-                                    /[A-Z]/.test(value) || "Password must contain at least one uppercase letter",
+                                    /[A-Z]/.test(value) ||
+                                    "Password must contain at least one uppercase letter",
                                 hasLowercase: (value) =>
-                                    /[a-z]/.test(value) || "Password must contain at least one lowercase letter",
+                                    /[a-z]/.test(value) ||
+                                    "Password must contain at least one lowercase letter",
                                 hasNumber: (value) =>
-                                    /[0-9]/.test(value) || "Password must contain at least one number",
+                                    /[0-9]/.test(value) ||
+                                    "Password must contain at least one number",
                             },
                         })}
                     />
@@ -519,28 +523,48 @@ function UpdatePasswordForm({ onPasswordUpdated, variant = "recovery" }) {
                         </SettingsErrorMessage>
                     )}
                     <SettingsValidationHints>
-                        <ValidationHintsTitle>Password requirements</ValidationHintsTitle>
+                        <ValidationHintsTitle>
+                            Password requirements
+                        </ValidationHintsTitle>
                         <ValidationHint $valid={validations.minLength}>
-                            {validations.minLength ? <HiOutlineCheckCircle /> : <HiOutlineXCircle />}
+                            {validations.minLength ? (
+                                <HiOutlineCheckCircle />
+                            ) : (
+                                <HiOutlineXCircle />
+                            )}
                             At least 8 characters
                         </ValidationHint>
                         <ValidationHint $valid={validations.hasUppercase}>
-                            {validations.hasUppercase ? <HiOutlineCheckCircle /> : <HiOutlineXCircle />}
+                            {validations.hasUppercase ? (
+                                <HiOutlineCheckCircle />
+                            ) : (
+                                <HiOutlineXCircle />
+                            )}
                             One uppercase letter
                         </ValidationHint>
                         <ValidationHint $valid={validations.hasLowercase}>
-                            {validations.hasLowercase ? <HiOutlineCheckCircle /> : <HiOutlineXCircle />}
+                            {validations.hasLowercase ? (
+                                <HiOutlineCheckCircle />
+                            ) : (
+                                <HiOutlineXCircle />
+                            )}
                             One lowercase letter
                         </ValidationHint>
                         <ValidationHint $valid={validations.hasNumber}>
-                            {validations.hasNumber ? <HiOutlineCheckCircle /> : <HiOutlineXCircle />}
+                            {validations.hasNumber ? (
+                                <HiOutlineCheckCircle />
+                            ) : (
+                                <HiOutlineXCircle />
+                            )}
                             One number
                         </ValidationHint>
                     </SettingsValidationHints>
                 </SettingsInputGroup>
 
                 <SettingsInputGroup>
-                    <SettingsLabel htmlFor="passwordConfirm">Confirm Password</SettingsLabel>
+                    <SettingsLabel htmlFor="passwordConfirm">
+                        Confirm Password
+                    </SettingsLabel>
                     <SettingsInput
                         type="password"
                         id="passwordConfirm"
@@ -550,17 +574,23 @@ function UpdatePasswordForm({ onPasswordUpdated, variant = "recovery" }) {
                         {...register("passwordConfirm", {
                             required: "Password confirmation is required",
                             validate: (value) =>
-                                getValues().password === value || "Passwords need to match",
+                                getValues().password === value ||
+                                "Passwords need to match",
                         })}
                     />
                     {errors?.passwordConfirm && (
                         <SettingsErrorMessage>
-                            <HiOutlineXCircle /> {errors.passwordConfirm.message}
+                            <HiOutlineXCircle />{" "}
+                            {errors.passwordConfirm.message}
                         </SettingsErrorMessage>
                     )}
                     {password && passwordConfirm && (
                         <ValidationHint $valid={validations.passwordsMatch}>
-                            {validations.passwordsMatch ? <HiOutlineCheckCircle /> : <HiOutlineXCircle />}
+                            {validations.passwordsMatch ? (
+                                <HiOutlineCheckCircle />
+                            ) : (
+                                <HiOutlineXCircle />
+                            )}
                             Passwords match
                         </ValidationHint>
                     )}
@@ -606,11 +636,14 @@ function UpdatePasswordForm({ onPasswordUpdated, variant = "recovery" }) {
                                     },
                                     validate: {
                                         hasUppercase: (value) =>
-                                            /[A-Z]/.test(value) || "Password must contain at least one uppercase letter",
+                                            /[A-Z]/.test(value) ||
+                                            "Password must contain at least one uppercase letter",
                                         hasLowercase: (value) =>
-                                            /[a-z]/.test(value) || "Password must contain at least one lowercase letter",
+                                            /[a-z]/.test(value) ||
+                                            "Password must contain at least one lowercase letter",
                                         hasNumber: (value) =>
-                                            /[0-9]/.test(value) || "Password must contain at least one number",
+                                            /[0-9]/.test(value) ||
+                                            "Password must contain at least one number",
                                     },
                                 })}
                             />
@@ -676,7 +709,8 @@ function UpdatePasswordForm({ onPasswordUpdated, variant = "recovery" }) {
                                 disabled={isLoading}
                                 $hasError={!!errors?.passwordConfirm}
                                 {...register("passwordConfirm", {
-                                    required: "Password confirmation is required",
+                                    required:
+                                        "Password confirmation is required",
                                     validate: (value) =>
                                         getValues().password === value ||
                                         "Passwords need to match",
