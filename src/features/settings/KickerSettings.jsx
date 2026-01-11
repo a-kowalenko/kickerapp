@@ -39,7 +39,7 @@ const SectionTitle = styled.h3`
 `;
 
 const Card = styled.div`
-    background-color: var(--tertiary-background-color);
+    background-color: var(--secondary-background-color);
     border-radius: var(--border-radius-md);
     border: 1px solid var(--primary-border-color);
     padding: 2.4rem;

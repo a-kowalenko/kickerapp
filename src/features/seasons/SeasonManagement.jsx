@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { useState } from "react";
+import { format } from "date-fns";
 import { useSeasons } from "./useSeasons";
 import { useCurrentSeason } from "./useCurrentSeason";
 import { useCreateSeason } from "./useCreateSeason";
@@ -11,12 +12,17 @@ import Input from "../../ui/Input";
 import FormRow from "../../ui/FormRow";
 import Spinner from "../../ui/Spinner";
 import Heading from "../../ui/Heading";
-import { format } from "date-fns";
+import { media } from "../../utils/constants";
+import SectionTitle from "../../ui/SectionTitle";
 
 const StyledSeasonManagement = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
+
+    ${media.tablet} {
+        padding: 0 2.4rem;
+    }
 `;
 
 const SeasonCard = styled.div`
@@ -129,7 +135,7 @@ function SeasonManagement() {
             <StyledSeasonManagement>
                 <InfoText>Only the kicker admin can manage seasons.</InfoText>
                 <Section>
-                    <Heading as="h3">Season History</Heading>
+                    <SectionTitle>Season History</SectionTitle>
                     <SeasonList>
                         {seasons?.map((season) => (
                             <SeasonCard key={season.id}>
@@ -193,7 +199,7 @@ function SeasonManagement() {
         <StyledSeasonManagement>
             {/* Current Season Section */}
             <Section>
-                <Heading as="h3">Current Season</Heading>
+                <SectionTitle>Current Season</SectionTitle>
                 {currentSeason ? (
                     <SeasonCard>
                         <SeasonHeader>
@@ -287,7 +293,7 @@ function SeasonManagement() {
 
             {/* Season History Section */}
             <Section>
-                <Heading as="h3">Season History</Heading>
+                <SectionTitle>Season History</SectionTitle>
                 <SeasonList>
                     {seasons?.map((season) => (
                         <SeasonCard key={season.id}>

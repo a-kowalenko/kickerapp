@@ -24,6 +24,10 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
+
+    ${media.tablet} {
+        padding: 0 2.4rem;
+    }
 `;
 
 const Section = styled.div`

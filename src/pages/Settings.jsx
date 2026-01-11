@@ -13,6 +13,7 @@ import {
     HiOutlineXMark,
     HiOutlineArrowRightOnRectangle,
     HiOutlineLink,
+    HiOutlineCalendarDays,
 } from "react-icons/hi2";
 import { useKickerInfo } from "../hooks/useKickerInfo";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
@@ -29,6 +30,7 @@ import SwitchButton from "../ui/SwitchButton";
 import { media } from "../utils/constants";
 import TabView from "../ui/TabView";
 import SeasonManagement from "../features/seasons/SeasonManagement";
+import SeasonSelector from "../features/seasons/SeasonSelector";
 import NotificationSettings from "../features/settings/NotificationSettings";
 import StatusDisplaySettings from "../features/settings/StatusDisplaySettings";
 import UserPermissionsManager from "../features/settings/UserPermissionsManager";
@@ -94,7 +96,7 @@ const SettingCard = styled.div`
     align-items: center;
     gap: 1.6rem;
     padding: 1.6rem;
-    background-color: var(--tertiary-background-color);
+    background-color: var(--secondary-background-color);
     border-radius: var(--border-radius-md);
     border: 1px solid var(--primary-border-color);
 
@@ -154,16 +156,18 @@ const TokenInputWrapper = styled.div`
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    flex: 1;
 
     & input {
-        flex: 1;
         font-family: monospace;
         font-size: 1.2rem;
     }
 
     ${media.mobile} {
         width: 100%;
+
+        & input {
+            flex: 1;
+        }
     }
 `;
 
@@ -580,6 +584,23 @@ function GeneralSettings() {
                         <SwitchButton value={isSound} onChange={toggleSound} />
                     </AppearanceCard>
                 </AppearanceRow>
+            </Section>
+
+            {/* Season Section */}
+            <Section>
+                <SectionTitle>Season</SectionTitle>
+                <SettingCard>
+                    <SettingIcon>
+                        <HiOutlineCalendarDays />
+                    </SettingIcon>
+                    <SettingContent>
+                        <SettingTitle>Season Filter</SettingTitle>
+                        <SettingDescription>
+                            Choose which season to display data for
+                        </SettingDescription>
+                        <SeasonSelector />
+                    </SettingContent>
+                </SettingCard>
             </Section>
 
             {/* Access Token Section */}
