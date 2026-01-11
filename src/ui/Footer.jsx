@@ -231,6 +231,19 @@ function Footer() {
                                     PostgreSQL
                                 </Link>
                             </TechElement>
+                            <TechElement>
+                                <Link
+                                    to="https://firebase.google.com/"
+                                    target={"_blank"}
+                                >
+                                    Firebase
+                                </Link>
+                            </TechElement>
+                            <TechElement>
+                                <Link to="https://klipy.com/" target={"_blank"}>
+                                    Klipy
+                                </Link>
+                            </TechElement>
                         </TechList>
                     </TechLists>
                 </TechStackContainer>
