@@ -123,6 +123,22 @@ const TabContent = styled.div`
     border: 1px solid var(--primary-border-color);
     border-top: none;
     border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+    position: relative;
+`;
+
+// Keep all tabs mounted and preserve scroll position
+// Using visibility instead of display to maintain scroll state
+const TabPanel = styled.div`
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    visibility: ${(props) => (props.$active ? "visible" : "hidden")};
+    z-index: ${(props) => (props.$active ? 1 : 0)};
 `;
 
 function ChatSection() {
@@ -282,9 +298,19 @@ function ChatSection() {
                 </TabBar>
 
                 <TabContent>
-                    {activeTab === "chat" && <ChatTab />}
+                    <TabPanel $active={activeTab === "chat"}>
+                        <ChatTab />
+                    </TabPanel>
+                    <TabPanel $active={activeTab === "comments"}>
+                        <MatchCommentsTab />
+                    </TabPanel>
+                    <TabPanel $active={activeTab === "achievements"}>
+                        <AchievementTickerTab />
+                    </TabPanel>
+
+                    {/* {activeTab === "chat" && <ChatTab />}
                     {activeTab === "comments" && <MatchCommentsTab />}
-                    {activeTab === "achievements" && <AchievementTickerTab />}
+                    {activeTab === "achievements" && <AchievementTickerTab />} */}
                 </TabContent>
             </ChatContainer>
         </StyledChatSection>

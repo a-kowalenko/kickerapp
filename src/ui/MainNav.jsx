@@ -1,5 +1,5 @@
-import { NavLink } from "react-router-dom";
 import styled, { keyframes } from "styled-components";
+import ScrollAwareNavLink from "./ScrollAwareNavLink";
 import {
     HiOutlineBookOpen,
     HiOutlineCog6Tooth,
@@ -39,7 +39,7 @@ const SeasonBadgeContainer = styled.div`
     }
 `;
 
-const StyledNavLink = styled(NavLink)`
+const StyledNavLink = styled(ScrollAwareNavLink)`
     border-radius: var(--border-radius-sm);
     &:link,
     &:visited {
