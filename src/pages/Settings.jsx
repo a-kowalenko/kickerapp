@@ -35,6 +35,7 @@ import NotificationSettings from "../features/settings/NotificationSettings";
 import StatusDisplaySettings from "../features/settings/StatusDisplaySettings";
 import UserPermissionsManager from "../features/settings/UserPermissionsManager";
 import KickerSettings from "../features/settings/KickerSettings";
+import KickerInfo from "../features/settings/KickerInfo";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useDarkMode } from "../contexts/DarkModeContext";
@@ -794,14 +795,19 @@ function Settings() {
             component: <NotificationSettings />,
         },
         {
-            path: "/settings/seasons",
-            label: "Seasons",
-            component: <SeasonManagement />,
+            path: "/settings/kicker-info",
+            label: "Kicker Info",
+            component: <KickerInfo />,
         },
     ];
 
     // Add admin-only tabs
     if (isAdmin) {
+        tabs.push({
+            path: "/settings/seasons",
+            label: "Seasons",
+            component: <SeasonManagement />,
+        });
         tabs.push({
             path: "/settings/admin",
             label: "Admin",
