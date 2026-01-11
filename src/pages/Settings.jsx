@@ -13,6 +13,7 @@ import {
     HiOutlineXMark,
     HiOutlineArrowRightOnRectangle,
     HiOutlineLink,
+    HiOutlineEye,
     HiOutlineCalendarDays,
 } from "react-icons/hi2";
 import { useKickerInfo } from "../hooks/useKickerInfo";
@@ -24,6 +25,8 @@ import ButtonIcon from "../ui/ButtonIcon";
 import toast from "react-hot-toast";
 import Heading from "../ui/Heading";
 import SpinnerMini from "../ui/SpinnerMini";
+import SectionTitle from "../ui/SectionTitle";
+import SettingIcon from "../ui/SectionIcon";
 import Spinner from "../ui/Spinner";
 import Button from "../ui/Button";
 import SwitchButton from "../ui/SwitchButton";
@@ -77,14 +80,14 @@ const SectionHeader = styled.div`
     flex-wrap: wrap;
 `;
 
-const SectionTitle = styled.h3`
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: var(--primary-text-color);
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-`;
+// const SectionTitle = styled.h3`
+//     font-size: 1.6rem;
+//     font-weight: 600;
+//     color: var(--primary-text-color);
+//     display: flex;
+//     align-items: center;
+//     gap: 0.8rem;
+// `;
 
 const SessionCount = styled.span`
     font-size: 1.3rem;
@@ -104,22 +107,6 @@ const SettingCard = styled.div`
     ${media.mobile} {
         flex-direction: column;
         align-items: stretch;
-    }
-`;
-
-const SettingIcon = styled.div`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 4.8rem;
-    height: 4.8rem;
-    border-radius: 50%;
-    background-color: var(--secondary-background-color);
-    color: var(--primary-button-color);
-    flex-shrink: 0;
-
-    & svg {
-        font-size: 2.4rem;
     }
 `;
 
@@ -551,7 +538,10 @@ function GeneralSettings() {
         <Container>
             {/* Appearance Section */}
             <Section>
-                <SectionTitle>Appearance</SectionTitle>
+                <SectionTitle>
+                    {/* <HiOutlineEye /> */}
+                    Appearance
+                </SectionTitle>
                 <AppearanceRow>
                     <AppearanceCard>
                         <AppearanceIcon>
@@ -589,7 +579,10 @@ function GeneralSettings() {
 
             {/* Season Section */}
             <Section>
-                <SectionTitle>Season</SectionTitle>
+                <SectionTitle>
+                    {/* <HiOutlineCalendarDays /> */}
+                    Season
+                </SectionTitle>
                 <SettingCard>
                     <SettingIcon>
                         <HiOutlineCalendarDays />
@@ -606,7 +599,10 @@ function GeneralSettings() {
 
             {/* Access Token Section */}
             <Section>
-                <SectionTitle>Invite Players</SectionTitle>
+                <SectionTitle>
+                    {/* <HiOutlineKey /> */}
+                    Invite Players
+                </SectionTitle>
                 <SettingCard>
                     <SettingIcon>
                         <HiOutlineKey />
@@ -657,6 +653,7 @@ function GeneralSettings() {
             <Section>
                 <SectionHeader>
                     <SectionTitle>
+                        {/* <HiOutlineComputerDesktop /> */}
                         Active Sessions
                         {!isLoadingSessions && (
                             <SessionCount>({sessionCount})</SessionCount>

@@ -13,6 +13,7 @@ import { usePlayers } from "../../hooks/usePlayers";
 import Avatar from "../../ui/Avatar";
 import MediaViewer from "../../ui/MediaViewer";
 import Spinner from "../../ui/Spinner";
+import SectionTitle from "../../ui/SectionTitle";
 import { DEFAULT_AVATAR, media } from "../../utils/constants";
 
 const Container = styled.div`
@@ -29,20 +30,6 @@ const Section = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
-`;
-
-const SectionTitle = styled.h3`
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: var(--primary-text-color);
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-
-    & svg {
-        font-size: 1.8rem;
-        color: var(--primary-button-color);
-    }
 `;
 
 const Card = styled.div`
