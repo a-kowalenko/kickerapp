@@ -97,7 +97,10 @@ function Header() {
 
     // Track sidebar state for header positioning
     const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-        return localStorage.getItem("isOpenLeftSidebar") === "true";
+        const isOpen =
+            localStorage.getItem("isOpenLeftSidebar") === null ||
+            localStorage.getItem("isOpenLeftSidebar") === "true";
+        return isOpen;
     });
 
     // Listen for sidebar state changes
