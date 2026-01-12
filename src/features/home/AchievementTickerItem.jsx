@@ -390,54 +390,62 @@ function AchievementTickerItem({ group, isNew = false }) {
                         </PlayerHeader>
 
                         <AchievementsList>
-                            {playerGroup.achievements.map((item) => {
-                                const isExpanded =
-                                    expandedAchievementId === item.id;
-                                return (
-                                    <AchievementWrapper key={item.id}>
-                                        <AchievementRow
-                                            $isNew={isNew}
-                                            $isExpanded={isExpanded}
-                                            onClick={() =>
-                                                handleAchievementClick(item.id)
-                                            }
-                                        >
-                                            <AchievementIcon>
-                                                {item.achievement.icon || "🏆"}
-                                            </AchievementIcon>
-                                            <AchievementName>
-                                                {item.achievement.name}
-                                            </AchievementName>
-                                            {item.achievement.category && (
-                                                <CategoryBadge>
-                                                    {
-                                                        item.achievement
-                                                            .category.name
-                                                    }
-                                                </CategoryBadge>
-                                            )}
-                                            <AchievementPoints>
-                                                +{item.achievement?.points || 0}{" "}
-                                                pts
-                                            </AchievementPoints>
-                                            <ChevronIcon
+                            {playerGroup.achievements
+                                .filter((item) => item.achievement) // Filter out items with null achievement
+                                .map((item) => {
+                                    const isExpanded =
+                                        expandedAchievementId === item.id;
+                                    return (
+                                        <AchievementWrapper key={item.id}>
+                                            <AchievementRow
+                                                $isNew={isNew}
                                                 $isExpanded={isExpanded}
-                                            />
-                                        </AchievementRow>
-                                        <AccordionContent
-                                            $isExpanded={isExpanded}
-                                        >
-                                            <AccordionInner>
-                                                <AccordionText>
-                                                    {item.achievement
-                                                        .description ||
-                                                        "Keine Beschreibung verfügbar."}
-                                                </AccordionText>
-                                            </AccordionInner>
-                                        </AccordionContent>
-                                    </AchievementWrapper>
-                                );
-                            })}
+                                                onClick={() =>
+                                                    handleAchievementClick(
+                                                        item.id
+                                                    )
+                                                }
+                                            >
+                                                <AchievementIcon>
+                                                    {item.achievement?.icon ||
+                                                        "🏆"}
+                                                </AchievementIcon>
+                                                <AchievementName>
+                                                    {item.achievement?.name ||
+                                                        "Unknown"}
+                                                </AchievementName>
+                                                {item.achievement?.category && (
+                                                    <CategoryBadge>
+                                                        {
+                                                            item.achievement
+                                                                .category.name
+                                                        }
+                                                    </CategoryBadge>
+                                                )}
+                                                <AchievementPoints>
+                                                    +
+                                                    {item.achievement?.points ||
+                                                        0}{" "}
+                                                    pts
+                                                </AchievementPoints>
+                                                <ChevronIcon
+                                                    $isExpanded={isExpanded}
+                                                />
+                                            </AchievementRow>
+                                            <AccordionContent
+                                                $isExpanded={isExpanded}
+                                            >
+                                                <AccordionInner>
+                                                    <AccordionText>
+                                                        {item.achievement
+                                                            ?.description ||
+                                                            "Keine Beschreibung verfügbar."}
+                                                    </AccordionText>
+                                                </AccordionInner>
+                                            </AccordionContent>
+                                        </AchievementWrapper>
+                                    );
+                                })}
                         </AchievementsList>
                     </PlayerSection>
                 ))}
