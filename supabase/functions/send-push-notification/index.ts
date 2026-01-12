@@ -129,6 +129,39 @@ function parseMentions(content: string): {
     return { playerIds, hasEveryone };
 }
 
+// Sanitize notification text by removing markup syntax
+// Converts @[Name](id) → @Name, #[Match](id) → #Match, etc.
+function sanitizeNotificationText(text: string): string {
+    if (!text) return "";
+
+    // First pass: replace structured markup (order matters!)
+    let result = text
+        // @[Name](id) → @Name
+        .replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1")
+        // #[Match X...](id) → #Match X...
+        .replace(/#\[([^\]]+)\]\(\d+\)/g, "#$1")
+        // [gif:URL] → [GIF] (complete tag)
+        .replace(/\[gif:[^\]]+\]/g, "[GIF]")
+        // [gif:URL... → [GIF] (truncated tag without closing bracket)
+        .replace(/\[gif:[^\]]*$/g, "[GIF]")
+        // [img:URL] → [Image] (complete tag)
+        .replace(/\[img:[^\]]+\]/g, "[Image]")
+        // [img:URL... → [Image] (truncated tag without closing bracket)
+        .replace(/\[img:[^\]]*$/g, "[Image]");
+
+    // Second pass: replace URLs
+    result = result
+        // YouTube URLs → [YouTube]
+        .replace(
+            /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]*/g,
+            "[YouTube]"
+        )
+        // Other URLs: https://example.com/path → example.com
+        .replace(/https?:\/\/(?:www\.)?([^\/\s]+)[^\s]*/g, "$1");
+
+    return result;
+}
+
 // Get access token for FCM using service account
 async function getFCMAccessToken(serviceAccount: any): Promise<string> {
     const now = Math.floor(Date.now() / 1000);
@@ -343,7 +376,7 @@ async function handleMentionNotification(
     const title = isComment
         ? `${senderName} mentioned you in a comment`
         : `${senderName} mentioned you in chat`;
-    const notificationBody = contentPreview;
+    const notificationBody = sanitizeNotificationText(contentPreview);
     const url = isComment && matchId ? `/matches/${matchId}` : "/home";
     const tag = isComment
         ? `comment-mention-${sourceId}`
@@ -719,7 +752,7 @@ async function handleChatAllNotification(
 
     // Build notification content
     const title = `[Chat] ${senderName}`;
-    const notificationBody = contentPreview;
+    const notificationBody = sanitizeNotificationText(contentPreview);
     const url = "/home";
 
     // Send notifications

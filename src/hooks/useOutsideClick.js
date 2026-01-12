@@ -6,6 +6,10 @@ export function useOutsideClick(handler, listenCapturing = true) {
     useEffect(
         function () {
             function handleClick(e) {
+                // Ignore clicks on modal overlays (rendered via portal)
+                if (e.target.closest("[data-modal-overlay]")) {
+                    return;
+                }
                 if (ref.current && !ref.current.contains(e.target)) {
                     handler();
                 }
