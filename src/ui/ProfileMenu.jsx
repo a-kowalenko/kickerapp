@@ -183,23 +183,37 @@ function ProfileMenu({ inSidebar = false }) {
     const wrapperRef = useRef(null);
 
     useEffect(() => {
-        function handleClickOutside(e) {
-            // Check if click is inside the wrapper OR inside the portal dropdown
-            const isInsideWrapper = wrapperRef.current?.contains(e.target);
-            const isInsidePortalDropdown = portalDropdownRef.current?.contains(
-                e.target
-            );
+        if (!isOpen) return;
 
-            if (!isInsideWrapper && !isInsidePortalDropdown) {
-                close();
+        let handleClickOutside = null;
+
+        // Small delay to ignore the click that opened the menu
+        const timeoutId = setTimeout(() => {
+            handleClickOutside = (e) => {
+                // Check if click is inside the wrapper OR inside the portal dropdown
+                const isInsideWrapper = wrapperRef.current?.contains(e.target);
+                const isInsidePortalDropdown =
+                    portalDropdownRef.current?.contains(e.target);
+
+                // Only close if click is truly outside both elements
+                if (!isInsideWrapper && !isInsidePortalDropdown) {
+                    close();
+                }
+            };
+
+            document.addEventListener("click", handleClickOutside, false);
+        }, 10);
+
+        return () => {
+            clearTimeout(timeoutId);
+            if (handleClickOutside) {
+                document.removeEventListener(
+                    "click",
+                    handleClickOutside,
+                    false
+                );
             }
-        }
-
-        if (isOpen) {
-            document.addEventListener("click", handleClickOutside, true);
-            return () =>
-                document.removeEventListener("click", handleClickOutside, true);
-        }
+        };
     }, [isOpen]);
 
     const { setCurrentKicker } = useKicker();
