@@ -285,7 +285,10 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
     }
 
     function handleDontAskAgain() {
+        // Set both state and localStorage directly to ensure it persists
+        // even if component unmounts before useEffect runs
         setAutoSwitchKicker(true);
+        localStorage.setItem("autoSwitchKickerOnNotification", JSON.stringify(true));
     }
 
     return (

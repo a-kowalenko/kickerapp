@@ -122,32 +122,37 @@ function KickerSwitchConfirmModal({
         e.stopPropagation();
     }
 
+    function handleCheckboxChange(e) {
+        e.stopPropagation();
+        setDontAskAgain(e.target.checked);
+    }
+
     return createPortal(
         <ModalOverlay onClick={handleOverlayClick} data-modal-overlay>
             <ModalContent onClick={handleContentClick}>
                 <ModalHeader>
                     <HiOutlineArrowsRightLeft size={28} />
-                    <ModalTitle>Kicker wechseln?</ModalTitle>
+                    <ModalTitle>Switch Kicker?</ModalTitle>
                 </ModalHeader>
                 <ModalText>
-                    Diese Benachrichtigung ist aus{" "}
+                    This notification is from{" "}
                     <KickerNameHighlight>{kickerName}</KickerNameHighlight>.
-                    Möchtest du zu diesem Kicker wechseln?
+                    Do you want to switch to this kicker?
                 </ModalText>
-                <CheckboxWrapper>
+                <CheckboxWrapper onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                         type="checkbox"
                         checked={dontAskAgain}
-                        onChange={(e) => setDontAskAgain(e.target.checked)}
+                        onChange={handleCheckboxChange}
                     />
-                    Nicht mehr fragen
+                    Don&apos;t ask again
                 </CheckboxWrapper>
                 <ModalButtons>
                     <ModalButton $variation="secondary" onClick={onCancel}>
-                        Abbrechen
+                        Cancel
                     </ModalButton>
                     <ModalButton $variation="primary" onClick={handleConfirm}>
-                        Wechseln & anzeigen
+                        Switch & View
                     </ModalButton>
                 </ModalButtons>
             </ModalContent>
