@@ -136,8 +136,8 @@ function KickerSwitchConfirmModal({
                 </ModalHeader>
                 <ModalText>
                     This notification is from{" "}
-                    <KickerNameHighlight>{kickerName}</KickerNameHighlight>.
-                    Do you want to switch to this kicker?
+                    <KickerNameHighlight>{kickerName}</KickerNameHighlight>. Do
+                    you want to switch to this kicker?
                 </ModalText>
                 <CheckboxWrapper onClick={(e) => e.stopPropagation()}>
                     <Checkbox
