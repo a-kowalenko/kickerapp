@@ -594,15 +594,17 @@ function NotificationSettings() {
                     </WarningCard>
                 )}
 
-                {/* Blocked Warning */}
+                {/* Blocked or Incognito Warning */}
                 {isBlocked && (
                     <WarningCard>
                         <HiBellSlash />
                         <WarningText>
                             <strong>Notifications blocked:</strong> You have
-                            previously blocked notifications for this site.
-                            Please go to your browser settings to allow
-                            notifications, then try again.
+                            previously <strong>blocked</strong> notifications
+                            for this site <strong>or</strong> you are browsing
+                            in <strong>incognito/private mode</strong>. Please
+                            go to your browser settings to allow notifications
+                            or disable incognito/private mode, then try again.
                         </WarningText>
                     </WarningCard>
                 )}
