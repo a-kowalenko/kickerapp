@@ -123,10 +123,7 @@ function KickerSwitchConfirmModal({
     }
 
     return createPortal(
-        <ModalOverlay
-            onClick={handleOverlayClick}
-            data-modal-overlay
-        >
+        <ModalOverlay onClick={handleOverlayClick} data-modal-overlay>
             <ModalContent onClick={handleContentClick}>
                 <ModalHeader>
                     <HiOutlineArrowsRightLeft size={28} />
