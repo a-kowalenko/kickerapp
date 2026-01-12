@@ -221,6 +221,7 @@ function Header() {
                                 value: kickerData.id,
                                 avatar: kickerData.avatar || undefined,
                             }}
+                            autoWidth
                         />
                         <SeasonBadge />
                         <ButtonIcon

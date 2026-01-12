@@ -66,6 +66,29 @@ const Toggle = styled.div`
 
 const StyledDropdown = styled.div`
     position: relative;
+    ${(props) => props.$autoWidth && `display: inline-block;`}
+`;
+
+// Hidden list that renders all options to establish minimum width
+const HiddenSizer = styled.div`
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+`;
+
+const SizerToggle = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 2.4rem;
+    padding: 1.2rem 2.4rem;
+    white-space: nowrap;
+`;
+
+const SizerContent = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
 `;
 
 const List = styled.ul`
@@ -165,6 +188,7 @@ function Dropdown({
     isLoading = false,
     minWidth = null,
     showAvatars = false,
+    autoWidth = false,
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selected, setSelected] = useState(initSelected);
@@ -207,7 +231,21 @@ function Dropdown({
     }
 
     return (
-        <StyledDropdown>
+        <StyledDropdown $autoWidth={autoWidth}>
+            {/* Hidden sizer that renders all options to establish minimum width */}
+            {autoWidth && (
+                <HiddenSizer>
+                    {options.map((opt) => (
+                        <SizerToggle key={opt.value}>
+                            <SizerContent>
+                                {hasAnyAvatar && <AvatarPlaceholder />}
+                                {opt.text}
+                            </SizerContent>
+                            <RotateIcon />
+                        </SizerToggle>
+                    ))}
+                </HiddenSizer>
+            )}
             <Toggle
                 $isOpen={isOpen}
                 onClick={handleToggle}
