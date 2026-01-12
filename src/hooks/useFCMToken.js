@@ -300,6 +300,7 @@ export function useFCMToken(userId) {
                 notifyAllChat,
                 notifyMentions,
                 notifyTeamInvites,
+                notifyFatalities,
             }) => {
                 if (!userId) throw new Error("User not authenticated");
 
@@ -310,6 +311,7 @@ export function useFCMToken(userId) {
                         p_notify_all_chat: notifyAllChat,
                         p_notify_mentions: notifyMentions,
                         p_notify_team_invites: notifyTeamInvites,
+                        p_notify_fatalities: notifyFatalities,
                     });
 
                 if (error) throw error;

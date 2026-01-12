@@ -12,6 +12,7 @@ import {
     HiBellAlert,
     HiChevronDown,
     HiChevronUp,
+    HiExclamationTriangle,
 } from "react-icons/hi2";
 import { useFCMToken } from "../../hooks/useFCMToken";
 import { useUser } from "../../features/authentication/useUser";
@@ -546,6 +547,8 @@ function NotificationSettings() {
             notifyMentions: prefKey === "notify_mentions" ? value : undefined,
             notifyTeamInvites:
                 prefKey === "notify_team_invites" ? value : undefined,
+            notifyFatalities:
+                prefKey === "notify_fatalities" ? value : undefined,
         });
     };
 
@@ -742,6 +745,14 @@ function NotificationSettings() {
                                                         <HiUserGroup />
                                                         Teams
                                                     </PreferenceBadge>
+                                                    <PreferenceBadge
+                                                        $active={
+                                                            subscription.notify_fatalities
+                                                        }
+                                                    >
+                                                        <HiExclamationTriangle />
+                                                        Fatality
+                                                    </PreferenceBadge>
                                                 </PreferenceSummary>
                                             )}
                                         </DeviceInfo>
@@ -876,6 +887,28 @@ function NotificationSettings() {
                                                     handlePreferenceChange(
                                                         subscription.id,
                                                         "notify_team_invites",
+                                                        val
+                                                    )
+                                                }
+                                                disabled={
+                                                    isLoading ||
+                                                    !isDeviceEnabled
+                                                }
+                                            />
+                                        </DevicePreferenceItem>
+                                        <DevicePreferenceItem>
+                                            <DevicePreferenceLabel>
+                                                <HiExclamationTriangle />
+                                                Fatality Alerts
+                                            </DevicePreferenceLabel>
+                                            <SwitchButton
+                                                value={
+                                                    subscription.notify_fatalities
+                                                }
+                                                onChange={(val) =>
+                                                    handlePreferenceChange(
+                                                        subscription.id,
+                                                        "notify_fatalities",
                                                         val
                                                     )
                                                 }
