@@ -1,7 +1,7 @@
 import styled, { css } from "styled-components";
 import { useState } from "react";
 import { HiChevronLeft, HiChevronRight } from "react-icons/hi2";
-import { IoChevronDown, IoChevronUp, IoGameController } from "react-icons/io5";
+import { IoChevronDown, IoGameController } from "react-icons/io5";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { usePlayersActivity } from "./usePlayersActivity";
 import PlayerActivityCard from "./PlayerActivityCard";
@@ -127,7 +127,16 @@ const SectionHeader = styled.button`
     svg {
         font-size: 1.1rem;
         color: var(--secondary-text-color);
+        transition: transform 0.25s ease-out;
     }
+`;
+
+const ChevronIcon = styled.span`
+    display: flex;
+    align-items: center;
+    transform: ${(props) =>
+        props.$isExpanded ? "rotate(0deg)" : "rotate(90deg)"};
+    transition: transform 0.25s ease-out;
 `;
 
 const SectionTitle = styled.span`
@@ -161,8 +170,18 @@ const CountBadge = styled.span`
 `;
 
 const SectionContent = styled.div`
-    display: ${(props) => (props.$isExpanded ? "block" : "none")};
+    overflow: hidden;
     padding-left: 0.2rem;
+
+    /* Smooth expand/collapse animation */
+    display: grid;
+    grid-template-rows: ${(props) => (props.$isExpanded ? "1fr" : "0fr")};
+    opacity: ${(props) => (props.$isExpanded ? 1 : 0)};
+    transition: grid-template-rows 0.25s ease-out, opacity 0.2s ease-out;
+
+    & > div {
+        overflow: hidden;
+    }
 `;
 
 const EmptyState = styled.div`
@@ -269,21 +288,25 @@ export function PlayerActivitySidebar() {
                                                 {inMatch.length}
                                             </CountBadge>
                                         </SectionTitle>
-                                        {expandedSections.inMatch ? (
-                                            <IoChevronUp />
-                                        ) : (
+                                        <ChevronIcon
+                                            $isExpanded={
+                                                expandedSections.inMatch
+                                            }
+                                        >
                                             <IoChevronDown />
-                                        )}
+                                        </ChevronIcon>
                                     </SectionHeader>
                                     <SectionContent
                                         $isExpanded={expandedSections.inMatch}
                                     >
-                                        {inMatch.map((player) => (
-                                            <PlayerActivityCard
-                                                key={player.player_id}
-                                                player={player}
-                                            />
-                                        ))}
+                                        <div>
+                                            {inMatch.map((player) => (
+                                                <PlayerActivityCard
+                                                    key={player.player_id}
+                                                    player={player}
+                                                />
+                                            ))}
+                                        </div>
                                     </SectionContent>
                                 </Section>
                             )}
@@ -300,25 +323,29 @@ export function PlayerActivitySidebar() {
                                             {online.length}
                                         </CountBadge>
                                     </SectionTitle>
-                                    {expandedSections.online ? (
-                                        <IoChevronUp />
-                                    ) : (
+                                    <ChevronIcon
+                                        $isExpanded={expandedSections.online}
+                                    >
                                         <IoChevronDown />
-                                    )}
+                                    </ChevronIcon>
                                 </SectionHeader>
                                 <SectionContent
                                     $isExpanded={expandedSections.online}
                                 >
-                                    {online.length === 0 ? (
-                                        <EmptyState>No one online</EmptyState>
-                                    ) : (
-                                        online.map((player) => (
-                                            <PlayerActivityCard
-                                                key={player.player_id}
-                                                player={player}
-                                            />
-                                        ))
-                                    )}
+                                    <div>
+                                        {online.length === 0 ? (
+                                            <EmptyState>
+                                                No one online
+                                            </EmptyState>
+                                        ) : (
+                                            online.map((player) => (
+                                                <PlayerActivityCard
+                                                    key={player.player_id}
+                                                    player={player}
+                                                />
+                                            ))
+                                        )}
+                                    </div>
                                 </SectionContent>
                             </Section>
 
@@ -334,33 +361,35 @@ export function PlayerActivitySidebar() {
                                             {offline.length}
                                         </CountBadge>
                                     </SectionTitle>
-                                    {expandedSections.offline ? (
-                                        <IoChevronUp />
-                                    ) : (
+                                    <ChevronIcon
+                                        $isExpanded={expandedSections.offline}
+                                    >
                                         <IoChevronDown />
-                                    )}
+                                    </ChevronIcon>
                                 </SectionHeader>
                                 <SectionContent
                                     $isExpanded={expandedSections.offline}
                                 >
-                                    {offline.length === 0 &&
-                                    online.length === 0 ? (
-                                        <EmptyState>
-                                            No recently active players
-                                        </EmptyState>
-                                    ) : offline.length === 0 &&
-                                      online.length > 0 ? (
-                                        <EmptyState>
-                                            All players are online
-                                        </EmptyState>
-                                    ) : (
-                                        offline.map((player) => (
-                                            <PlayerActivityCard
-                                                key={player.player_id}
-                                                player={player}
-                                            />
-                                        ))
-                                    )}
+                                    <div>
+                                        {offline.length === 0 &&
+                                        online.length === 0 ? (
+                                            <EmptyState>
+                                                No recently active players
+                                            </EmptyState>
+                                        ) : offline.length === 0 &&
+                                          online.length > 0 ? (
+                                            <EmptyState>
+                                                All players are online
+                                            </EmptyState>
+                                        ) : (
+                                            offline.map((player) => (
+                                                <PlayerActivityCard
+                                                    key={player.player_id}
+                                                    player={player}
+                                                />
+                                            ))
+                                        )}
+                                    </div>
                                 </SectionContent>
                             </Section>
 
@@ -378,21 +407,25 @@ export function PlayerActivitySidebar() {
                                                 {inactive.length}
                                             </CountBadge>
                                         </SectionTitle>
-                                        {expandedSections.inactive ? (
-                                            <IoChevronUp />
-                                        ) : (
+                                        <ChevronIcon
+                                            $isExpanded={
+                                                expandedSections.inactive
+                                            }
+                                        >
                                             <IoChevronDown />
-                                        )}
+                                        </ChevronIcon>
                                     </SectionHeader>
                                     <SectionContent
                                         $isExpanded={expandedSections.inactive}
                                     >
-                                        {inactive.map((player) => (
-                                            <PlayerActivityCard
-                                                key={player.player_id}
-                                                player={player}
-                                            />
-                                        ))}
+                                        <div>
+                                            {inactive.map((player) => (
+                                                <PlayerActivityCard
+                                                    key={player.player_id}
+                                                    player={player}
+                                                />
+                                            ))}
+                                        </div>
                                     </SectionContent>
                                 </Section>
                             )}

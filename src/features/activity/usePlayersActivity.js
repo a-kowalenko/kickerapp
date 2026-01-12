@@ -10,7 +10,7 @@ import {
 } from "../players/usePlayerStatus";
 
 // Constants
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 
 /**
  * Activity status enum
@@ -117,7 +117,7 @@ export function usePlayersActivity() {
         }
 
         const now = Date.now();
-        const thirtyDaysAgo = now - THIRTY_DAYS_MS;
+        const sixtyDaysAgo = now - SIXTY_DAYS_MS;
 
         const inMatchList = [];
         const onlineList = [];
@@ -209,8 +209,9 @@ export function usePlayersActivity() {
                 enrichedPlayer.activityStatus = ACTIVITY_STATUS.IN_MATCH;
                 inMatchList.push(enrichedPlayer);
             } else {
-                // Player is offline - check last_seen for inactive
-                if (lastSeenDb && lastSeenDb < thirtyDaysAgo) {
+                // Player is offline - check last_seen for inactive (60+ days or never seen)
+                if (!lastSeenDb || lastSeenDb < sixtyDaysAgo) {
+                    // No last_seen (never active) or inactive for 60+ days
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.INACTIVE;
                     inactiveList.push(enrichedPlayer);
                 } else {
