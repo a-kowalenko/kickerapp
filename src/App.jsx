@@ -33,6 +33,7 @@ import { KickerProvider } from "./contexts/KickerContext";
 import Start from "./pages/Start";
 import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
+import { OnlinePresenceProvider } from "./features/activity/OnlinePresenceContext";
 import Testwiese from "./pages/Testwiese";
 import Notifications from "./pages/Notifications";
 import Impressum from "./pages/Impressum";
@@ -89,8 +90,10 @@ function App() {
                                         element={
                                             <ProtectedRoute>
                                                 <MatchProvider>
-                                                    <UnreadBadgeManager />
-                                                    <AppLayout />
+                                                    <OnlinePresenceProvider>
+                                                        <UnreadBadgeManager />
+                                                        <AppLayout />
+                                                    </OnlinePresenceProvider>
                                                 </MatchProvider>
                                             </ProtectedRoute>
                                         }

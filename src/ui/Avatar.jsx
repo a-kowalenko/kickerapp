@@ -1383,6 +1383,62 @@ const BountyEmoji = styled.span`
 `;
 
 /* ----------------------------------------
+   Online Status Indicator Configuration
+   Size configuration for the online dot based on avatar size
+----------------------------------------- */
+const ONLINE_INDICATOR_SIZE_CONFIG = {
+    xs: { size: "8px", borderWidth: "1.5px", bottom: "0px", right: "0px" },
+    small: { size: "10px", borderWidth: "2px", bottom: "1px", right: "1px" },
+    medium: { size: "14px", borderWidth: "2px", bottom: "2px", right: "2px" },
+    large: { size: "18px", borderWidth: "3px", bottom: "4px", right: "4px" },
+    huge: { size: "28px", borderWidth: "4px", bottom: "8px", right: "8px" },
+};
+
+const ONLINE_STATUS_COLORS = {
+    active: "#22c55e", // Green
+    idle: "#eab308", // Yellow
+    offline: "transparent", // No indicator shown
+};
+
+/* ----------------------------------------
+   Online Status Indicator Overlay
+   Shows a colored dot indicating online status
+----------------------------------------- */
+const OnlineStatusIndicator = styled.div`
+    position: absolute;
+    z-index: 14;
+    border-radius: 50%;
+    background-color: ${(props) =>
+        ONLINE_STATUS_COLORS[props.$onlineStatus] || "transparent"};
+    border: ${(props) => {
+        const config =
+            ONLINE_INDICATOR_SIZE_CONFIG[props.$avatarSize] ||
+            ONLINE_INDICATOR_SIZE_CONFIG.medium;
+        return `${config.borderWidth} solid var(--primary-background-color)`;
+    }};
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+
+    ${(props) => {
+        const config =
+            ONLINE_INDICATOR_SIZE_CONFIG[props.$avatarSize] ||
+            ONLINE_INDICATOR_SIZE_CONFIG.medium;
+        return css`
+            width: ${config.size};
+            height: ${config.size};
+            bottom: ${config.bottom};
+            right: ${config.right};
+        `;
+    }}
+
+    /* Hide if status is offline or not provided */
+    display: ${(props) =>
+        props.$onlineStatus && props.$onlineStatus !== "offline"
+            ? "block"
+            : "none"};
+`;
+
+/* ----------------------------------------
    BountyIndicator Component
    Shows a 💰 emoji when player has active bounty
    Includes tooltip with bounty breakdown by gamemode
@@ -1446,6 +1502,7 @@ function BountyIndicator({ bountyData, avatarSize }) {
    - showStatusEffects: boolean - Ob Status-Effekte angezeigt werden sollen (default: true)
    - showStatus: boolean - Ob Status automatisch vom Server geladen werden soll (default: false)
    - bountyData: { bounty1on1: number, bounty2on2: number } - Bounty data for indicator (optional)
+   - $onlineStatus: 'active' | 'idle' | 'offline' - Online presence status indicator (optional)
    - ...rest: alle anderen img-Props (alt, etc.)
    
    Priorität: Explizite Props (src, $status, $frameUrl) überschreiben player-Werte
@@ -1477,6 +1534,7 @@ const Avatar = ({
     showStatusEffects = true,
     showStatus = false,
     bountyData = null,
+    $onlineStatus = null,
     ...props
 }) => {
     // Lade Status vom Server wenn showStatus=true und player.id vorhanden
@@ -1598,6 +1656,12 @@ const Avatar = ({
             )}
             {bountyData && (
                 <BountyIndicator bountyData={bountyData} avatarSize={$size} />
+            )}
+            {$onlineStatus && (
+                <OnlineStatusIndicator
+                    $onlineStatus={$onlineStatus}
+                    $avatarSize={$size}
+                />
             )}
         </AvatarWrapper>
     );

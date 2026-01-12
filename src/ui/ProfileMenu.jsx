@@ -1,5 +1,6 @@
 import styled from "styled-components";
-import { useState } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import {
     HiMiniArrowLeftOnRectangle,
     HiOutlineUserCircle,
@@ -12,7 +13,6 @@ import {
 } from "react-icons/hi2";
 import { useLogout } from "../features/authentication/useLogout";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useOutsideClick } from "../hooks/useOutsideClick";
 import { useOwnPlayer } from "../hooks/useOwnPlayer";
 import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
 import { useKicker } from "../contexts/KickerContext";
@@ -28,6 +28,20 @@ const ProfileMenuWrapper = styled.div`
     position: relative;
 `;
 
+// Portal dropdown - positioned fixed based on active trigger
+const PortalDropdown = styled.ul`
+    position: fixed;
+    width: max-content;
+    min-width: 180px;
+    background-color: var(--color-grey-0);
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--primary-border-color);
+    overflow: hidden;
+    z-index: 10001;
+`;
+
+// Inline dropdown for mobile
 const StyledList = styled.ul`
     position: absolute;
     width: max-content;
@@ -122,19 +136,155 @@ const NotificationCount = styled.span`
     margin-left: auto;
 `;
 
-function ProfileMenu() {
-    const [isOpen, setIsOpen] = useState(false);
-    const close = () => setIsOpen(false);
+// Global state for syncing ProfileMenu dropdown across Header and Sidebar
+let globalProfileMenuOpen = false;
+const profileMenuListeners = new Set();
+
+const setGlobalProfileMenuOpen = (isOpen) => {
+    globalProfileMenuOpen = isOpen;
+    profileMenuListeners.forEach((listener) => listener(isOpen));
+};
+
+// Global trigger rect tracking for portal positioning
+let activeTriggerRect = null;
+const triggerRectListeners = new Set();
+
+const setActiveTriggerRect = (rect) => {
+    activeTriggerRect = rect;
+    triggerRectListeners.forEach((listener) => listener(rect));
+};
+
+// Track header visibility globally
+let isHeaderCurrentlyVisible = true;
+const headerVisibilityListeners = new Set();
+
+const setHeaderVisible = (visible) => {
+    isHeaderCurrentlyVisible = visible;
+    headerVisibilityListeners.forEach((listener) => listener(visible));
+};
+
+function ProfileMenu({ inSidebar = false }) {
+    const [isOpen, setIsOpen] = useState(globalProfileMenuOpen);
+    const [triggerRect, setTriggerRect] = useState(activeTriggerRect);
+    const [isHeaderVisible, setIsHeaderVisible] = useState(
+        isHeaderCurrentlyVisible
+    );
+    const triggerRef = useRef(null);
+    const portalDropdownRef = useRef(null);
+
+    const close = () => {
+        setIsOpen(false);
+        setGlobalProfileMenuOpen(false);
+    };
     const { logout } = useLogout();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const dropdownRef = useOutsideClick(close);
+    // Custom outside click handling that includes the portal dropdown
+    const wrapperRef = useRef(null);
+
+    useEffect(() => {
+        function handleClickOutside(e) {
+            // Check if click is inside the wrapper OR inside the portal dropdown
+            const isInsideWrapper = wrapperRef.current?.contains(e.target);
+            const isInsidePortalDropdown = portalDropdownRef.current?.contains(
+                e.target
+            );
+
+            if (!isInsideWrapper && !isInsidePortalDropdown) {
+                close();
+            }
+        }
+
+        if (isOpen) {
+            document.addEventListener("click", handleClickOutside, true);
+            return () =>
+                document.removeEventListener("click", handleClickOutside, true);
+        }
+    }, [isOpen]);
+
     const { setCurrentKicker } = useKicker();
     const { isDarkMode, toggleDarkMode } = useDarkMode();
     const { isSound, toggleSound } = useSound();
     const { windowWidth } = useWindowWidth();
     const isMobile = windowWidth <= media.maxTablet;
+    const isDesktop = !isMobile;
     const { unreadCount } = useUnreadMentionCount();
+
+    // Sync with global open state
+    useEffect(() => {
+        const listener = (newIsOpen) => setIsOpen(newIsOpen);
+        profileMenuListeners.add(listener);
+        return () => profileMenuListeners.delete(listener);
+    }, []);
+
+    // Sync with global trigger rect for portal positioning
+    useEffect(() => {
+        const listener = (rect) => setTriggerRect(rect);
+        triggerRectListeners.add(listener);
+        return () => triggerRectListeners.delete(listener);
+    }, []);
+
+    // Sync with header visibility
+    useEffect(() => {
+        const listener = (visible) => setIsHeaderVisible(visible);
+        headerVisibilityListeners.add(listener);
+        return () => headerVisibilityListeners.delete(listener);
+    }, []);
+
+    // Update trigger rect when this instance should be the active trigger
+    // Only update when dropdown is opened, not on visibility changes
+    useLayoutEffect(() => {
+        if (!triggerRef.current || !isOpen) return;
+
+        // Header's ProfileMenu is active when header is visible
+        // Sidebar's ProfileMenu is active when header is hidden
+        const shouldBeActive = inSidebar ? !isHeaderVisible : isHeaderVisible;
+
+        if (shouldBeActive) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setActiveTriggerRect(rect);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [inSidebar, isOpen]); // Intentionally excluding isHeaderVisible to prevent position jump on header toggle
+
+    // Handle header visibility changes
+    useEffect(() => {
+        const handleHeaderVisibility = (event) => {
+            const headerVisible = event.detail.isVisible;
+            setHeaderVisible(headerVisible);
+
+            // On desktop, check if sidebar is open
+            if (isDesktop) {
+                const isSidebarOpen =
+                    localStorage.getItem("isOpenRightSidebar") !== "false";
+
+                // Only close if header is hidden AND sidebar is closed
+                if (!headerVisible && !isSidebarOpen) {
+                    setIsOpen(false);
+                    setGlobalProfileMenuOpen(false);
+                }
+                // If header is hidden but sidebar is open, keep dropdown open
+                // (it will appear to "transfer" to sidebar)
+            } else {
+                // On mobile, close when header hides
+                if (!headerVisible) {
+                    setIsOpen(false);
+                    setGlobalProfileMenuOpen(false);
+                }
+            }
+        };
+
+        window.addEventListener(
+            "headerVisibilityChange",
+            handleHeaderVisibility
+        );
+        return () => {
+            window.removeEventListener(
+                "headerVisibilityChange",
+                handleHeaderVisibility
+            );
+        };
+    }, [isDesktop]);
 
     const { data: player, isLoading: isLoadingPlayer } = useOwnPlayer();
     const {
@@ -150,7 +300,9 @@ function ProfileMenu() {
     } = usePlayerStatusForAvatar(player?.id);
 
     function handleToggle() {
-        setIsOpen((open) => !open);
+        const newState = !isOpen;
+        setIsOpen(newState);
+        setGlobalProfileMenuOpen(newState);
     }
 
     function goToProfile(e) {
@@ -198,9 +350,77 @@ function ProfileMenu() {
         navigate("/notifications");
     }
 
+    // Determine if this instance should render the dropdown
+    // On desktop: only ONE instance renders it (via portal), based on which trigger is active
+    // On mobile: each instance renders its own inline dropdown
+    const shouldRenderDropdown =
+        isMobile || (inSidebar ? !isHeaderVisible : isHeaderVisible);
+
+    // Calculate dropdown position from trigger rect
+    const dropdownStyle = triggerRect
+        ? {
+              top: triggerRect.bottom + 8,
+              right: window.innerWidth - triggerRect.right,
+          }
+        : {};
+
+    // Dropdown content (shared between portal and inline)
+    const dropdownContent = (
+        <>
+            <li>
+                <StyledButton onClick={goToProfile}>
+                    <HiOutlineUserCircle />
+                    Profile
+                </StyledButton>
+            </li>
+
+            {/* Mobile-only items */}
+            <Divider />
+            <MobileOnlyItem>
+                <StyledButton onClick={handleGoToNotifications}>
+                    <HiOutlineBell />
+                    Notifications
+                    {unreadCount > 0 && (
+                        <NotificationCount>{badgeCount}</NotificationCount>
+                    )}
+                </StyledButton>
+            </MobileOnlyItem>
+            <MobileOnlyItem>
+                <StyledButton onClick={handleToggleDarkMode}>
+                    {isDarkMode ? <HiOutlineSun /> : <HiOutlineMoon />}
+                    {isDarkMode ? "Light Mode" : "Dark Mode"}
+                </StyledButton>
+            </MobileOnlyItem>
+            <MobileOnlyItem>
+                <StyledButton onClick={handleToggleSound}>
+                    {isSound ? (
+                        <HiOutlineSpeakerWave />
+                    ) : (
+                        <HiOutlineSpeakerXMark />
+                    )}
+                    {isSound ? "Sound Off" : "Sound On"}
+                </StyledButton>
+            </MobileOnlyItem>
+            <MobileOnlyItem>
+                <StyledButton onClick={handleExitKicker}>
+                    <HiArrowRightOnRectangle />
+                    Exit Kicker
+                </StyledButton>
+            </MobileOnlyItem>
+            <Divider />
+
+            <li>
+                <StyledButton onClick={handleLogout}>
+                    <HiMiniArrowLeftOnRectangle />
+                    Logout
+                </StyledButton>
+            </li>
+        </>
+    );
+
     return (
-        <ProfileMenuWrapper ref={dropdownRef}>
-            <ProfileMenuContainer>
+        <ProfileMenuWrapper ref={wrapperRef}>
+            <ProfileMenuContainer ref={triggerRef}>
                 {isMobile && unreadCount > 0 && (
                     <MobileNotificationBadge>
                         {badgeCount}
@@ -227,60 +447,23 @@ function ProfileMenu() {
                 />
             </ProfileMenuContainer>
 
-            {isOpen && (
-                <StyledList>
-                    <li>
-                        <StyledButton onClick={goToProfile}>
-                            <HiOutlineUserCircle />
-                            Profile
-                        </StyledButton>
-                    </li>
-
-                    {/* Mobile-only items */}
-                    <Divider />
-                    <MobileOnlyItem>
-                        <StyledButton onClick={handleGoToNotifications}>
-                            <HiOutlineBell />
-                            Notifications
-                            {unreadCount > 0 && (
-                                <NotificationCount>
-                                    {badgeCount}
-                                </NotificationCount>
-                            )}
-                        </StyledButton>
-                    </MobileOnlyItem>
-                    <MobileOnlyItem>
-                        <StyledButton onClick={handleToggleDarkMode}>
-                            {isDarkMode ? <HiOutlineSun /> : <HiOutlineMoon />}
-                            {isDarkMode ? "Light Mode" : "Dark Mode"}
-                        </StyledButton>
-                    </MobileOnlyItem>
-                    <MobileOnlyItem>
-                        <StyledButton onClick={handleToggleSound}>
-                            {isSound ? (
-                                <HiOutlineSpeakerWave />
-                            ) : (
-                                <HiOutlineSpeakerXMark />
-                            )}
-                            {isSound ? "Sound Off" : "Sound On"}
-                        </StyledButton>
-                    </MobileOnlyItem>
-                    <MobileOnlyItem>
-                        <StyledButton onClick={handleExitKicker}>
-                            <HiArrowRightOnRectangle />
-                            Exit Kicker
-                        </StyledButton>
-                    </MobileOnlyItem>
-                    <Divider />
-
-                    <li>
-                        <StyledButton onClick={handleLogout}>
-                            <HiMiniArrowLeftOnRectangle />
-                            Logout
-                        </StyledButton>
-                    </li>
-                </StyledList>
-            )}
+            {isOpen &&
+                shouldRenderDropdown &&
+                (isDesktop ? (
+                    // Portal dropdown for desktop - positioned fixed
+                    createPortal(
+                        <PortalDropdown
+                            ref={portalDropdownRef}
+                            style={dropdownStyle}
+                        >
+                            {dropdownContent}
+                        </PortalDropdown>,
+                        document.body
+                    )
+                ) : (
+                    // Inline dropdown for mobile
+                    <StyledList>{dropdownContent}</StyledList>
+                ))}
         </ProfileMenuWrapper>
     );
 }

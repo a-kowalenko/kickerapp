@@ -8,11 +8,14 @@ import NewSeasonModal from "./NewSeasonModal";
 import { useNewSeasonAnnouncement } from "../features/seasons/useNewSeasonAnnouncement";
 import useAchievementNotifications from "../features/achievements/useAchievementNotifications";
 import AchievementToast from "../features/achievements/AchievementToast";
+import PlayerActivitySidebar from "../features/activity/PlayerActivitySidebar";
+import useWindowWidth from "../hooks/useWindowWidth";
+import { useLocalStorageState } from "../hooks/useLocalStorageState";
 
 const StyledAppLayout = styled.div`
     @media (min-width: 850px) {
         display: grid;
-        grid-template-columns: auto 1fr;
+        grid-template-columns: auto 1fr auto;
         grid-template-rows: auto 1fr auto;
     }
 
@@ -49,10 +52,28 @@ const Main = styled.main`
     }
 `;
 
+const RightSidebarWrapper = styled.div`
+    grid-column: 3;
+    grid-row: 1 / -1;
+    /* Reserve space for fixed sidebar */
+    width: ${(props) => (props.$isOpen ? "280px" : "44px")};
+    flex-shrink: 0;
+    transition: width 0.2s ease-out;
+
+    ${media.tablet} {
+        display: none;
+    }
+`;
+
 function AppLayout() {
     const { showAnnouncement, seasonName, acknowledgeNewSeason } =
         useNewSeasonAnnouncement();
     const { currentToast, handleDismiss } = useAchievementNotifications();
+    const { isDesktop } = useWindowWidth();
+    const [isRightSidebarOpen] = useLocalStorageState(
+        true,
+        "isOpenRightSidebar"
+    );
 
     return (
         <StyledAppLayout>
@@ -73,6 +94,11 @@ function AppLayout() {
             <Main>
                 <Outlet />
             </Main>
+            {isDesktop && (
+                <RightSidebarWrapper $isOpen={isRightSidebarOpen}>
+                    <PlayerActivitySidebar />
+                </RightSidebarWrapper>
+            )}
             <Footer />
         </StyledAppLayout>
     );

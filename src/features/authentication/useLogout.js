@@ -28,6 +28,13 @@ export function useLogout() {
         mutationFn: async () => {
             // Delete FCM token first (while still authenticated)
             await deleteFCMToken();
+
+            // Dispatch event to cleanup presence before logout
+            window.dispatchEvent(new CustomEvent("userLogout"));
+
+            // Small delay to allow presence cleanup to complete
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
             // Then logout
             return logoutApi();
         },
