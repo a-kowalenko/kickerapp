@@ -13,6 +13,7 @@ import {
     getNotificationStatus,
 } from "../../services/firebase";
 import supabase, { databaseSchema } from "../../services/supabase";
+import { getDeviceInfo } from "../../utils/deviceInfo";
 
 // Helper to save FCM token after login using RPC function
 async function saveFCMToken() {
@@ -26,28 +27,8 @@ async function saveFCMToken() {
     try {
         const token = await requestNotificationPermission();
         if (token) {
-            // Get device info
-            const ua = navigator.userAgent;
-            let deviceType = "desktop";
-            let os = "unknown";
-
-            if (/iPhone|iPad|iPod/.test(ua)) {
-                deviceType = "ios";
-                os = "iOS";
-            } else if (/Android/.test(ua)) {
-                deviceType = "android";
-                os = "Android";
-            } else if (/Windows/.test(ua)) {
-                os = "Windows";
-            } else if (/Mac/.test(ua)) {
-                os = "macOS";
-            }
-
-            const deviceInfo = JSON.stringify({
-                deviceType,
-                os,
-                timestamp: new Date().toISOString(),
-            });
+            // Get complete device info using shared utility
+            const deviceInfo = getDeviceInfo();
 
             // Use RPC function that handles user switching on same device
             const { error } = await supabase
