@@ -4,6 +4,7 @@ import {
     HiOutlineChatBubbleLeftRight,
     HiOutlineChatBubbleOvalLeft,
     HiOutlineUserGroup,
+    HiOutlineFire,
 } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -230,6 +231,8 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
             return `/home?tab=chat&scrollTo=message-${source_id}&_t=${Date.now()}`;
         } else if (type === "team_invite") {
             return "/teams/my";
+        } else if (type === "fatality" && match_id) {
+            return `/matches/${match_id}`;
         }
         return null;
     }
@@ -307,6 +310,8 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
                         <HiOutlineChatBubbleOvalLeft />
                     ) : type === "team_invite" ? (
                         <HiOutlineUserGroup />
+                    ) : type === "fatality" ? (
+                        <HiOutlineFire />
                     ) : (
                         <HiOutlineChatBubbleLeftRight />
                     )}
@@ -329,6 +334,7 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
                     )}
                     {type === "chat" && <span>Chat</span>}
                     {type === "team_invite" && <span>Team Invite</span>}
+                    {type === "fatality" && <span>Fatality</span>}
                 </MetaInfo>
             </ContentWrapper>
 
