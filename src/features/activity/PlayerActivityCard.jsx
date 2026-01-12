@@ -86,24 +86,6 @@ const PlayingBadge = styled.div`
     }
 `;
 
-const BountyBadge = styled.div`
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.15rem 0.45rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    cursor: pointer;
-    transition: transform 0.15s ease;
-
-    &:hover {
-        transform: scale(1.05);
-    }
-`;
-
 const StatusBadgeWrapper = styled.span`
     display: inline-flex;
     cursor: pointer;
@@ -112,6 +94,50 @@ const StatusBadgeWrapper = styled.span`
     &:hover {
         transform: scale(1.05);
     }
+`;
+
+const Divider = styled.div`
+    width: 1px;
+    height: 36px;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        var(--secondary-text-color) 20%,
+        var(--secondary-text-color) 80%,
+        transparent 100%
+    );
+    opacity: 0.3;
+    flex-shrink: 0;
+`;
+
+const BountySection = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover {
+        transform: scale(1.08);
+    }
+`;
+
+const BountyValue = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #ef4444;
+`;
+
+const BountyLabel = styled.span`
+    font-size: 0.7rem;
+    color: var(--secondary-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 `;
 
 const OfflineTime = styled.span`
@@ -273,20 +299,9 @@ export function PlayerActivityCard({
                                 <StatusBadge
                                     status={primaryStatus}
                                     size="small"
-                                    showLabel={false}
+                                    showLabel={true}
                                 />
                             </StatusBadgeWrapper>
-                        )}
-
-                        {/* Bounty badge - when has bounty */}
-                        {showBounty && hasBounty && !isInMatch && (
-                            <BountyBadge
-                                ref={bountyTriggerRef}
-                                onMouseEnter={handleBountyMouseEnter}
-                                onMouseLeave={handleBountyMouseLeave}
-                            >
-                                💰+{totalBounty}
-                            </BountyBadge>
                         )}
 
                         {/* Offline time - when offline */}
@@ -298,6 +313,21 @@ export function PlayerActivityCard({
                     </StatusRow>
                 </PlayerInfo>
             </PlayerLink>
+
+            {/* Bounty Section - on the right with divider */}
+            {showBounty && hasBounty && !isInMatch && (
+                <>
+                    <Divider />
+                    <BountySection
+                        ref={bountyTriggerRef}
+                        onMouseEnter={handleBountyMouseEnter}
+                        onMouseLeave={handleBountyMouseLeave}
+                    >
+                        <BountyLabel>Bounty</BountyLabel>
+                        <BountyValue>💰+{totalBounty}</BountyValue>
+                    </BountySection>
+                </>
+            )}
 
             {/* Tooltips */}
             {hasBounty && (
