@@ -395,18 +395,23 @@ export async function getUnreadMatchCommentCount(matchId) {
  * Used to determine which comments are unread for visual marking
  */
 export async function getCommentReadStatus(kickerId) {
+    // Get current user ID
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        return null;
+    }
+
     const { data, error } = await supabase
         .from("comment_read_status")
         .select("last_read_at")
         .eq("kicker_id", kickerId)
-        .limit(1)
-        .single();
+        .eq("user_id", user.id)
+        .maybeSingle();
 
     if (error) {
-        // PGRST116 = no rows returned, which is OK for new users
-        if (error.code === "PGRST116") {
-            return null;
-        }
         throw new Error(error.message);
     }
 

@@ -376,7 +376,7 @@ function AchievementTickerItem({ group, isNew = false }) {
                                 +
                                 {playerGroup.achievements.reduce(
                                     (sum, a) =>
-                                        sum + (a.achievement.points || 0),
+                                        sum + (a.achievement?.points || 0),
                                     0
                                 )}{" "}
                                 pts
@@ -417,7 +417,8 @@ function AchievementTickerItem({ group, isNew = false }) {
                                                 </CategoryBadge>
                                             )}
                                             <AchievementPoints>
-                                                +{item.achievement.points} pts
+                                                +{item.achievement?.points || 0}{" "}
+                                                pts
                                             </AchievementPoints>
                                             <ChevronIcon
                                                 $isExpanded={isExpanded}
