@@ -1,7 +1,7 @@
 import styled, { css } from "styled-components";
 import { useState } from "react";
 import { HiChevronLeft, HiChevronRight } from "react-icons/hi2";
-import { IoChevronDown, IoChevronUp } from "react-icons/io5";
+import { IoChevronDown, IoChevronUp, IoGameController } from "react-icons/io5";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { usePlayersActivity } from "./usePlayersActivity";
 import PlayerActivityCard from "./PlayerActivityCard";
@@ -180,6 +180,11 @@ const LoadingContainer = styled.div`
     padding: 2rem;
 `;
 
+const InMatchIcon = styled(IoGameController)`
+    font-size: 14px;
+    color: #22c55e !important;
+`;
+
 const OnlineDot = styled.span`
     display: inline-block;
     width: 10px;
@@ -208,12 +213,14 @@ export function PlayerActivitySidebar() {
         "isOpenRightSidebar"
     );
     const [expandedSections, setExpandedSections] = useState({
+        inMatch: true,
         online: true,
         offline: true,
         inactive: false,
     });
 
-    const { online, offline, inactive, isLoading } = usePlayersActivity();
+    const { inMatch, online, offline, inactive, isLoading } =
+        usePlayersActivity();
 
     const toggleSidebar = () => {
         setIsOpen((prev) => !prev);
@@ -249,6 +256,38 @@ export function PlayerActivitySidebar() {
                         </LoadingContainer>
                     ) : (
                         <>
+                            {/* In Match Section */}
+                            {inMatch.length > 0 && (
+                                <Section>
+                                    <SectionHeader
+                                        onClick={() => toggleSection("inMatch")}
+                                    >
+                                        <SectionTitle>
+                                            <InMatchIcon />
+                                            In Match
+                                            <CountBadge $variant="online">
+                                                {inMatch.length}
+                                            </CountBadge>
+                                        </SectionTitle>
+                                        {expandedSections.inMatch ? (
+                                            <IoChevronUp />
+                                        ) : (
+                                            <IoChevronDown />
+                                        )}
+                                    </SectionHeader>
+                                    <SectionContent
+                                        $isExpanded={expandedSections.inMatch}
+                                    >
+                                        {inMatch.map((player) => (
+                                            <PlayerActivityCard
+                                                key={player.player_id}
+                                                player={player}
+                                            />
+                                        ))}
+                                    </SectionContent>
+                                </Section>
+                            )}
+
                             {/* Online Section */}
                             <Section>
                                 <SectionHeader

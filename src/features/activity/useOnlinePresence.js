@@ -205,6 +205,16 @@ export function useOnlinePresence() {
                     setOnlinePlayers((prevPlayers) => {
                         const merged = new Map(players);
 
+                        // IMPORTANT: Always keep own player in the list to prevent flickering
+                        // The own player should always be considered online while connected
+                        if (currentPlayerId && !merged.has(currentPlayerId)) {
+                            const ownPlayerData =
+                                prevPlayers.get(currentPlayerId);
+                            if (ownPlayerData) {
+                                merged.set(currentPlayerId, ownPlayerData);
+                            }
+                        }
+
                         // Keep players from previous state if they have a pending leave timeout
                         // and aren't in the new state (they're in grace period)
                         prevPlayers.forEach((playerData, playerId) => {
@@ -227,6 +237,11 @@ export function useOnlinePresence() {
                     leftPresences.forEach((presence) => {
                         if (presence.player_id) {
                             const playerId = presence.player_id;
+
+                            // NEVER start leave timeout for own player - prevents flickering
+                            if (playerId === currentPlayerId) {
+                                return;
+                            }
 
                             // Clear any existing timeout for this player
                             if (pendingLeavesRef.current.has(playerId)) {

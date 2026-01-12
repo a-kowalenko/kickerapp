@@ -3,6 +3,7 @@ import { usePlayerStatusForAvatar } from "../features/players/usePlayerStatus";
 import { BountyTooltip, useBountyTooltip } from "./BountyTooltip";
 import { DEFAULT_AVATAR } from "../utils/constants";
 import { avatarHighlightsUrl } from "../services/supabase";
+import { IoGameController } from "react-icons/io5";
 
 // Avatar Highlight Assets - loaded from Supabase Storage
 const RedThunder = `${avatarHighlightsUrl}/sprites/RedThunder.png`;
@@ -1388,7 +1389,7 @@ const BountyEmoji = styled.span`
 ----------------------------------------- */
 const ONLINE_INDICATOR_SIZE_CONFIG = {
     xs: { size: "8px", borderWidth: "1.5px", bottom: "0px", right: "0px" },
-    small: { size: "10px", borderWidth: "2px", bottom: "1px", right: "1px" },
+    small: { size: "12px", borderWidth: "2px", bottom: "1px", right: "1px" },
     medium: { size: "14px", borderWidth: "2px", bottom: "2px", right: "2px" },
     large: { size: "18px", borderWidth: "3px", bottom: "4px", right: "4px" },
     huge: { size: "28px", borderWidth: "4px", bottom: "8px", right: "8px" },
@@ -1397,17 +1398,20 @@ const ONLINE_INDICATOR_SIZE_CONFIG = {
 const ONLINE_STATUS_COLORS = {
     active: "#22c55e", // Green
     idle: "#eab308", // Yellow
+    inMatch: "#22c55e", // Green for in-match
     offline: "transparent", // No indicator shown
 };
 
 /* ----------------------------------------
    Online Status Indicator Overlay
    Shows a colored dot indicating online status
+   For "inMatch" status, shows a controller icon instead of a dot
 ----------------------------------------- */
-const OnlineStatusIndicator = styled.div`
+const OnlineStatusIndicatorBase = styled.div`
     position: absolute;
     z-index: 14;
-    border-radius: 50%;
+    border-radius: ${(props) =>
+        props.$onlineStatus === "inMatch" ? "3px" : "50%"};
     background-color: ${(props) =>
         ONLINE_STATUS_COLORS[props.$onlineStatus] || "transparent"};
     border: ${(props) => {
@@ -1434,9 +1438,43 @@ const OnlineStatusIndicator = styled.div`
     /* Hide if status is offline or not provided */
     display: ${(props) =>
         props.$onlineStatus && props.$onlineStatus !== "offline"
-            ? "block"
+            ? "flex"
             : "none"};
+
+    align-items: center;
+    justify-content: center;
 `;
+
+const InMatchControllerIcon = styled(IoGameController)`
+    color: white;
+    font-size: ${(props) => {
+        const sizes = {
+            xs: "5px",
+            small: "6px",
+            medium: "8px",
+            large: "10px",
+            huge: "16px",
+        };
+        return sizes[props.$avatarSize] || "8px";
+    }};
+`;
+
+const OnlineStatusIndicator = ({ $onlineStatus, $avatarSize }) => {
+    if (!$onlineStatus || $onlineStatus === "offline") {
+        return null;
+    }
+
+    return (
+        <OnlineStatusIndicatorBase
+            $onlineStatus={$onlineStatus}
+            $avatarSize={$avatarSize}
+        >
+            {$onlineStatus === "inMatch" && (
+                <InMatchControllerIcon $avatarSize={$avatarSize} />
+            )}
+        </OnlineStatusIndicatorBase>
+    );
+};
 
 /* ----------------------------------------
    BountyIndicator Component

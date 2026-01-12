@@ -27,8 +27,9 @@ export const ACTIVITY_STATUS = {
  * Hook to get all players grouped by their activity status
  * Combines real-time presence data with database fallback for offline players
  *
- * @returns {Object} - { online, offline, inactive, isLoading }
- * - online: Players currently online (active, idle, or in match)
+ * @returns {Object} - { inMatch, online, offline, inactive, isLoading }
+ * - inMatch: Players currently in a match
+ * - online: Players currently online (active or idle)
  * - offline: Players offline for less than 30 days
  * - inactive: Players offline for more than 30 days
  * - isLoading: Loading state
@@ -99,23 +100,26 @@ export function usePlayersActivity() {
         if (!activeMatch) return new Set();
 
         const matchPlayers = new Set();
-        if (activeMatch.player1) matchPlayers.add(activeMatch.player1);
-        if (activeMatch.player2) matchPlayers.add(activeMatch.player2);
-        if (activeMatch.player3) matchPlayers.add(activeMatch.player3);
-        if (activeMatch.player4) matchPlayers.add(activeMatch.player4);
+        // activeMatch.player1, player2, etc. are player OBJECTS, not IDs
+        // We need to extract the .id property
+        if (activeMatch.player1?.id) matchPlayers.add(activeMatch.player1.id);
+        if (activeMatch.player2?.id) matchPlayers.add(activeMatch.player2.id);
+        if (activeMatch.player3?.id) matchPlayers.add(activeMatch.player3.id);
+        if (activeMatch.player4?.id) matchPlayers.add(activeMatch.player4.id);
 
         return matchPlayers;
     }, [activeMatch]);
 
-    // Categorize players into online, offline, and inactive
-    const { online, offline, inactive } = useMemo(() => {
+    // Categorize players into inMatch, online, offline, and inactive
+    const { inMatch, online, offline, inactive } = useMemo(() => {
         if (!playersFromDb) {
-            return { online: [], offline: [], inactive: [] };
+            return { inMatch: [], online: [], offline: [], inactive: [] };
         }
 
         const now = Date.now();
         const thirtyDaysAgo = now - THIRTY_DAYS_MS;
 
+        const inMatchList = [];
         const onlineList = [];
         const offlineList = [];
         const inactiveList = [];
@@ -189,18 +193,21 @@ export function usePlayersActivity() {
 
                 if (isInMatch) {
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.IN_MATCH;
+                    enrichedPlayer.presenceStatus = presenceStatus;
+                    inMatchList.push(enrichedPlayer);
                 } else if (presenceStatus === "idle") {
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.IDLE;
+                    enrichedPlayer.presenceStatus = presenceStatus;
+                    onlineList.push(enrichedPlayer);
                 } else {
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.ACTIVE;
+                    enrichedPlayer.presenceStatus = presenceStatus;
+                    onlineList.push(enrichedPlayer);
                 }
-
-                enrichedPlayer.presenceStatus = presenceStatus;
-                onlineList.push(enrichedPlayer);
             } else if (isInMatch) {
-                // Player is in match but no presence data (counts as online)
+                // Player is in match but no presence data (counts as in match)
                 enrichedPlayer.activityStatus = ACTIVITY_STATUS.IN_MATCH;
-                onlineList.push(enrichedPlayer);
+                inMatchList.push(enrichedPlayer);
             } else {
                 // Player is offline - check last_seen for inactive
                 if (lastSeenDb && lastSeenDb < thirtyDaysAgo) {
@@ -214,19 +221,11 @@ export function usePlayersActivity() {
         }
 
         // Sort lists
+        // In Match: Sort by name
+        inMatchList.sort((a, b) => a.player_name.localeCompare(b.player_name));
+
         // Online: Active first, then idle, then by name
         onlineList.sort((a, b) => {
-            // In-match first
-            if (
-                a.activityStatus === ACTIVITY_STATUS.IN_MATCH &&
-                b.activityStatus !== ACTIVITY_STATUS.IN_MATCH
-            )
-                return -1;
-            if (
-                b.activityStatus === ACTIVITY_STATUS.IN_MATCH &&
-                a.activityStatus !== ACTIVITY_STATUS.IN_MATCH
-            )
-                return 1;
             // Active before idle
             if (
                 a.activityStatus === ACTIVITY_STATUS.ACTIVE &&
@@ -253,6 +252,7 @@ export function usePlayersActivity() {
         inactiveList.sort((a, b) => a.player_name.localeCompare(b.player_name));
 
         return {
+            inMatch: inMatchList,
             online: onlineList,
             offline: offlineList,
             inactive: inactiveList,
@@ -267,6 +267,7 @@ export function usePlayersActivity() {
     ]);
 
     return {
+        inMatch,
         online,
         offline,
         inactive,

@@ -114,6 +114,12 @@ const StatusBadgeWrapper = styled.span`
     }
 `;
 
+const OfflineTime = styled.span`
+    font-size: 1.2rem;
+    color: var(--secondary-text-color);
+    font-style: italic;
+`;
+
 /* ----------------------------------------
    PlayerActivityCard Component
    
@@ -143,6 +149,7 @@ export function PlayerActivityCard({
         primaryStatus,
         statuses1on1,
         statuses2on2,
+        last_seen,
     } = player;
 
     // Bounty tooltip
@@ -174,10 +181,9 @@ export function PlayerActivityCard({
 
     // Determine online indicator status for Avatar
     let onlineIndicatorStatus = "offline";
-    if (
-        activityStatus === ACTIVITY_STATUS.ACTIVE ||
-        activityStatus === ACTIVITY_STATUS.IN_MATCH
-    ) {
+    if (activityStatus === ACTIVITY_STATUS.IN_MATCH) {
+        onlineIndicatorStatus = "inMatch";
+    } else if (activityStatus === ACTIVITY_STATUS.ACTIVE) {
         onlineIndicatorStatus = "active";
     } else if (activityStatus === ACTIVITY_STATUS.IDLE) {
         onlineIndicatorStatus = "idle";
@@ -197,6 +203,23 @@ export function PlayerActivityCard({
             default:
                 return gamemode;
         }
+    };
+
+    // Format time ago for offline players
+    const formatTimeAgo = (dateString) => {
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffMins < 1) return "just now";
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 30) return `${diffDays}d ago`;
+        return `${Math.floor(diffDays / 30)}mo ago`;
     };
 
     return (
@@ -264,6 +287,13 @@ export function PlayerActivityCard({
                             >
                                 💰+{totalBounty}
                             </BountyBadge>
+                        )}
+
+                        {/* Offline time - when offline */}
+                        {isOffline && last_seen && (
+                            <OfflineTime>
+                                {formatTimeAgo(last_seen)}
+                            </OfflineTime>
                         )}
                     </StatusRow>
                 </PlayerInfo>
