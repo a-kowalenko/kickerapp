@@ -278,7 +278,7 @@ export function PlayerActivityCard({
                         )}
 
                         {/* Status badge - when not in match and has status */}
-                        {showStatus && hasStatus && (
+                        {!isOffline && showStatus && hasStatus && (
                             <StatusBadgeWrapper
                                 ref={
                                     hasStatusTooltipData
