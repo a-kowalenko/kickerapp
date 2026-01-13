@@ -32,12 +32,9 @@ import Button from "../ui/Button";
 import SwitchButton from "../ui/SwitchButton";
 import { media } from "../utils/constants";
 import TabView from "../ui/TabView";
-import SeasonManagement from "../features/seasons/SeasonManagement";
 import SeasonSelector from "../features/seasons/SeasonSelector";
 import NotificationSettings from "../features/settings/NotificationSettings";
-import StatusDisplaySettings from "../features/settings/StatusDisplaySettings";
-import UserPermissionsManager from "../features/settings/UserPermissionsManager";
-import KickerSettings from "../features/settings/KickerSettings";
+import ProfileSettings from "../features/players/ProfileSettings";
 import KickerInfo from "../features/settings/KickerInfo";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -769,9 +766,6 @@ function GeneralSettings() {
 function Settings() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { data: kickerData } = useKickerInfo();
-    const { user } = useUser();
-    const isAdmin = kickerData?.admin === user?.id;
 
     // Redirect to general tab if no specific tab is selected
     useEffect(() => {
@@ -787,6 +781,11 @@ function Settings() {
             component: <GeneralSettings />,
         },
         {
+            path: "/settings/profile",
+            label: "Profile",
+            component: <ProfileSettings />,
+        },
+        {
             path: "/settings/notifications",
             label: "Notifications",
             component: <NotificationSettings />,
@@ -797,30 +796,6 @@ function Settings() {
             component: <KickerInfo />,
         },
     ];
-
-    // Add admin-only tabs
-    if (isAdmin) {
-        tabs.push({
-            path: "/settings/seasons",
-            label: "Seasons",
-            component: <SeasonManagement />,
-        });
-        tabs.push({
-            path: "/settings/admin",
-            label: "Admin",
-            component: <KickerSettings />,
-        });
-        tabs.push({
-            path: "/settings/status-display",
-            label: "Status Display",
-            component: <StatusDisplaySettings />,
-        });
-        tabs.push({
-            path: "/settings/permissions",
-            label: "Permissions",
-            component: <UserPermissionsManager />,
-        });
-    }
 
     return (
         <StyledSettings>

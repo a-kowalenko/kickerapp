@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import { HiOutlineTrophy, HiChevronDoubleDown } from "react-icons/hi2";
+import { HiOutlineTrophy, HiChevronDoubleUp } from "react-icons/hi2";
 import { useAchievementFeed } from "./useAchievementFeed";
 import AchievementTickerItem from "./AchievementTickerItem";
 import LoadingSpinner from "../../ui/LoadingSpinner";
@@ -19,7 +19,7 @@ const ContentWrapper = styled.div`
 
 const FeedContainer = styled.div`
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: 0.8rem;
     overflow-y: auto;
     overflow-x: hidden;
@@ -150,13 +150,12 @@ function AchievementTickerTab() {
         if (!feedContainerRef.current) return;
 
         const { scrollTop } = feedContainerRef.current;
-        // For column-reverse, scrollTop 0 = bottom, negative = scrolled up
-        const distanceFromBottom = Math.abs(scrollTop);
         const threshold = 200;
 
-        isNearBottomRef.current = distanceFromBottom < threshold;
+        // For normal column layout, scrollTop 0 = top (newest)
+        isNearBottomRef.current = scrollTop < threshold;
 
-        if (distanceFromBottom > threshold) {
+        if (scrollTop > threshold) {
             setShowJumpToLatest(true);
         } else {
             setShowJumpToLatest(false);
@@ -197,7 +196,7 @@ function AchievementTickerTab() {
             !hasInitiallyScrolled
         ) {
             setHasInitiallyScrolled(true);
-            // Scroll to bottom (newest) - for column-reverse this is scrollTop = 0
+            // Scroll to top (newest) - scrollTop = 0
             if (feedContainerRef.current) {
                 feedContainerRef.current.scrollTop = 0;
             }
@@ -249,26 +248,27 @@ function AchievementTickerTab() {
     return (
         <ContentWrapper>
             <FeedContainer ref={feedContainerRef} onScroll={handleScroll}>
-                {/* Load more trigger at the "top" (end in column-reverse) */}
-                <LoadMoreTrigger ref={loadMoreRef}>
-                    {isFetchingNextPage && <SpinnerMini />}
-                    {!isFetchingNextPage && hasNextPage && "Scroll for more..."}
-                </LoadMoreTrigger>
-
-                {/* Achievement groups */}
-                {groupsWithNewFlag.map((group) => (
+                {/* Achievement groups - newest first */}
+                {groupsWithNewFlag.map((group, index) => (
                     <AchievementTickerItem
                         key={group.matchId || group.latestUnlockedAt}
                         group={group}
                         isNew={group.isNew}
+                        isOdd={index % 2 === 1}
                     />
                 ))}
+
+                {/* Load more trigger at the bottom */}
+                <LoadMoreTrigger ref={loadMoreRef}>
+                    {isFetchingNextPage && <SpinnerMini />}
+                    {!isFetchingNextPage && hasNextPage && "Scroll for more..."}
+                </LoadMoreTrigger>
             </FeedContainer>
 
             {/* Jump to latest button */}
             {showJumpToLatest && (
                 <JumpToLatestButton onClick={handleJumpToLatest}>
-                    <HiChevronDoubleDown />
+                    <HiChevronDoubleUp />
                     {newAchievementsCount > 0 && (
                         <NewAchievementsBadge>
                             {newAchievementsCount}

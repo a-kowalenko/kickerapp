@@ -12,10 +12,6 @@ import ProfileMenu from "../../ui/ProfileMenu";
    Styled Components
 ----------------------------------------- */
 const SidebarContainer = styled.aside`
-    position: fixed;
-    top: 0; /* Below header */
-    /* padding-top: 80px; */
-    right: 0;
     height: 100%;
     background-color: var(--primary-background-color);
     border-left: 1px solid var(--secondary-border-color);
@@ -23,7 +19,6 @@ const SidebarContainer = styled.aside`
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    z-index: 2; /* Below header (100) */
 
     ${(props) =>
         props.$isOpen
@@ -60,9 +55,7 @@ const ToggleButton = styled.button`
     border-bottom: 1px solid var(--secondary-border-color);
     color: var(--secondary-text-color);
     cursor: pointer;
-    transition:
-        background-color 0.15s ease,
-        color 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
 
     &:hover {
         background-color: var(--secondary-background-color);
@@ -119,9 +112,7 @@ const SectionHeader = styled.button`
     text-transform: uppercase;
     letter-spacing: 0.5px;
     cursor: pointer;
-    transition:
-        background-color 0.15s ease,
-        color 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
 
     &:hover {
         background-color: var(--secondary-background-color);
@@ -163,14 +154,14 @@ const CountBadge = styled.span`
         props.$variant === "online"
             ? "rgba(34, 197, 94, 0.2)"
             : props.$variant === "offline"
-              ? "rgba(156, 163, 175, 0.2)"
-              : "rgba(107, 114, 128, 0.2)"};
+            ? "rgba(156, 163, 175, 0.2)"
+            : "rgba(107, 114, 128, 0.2)"};
     color: ${(props) =>
         props.$variant === "online"
             ? "#22c55e"
             : props.$variant === "offline"
-              ? "#9ca3af"
-              : "#6b7280"};
+            ? "#9ca3af"
+            : "#6b7280"};
 `;
 
 const SectionContent = styled.div`
@@ -181,9 +172,7 @@ const SectionContent = styled.div`
     display: grid;
     grid-template-rows: ${(props) => (props.$isExpanded ? "1fr" : "0fr")};
     opacity: ${(props) => (props.$isExpanded ? 1 : 0)};
-    transition:
-        grid-template-rows 0.25s ease-out,
-        opacity 0.2s ease-out;
+    transition: grid-template-rows 0.25s ease-out, opacity 0.2s ease-out;
 
     & > div {
         overflow: hidden;

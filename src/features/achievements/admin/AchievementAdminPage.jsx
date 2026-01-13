@@ -6,7 +6,6 @@ import {
     HiOutlineTrash,
     HiOutlineSparkles,
 } from "react-icons/hi2";
-import Heading from "../../../ui/Heading";
 import Button from "../../../ui/Button";
 import Spinner from "../../../ui/Spinner";
 import { useAchievementDefinitions } from "../useAchievementDefinitions";
@@ -274,10 +273,6 @@ function AchievementAdminPage() {
 
     return (
         <StyledAdmin>
-            <Heading as="h1" type="page" hasBackBtn={true}>
-                Achievement Admin
-            </Heading>
-
             <TabContainer>
                 <Tab
                     $active={activeTab === "achievements"}

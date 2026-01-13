@@ -16,7 +16,16 @@ const MAX_RECONNECT_ATTEMPTS = 5; // Maximum reconnect attempts before giving up
 const RECONNECT_BACKOFF_MULTIPLIER = 1.5; // Exponential backoff multiplier
 
 // Activity events to listen for
-const ACTIVITY_EVENTS = ["mousedown", "keydown", "scroll", "touchstart"];
+const ACTIVITY_EVENTS = [
+    "mousedown",
+    "keydown",
+    "scroll",
+    "touchstart",
+    "click",
+];
+
+// Debounce delay for syncing presence after activity (leading-edge)
+const ACTIVITY_SYNC_DELAY = 2000; // 2 seconds
 
 /**
  * Hook to manage online presence for the current user
@@ -36,6 +45,8 @@ export function useOnlinePresence() {
     const channelRef = useRef(null);
     const lastActivityRef = useRef(Date.now());
     const lastActivityUpdateRef = useRef(0);
+    const activitySyncTimeoutRef = useRef(null);
+    const lastSyncedStatusRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
     const dbUpdateIntervalRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
@@ -74,12 +85,35 @@ export function useOnlinePresence() {
         return "active";
     }, []);
 
-    // Update activity timestamp (throttled)
+    // Update activity timestamp (throttled) and trigger presence sync if needed
     const updateActivity = useCallback(() => {
         const now = Date.now();
         if (now - lastActivityUpdateRef.current >= ACTIVITY_THROTTLE) {
+            const wasIdle = lastSyncedStatusRef.current === "idle";
             lastActivityRef.current = now;
             lastActivityUpdateRef.current = now;
+
+            // If we were idle, sync immediately (leading-edge) to show "active" faster
+            // Otherwise, debounce to avoid excessive syncs during normal activity
+            if (wasIdle && channelRef.current && trackPresenceRef.current) {
+                // Clear any pending debounced sync
+                if (activitySyncTimeoutRef.current) {
+                    clearTimeout(activitySyncTimeoutRef.current);
+                    activitySyncTimeoutRef.current = null;
+                }
+                // Sync immediately when transitioning from idle to active
+                trackPresenceRef.current();
+            } else if (channelRef.current && trackPresenceRef.current) {
+                // Debounce sync during normal activity to avoid flooding
+                if (!activitySyncTimeoutRef.current) {
+                    activitySyncTimeoutRef.current = setTimeout(() => {
+                        activitySyncTimeoutRef.current = null;
+                        if (trackPresenceRef.current) {
+                            trackPresenceRef.current();
+                        }
+                    }, ACTIVITY_SYNC_DELAY);
+                }
+            }
         }
     }, []);
 
@@ -88,11 +122,14 @@ export function useOnlinePresence() {
         if (!channelRef.current || !currentPlayerId) return;
 
         try {
+            const status = calculateStatus();
+            lastSyncedStatusRef.current = status;
+
             await channelRef.current.track({
                 player_id: currentPlayerId,
                 player_name: currentPlayerName,
                 player_avatar: currentPlayerAvatar,
-                status: calculateStatus(),
+                status,
                 last_activity: lastActivityRef.current,
                 updated_at: new Date().toISOString(),
             });
@@ -130,7 +167,12 @@ export function useOnlinePresence() {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
         }
+        if (activitySyncTimeoutRef.current) {
+            clearTimeout(activitySyncTimeoutRef.current);
+            activitySyncTimeoutRef.current = null;
+        }
         isReconnectingRef.current = false;
+        lastSyncedStatusRef.current = null;
         setIsConnected(false);
 
         // Clear all pending leave timeouts
