@@ -187,13 +187,9 @@ export async function getTeamSeasonRanking(teamId, seasonId) {
         .select("*")
         .eq("team_id", teamId)
         .eq("season_id", seasonId)
-        .single();
+        .maybeSingle();
 
     if (error) {
-        // Not found is expected for teams without season data
-        if (error.code === "PGRST116") {
-            return null;
-        }
         console.error("[Teams] Error fetching team season ranking:", error);
         return null;
     }

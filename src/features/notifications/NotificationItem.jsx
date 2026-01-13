@@ -1,14 +1,18 @@
 import styled, { keyframes } from "styled-components";
 import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
 import {
     HiOutlineChatBubbleLeftRight,
     HiOutlineChatBubbleOvalLeft,
     HiOutlineUserGroup,
+    HiOutlineFire,
 } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import Avatar from "../../ui/Avatar";
 import { DEFAULT_AVATAR } from "../../utils/constants";
+import { useKicker } from "../../contexts/KickerContext";
+import { useLocalStorageState } from "../../hooks/useLocalStorageState";
+import KickerSwitchConfirmModal from "./KickerSwitchConfirmModal";
 
 const highlightPulse = keyframes`
     0% {
@@ -24,7 +28,7 @@ const ItemContainer = styled.div`
     gap: 1.2rem;
     padding: 1.2rem 1.4rem;
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, transform 0.1s ease;
     border-left: 3px solid
         ${(props) => (props.$isUnread ? "var(--color-red-700)" : "transparent")};
     background-color: ${(props) =>
@@ -32,6 +36,11 @@ const ItemContainer = styled.div`
 
     &:hover {
         background-color: var(--tertiary-background-color);
+    }
+
+    &:active {
+        transform: scale(0.98);
+        background-color: var(--quaternary-background-color);
     }
 
     &:not(:last-child) {
@@ -179,14 +188,22 @@ function cleanContentPreview(content) {
     return content.replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1");
 }
 
-function NotificationItem({ notification, onMarkAsRead }) {
+function NotificationItem({ notification, onMarkAsRead, onClose }) {
     const navigate = useNavigate();
+    const { currentKicker, setCurrentKicker } = useKicker();
+    const [autoSwitchKicker, setAutoSwitchKicker] = useLocalStorageState(
+        false,
+        "autoSwitchKickerOnNotification"
+    );
+    const [showSwitchModal, setShowSwitchModal] = useState(false);
+    const [pendingNavigation, setPendingNavigation] = useState(null);
 
     const {
         id,
         type,
         source_id,
         match_id,
+        kicker_id,
         kicker_name,
         sender_player_name,
         sender_avatar,
@@ -198,11 +215,38 @@ function NotificationItem({ notification, onMarkAsRead }) {
 
     const timeAgo = formatDistanceToNow(new Date(created_at), {
         addSuffix: true,
-        locale: de,
     });
 
     const matchInfoString = formatMatchInfo(match_info);
     const cleanedPreview = cleanContentPreview(content_preview);
+
+    // Check if notification is from a different kicker
+    const isDifferentKicker =
+        kicker_id && currentKicker && kicker_id !== currentKicker;
+
+    function getNavigationUrl() {
+        if (type === "comment" && match_id) {
+            return `/matches/${match_id}?scrollTo=comment-${source_id}`;
+        } else if (type === "chat") {
+            return `/home?tab=chat&scrollTo=message-${source_id}&_t=${Date.now()}`;
+        } else if (type === "team_invite") {
+            return "/teams/my";
+        } else if (type === "fatality" && match_id) {
+            return `/matches/${match_id}`;
+        }
+        return null;
+    }
+
+    function performNavigation(url) {
+        if (url) {
+            navigate(url);
+        }
+    }
+
+    function switchKickerAndNavigate(url) {
+        setCurrentKicker(kicker_id);
+        performNavigation(url);
+    }
 
     function handleClick() {
         // Mark as read first
@@ -210,17 +254,47 @@ function NotificationItem({ notification, onMarkAsRead }) {
             onMarkAsRead(id);
         }
 
-        // Navigate to the source
-        if (type === "comment" && match_id) {
-            // Navigate to match with scroll-to comment
-            navigate(`/matches/${match_id}?scrollTo=comment-${source_id}`);
-        } else if (type === "chat") {
-            // Navigate to home with chat tab and scroll-to message
-            navigate(`/home?tab=chat&scrollTo=message-${source_id}`);
-        } else if (type === "team_invite") {
-            // Navigate to my teams page where invitations are shown
-            navigate("/teams/my");
+        const url = getNavigationUrl();
+
+        // Check if we need to switch kicker
+        if (isDifferentKicker) {
+            if (autoSwitchKicker) {
+                // User chose "don't ask again" - switch automatically
+                onClose?.();
+                switchKickerAndNavigate(url);
+            } else {
+                // Show confirmation modal - DON'T close dropdown yet
+                setPendingNavigation(url);
+                setShowSwitchModal(true);
+            }
+        } else {
+            // Same kicker or no kicker context - navigate directly
+            onClose?.();
+            performNavigation(url);
         }
+    }
+
+    function handleConfirmSwitch() {
+        const url = pendingNavigation;
+        setShowSwitchModal(false);
+        setPendingNavigation(null);
+        switchKickerAndNavigate(url);
+        onClose?.();
+    }
+
+    function handleCancelSwitch() {
+        setShowSwitchModal(false);
+        setPendingNavigation(null);
+    }
+
+    function handleDontAskAgain() {
+        // Set both state and localStorage directly to ensure it persists
+        // even if component unmounts before useEffect runs
+        setAutoSwitchKicker(true);
+        localStorage.setItem(
+            "autoSwitchKickerOnNotification",
+            JSON.stringify(true)
+        );
     }
 
     return (
@@ -236,6 +310,8 @@ function NotificationItem({ notification, onMarkAsRead }) {
                         <HiOutlineChatBubbleOvalLeft />
                     ) : type === "team_invite" ? (
                         <HiOutlineUserGroup />
+                    ) : type === "fatality" ? (
+                        <HiOutlineFire />
                     ) : (
                         <HiOutlineChatBubbleLeftRight />
                     )}
@@ -258,8 +334,18 @@ function NotificationItem({ notification, onMarkAsRead }) {
                     )}
                     {type === "chat" && <span>Chat</span>}
                     {type === "team_invite" && <span>Team Invite</span>}
+                    {type === "fatality" && <span>Fatality</span>}
                 </MetaInfo>
             </ContentWrapper>
+
+            {showSwitchModal && (
+                <KickerSwitchConfirmModal
+                    kickerName={kicker_name}
+                    onConfirm={handleConfirmSwitch}
+                    onCancel={handleCancelSwitch}
+                    onDontAskAgain={handleDontAskAgain}
+                />
+            )}
         </ItemContainer>
     );
 }

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { ScrollMemoryProvider } from "./contexts/ScrollMemoryContext";
 
 import AppLayout from "./ui/AppLayout";
 import UnreadBadgeManager from "./ui/UnreadBadgeManager";
@@ -27,12 +28,17 @@ import { DarkModeProvider } from "./contexts/DarkModeContext";
 import { SoundProvider } from "./contexts/SoundContext";
 import Recovery from "./pages/Recovery";
 import UpdatePassword from "./pages/UpdatePassword";
+import InvitePage from "./pages/InvitePage";
 import { KickerProvider } from "./contexts/KickerContext";
 import Start from "./pages/Start";
 import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
+import { OnlinePresenceProvider } from "./features/activity/OnlinePresenceContext";
 import Testwiese from "./pages/Testwiese";
 import Notifications from "./pages/Notifications";
+import Impressum from "./pages/Impressum";
+import Datenschutz from "./pages/Datenschutz";
+import ConsentBanner from "./ui/ConsentBanner";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -51,87 +57,116 @@ function App() {
                         <ReactQueryDevtools initialIsOpen={false} />
                         <GlobalStyles />
                         <BrowserRouter>
-                            <Routes>
-                                <Route index element={<Start />} />
-                                <Route path="login" element={<Login />} />
-                                <Route path="register" element={<Register />} />
-                                <Route path="recovery" element={<Recovery />} />
-
-                                <Route
-                                    element={
-                                        <ProtectedRoute>
-                                            <MatchProvider>
-                                                <UnreadBadgeManager />
-                                                <AppLayout />
-                                            </MatchProvider>
-                                        </ProtectedRoute>
-                                    }
-                                >
-                                    <Route path="home" element={<Home />} />
+                            <ScrollMemoryProvider>
+                                <Routes>
+                                    <Route index element={<Start />} />
+                                    <Route path="login" element={<Login />} />
+                                    <Route
+                                        path="register"
+                                        element={<Register />}
+                                    />
+                                    <Route
+                                        path="recovery"
+                                        element={<Recovery />}
+                                    />
                                     <Route
                                         path="update-password"
                                         element={<UpdatePassword />}
                                     />
                                     <Route
-                                        path="rankings/*"
-                                        element={<Rankings />}
+                                        path="invite/:token"
+                                        element={<InvitePage />}
                                     />
                                     <Route
-                                        path="fatalities"
-                                        element={<Fatalities />}
+                                        path="imprint"
+                                        element={<Impressum />}
                                     />
                                     <Route
-                                        path="user/:userId/*"
-                                        element={<User />}
+                                        path="privacy"
+                                        element={<Datenschutz />}
                                     />
+
                                     <Route
-                                        path="kicker/:kickerId"
-                                        element={<Kicker />}
-                                    />
+                                        element={
+                                            <ProtectedRoute>
+                                                <MatchProvider>
+                                                    <OnlinePresenceProvider>
+                                                        <UnreadBadgeManager />
+                                                        <AppLayout />
+                                                    </OnlinePresenceProvider>
+                                                </MatchProvider>
+                                            </ProtectedRoute>
+                                        }
+                                    >
+                                        <Route path="home" element={<Home />} />
+                                        <Route
+                                            path="rankings/*"
+                                            element={<Rankings />}
+                                        />
+                                        <Route
+                                            path="fatalities"
+                                            element={<Fatalities />}
+                                        />
+                                        <Route
+                                            path="user/:userId/*"
+                                            element={<User />}
+                                        />
+                                        <Route
+                                            path="kicker/:kickerId"
+                                            element={<Kicker />}
+                                        />
+                                        <Route
+                                            path="matches"
+                                            element={<Matches />}
+                                        />
+                                        <Route
+                                            path="achievements/*"
+                                            element={<AchievementsPage />}
+                                        />
+                                        <Route
+                                            path="players"
+                                            element={<Players />}
+                                        />
+                                        <Route
+                                            path="settings/*"
+                                            element={<Settings />}
+                                        />
+                                        <Route
+                                            path="matches/create"
+                                            element={<CreateMatch />}
+                                        />
+                                        <Route
+                                            path="matches/:matchId"
+                                            element={<Match />}
+                                        />
+                                        <Route
+                                            path="tournament/:tourId"
+                                            element={<Tournament />}
+                                        />
+                                        <Route
+                                            path="teams/*"
+                                            element={<Teams />}
+                                        />
+                                        <Route
+                                            path="team/:teamId/*"
+                                            element={<Team />}
+                                        />
+                                        <Route
+                                            path="notifications"
+                                            element={<Notifications />}
+                                        />
+                                        <Route
+                                            path="testwiese"
+                                            element={<Testwiese />}
+                                        />
+                                    </Route>
                                     <Route
-                                        path="matches"
-                                        element={<Matches />}
+                                        path="*"
+                                        element={<PageNotFound />}
                                     />
-                                    <Route
-                                        path="achievements/*"
-                                        element={<AchievementsPage />}
-                                    />
-                                    <Route
-                                        path="players"
-                                        element={<Players />}
-                                    />
-                                    <Route
-                                        path="settings/*"
-                                        element={<Settings />}
-                                    />
-                                    <Route
-                                        path="matches/create"
-                                        element={<CreateMatch />}
-                                    />
-                                    <Route
-                                        path="matches/:matchId"
-                                        element={<Match />}
-                                    />
-                                    <Route
-                                        path="tournament/:tourId"
-                                        element={<Tournament />}
-                                    />
-                                    <Route path="teams/*" element={<Teams />} />
-                                    <Route
-                                        path="team/:teamId/*"
-                                        element={<Team />}
-                                    />
-                                    <Route
-                                        path="notifications"
-                                        element={<Notifications />}
-                                    />
-                                    <Route
-                                        path="testwiese"
-                                        element={<Testwiese />}
-                                    />
-                                </Route>
-                                <Route path="*" element={<PageNotFound />} />
-                            </Routes>
+                                </Routes>
+                                <ConsentBanner />
+                            </ScrollMemoryProvider>
                         </BrowserRouter>
 
                         <Toaster

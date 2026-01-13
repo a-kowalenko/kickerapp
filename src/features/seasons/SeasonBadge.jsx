@@ -1,13 +1,10 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import styled, { css } from "styled-components";
 import { HiOutlineChevronDown } from "react-icons/hi2";
 import { GiInfinity } from "react-icons/gi";
 import { TbClockPause } from "react-icons/tb";
 import { useOutsideClick } from "../../hooks/useOutsideClick";
-import { useLocalStorageState } from "../../hooks/useLocalStorageState";
-import { useSeasons } from "./useSeasons";
-import { useCurrentSeason } from "./useCurrentSeason";
+import { useSeasonSelector } from "../../hooks/useSeasonSelector";
 import { SEASON_ALL_TIME, SEASON_OFF_SEASON } from "../../utils/constants";
 import SpinnerMini from "../../ui/SpinnerMini";
 
@@ -163,198 +160,38 @@ const SectionLabel = styled.div`
 `;
 
 function SeasonBadge({ openUpwards = false }) {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const { seasons, isLoading: isLoadingSeasons } = useSeasons();
-    const { currentSeason, isLoading: isLoadingCurrent } = useCurrentSeason();
+    const {
+        staticOptions,
+        seasonOptions,
+        selectedOption,
+        isLoading,
+        currentSeason,
+        handleSelect,
+    } = useSeasonSelector();
 
-    // Build options (without icons - icons are rendered separately to avoid localStorage serialization issues)
-    const staticOptions = [
-        {
-            text: "All Time",
-            value: SEASON_ALL_TIME,
-            variant: "alltime",
-        },
-        {
-            text: "Off-Season",
-            value: SEASON_OFF_SEASON,
-            variant: "offseason",
-        },
-    ];
+    const [isOpen, setIsOpen] = useState(false);
 
-    const seasonOptions =
-        seasons?.map((s) => ({
-            text: s.name || `Season ${s.season_number}`,
-            value: String(s.id),
-            variant:
-                currentSeason && String(currentSeason.id) === String(s.id)
-                    ? "active"
-                    : "historical",
-        })) || [];
+    const close = () => setIsOpen(false);
+    const ref = useOutsideClick(close, false);
 
-    const allOptions = [...staticOptions, ...seasonOptions];
-
-    // Helper to get icon for a value
+    // Helper to get icon for a value (UI-specific)
     const getIcon = (value) => {
         if (value === SEASON_ALL_TIME) return <GiInfinity />;
         if (value === SEASON_OFF_SEASON) return <TbClockPause />;
         return null;
     };
 
-    // Determine default value
-    const getDefaultOption = () => {
-        if (currentSeason) {
-            return {
-                text:
-                    currentSeason.name ||
-                    `Season ${currentSeason.season_number}`,
-                value: String(currentSeason.id),
-                variant: "active",
-            };
-        }
-        return staticOptions[0]; // All Time
-    };
-
-    // Get initial option from URL or localStorage
-    const getInitialOption = () => {
-        const urlSeason = searchParams.get("season");
-        if (urlSeason) {
-            const found = allOptions.find((o) => o.value === urlSeason);
-            if (found)
-                return {
-                    text: found.text,
-                    value: found.value,
-                    variant: found.variant,
-                };
-        }
-        return null;
-    };
-
-    const [selectedOption, setSelectedOption] = useLocalStorageState(
-        getInitialOption(),
-        "global_season"
-    );
-
-    const [isOpen, setIsOpen] = useState(false);
-    const [initialized, setInitialized] = useState(false);
-
-    const close = () => setIsOpen(false);
-    const ref = useOutsideClick(close, false);
-
-    // Helper to check if a new season was created since user's last selection
-    const isNewSeasonCreated = () => {
-        if (!currentSeason || !selectedOption) return false;
-
-        const lastKnown = selectedOption.lastKnownCurrentSeasonId;
-        // If no lastKnownCurrentSeasonId stored, a new season might have been created
-        // (user had cached selection before this feature was added, or first time)
-        if (!lastKnown) return true;
-
-        // If current season ID is greater than what user last knew, new season was created
-        return Number(currentSeason.id) > Number(lastKnown);
-    };
-
-    // Set search param on mount when data is ready
-    useEffect(() => {
-        if (!isLoadingSeasons && !isLoadingCurrent && !initialized) {
-            const urlSeason = searchParams.get("season");
-
-            // Check if a new season was created - if so, auto-select it
-            // This overrides any cached selection to ensure all players see the new season
-            if (currentSeason && isNewSeasonCreated()) {
-                const defaultOpt = getDefaultOption();
-                searchParams.set("season", defaultOpt.value);
-                setSearchParams(searchParams, { replace: true });
-                setSelectedOption({
-                    text: defaultOpt.text,
-                    value: defaultOpt.value,
-                    variant: defaultOpt.variant,
-                    lastKnownCurrentSeasonId: String(currentSeason.id),
-                });
-                setInitialized(true);
-                return;
-            }
-
-            // If URL already has a valid season param, use it
-            if (urlSeason) {
-                const found = allOptions.find((o) => o.value === urlSeason);
-                if (found) {
-                    setSelectedOption({
-                        text: found.text,
-                        value: found.value,
-                        variant: found.variant,
-                        lastKnownCurrentSeasonId: currentSeason
-                            ? String(currentSeason.id)
-                            : selectedOption?.lastKnownCurrentSeasonId,
-                    });
-                    setInitialized(true);
-                    return;
-                }
-            }
-
-            // Check localStorage
-            if (selectedOption) {
-                const found = allOptions.find(
-                    (o) => o.value === selectedOption.value
-                );
-                if (found) {
-                    searchParams.set("season", found.value);
-                    setSearchParams(searchParams, { replace: true });
-                    setSelectedOption({
-                        text: found.text,
-                        value: found.value,
-                        variant: found.variant,
-                        lastKnownCurrentSeasonId: currentSeason
-                            ? String(currentSeason.id)
-                            : selectedOption?.lastKnownCurrentSeasonId,
-                    });
-                    setInitialized(true);
-                    return;
-                }
-            }
-
-            // Otherwise set the default (current season if available)
-            const defaultOpt = getDefaultOption();
-            searchParams.set("season", defaultOpt.value);
-            setSearchParams(searchParams, { replace: true });
-            setSelectedOption({
-                text: defaultOpt.text,
-                value: defaultOpt.value,
-                variant: defaultOpt.variant,
-                lastKnownCurrentSeasonId: currentSeason
-                    ? String(currentSeason.id)
-                    : null,
-            });
-            setInitialized(true);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLoadingSeasons, isLoadingCurrent, currentSeason, seasons]);
-
     function handleToggle(e) {
         e.stopPropagation();
         setIsOpen((open) => !open);
     }
 
-    function handleSelect(option) {
-        const hasPage = searchParams.get("page");
-        if (hasPage) {
-            searchParams.set("page", 1);
-        }
-        searchParams.set("season", option.value);
-        setSearchParams(searchParams, { replace: true });
-        // Store only serializable data, including lastKnownCurrentSeasonId
-        // so we can detect when a new season is created
-        setSelectedOption({
-            text: option.text,
-            value: option.value,
-            variant: option.variant,
-            lastKnownCurrentSeasonId: currentSeason
-                ? String(currentSeason.id)
-                : null,
-        });
+    function onSelect(option) {
+        handleSelect(option);
         close();
     }
 
-    if (isLoadingSeasons || isLoadingCurrent) {
+    if (isLoading) {
         return <SpinnerMini />;
     }
 
@@ -377,7 +214,7 @@ function SeasonBadge({ openUpwards = false }) {
                 <SectionLabel>Quick Filters</SectionLabel>
                 {staticOptions.map((option) => (
                     <DropdownItem
-                        onClick={() => handleSelect(option)}
+                        onClick={() => onSelect(option)}
                         key={option.value}
                         $isSelected={selectedOption?.value === option.value}
                     >
@@ -392,7 +229,7 @@ function SeasonBadge({ openUpwards = false }) {
                         <SectionLabel>Seasons</SectionLabel>
                         {seasonOptions.map((option) => (
                             <DropdownItem
-                                onClick={() => handleSelect(option)}
+                                onClick={() => onSelect(option)}
                                 key={option.value}
                                 $isSelected={
                                     selectedOption?.value === option.value

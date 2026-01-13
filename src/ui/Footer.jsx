@@ -7,7 +7,7 @@ import { media } from "../utils/constants";
 
 const StyledFooter = styled.footer`
     grid-column: 1 / -1;
-    padding: 2.4rem;
+    padding: 2.4rem 9.6rem;
 
     font-size: 1rem;
     text-align: center;
@@ -16,6 +16,11 @@ const StyledFooter = styled.footer`
     width: 100%;
     border-top: 1px solid var(--primary-border-color);
     background-color: var(--primary-background-color);
+    overflow-x: auto;
+
+    ${media.tablet} {
+        padding: 2.4rem;
+    }
 `;
 
 const FooterLayout = styled.div`
@@ -23,16 +28,16 @@ const FooterLayout = styled.div`
     flex-wrap: wrap;
     justify-content: center;
     gap: 4.8rem;
+    max-width: 100rem;
     margin-left: auto;
     margin-right: auto;
 
     ${media.tablet} {
-        gap: 2.4rem;
+        gap: 3.2rem;
+        justify-content: flex-start;
     }
 
     ${media.mobile} {
-        flex-direction: column;
-        align-items: center;
         gap: 2.4rem;
     }
 `;
@@ -41,13 +46,14 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-
-    max-width: 100%;
-    margin-left: auto;
-    margin-right: auto;
+    align-items: flex-start;
+    min-width: 14.7rem;
+    flex: 0 0 auto;
 
     ${media.mobile} {
-        width: 100%;
+        /* align-items: center;
+        text-align: center; */
+        min-width: 100%;
     }
 `;
 
@@ -101,12 +107,28 @@ const SocialsContainer = styled(Container)``;
 
 const SocialsList = styled(List)`
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 2.4rem;
+
+    ${media.mobile} {
+        justify-content: center;
+    }
 `;
 
 const SocialElement = styled(ListElement)`
     gap: 1rem;
     font-size: large;
+`;
+
+const LegalContainer = styled(Container)``;
+
+const LegalList = styled(List)`
+    flex-direction: column;
+    gap: 0.4rem;
+`;
+
+const LegalElement = styled(ListElement)`
+    display: flex;
 `;
 
 const Copyright = styled.p`
@@ -209,6 +231,19 @@ function Footer() {
                                     PostgreSQL
                                 </Link>
                             </TechElement>
+                            <TechElement>
+                                <Link
+                                    to="https://firebase.google.com/"
+                                    target={"_blank"}
+                                >
+                                    Firebase
+                                </Link>
+                            </TechElement>
+                            <TechElement>
+                                <Link to="https://klipy.com/" target={"_blank"}>
+                                    Klipy
+                                </Link>
+                            </TechElement>
                         </TechList>
                     </TechLists>
                 </TechStackContainer>
@@ -257,6 +292,17 @@ function Footer() {
                         </SocialElement>
                     </SocialsList>
                 </SocialsContainer>
+                <LegalContainer>
+                    <Heading>Legal</Heading>
+                    <LegalList>
+                        <LegalElement>
+                            <Link to="/imprint">Imprint</Link>
+                        </LegalElement>
+                        <LegalElement>
+                            <Link to="/privacy">Privacy</Link>
+                        </LegalElement>
+                    </LegalList>
+                </LegalContainer>
             </FooterLayout>
             <Copyright>
                 © 2023-{new Date().getFullYear()} Andreas Kowalenko

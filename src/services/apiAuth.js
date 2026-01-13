@@ -52,12 +52,13 @@ export async function getCurrentUser() {
     const { data, error } = await supabase.auth.getUser();
 
     if (error) {
-        // If the session is invalid/stale (e.g., deleted server-side), sign out and return null
+        // If the session is invalid/stale (e.g., deleted server-side), sign out locally and return null
+        // Use scope: 'local' to avoid API call that would also fail with 403
         if (
             error.status === 403 ||
             error.message?.includes("session_id claim in JWT does not exist")
         ) {
-            await supabase.auth.signOut();
+            await supabase.auth.signOut({ scope: "local" });
             return null;
         }
         throw new Error(error.message);
@@ -161,6 +162,68 @@ export async function verifyRecoveryToken({ token_hash, type }) {
 export async function setLastKicker(kickerId) {
     const { data, error } = await supabase.auth.updateUser({
         data: { last_kicker: kickerId },
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+// ============================================
+// Session Management Functions
+// ============================================
+
+export async function getActiveSessions() {
+    const { data, error } = await supabase.rpc("get_user_sessions");
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+export async function getCurrentSessionId() {
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+        return null;
+    }
+
+    // Decode the JWT to get the session_id from the payload
+    try {
+        const payload = JSON.parse(atob(session.access_token.split(".")[1]));
+        return payload.session_id;
+    } catch {
+        return null;
+    }
+}
+
+export async function terminateSession(sessionId) {
+    const { data, error } = await supabase.rpc("terminate_session", {
+        target_session_id: sessionId,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+export async function terminateOtherSessions() {
+    const currentSessionId = await getCurrentSessionId();
+
+    if (!currentSessionId) {
+        throw new Error("Could not determine current session");
+    }
+
+    const { data, error } = await supabase.rpc("terminate_other_sessions", {
+        current_session_id: currentSessionId,
     });
 
     if (error) {

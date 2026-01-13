@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
@@ -123,10 +123,27 @@ const TabContent = styled.div`
     border: 1px solid var(--primary-border-color);
     border-top: none;
     border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+    position: relative;
+`;
+
+// Keep all tabs mounted and preserve scroll position
+// Using visibility instead of display to maintain scroll state
+const TabPanel = styled.div`
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    visibility: ${(props) => (props.$active ? "visible" : "hidden")};
+    z-index: ${(props) => (props.$active ? 1 : 0)};
 `;
 
 function ChatSection() {
     const [searchParams] = useSearchParams();
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState(() => {
         // Check if there's a scrollTo param that specifies a message (should switch to chat tab)
         const scrollTo = new URLSearchParams(window.location.search).get(
@@ -173,6 +190,14 @@ function ChatSection() {
             setActiveTab(tabParam);
         }
     }, [searchParams]);
+
+    // Handle navigation from notification clicks (via location.state)
+    // This ensures the chat tab is activated even when already on /home
+    useEffect(() => {
+        if (location.state?.scrollToMessageId && location.state?.scrollKey) {
+            setActiveTab("chat");
+        }
+    }, [location.state?.scrollToMessageId, location.state?.scrollKey]);
 
     // Persist tab selection
     useEffect(() => {
@@ -273,9 +298,19 @@ function ChatSection() {
                 </TabBar>
 
                 <TabContent>
-                    {activeTab === "chat" && <ChatTab />}
+                    <TabPanel $active={activeTab === "chat"}>
+                        <ChatTab />
+                    </TabPanel>
+                    <TabPanel $active={activeTab === "comments"}>
+                        <MatchCommentsTab />
+                    </TabPanel>
+                    <TabPanel $active={activeTab === "achievements"}>
+                        <AchievementTickerTab />
+                    </TabPanel>
+
+                    {/* {activeTab === "chat" && <ChatTab />}
                     {activeTab === "comments" && <MatchCommentsTab />}
-                    {activeTab === "achievements" && <AchievementTickerTab />}
+                    {activeTab === "achievements" && <AchievementTickerTab />} */}
                 </TabContent>
             </ChatContainer>
         </StyledChatSection>

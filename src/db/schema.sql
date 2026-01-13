@@ -1208,6 +1208,38 @@ $$;
 ALTER FUNCTION "public"."delete_match_with_recalculation"("p_match_id" bigint, "p_kicker_id" bigint, "p_user_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_push_subscription"("p_subscription_id" bigint) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Get the user_id of the subscription
+    SELECT user_id INTO v_user_id
+    FROM push_subscriptions
+    WHERE id = p_subscription_id;
+    
+    -- Check if subscription exists and belongs to current user
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Subscription not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to delete this subscription';
+    END IF;
+    
+    -- Delete the subscription
+    DELETE FROM push_subscriptions
+    WHERE id = p_subscription_id;
+    
+    RETURN TRUE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."delete_push_subscription"("p_subscription_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."dissolve_team"("p_team_id" bigint) RETURNS "json"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1360,17 +1392,53 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Erstellt einen Trigger, der vor dem Einfügen in die Tabelle 'matches' im Schema 'kopecht'
-  -- die Funktion 'assign_match_number' ausführt. Dieser Trigger wird für jede eingefügte Zeile aktiviert.
-  CREATE TRIGGER before_insert_matches
-  BEFORE INSERT ON kopecht.matches
-  FOR EACH ROW
-  EXECUTE FUNCTION kopecht.assign_match_number();
-
-  CREATE TRIGGER trigger_increment_nr
-  BEFORE INSERT ON kopecht.seasons
-  FOR EACH ROW 
-  EXECUTE FUNCTION kopecht.increment_nr();
+  -- Kopiere alle User-definierten Trigger von public nach kopecht
+  FOR rec IN 
+    SELECT 
+      t.tgname AS trigger_name,
+      c.relname AS table_name,
+      p.proname AS function_name,
+      CASE 
+        WHEN (t.tgtype & 2) > 0 THEN 'BEFORE'
+        WHEN (t.tgtype & 64) > 0 THEN 'INSTEAD OF'
+        ELSE 'AFTER'
+      END AS trigger_timing,
+      CASE t.tgtype & 1
+        WHEN 1 THEN 'FOR EACH ROW'
+        ELSE 'FOR EACH STATEMENT'
+      END AS trigger_level,
+      -- Build event string for INSERT/UPDATE/DELETE combinations
+      CONCAT_WS(' OR ',
+        CASE WHEN (t.tgtype & 4) > 0 THEN 'INSERT' END,
+        CASE WHEN (t.tgtype & 8) > 0 THEN 'DELETE' END,
+        CASE WHEN (t.tgtype & 16) > 0 THEN 'UPDATE' END,
+        CASE WHEN (t.tgtype & 32) > 0 THEN 'TRUNCATE' END
+      ) AS trigger_events
+    FROM pg_trigger t
+    JOIN pg_class c ON t.tgrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    JOIN pg_proc p ON t.tgfoid = p.oid
+    JOIN pg_namespace pn ON p.pronamespace = pn.oid
+    WHERE n.nspname = 'public'
+      AND NOT t.tgisinternal  -- Exclude system triggers (FK constraints etc.)
+      AND c.relkind = 'r'     -- Only regular tables
+      AND pn.nspname = 'public'  -- Only triggers using public schema functions
+  LOOP
+    -- Check if the corresponding function exists in kopecht schema
+    IF EXISTS (
+      SELECT 1 FROM pg_proc p 
+      JOIN pg_namespace n ON p.pronamespace = n.oid 
+      WHERE n.nspname = 'kopecht' AND p.proname = rec.function_name
+    ) THEN
+      -- Drop existing trigger if exists, then create new one
+      EXECUTE 'DROP TRIGGER IF EXISTS ' || quote_ident(rec.trigger_name) || ' ON kopecht.' || quote_ident(rec.table_name);
+      EXECUTE 'CREATE TRIGGER ' || quote_ident(rec.trigger_name) ||
+              ' ' || rec.trigger_timing || ' ' || rec.trigger_events ||
+              ' ON kopecht.' || quote_ident(rec.table_name) ||
+              ' ' || rec.trigger_level ||
+              ' EXECUTE FUNCTION kopecht.' || quote_ident(rec.function_name) || '()';
+    END IF;
+  END LOOP;
 
 END;$$;
 
@@ -1510,6 +1578,70 @@ $$;
 ALTER FUNCTION "public"."get_combined_unread_count_for_user"("p_user_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_kicker_invite_preview"("invite_token" "uuid", "inviter_player_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("kicker_id" bigint, "kicker_name" "text", "kicker_avatar" "text", "inviter_name" "text", "inviter_avatar" "text", "sample_players" "jsonb", "player_count" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+    found_kicker_id bigint;
+BEGIN
+    -- Find kicker by access token
+    SELECT k.id INTO found_kicker_id
+    FROM public.kicker k
+    WHERE k.access_token = invite_token;
+
+    IF found_kicker_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid invite token';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        k.id as kicker_id,
+        k.name as kicker_name,
+        k.avatar as kicker_avatar,
+        -- Get inviter info if player_id provided
+        (
+            SELECT p.name 
+            FROM public.player p 
+            WHERE p.id = inviter_player_id 
+            AND p.kicker_id = k.id
+        ) as inviter_name,
+        (
+            SELECT p.avatar 
+            FROM public.player p 
+            WHERE p.id = inviter_player_id 
+            AND p.kicker_id = k.id
+        ) as inviter_avatar,
+        -- Get 3 random players (excluding inviter)
+        (
+            SELECT jsonb_agg(player_info)
+            FROM (
+                SELECT jsonb_build_object(
+                    'name', p.name,
+                    'avatar', p.avatar
+                ) as player_info
+                FROM public.player p
+                WHERE p.kicker_id = k.id
+                AND (inviter_player_id IS NULL OR p.id != inviter_player_id)
+                ORDER BY random()
+                LIMIT 3
+            ) sub
+        ) as sample_players,
+        -- Total player count
+        (
+            SELECT COUNT(*)
+            FROM public.player p
+            WHERE p.kicker_id = k.id
+        ) as player_count
+    FROM public.kicker k
+    WHERE k.id = found_kicker_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_kicker_invite_preview"("invite_token" "uuid", "inviter_player_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_kicker_permissions"("p_kicker_id" bigint) RETURNS TABLE("user_id" "uuid", "player_id" bigint, "player_name" "text", "player_avatar" "text", "permission_type" "text", "granted_at" timestamp with time zone)
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1589,6 +1721,7 @@ BEGIN
     LEFT JOIN team_invitations ti ON ti.id = mn.team_invitation_id
     LEFT JOIN teams t ON t.id = ti.team_id
     WHERE mn.user_id = auth.uid()
+      AND mn.type != 'chat_all'  -- Exclude chat_all from notification bell
     ORDER BY mn.created_at DESC
     LIMIT p_limit
     OFFSET p_offset;
@@ -2440,7 +2573,9 @@ DECLARE
 BEGIN
     SELECT COUNT(*)::BIGINT INTO v_count
     FROM mention_notifications
-    WHERE user_id = auth.uid() AND is_read = FALSE;
+    WHERE user_id = auth.uid() 
+      AND is_read = FALSE
+      AND type != 'chat_all';  -- Exclude chat_all from unread count
     
     RETURN COALESCE(v_count, 0);
 END;
@@ -2464,6 +2599,33 @@ $$;
 
 
 ALTER FUNCTION "public"."get_user_permissions"("p_user_id" "uuid", "p_kicker_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_user_sessions"() RETURNS TABLE("session_id" "uuid", "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "user_agent" "text", "ip" "inet")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'auth', 'public'
+    AS $$
+BEGIN
+    -- Only return sessions for the authenticated user
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        s.id as session_id,
+        s.created_at,
+        s.updated_at,
+        s.user_agent,
+        s.ip
+    FROM auth.sessions s
+    WHERE s.user_id = auth.uid()
+    ORDER BY s.updated_at DESC;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_user_sessions"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."grant_permission"("p_user_id" "uuid", "p_kicker_id" bigint, "p_permission_type" "text") RETURNS boolean
@@ -2960,7 +3122,8 @@ BEGIN
             url := 'https://dixhaxicjwqchhautpje.supabase.co/functions/v1/send-push-notification',
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
-                'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpeGhheGljandxY2hoYXV0cGplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY5ODQyODUwNSwiZXhwIjoyMDE0MDA0NTA1fQ.tzNZNw1M1NjFHuLFQ7CVkuBE4G9wcmypZBfWd3fiikc'
+                'apikey', 'sb_secret_#########################',
+                'Authorization', 'Bearer sb_secret_#########################'
             ),
             body := jsonb_build_object(
                 'type', 'INSERT',
@@ -3068,6 +3231,69 @@ $$;
 ALTER FUNCTION "public"."revoke_permission"("p_user_id" "uuid", "p_kicker_id" bigint, "p_permission_type" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."set_device_notifications_enabled"("p_subscription_id" bigint, "p_enabled" boolean) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Get the user_id of the subscription
+    SELECT user_id INTO v_user_id
+    FROM push_subscriptions
+    WHERE id = p_subscription_id;
+    
+    -- Check if subscription exists and belongs to current user
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Subscription not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to update this subscription';
+    END IF;
+    
+    -- Update the enabled status
+    UPDATE push_subscriptions
+    SET 
+        enabled = p_enabled,
+        updated_at = NOW()
+    WHERE id = p_subscription_id;
+    
+    RETURN TRUE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."set_device_notifications_enabled"("p_subscription_id" bigint, "p_enabled" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_global_notifications_enabled"("p_enabled" boolean) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Upsert the user's notification settings
+    INSERT INTO user_notification_settings (user_id, notifications_enabled, updated_at)
+    VALUES (v_user_id, p_enabled, NOW())
+    ON CONFLICT (user_id) 
+    DO UPDATE SET 
+        notifications_enabled = p_enabled,
+        updated_at = NOW();
+    
+    RETURN TRUE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."set_global_notifications_enabled"("p_enabled" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."sync_point_collector_on_achievement"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -3129,6 +3355,147 @@ $$;
 ALTER FUNCTION "public"."sync_point_collector_on_achievement"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."terminate_other_sessions"("current_session_id" "text") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'auth', 'public'
+    AS $$
+DECLARE
+    deleted_count integer;
+    session_uuid uuid;
+    deleted_session_ids uuid[];
+BEGIN
+    -- Only allow authenticated users
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Cast the text parameter to uuid
+    session_uuid := current_session_id::uuid;
+
+    -- Delete all sessions for this user except the current one
+    -- and collect deleted session IDs
+    WITH deleted AS (
+        DELETE FROM auth.sessions
+        WHERE user_id = auth.uid()
+        AND id != session_uuid
+        RETURNING id
+    )
+    SELECT COUNT(*), ARRAY_AGG(id) INTO deleted_count, deleted_session_ids FROM deleted;
+
+    -- Delete refresh tokens for the deleted sessions using the collected IDs
+    IF deleted_session_ids IS NOT NULL AND array_length(deleted_session_ids, 1) > 0 THEN
+        DELETE FROM auth.refresh_tokens
+        WHERE user_id = auth.uid()::text
+        AND session_id = ANY(deleted_session_ids);
+    END IF;
+
+    RETURN deleted_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."terminate_other_sessions"("current_session_id" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."terminate_session"("target_session_id" "text") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'auth', 'public'
+    AS $$
+DECLARE
+    session_user_id uuid;
+    session_uuid uuid;
+BEGIN
+    -- Only allow authenticated users
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Cast the text parameter to uuid
+    session_uuid := target_session_id::uuid;
+
+    -- Check if the session belongs to the current user
+    SELECT user_id INTO session_user_id
+    FROM auth.sessions
+    WHERE id = session_uuid;
+
+    IF session_user_id IS NULL THEN
+        RAISE EXCEPTION 'Session not found';
+    END IF;
+
+    IF session_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Cannot terminate another user''s session';
+    END IF;
+
+    -- Delete the session
+    DELETE FROM auth.sessions WHERE id = session_uuid;
+
+    -- Also delete any refresh tokens associated with this session
+    DELETE FROM auth.refresh_tokens WHERE session_id = session_uuid;
+
+    RETURN true;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."terminate_session"("target_session_id" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trigger_create_chat_all_notifications"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_content_preview TEXT;
+    v_player_record RECORD;
+BEGIN
+    -- Skip whispers (private messages)
+    IF NEW.recipient_id IS NOT NULL THEN
+        RETURN NEW;
+    END IF;
+    
+    -- Truncate content for preview (max 100 chars)
+    v_content_preview := LEFT(NEW.content, 100);
+    IF LENGTH(NEW.content) > 100 THEN
+        v_content_preview := v_content_preview || '...';
+    END IF;
+    
+    -- Insert notification for all players in the kicker (except sender)
+    -- who have notify_all_chat enabled on at least one subscription
+    -- But EXCLUDE players who are already getting a mention notification (have @mention in content)
+    FOR v_player_record IN 
+        SELECT DISTINCT pl.id, pl.user_id 
+        FROM player pl 
+        INNER JOIN push_subscriptions ps ON ps.user_id = pl.user_id
+        WHERE pl.kicker_id = NEW.kicker_id 
+          AND pl.id != NEW.player_id
+          AND pl.user_id IS NOT NULL
+          AND ps.notify_all_chat = TRUE
+          -- Exclude players who are mentioned (they get a 'chat' type notification instead)
+          AND NOT EXISTS (
+              SELECT 1 
+              FROM regexp_matches(NEW.content, '@\[[^\]]+\]\(' || pl.id::TEXT || '\)', 'g')
+          )
+          -- Also exclude if @everyone is used (they get 'chat' notification)
+          AND NEW.content NOT LIKE '%@everyone%'
+    LOOP
+        INSERT INTO mention_notifications (
+            user_id, type, source_id, match_id, kicker_id, 
+            sender_player_id, content_preview, is_read, created_at
+        )
+        VALUES (
+            v_player_record.user_id, 'chat_all', NEW.id, NULL, NEW.kicker_id,
+            NEW.player_id, v_content_preview, FALSE, NOW()
+        )
+        ON CONFLICT DO NOTHING;
+    END LOOP;
+    
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trigger_create_chat_all_notifications"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trigger_create_chat_mention_notifications"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -3174,95 +3541,52 @@ CREATE OR REPLACE FUNCTION "public"."trigger_create_team_invite_notification"() 
     AS $$
 DECLARE
     v_invited_user_id UUID;
-    v_inviter_name TEXT;
+    v_inviting_player_name TEXT;
     v_team_name TEXT;
-    v_kicker_id BIGINT;
-    v_content_preview TEXT;
-    v_supabase_url TEXT;
-    v_service_role_key TEXT;
-    v_request_id BIGINT;
 BEGIN
-    -- Get invited player's user_id
-    SELECT user_id INTO v_invited_user_id 
-    FROM player 
+    -- Only process pending invitations
+    IF NEW.status != 'pending' THEN
+        RETURN NEW;
+    END IF;
+
+    -- Get the user_id of the invited player
+    SELECT user_id INTO v_invited_user_id
+    FROM player
     WHERE id = NEW.invited_player_id;
-    
-    -- Skip if player has no user_id (guest player)
+
+    -- Skip if invited player has no user_id
     IF v_invited_user_id IS NULL THEN
         RETURN NEW;
     END IF;
-    
-    -- Get inviter's name
-    SELECT name INTO v_inviter_name 
-    FROM player 
+
+    -- Get inviting player name
+    SELECT name INTO v_inviting_player_name
+    FROM player
     WHERE id = NEW.inviting_player_id;
-    
-    -- Get team name and kicker_id
-    SELECT name, kicker_id INTO v_team_name, v_kicker_id 
-    FROM teams 
+
+    -- Get team name (table is called "teams" not "team")
+    SELECT name INTO v_team_name
+    FROM teams
     WHERE id = NEW.team_id;
-    
-    -- Build content preview message
-    v_content_preview := v_inviter_name || ' invited you to join team "' || v_team_name || '"';
-    
-    -- Insert notification (for bell icon)
+
+    -- Insert notification
     INSERT INTO mention_notifications (
-        user_id,
-        type,
-        source_id,
-        match_id,
-        kicker_id,
-        sender_player_id,
-        content_preview,
-        team_invitation_id,
-        is_read,
-        created_at
-    ) VALUES (
+        user_id, type, source_id, kicker_id,
+        sender_player_id, content_preview, team_invitation_id, is_read, created_at
+    )
+    VALUES (
         v_invited_user_id,
         'team_invite',
-        NEW.id,  -- source_id = invitation id
-        NULL,    -- no match_id for team invites
-        v_kicker_id,
+        NEW.id,
+        (SELECT kicker_id FROM player WHERE id = NEW.inviting_player_id),
         NEW.inviting_player_id,
-        v_content_preview,
+        v_inviting_player_name || ' invited you to join team "' || v_team_name || '"',
         NEW.id,
         FALSE,
         NOW()
-    );
-    
-    -- Send push notification via pg_net HTTP call to edge function
-    -- Get Supabase URL and service role key from vault (or use direct values)
-    SELECT decrypted_secret INTO v_supabase_url 
-    FROM vault.decrypted_secrets 
-    WHERE name = 'supabase_url';
-    
-    SELECT decrypted_secret INTO v_service_role_key 
-    FROM vault.decrypted_secrets 
-    WHERE name = 'service_role_key';
-    
-    -- Only send push if we have the secrets configured
-    IF v_supabase_url IS NOT NULL AND v_service_role_key IS NOT NULL THEN
-        SELECT net.http_post(
-            url := v_supabase_url || '/functions/v1/send-push-notification',
-            headers := jsonb_build_object(
-                'Content-Type', 'application/json',
-                'Authorization', 'Bearer ' || v_service_role_key
-            ),
-            body := jsonb_build_object(
-                'type', 'INSERT',
-                'table', 'team_invitations',
-                'schema', 'public',
-                'record', jsonb_build_object(
-                    'id', NEW.id,
-                    'team_id', NEW.team_id,
-                    'inviting_player_id', NEW.inviting_player_id,
-                    'invited_player_id', NEW.invited_player_id,
-                    'status', NEW.status
-                )
-            )
-        ) INTO v_request_id;
-    END IF;
-    
+    )
+    ON CONFLICT DO NOTHING;
+
     RETURN NEW;
 END;
 $$;
@@ -3295,42 +3619,86 @@ CREATE OR REPLACE FUNCTION "public"."trigger_process_achievement"() RETURNS "tri
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
-  -- KONFIGURATION
-  -- URL deiner Edge Function
   endpoint_url text := 'https://dixhaxicjwqchhautpje.supabase.co/functions/v1/process-achievement';
-  
-  -- AUTHENTIFIZIERUNG
-  -- Ersetze dies mit deinem 'service_role' secret aus dem Supabase Dashboard (Settings -> API)
-  -- Dieser Key umgeht RLS und erlaubt den Zugriff auf die geschÃ¼tzte Function.
-  service_role_key text := 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpeGhheGljandxY2hoYXV0cGplIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY5ODQyODUwNSwiZXhwIjoyMDE0MDA0NTA1fQ.tzNZNw1M1NjFHuLFQ7CVkuBE4G9wcmypZBfWd3fiikc';
-  
-  -- Der Name des Webhooks wird als Argument Ã¼bergeben
+  secret_key text := 'sb_secret_#########################';
   webhook_name text := TG_ARGV[0];
-  
 begin
-  -- HTTP POST Request senden
   perform net.http_post(
       url := endpoint_url,
       headers := jsonb_build_object(
           'Content-Type', 'application/json',
-          'Authorization', 'Bearer ' || service_role_key
+          'apikey', secret_key,
+          'Authorization', 'Bearer ' || secret_key
       ),
       body := jsonb_build_object(
           'webhook_name', webhook_name, 
-          'type', TG_OP,                -- INSERT oder UPDATE
-          'table', TG_TABLE_NAME,       -- matches, goals, etc.
-          'schema', TG_TABLE_SCHEMA,  -- Will be 'public'
+          'type', TG_OP,
+          'table', TG_TABLE_NAME,
+          'schema', TG_TABLE_SCHEMA,
           'record', new,                
           'old_record', old             
       )
   );
-  
   return new;
 end;
 $$;
 
 
 ALTER FUNCTION "public"."trigger_process_achievement"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trigger_send_push_notification"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_supabase_url TEXT;
+    v_service_role_key TEXT;
+    v_request_id BIGINT;
+BEGIN
+    -- Get Supabase URL and service role key from vault
+    SELECT decrypted_secret INTO v_supabase_url 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'supabase_url';
+    
+    SELECT decrypted_secret INTO v_service_role_key 
+    FROM vault.decrypted_secrets 
+    WHERE name = 'service_role_key';
+    
+    -- Only send push if we have the secrets configured
+    IF v_supabase_url IS NOT NULL AND v_service_role_key IS NOT NULL THEN
+        SELECT net.http_post(
+            url := v_supabase_url || '/functions/v1/send-push-notification',
+            headers := jsonb_build_object(
+                'Content-Type', 'application/json',
+                'Authorization', 'Bearer ' || v_service_role_key
+            ),
+            body := jsonb_build_object(
+                'type', 'INSERT',
+                'table', 'mention_notifications',
+                'schema', 'public',
+                'record', jsonb_build_object(
+                    'id', NEW.id,
+                    'user_id', NEW.user_id,
+                    'type', NEW.type,
+                    'source_id', NEW.source_id,
+                    'match_id', NEW.match_id,
+                    'kicker_id', NEW.kicker_id,
+                    'sender_player_id', NEW.sender_player_id,
+                    'content_preview', NEW.content_preview,
+                    'team_invitation_id', NEW.team_invitation_id,
+                    'is_read', NEW.is_read,
+                    'created_at', NEW.created_at
+                )
+            )
+        ) INTO v_request_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trigger_send_push_notification"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_achievement_definition_updated_at"() RETURNS "trigger"
@@ -3408,6 +3776,43 @@ $$;
 
 
 ALTER FUNCTION "public"."update_match_comment_read_status"("p_match_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_notification_preferences"("p_subscription_id" bigint, "p_notify_all_chat" boolean DEFAULT NULL::boolean, "p_notify_mentions" boolean DEFAULT NULL::boolean, "p_notify_team_invites" boolean DEFAULT NULL::boolean) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Get the user_id of the subscription
+    SELECT user_id INTO v_user_id
+    FROM push_subscriptions
+    WHERE id = p_subscription_id;
+    
+    -- Check if subscription exists and belongs to current user
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Subscription not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to update this subscription';
+    END IF;
+    
+    -- Update only the provided preferences
+    UPDATE push_subscriptions
+    SET 
+        notify_all_chat = COALESCE(p_notify_all_chat, notify_all_chat),
+        notify_mentions = COALESCE(p_notify_mentions, notify_mentions),
+        notify_team_invites = COALESCE(p_notify_team_invites, notify_team_invites),
+        updated_at = NOW()
+    WHERE id = p_subscription_id;
+    
+    RETURN TRUE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_notification_preferences"("p_subscription_id" bigint, "p_notify_all_chat" boolean, "p_notify_mentions" boolean, "p_notify_team_invites" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_player_history"() RETURNS "void"
@@ -4230,10 +4635,11 @@ ALTER FUNCTION "public"."update_team_status_after_match"("p_team_id" bigint, "p_
 
 CREATE OR REPLACE FUNCTION "public"."upsert_fcm_token"("p_fcm_token" "text", "p_device_info" "text" DEFAULT NULL::"text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
     AS $$
 DECLARE
     v_user_id UUID;
+    v_device_fingerprint TEXT;
+    v_existing_fingerprint TEXT;
 BEGIN
     -- Get the current authenticated user
     v_user_id := auth.uid();
@@ -4242,15 +4648,33 @@ BEGIN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
     
-    -- Delete any existing entry with this token (could be from another user)
+    -- Delete any existing entry with this token (could be from another user on same browser)
     DELETE FROM push_subscriptions
     WHERE fcm_token = p_fcm_token;
     
-    -- Delete old tokens for this user with same device type
+    -- Create a device fingerprint from device_info for more precise matching
+    -- This allows multiple devices of the same type (e.g., two iPhones)
     IF p_device_info IS NOT NULL THEN
-        DELETE FROM push_subscriptions
-        WHERE user_id = v_user_id
-        AND device_info::jsonb->>'deviceType' = p_device_info::jsonb->>'deviceType';
+        -- Create fingerprint: deviceType + os + osVersion + browser + browserVersion + deviceModel
+        v_device_fingerprint := COALESCE(p_device_info::jsonb->>'deviceType', '') || '|' ||
+                                COALESCE(p_device_info::jsonb->>'os', '') || '|' ||
+                                COALESCE(p_device_info::jsonb->>'osVersion', '') || '|' ||
+                                COALESCE(p_device_info::jsonb->>'browser', '') || '|' ||
+                                COALESCE(p_device_info::jsonb->>'browserVersion', '') || '|' ||
+                                COALESCE(p_device_info::jsonb->>'deviceModel', '');
+        
+        -- Only delete if there's an exact device match for this user
+        -- This prevents multiple iPhones from overwriting each other
+        DELETE FROM push_subscriptions ps
+        WHERE ps.user_id = v_user_id
+        AND (
+            COALESCE(ps.device_info::jsonb->>'deviceType', '') || '|' ||
+            COALESCE(ps.device_info::jsonb->>'os', '') || '|' ||
+            COALESCE(ps.device_info::jsonb->>'osVersion', '') || '|' ||
+            COALESCE(ps.device_info::jsonb->>'browser', '') || '|' ||
+            COALESCE(ps.device_info::jsonb->>'browserVersion', '') || '|' ||
+            COALESCE(ps.device_info::jsonb->>'deviceModel', '')
+        ) = v_device_fingerprint;
     END IF;
     
     -- Insert the new token
@@ -4687,7 +5111,7 @@ CREATE TABLE IF NOT EXISTS "public"."mention_notifications" (
     "is_read" boolean DEFAULT false NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "team_invitation_id" bigint,
-    CONSTRAINT "mention_notifications_type_check" CHECK ((("type")::"text" = ANY ((ARRAY['comment'::character varying, 'chat'::character varying, 'team_invite'::character varying])::"text"[])))
+    CONSTRAINT "mention_notifications_type_check" CHECK ((("type")::"text" = ANY ((ARRAY['comment'::character varying, 'chat'::character varying, 'chat_all'::character varying, 'team_invite'::character varying])::"text"[])))
 );
 
 ALTER TABLE ONLY "public"."mention_notifications" REPLICA IDENTITY FULL;
@@ -4898,7 +5322,11 @@ CREATE TABLE IF NOT EXISTS "public"."push_subscriptions" (
     "fcm_token" "text" NOT NULL,
     "device_info" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "notify_all_chat" boolean DEFAULT true NOT NULL,
+    "notify_mentions" boolean DEFAULT true NOT NULL,
+    "notify_team_invites" boolean DEFAULT true NOT NULL,
+    "enabled" boolean DEFAULT true NOT NULL
 );
 
 
@@ -5062,19 +5490,14 @@ CREATE TABLE IF NOT EXISTS "public"."status_display_config" (
 ALTER TABLE "public"."status_display_config" OWNER TO "postgres";
 
 
-CREATE SEQUENCE IF NOT EXISTS "public"."status_display_config_id_seq"
-    AS integer
+ALTER TABLE "public"."status_display_config" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."status_display_config_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."status_display_config_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."status_display_config_id_seq" OWNED BY "public"."status_display_config"."id";
+    CACHE 1
+);
 
 
 
@@ -5225,6 +5648,17 @@ ALTER TABLE "public"."teams" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENT
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."user_notification_settings" (
+    "user_id" "uuid" NOT NULL,
+    "notifications_enabled" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."user_notification_settings" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."user_permissions" (
     "id" bigint NOT NULL,
     "user_id" "uuid" NOT NULL,
@@ -5246,10 +5680,6 @@ ALTER TABLE "public"."user_permissions" ALTER COLUMN "id" ADD GENERATED BY DEFAU
     NO MAXVALUE
     CACHE 1
 );
-
-
-
-ALTER TABLE ONLY "public"."status_display_config" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."status_display_config_id_seq"'::"regclass");
 
 
 
@@ -5535,6 +5965,11 @@ ALTER TABLE ONLY "public"."teams"
 
 ALTER TABLE ONLY "public"."teams"
     ADD CONSTRAINT "teams_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_notification_settings"
+    ADD CONSTRAINT "user_notification_settings_pkey" PRIMARY KEY ("user_id");
 
 
 
@@ -5940,6 +6375,10 @@ CREATE OR REPLACE TRIGGER "trg_goal_achievement_progress" AFTER INSERT ON "publi
 
 
 
+CREATE OR REPLACE TRIGGER "trigger_chat_all" AFTER INSERT ON "public"."chat_messages" FOR EACH ROW EXECUTE FUNCTION "public"."trigger_create_chat_all_notifications"();
+
+
+
 CREATE OR REPLACE TRIGGER "trigger_chat_mentions" AFTER INSERT ON "public"."chat_messages" FOR EACH ROW EXECUTE FUNCTION "public"."trigger_create_chat_mention_notifications"();
 
 
@@ -5949,6 +6388,10 @@ CREATE OR REPLACE TRIGGER "trigger_comment_mentions" AFTER INSERT ON "public"."m
 
 
 CREATE OR REPLACE TRIGGER "trigger_record_team_history" AFTER UPDATE OF "end_time" ON "public"."matches" FOR EACH ROW WHEN ((("old"."end_time" IS NULL) AND ("new"."end_time" IS NOT NULL))) EXECUTE FUNCTION "public"."record_team_history"();
+
+
+
+CREATE OR REPLACE TRIGGER "trigger_send_push_notification" AFTER INSERT ON "public"."mention_notifications" FOR EACH ROW EXECUTE FUNCTION "public"."trigger_send_push_notification"();
 
 
 
@@ -6382,6 +6825,11 @@ ALTER TABLE ONLY "public"."teams"
 
 
 
+ALTER TABLE ONLY "public"."user_notification_settings"
+    ADD CONSTRAINT "user_notification_settings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."user_permissions"
     ADD CONSTRAINT "user_permissions_granted_by_fkey" FOREIGN KEY ("granted_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
@@ -6602,6 +7050,10 @@ CREATE POLICY "Users can insert own read status" ON "public"."chat_read_status" 
 
 
 
+CREATE POLICY "Users can insert their own notification settings" ON "public"."user_notification_settings" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
 CREATE POLICY "Users can insert typing status" ON "public"."chat_typing" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."player"
   WHERE (("player"."kicker_id" = "chat_typing"."kicker_id") AND ("player"."user_id" = "auth"."uid"()) AND ("player"."id" = "chat_typing"."player_id")))));
@@ -6649,6 +7101,10 @@ CREATE POLICY "Users can update own typing status" ON "public"."chat_typing" FOR
   WHERE (("player"."id" = "chat_typing"."player_id") AND ("player"."user_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."player"
   WHERE (("player"."id" = "chat_typing"."player_id") AND ("player"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Users can update their own notification settings" ON "public"."user_notification_settings" FOR UPDATE USING (("auth"."uid"() = "user_id"));
 
 
 
@@ -6742,6 +7198,10 @@ CREATE POLICY "Users can view teams in their kickers" ON "public"."teams" FOR SE
 CREATE POLICY "Users can view their own achievement progress" ON "public"."player_achievement_progress" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."player" "p"
   WHERE (("p"."id" = "player_achievement_progress"."player_id") AND ("p"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Users can view their own notification settings" ON "public"."user_notification_settings" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
 
@@ -7040,6 +7500,9 @@ CREATE POLICY "update_control_on_team_season_rankings" ON "public"."team_season_
 
 
 
+ALTER TABLE "public"."user_notification_settings" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."user_permissions" ENABLE ROW LEVEL SECURITY;
 
 
@@ -7122,6 +7585,12 @@ GRANT ALL ON FUNCTION "public"."delete_match_with_recalculation"("p_match_id" bi
 
 
 
+GRANT ALL ON FUNCTION "public"."delete_push_subscription"("p_subscription_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_push_subscription"("p_subscription_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_push_subscription"("p_subscription_id" bigint) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."dissolve_team"("p_team_id" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."dissolve_team"("p_team_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."dissolve_team"("p_team_id" bigint) TO "service_role";
@@ -7155,6 +7624,12 @@ GRANT ALL ON FUNCTION "public"."get_combined_unread_count"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_combined_unread_count_for_user"("p_user_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_combined_unread_count_for_user"("p_user_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_combined_unread_count_for_user"("p_user_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_kicker_invite_preview"("invite_token" "uuid", "inviter_player_id" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_kicker_invite_preview"("invite_token" "uuid", "inviter_player_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_kicker_invite_preview"("invite_token" "uuid", "inviter_player_id" bigint) TO "service_role";
 
 
 
@@ -7350,6 +7825,12 @@ GRANT ALL ON FUNCTION "public"."get_user_permissions"("p_user_id" "uuid", "p_kic
 
 
 
+GRANT ALL ON FUNCTION "public"."get_user_sessions"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_user_sessions"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_user_sessions"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."grant_permission"("p_user_id" "uuid", "p_kicker_id" bigint, "p_permission_type" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."grant_permission"("p_user_id" "uuid", "p_kicker_id" bigint, "p_permission_type" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."grant_permission"("p_user_id" "uuid", "p_kicker_id" bigint, "p_permission_type" "text") TO "service_role";
@@ -7416,9 +7897,39 @@ GRANT ALL ON FUNCTION "public"."revoke_permission"("p_user_id" "uuid", "p_kicker
 
 
 
+GRANT ALL ON FUNCTION "public"."set_device_notifications_enabled"("p_subscription_id" bigint, "p_enabled" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."set_device_notifications_enabled"("p_subscription_id" bigint, "p_enabled" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_device_notifications_enabled"("p_subscription_id" bigint, "p_enabled" boolean) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."set_global_notifications_enabled"("p_enabled" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."set_global_notifications_enabled"("p_enabled" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_global_notifications_enabled"("p_enabled" boolean) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."sync_point_collector_on_achievement"() TO "anon";
 GRANT ALL ON FUNCTION "public"."sync_point_collector_on_achievement"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."sync_point_collector_on_achievement"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."terminate_other_sessions"("current_session_id" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."terminate_other_sessions"("current_session_id" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."terminate_other_sessions"("current_session_id" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."terminate_session"("target_session_id" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."terminate_session"("target_session_id" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."terminate_session"("target_session_id" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."trigger_create_chat_all_notifications"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trigger_create_chat_all_notifications"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trigger_create_chat_all_notifications"() TO "service_role";
 
 
 
@@ -7452,6 +7963,12 @@ GRANT ALL ON FUNCTION "public"."trigger_process_achievement"() TO "service_role"
 
 
 
+GRANT ALL ON FUNCTION "public"."trigger_send_push_notification"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trigger_send_push_notification"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trigger_send_push_notification"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_achievement_definition_updated_at"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_achievement_definition_updated_at"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_achievement_definition_updated_at"() TO "service_role";
@@ -7479,6 +7996,12 @@ GRANT ALL ON FUNCTION "public"."update_comment_read_status"("p_kicker_id" bigint
 GRANT ALL ON FUNCTION "public"."update_match_comment_read_status"("p_match_id" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."update_match_comment_read_status"("p_match_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_match_comment_read_status"("p_match_id" bigint) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_notification_preferences"("p_subscription_id" bigint, "p_notify_all_chat" boolean, "p_notify_mentions" boolean, "p_notify_team_invites" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."update_notification_preferences"("p_subscription_id" bigint, "p_notify_all_chat" boolean, "p_notify_mentions" boolean, "p_notify_team_invites" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_notification_preferences"("p_subscription_id" bigint, "p_notify_all_chat" boolean, "p_notify_mentions" boolean, "p_notify_team_invites" boolean) TO "service_role";
 
 
 
@@ -7965,6 +8488,12 @@ GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE "public".
 GRANT ALL ON SEQUENCE "public"."teams_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."teams_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."teams_id_seq" TO "service_role";
+
+
+
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE "public"."user_notification_settings" TO "anon";
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE "public"."user_notification_settings" TO "authenticated";
+GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLE "public"."user_notification_settings" TO "service_role";
 
 
 

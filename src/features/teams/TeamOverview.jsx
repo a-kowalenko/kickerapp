@@ -456,12 +456,12 @@ const PlayerNames = styled.span`
 `;
 
 const PlayerLink = styled(Link)`
-    color: var(--color-brand-600);
+    /* color: var(--color-brand-600); */
     text-decoration: none;
     transition: color 0.2s;
 
     &:hover {
-        color: var(--color-brand-700);
+        /* color: var(--color-brand-700); */
         text-decoration: underline;
     }
 `;
@@ -776,11 +776,11 @@ function TeamOverview({ team, rank }) {
                                     />
                                 </PlayerAvatars>
                                 <PlayerNames>
-                                    <PlayerName
+                                    <PlayerLink
                                         to={`/user/${player1?.name}/profile`}
                                     >
                                         {player1?.name}
-                                    </PlayerName>
+                                    </PlayerLink>
                                     {" & "}
                                     <PlayerLink
                                         to={`/user/${player2?.name}/profile`}

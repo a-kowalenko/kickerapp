@@ -542,7 +542,7 @@ function CommentInput({ onSubmit, isSubmitting, currentPlayer }) {
                         <IconButton
                             onClick={handleImageButtonClick}
                             disabled={isSubmitting || isUploading}
-                            title="Upload image (max 1MB)"
+                            title="Upload image (max 5MB)"
                         >
                             <HiPhoto />
                         </IconButton>

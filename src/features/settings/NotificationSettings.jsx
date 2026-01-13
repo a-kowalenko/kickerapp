@@ -12,6 +12,7 @@ import {
     HiBellAlert,
     HiChevronDown,
     HiChevronUp,
+    HiExclamationTriangle,
 } from "react-icons/hi2";
 import { useFCMToken } from "../../hooks/useFCMToken";
 import { useUser } from "../../features/authentication/useUser";
@@ -24,6 +25,10 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
+
+    ${media.tablet} {
+        padding: 0 2.4rem;
+    }
 `;
 
 const Section = styled.div`
@@ -542,6 +547,8 @@ function NotificationSettings() {
             notifyMentions: prefKey === "notify_mentions" ? value : undefined,
             notifyTeamInvites:
                 prefKey === "notify_team_invites" ? value : undefined,
+            notifyFatalities:
+                prefKey === "notify_fatalities" ? value : undefined,
         });
     };
 
@@ -590,15 +597,17 @@ function NotificationSettings() {
                     </WarningCard>
                 )}
 
-                {/* Blocked Warning */}
+                {/* Blocked or Incognito Warning */}
                 {isBlocked && (
                     <WarningCard>
                         <HiBellSlash />
                         <WarningText>
                             <strong>Notifications blocked:</strong> You have
-                            previously blocked notifications for this site.
-                            Please go to your browser settings to allow
-                            notifications, then try again.
+                            previously <strong>blocked</strong> notifications
+                            for this site <strong>or</strong> you are browsing
+                            in <strong>incognito/private mode</strong>. Please
+                            go to your browser settings to allow notifications
+                            or disable incognito/private mode, then try again.
                         </WarningText>
                     </WarningCard>
                 )}
@@ -736,6 +745,14 @@ function NotificationSettings() {
                                                         <HiUserGroup />
                                                         Teams
                                                     </PreferenceBadge>
+                                                    <PreferenceBadge
+                                                        $active={
+                                                            subscription.notify_fatalities
+                                                        }
+                                                    >
+                                                        <HiExclamationTriangle />
+                                                        Fatality
+                                                    </PreferenceBadge>
                                                 </PreferenceSummary>
                                             )}
                                         </DeviceInfo>
@@ -870,6 +887,28 @@ function NotificationSettings() {
                                                     handlePreferenceChange(
                                                         subscription.id,
                                                         "notify_team_invites",
+                                                        val
+                                                    )
+                                                }
+                                                disabled={
+                                                    isLoading ||
+                                                    !isDeviceEnabled
+                                                }
+                                            />
+                                        </DevicePreferenceItem>
+                                        <DevicePreferenceItem>
+                                            <DevicePreferenceLabel>
+                                                <HiExclamationTriangle />
+                                                Fatality Alerts
+                                            </DevicePreferenceLabel>
+                                            <SwitchButton
+                                                value={
+                                                    subscription.notify_fatalities
+                                                }
+                                                onChange={(val) =>
+                                                    handlePreferenceChange(
+                                                        subscription.id,
+                                                        "notify_fatalities",
                                                         val
                                                     )
                                                 }

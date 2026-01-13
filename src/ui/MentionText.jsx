@@ -6,12 +6,22 @@ import MatchLinkWithTooltip from "./MatchLinkWithTooltip";
 import MediaViewer from "./MediaViewer";
 
 const MentionLink = styled(Link)`
-    color: var(--primary-button-color);
+    color: var(--player-mention-color);
     font-weight: 600;
     text-decoration: none;
 
     &:hover {
         text-decoration: underline;
+    }
+`;
+
+const EveryoneMention = styled.span`
+    color: var(--everyone-mention-color);
+    font-weight: 600;
+
+    &:hover {
+        text-decoration: underline;
+        cursor: pointer;
     }
 `;
 
@@ -278,6 +288,7 @@ function MentionText({ content }) {
 
     // Regex patterns
     const mentionRegex = /@\[([^\]]+)\]\((\d+)\)/g;
+    const everyoneRegex = /@everyone\b/g;
     const matchLinkRegex = /#\[([^\]]+)\]\((\d+)\)/g;
     const gifRegex = /\[gif:(https?:\/\/[^\]]+)\]/g;
     const imgRegex = /\[img:(https?:\/\/[^\]]+)\]/g;
@@ -302,6 +313,17 @@ function MentionText({ content }) {
             length: match[0].length,
             name: match[1],
             playerId: match[2],
+            fullMatch: match[0],
+        });
+    }
+
+    // Find @everyone mentions
+    everyoneRegex.lastIndex = 0;
+    while ((match = everyoneRegex.exec(content)) !== null) {
+        allMatches.push({
+            type: "everyone",
+            index: match.index,
+            length: match[0].length,
             fullMatch: match[0],
         });
     }
@@ -418,6 +440,12 @@ function MentionText({ content }) {
                 >
                     @{m.name}
                 </MentionLink>
+            );
+        } else if (m.type === "everyone") {
+            parts.push(
+                <EveryoneMention key={`everyone-${m.index}`}>
+                    @everyone
+                </EveryoneMention>
             );
         } else if (m.type === "matchLink") {
             parts.push(

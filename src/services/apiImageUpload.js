@@ -3,7 +3,7 @@ import supabase, { databaseSchema } from "./supabase";
 
 // Constants
 const BUCKET_NAME = "chat-images";
-const MAX_FILE_SIZE_MB = 1; // 1MB max original file size
+const MAX_FILE_SIZE_MB = 5; // 2MB max original file size
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const COMPRESSION_OPTIONS = {
     maxSizeMB: 0.3, // Compress to ~300KB

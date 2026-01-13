@@ -41,6 +41,7 @@ interface PushSubscription {
     notify_all_chat: boolean;
     notify_mentions: boolean;
     notify_team_invites: boolean;
+    notify_fatalities: boolean;
 }
 
 interface UserNotificationSettings {
@@ -127,6 +128,39 @@ function parseMentions(content: string): {
     }
 
     return { playerIds, hasEveryone };
+}
+
+// Sanitize notification text by removing markup syntax
+// Converts @[Name](id) → @Name, #[Match](id) → #Match, etc.
+function sanitizeNotificationText(text: string): string {
+    if (!text) return "";
+
+    // First pass: replace structured markup (order matters!)
+    let result = text
+        // @[Name](id) → @Name
+        .replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1")
+        // #[Match X...](id) → #Match X...
+        .replace(/#\[([^\]]+)\]\(\d+\)/g, "#$1")
+        // [gif:URL] → [GIF] (complete tag)
+        .replace(/\[gif:[^\]]+\]/g, "[GIF]")
+        // [gif:URL... → [GIF] (truncated tag without closing bracket)
+        .replace(/\[gif:[^\]]*$/g, "[GIF]")
+        // [img:URL] → [Image] (complete tag)
+        .replace(/\[img:[^\]]+\]/g, "[Image]")
+        // [img:URL... → [Image] (truncated tag without closing bracket)
+        .replace(/\[img:[^\]]*$/g, "[Image]");
+
+    // Second pass: replace URLs
+    result = result
+        // YouTube URLs → [YouTube]
+        .replace(
+            /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^\s]*/g,
+            "[YouTube]"
+        )
+        // Other URLs: https://example.com/path → example.com
+        .replace(/https?:\/\/(?:www\.)?([^\/\s]+)[^\s]*/g, "$1");
+
+    return result;
 }
 
 // Get access token for FCM using service account
@@ -343,8 +377,8 @@ async function handleMentionNotification(
     const title = isComment
         ? `${senderName} mentioned you in a comment`
         : `${senderName} mentioned you in chat`;
-    const notificationBody = contentPreview;
-    const url = isComment && matchId ? `/match/${matchId}` : "/home";
+    const notificationBody = sanitizeNotificationText(contentPreview);
+    const url = isComment && matchId ? `/matches/${matchId}` : "/home";
     const tag = isComment
         ? `comment-mention-${sourceId}`
         : `chat-mention-${sourceId}`;
@@ -452,6 +486,184 @@ async function handleMentionNotification(
             total: subscriptions.length,
             invalidRemoved: invalidTokens.length,
             type: notificationType,
+        }),
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+    );
+}
+
+// Handle fatality notifications (when a match ends 0-10)
+async function handleFatalityNotification(
+    webhook: WebhookPayload,
+    databaseSchema: string
+): Promise<Response> {
+    const { record } = webhook;
+    const userId = record.user_id!;
+    const matchId = record.match_id!;
+    const kickerId = record.kicker_id!;
+    const contentPreview = record.content_preview || "";
+
+    // Get service account from environment
+    const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT not configured");
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SECRET_API_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        db: { schema: databaseSchema },
+    });
+
+    // Check if user has global notifications enabled
+    const globalEnabled = await isUserNotificationsEnabled(supabase, userId);
+    if (!globalEnabled) {
+        return new Response(
+            JSON.stringify({
+                sent: 0,
+                reason: "global_notifications_disabled",
+            }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM tokens for this user (only where notify_fatalities is enabled AND device is enabled)
+    const { data: subscriptions, error: subError } = await supabase
+        .from("push_subscriptions")
+        .select(
+            "id, fcm_token, user_id, enabled, notify_all_chat, notify_mentions, notify_team_invites, notify_fatalities"
+        )
+        .eq("user_id", userId)
+        .eq("enabled", true)
+        .eq("notify_fatalities", true);
+
+    if (subError) {
+        console.error("Error fetching subscriptions:", subError);
+        throw subError;
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+        return new Response(
+            JSON.stringify({ sent: 0, reason: "no_subscriptions_or_disabled" }),
+            { headers: { "Content-Type": "application/json" } }
+        );
+    }
+
+    // Get FCM access token
+    const accessToken = await getFCMAccessToken(serviceAccount);
+
+    // Build notification content
+    const title = "💀 FATALITY";
+    const notificationBody = contentPreview; // Already formatted as "X (and Y) got destroyed 0-10"
+    const url = `/matches/${matchId}`;
+
+    // Send notifications
+    let sentCount = 0;
+    const invalidTokens: string[] = [];
+
+    for (const sub of subscriptions as PushSubscription[]) {
+        // Get actual combined unread count for this user
+        let badgeCount = 1;
+        try {
+            const { data: unreadData } = await supabase.rpc(
+                "get_combined_unread_count_for_user",
+                { p_user_id: sub.user_id }
+            );
+            if (unreadData !== null && unreadData !== undefined) {
+                badgeCount = Math.max(1, Number(unreadData) + 1);
+            }
+        } catch (badgeError) {
+            console.error("Error getting unread count for badge:", badgeError);
+        }
+
+        const message: FCMMessage = {
+            token: sub.fcm_token,
+            notification: {
+                title,
+                body: notificationBody,
+            },
+            data: {
+                type: "fatality",
+                matchId: matchId.toString(),
+                kickerId: kickerId.toString(),
+                url,
+                title,
+                body: notificationBody,
+                badge: badgeCount.toString(),
+            },
+            webpush: {
+                headers: {
+                    Urgency: "high",
+                },
+                notification: {
+                    title,
+                    body: notificationBody,
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: `fatality-${matchId}-${Date.now()}`,
+                    renotify: true,
+                    silent: false,
+                    // Extended vibration pattern for fatality
+                    vibrate: [300, 100, 300, 100, 300],
+                },
+                fcm_options: {
+                    link: url,
+                },
+            },
+            apns: {
+                headers: {
+                    "apns-priority": "10",
+                },
+                payload: {
+                    aps: {
+                        alert: {
+                            title,
+                            body: notificationBody,
+                        },
+                        sound: "default",
+                        badge: badgeCount,
+                        "mutable-content": 1,
+                    },
+                },
+            },
+        };
+
+        const success = await sendFCMNotification(
+            accessToken,
+            serviceAccount.project_id,
+            message
+        );
+
+        if (success) {
+            sentCount++;
+        } else {
+            invalidTokens.push(sub.fcm_token);
+        }
+    }
+
+    // Clean up invalid tokens
+    if (invalidTokens.length > 0) {
+        console.log(`Removing ${invalidTokens.length} invalid tokens`);
+        await supabase
+            .from("push_subscriptions")
+            .delete()
+            .in("fcm_token", invalidTokens);
+    }
+
+    console.log(`Successfully sent ${sentCount} fatality notifications`);
+
+    return new Response(
+        JSON.stringify({
+            sent: sentCount,
+            total: subscriptions.length,
+            invalidRemoved: invalidTokens.length,
+            type: "fatality",
         }),
         {
             headers: {
@@ -718,8 +930,8 @@ async function handleChatAllNotification(
     const accessToken = await getFCMAccessToken(serviceAccount);
 
     // Build notification content
-    const title = `New message from ${senderName}`;
-    const notificationBody = contentPreview;
+    const title = `[Chat] ${senderName}`;
+    const notificationBody = sanitizeNotificationText(contentPreview);
     const url = "/home";
 
     // Send notifications
@@ -1117,6 +1329,11 @@ serve(async (req) => {
                     );
                 } else if (notifType === "team_invite") {
                     return await handleTeamInviteFromMentionNotifications(
+                        webhook,
+                        databaseSchema
+                    );
+                } else if (notifType === "fatality") {
+                    return await handleFatalityNotification(
                         webhook,
                         databaseSchema
                     );

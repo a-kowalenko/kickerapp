@@ -1,6 +1,6 @@
 import styled from "styled-components";
-import { useRef, useCallback } from "react";
-import { HiOutlineBell, HiArrowLeft } from "react-icons/hi2";
+import { useRef, useCallback, useState, useMemo, useEffect } from "react";
+import { HiOutlineBell, HiArrowLeft, HiChevronDown } from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../features/notifications/useNotifications";
 import NotificationItem from "../features/notifications/NotificationItem";
@@ -58,6 +58,90 @@ const MarkAllReadButton = styled.button`
     }
 `;
 
+const FilterBar = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--primary-border-color);
+    background-color: var(--secondary-background-color);
+`;
+
+const FilterLabel = styled.span`
+    font-size: 1.3rem;
+    color: var(--secondary-text-color);
+`;
+
+const FilterSelect = styled.div`
+    position: relative;
+    display: inline-block;
+`;
+
+const FilterButton = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background-color: var(--tertiary-background-color);
+    border: 1px solid var(--primary-border-color);
+    color: var(--primary-text-color);
+    font-size: 1.3rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        background-color: var(--quaternary-background-color);
+        border-color: var(--secondary-border-color);
+    }
+
+    & svg {
+        width: 1.4rem;
+        height: 1.4rem;
+        transition: transform 0.2s ease;
+        transform: ${(props) =>
+            props.$isOpen ? "rotate(180deg)" : "rotate(0)"};
+    }
+`;
+
+const FilterDropdown = styled.div`
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    min-width: 14rem;
+    background-color: var(--secondary-background-color);
+    border: 1px solid var(--primary-border-color);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    overflow: hidden;
+`;
+
+const FilterOption = styled.button`
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--primary-text-color);
+    font-size: 1.3rem;
+    padding: 1rem 1.4rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+        background-color: var(--tertiary-background-color);
+    }
+
+    ${(props) =>
+        props.$isActive &&
+        `
+        background-color: var(--primary-button-color-light);
+        color: var(--primary-button-color);
+        font-weight: 500;
+    `}
+`;
+
 const NotificationList = styled.div`
     flex: 1;
     overflow-y: auto;
@@ -101,9 +185,19 @@ const LoadMoreTrigger = styled.div`
     font-size: 1.3rem;
 `;
 
+const FILTER_OPTIONS = [
+    { value: "all", label: "All" },
+    { value: "chat", label: "Chat" },
+    { value: "comment", label: "Comments" },
+    { value: "team_invite", label: "Team Invites" },
+];
+
 function Notifications() {
     const navigate = useNavigate();
     const listRef = useRef(null);
+    const [filter, setFilter] = useState("all");
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const filterRef = useRef(null);
 
     const {
         notifications,
@@ -116,6 +210,43 @@ function Notifications() {
         markAllAsRead,
         isMarkingAllAsRead,
     } = useNotifications();
+
+    // Filter notifications based on selected filter
+    const filteredNotifications = useMemo(() => {
+        if (filter === "all") return notifications;
+        return notifications.filter((n) => n.type === filter);
+    }, [notifications, filter]);
+
+    const selectedFilterLabel =
+        FILTER_OPTIONS.find((o) => o.value === filter)?.label || "Alle";
+
+    // Close dropdown when clicking outside
+    const handleFilterToggle = useCallback(() => {
+        setIsFilterOpen((prev) => !prev);
+    }, []);
+
+    const handleFilterSelect = useCallback((value) => {
+        setFilter(value);
+        setIsFilterOpen(false);
+    }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (
+                filterRef.current &&
+                !filterRef.current.contains(event.target)
+            ) {
+                setIsFilterOpen(false);
+            }
+        }
+
+        if (isFilterOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+            return () =>
+                document.removeEventListener("mousedown", handleClickOutside);
+        }
+    }, [isFilterOpen]);
 
     const handleScroll = useCallback(
         (e) => {
@@ -151,24 +282,56 @@ function Notifications() {
                         onClick={handleMarkAllAsRead}
                         disabled={isMarkingAllAsRead}
                     >
-                        {isMarkingAllAsRead ? <SpinnerMini /> : "Alle gelesen"}
+                        {isMarkingAllAsRead ? <SpinnerMini /> : "Mark all read"}
                     </MarkAllReadButton>
                 )}
             </PageHeader>
+
+            <FilterBar>
+                <FilterLabel>Filter:</FilterLabel>
+                <FilterSelect ref={filterRef}>
+                    <FilterButton
+                        onClick={handleFilterToggle}
+                        $isOpen={isFilterOpen}
+                    >
+                        {selectedFilterLabel}
+                        <HiChevronDown />
+                    </FilterButton>
+                    {isFilterOpen && (
+                        <FilterDropdown>
+                            {FILTER_OPTIONS.map((option) => (
+                                <FilterOption
+                                    key={option.value}
+                                    $isActive={filter === option.value}
+                                    onClick={() =>
+                                        handleFilterSelect(option.value)
+                                    }
+                                >
+                                    {option.label}
+                                </FilterOption>
+                            ))}
+                        </FilterDropdown>
+                    )}
+                </FilterSelect>
+            </FilterBar>
 
             <NotificationList ref={listRef} onScroll={handleScroll}>
                 {isLoading ? (
                     <LoadingContainer>
                         <SpinnerMini />
                     </LoadingContainer>
-                ) : notifications.length === 0 ? (
+                ) : filteredNotifications.length === 0 ? (
                     <EmptyState>
                         <HiOutlineBell />
-                        <p>No notifications</p>
+                        <p>
+                            {filter === "all"
+                                ? "No notifications"
+                                : "No notifications in this category"}
+                        </p>
                     </EmptyState>
                 ) : (
                     <>
-                        {notifications.map((notification) => (
+                        {filteredNotifications.map((notification) => (
                             <NotificationItem
                                 key={notification.id}
                                 notification={notification}
@@ -180,7 +343,7 @@ function Notifications() {
                                 <SpinnerMini />
                             </LoadMoreTrigger>
                         )}
-                        {!hasNextPage && notifications.length > 0 && (
+                        {!hasNextPage && filteredNotifications.length > 0 && (
                             <LoadMoreTrigger>
                                 No more notifications
                             </LoadMoreTrigger>

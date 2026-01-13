@@ -106,7 +106,7 @@ const CardBody = styled.div`
     padding: 2.4rem;
 
     ${media.mobile} {
-        padding: 1.2rem;
+        padding: 1.6rem;
     }
 `;
 
@@ -127,7 +127,7 @@ const ProfileContent = styled.div`
     }
 
     ${media.mobile} {
-        padding: 1.2rem;
+        padding: 1.6rem;
         gap: 1.6rem;
     }
 `;
@@ -148,6 +148,12 @@ const AvatarSection = styled.div`
 const FormSection = styled.div`
     flex: 1;
     min-width: 0;
+    max-width: 40rem;
+
+    ${media.tablet} {
+        max-width: 100%;
+        width: 100%;
+    }
 `;
 
 function ProfileSettings() {
@@ -188,7 +194,7 @@ function ProfileSettings() {
                     </HeaderContent>
                 </CardHeader>
                 <CardBody>
-                    <UpdatePasswordForm />
+                    <UpdatePasswordForm variant="settings" />
                 </CardBody>
             </Card>
         </StyledProfileSettings>

@@ -636,44 +636,45 @@ export function BountyCard({
             )}
 
             {/* Bounty Section - always shown if bounty > 0 */}
-            {hasBounty && (
-                <>
-                    {/* // horizontal separator */}
-                    <Divider $size={size} />
-                    <BountySection
-                        $size={size}
-                        ref={
-                            showBountyTooltip && hasBountyTooltipData
-                                ? bountyTriggerRef
-                                : null
-                        }
-                        onMouseEnter={
-                            showBountyTooltip && hasBountyTooltipData
-                                ? handleBountyMouseEnter
-                                : undefined
-                        }
-                        onMouseLeave={
-                            showBountyTooltip && hasBountyTooltipData
-                                ? handleBountyMouseLeave
-                                : undefined
-                        }
-                    >
-                        {showLabel && (
-                            <BountyLabel $size={size}>Bounty</BountyLabel>
-                        )}
-                        <BountyValue $size={size}>💰+{bounty}</BountyValue>
-                    </BountySection>
-
-                    {showBountyTooltip && hasBountyTooltipData && (
-                        <BountyTooltip
-                            isVisible={isBountyHovered}
-                            position={bountyTooltipPos}
-                            bounty1on1={tooltipBounty1on1}
-                            bounty2on2={tooltipBounty2on2}
-                        />
-                    )}
-                </>
-            )}
+            {
+                // hasBounty && (
+                //     <>
+                //         {/* // horizontal separator */}
+                //         <Divider $size={size} />
+                //         <BountySection
+                //             $size={size}
+                //             ref={
+                //                 showBountyTooltip && hasBountyTooltipData
+                //                     ? bountyTriggerRef
+                //                     : null
+                //             }
+                //             onMouseEnter={
+                //                 showBountyTooltip && hasBountyTooltipData
+                //                     ? handleBountyMouseEnter
+                //                     : undefined
+                //             }
+                //             onMouseLeave={
+                //                 showBountyTooltip && hasBountyTooltipData
+                //                     ? handleBountyMouseLeave
+                //                     : undefined
+                //             }
+                //         >
+                //             {showLabel && (
+                //                 <BountyLabel $size={size}>Bounty</BountyLabel>
+                //             )}
+                //             <BountyValue $size={size}>💰+{bounty}</BountyValue>
+                //         </BountySection>
+                //         {showBountyTooltip && hasBountyTooltipData && (
+                //             <BountyTooltip
+                //                 isVisible={isBountyHovered}
+                //                 position={bountyTooltipPos}
+                //                 bounty1on1={tooltipBounty1on1}
+                //                 bounty2on2={tooltipBounty2on2}
+                //             />
+                //         )}
+                //     </>
+                // )
+            }
 
             {showTargetIcon && <TargetIcon $size={size} />}
         </Card>
