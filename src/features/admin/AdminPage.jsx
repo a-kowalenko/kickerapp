@@ -5,6 +5,10 @@ import Heading from "../../ui/Heading";
 import Spinner from "../../ui/Spinner";
 import TabView from "../../ui/TabView";
 import AchievementAdminPage from "../achievements/admin/AchievementAdminPage";
+import SeasonManagement from "../seasons/SeasonManagement";
+import KickerSettings from "../settings/KickerSettings";
+import StatusDisplaySettings from "../settings/StatusDisplaySettings";
+import UserPermissionsManager from "../settings/UserPermissionsManager";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
 
@@ -50,17 +54,26 @@ function AdminPage() {
             label: "Achievements",
             component: <AchievementAdminPage />,
         },
-        // Future admin tabs can be added here:
-        // {
-        //     path: "/admin/users",
-        //     label: "Users",
-        //     component: <UserAdminPage />,
-        // },
-        // {
-        //     path: "/admin/kicker",
-        //     label: "Kicker Settings",
-        //     component: <KickerAdminPage />,
-        // },
+        {
+            path: "/admin/seasons",
+            label: "Seasons",
+            component: <SeasonManagement />,
+        },
+        {
+            path: "/admin/kicker",
+            label: "Kicker",
+            component: <KickerSettings />,
+        },
+        {
+            path: "/admin/status-display",
+            label: "Status Display",
+            component: <StatusDisplaySettings />,
+        },
+        {
+            path: "/admin/permissions",
+            label: "Permissions",
+            component: <UserPermissionsManager />,
+        },
     ];
 
     return (
