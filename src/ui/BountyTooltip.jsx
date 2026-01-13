@@ -28,9 +28,7 @@ const TooltipContent = styled.div`
     border: 1px solid var(--secondary-border-color);
     border-radius: var(--border-radius-md);
     padding: 0.8rem 1.2rem;
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.15),
-        0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
     min-width: 12rem;
 `;
 
@@ -263,15 +261,15 @@ export function StreakTooltipContent({
         (hasLosingStreak && !hasWinningStreak
             ? "Loss Streaks"
             : hasWinningStreak && !hasLosingStreak
-              ? "Win Streaks"
-              : "Streaks");
+            ? "Win Streaks"
+            : "Streaks");
     const displayIcon =
         icon ||
         (hasLosingStreak && !hasWinningStreak
             ? "❄️"
             : hasWinningStreak && !hasLosingStreak
-              ? "🔥"
-              : "📊");
+            ? "🔥"
+            : "📊");
 
     return (
         <TooltipContent>
@@ -358,7 +356,9 @@ export function StreakTooltip({
    Zeigt aktive Status pro Gamemode an
 ----------------------------------------- */
 
+// Maps both camelCase and snake_case keys to icons
 const STATUS_ICONS_MAP = {
+    // camelCase keys
     warmingUp: "✨",
     hotStreak: "🔥",
     onFire: "🔥",
@@ -371,9 +371,17 @@ const STATUS_ICONS_MAP = {
     giantSlayer: "⚔️",
     comeback: "🚀",
     underdog: "🐺",
+    // snake_case keys (from database)
+    warming_up: "✨",
+    hot_streak: "🔥",
+    on_fire: "🔥",
+    ice_cold: "🥶",
+    giant_slayer: "⚔️",
 };
 
+// Maps both camelCase and snake_case keys to display labels
 const STATUS_LABELS_MAP = {
+    // camelCase keys
     warmingUp: "Warming Up",
     hotStreak: "Hot Streak",
     onFire: "On Fire!",
@@ -386,6 +394,12 @@ const STATUS_LABELS_MAP = {
     giantSlayer: "Giant Slayer",
     comeback: "Comeback",
     underdog: "Underdog",
+    // snake_case keys (from database)
+    warming_up: "Warming Up",
+    hot_streak: "Hot Streak",
+    on_fire: "On Fire!",
+    ice_cold: "Ice Cold",
+    giant_slayer: "Giant Slayer",
 };
 
 const StatusItem = styled.div`
@@ -433,8 +447,8 @@ const StreakIndicator = styled.span`
         props.$streak > 0
             ? "#EF4444"
             : props.$streak < 0
-              ? "#3B82F6"
-              : "var(--secondary-text-color)"};
+            ? "#3B82F6"
+            : "var(--secondary-text-color)"};
 `;
 
 const NoStatusText = styled.span`
