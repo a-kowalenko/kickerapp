@@ -1,9 +1,9 @@
 import styled, { css, keyframes } from "styled-components";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import {
     HiOutlineTrophy,
-    HiChevronDoubleDown,
+    HiChevronDoubleUp,
     HiOutlineMagnifyingGlass,
     HiOutlineSparkles,
     HiXMark,
@@ -33,15 +33,22 @@ const PageContainer = styled.div`
     grid-template-columns: minmax(26rem, 32rem) 1fr;
     gap: 1.6rem;
     height: 100%;
-    max-height: calc(100vh - 12rem);
+    // add max height in home view
+    max-height: ${(props) =>
+        props.$isHomeView ? "calc(100vh - 12rem)" : "none"};
     overflow: hidden;
-    padding: 1.6rem;
+
+    /* Container query: responds to <main> element width, not viewport */
+    @container main-content (max-width: 825px) {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
 
     ${media.tablet} {
         grid-template-columns: 1fr;
         gap: 1rem;
         padding: 1rem;
-        max-height: calc(100vh - 10rem);
+        /* max-height: calc(100vh + 50rem); */
     }
 `;
 
@@ -301,13 +308,19 @@ const LeaderboardPlayer = styled.div`
     min-width: 0;
 `;
 
-const LeaderboardName = styled.span`
+const LeaderboardName = styled(Link)`
     font-size: 1.3rem;
     font-weight: 500;
     color: var(--primary-text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-decoration: none;
+    transition: color 0.2s;
+
+    &:hover {
+        color: var(--color-brand-500);
+    }
 
     ${media.tablet} {
         font-size: 1.2rem;
@@ -467,7 +480,7 @@ const ContentWrapper = styled.div`
 
 const FeedContainer = styled.div`
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: 0.8rem;
     overflow-y: auto;
     overflow-x: hidden;
@@ -783,12 +796,12 @@ function AchievementsFeed() {
         if (!feedContainerRef.current) return;
 
         const { scrollTop } = feedContainerRef.current;
-        const distanceFromBottom = Math.abs(scrollTop);
         const threshold = 200;
 
-        isNearBottomRef.current = distanceFromBottom < threshold;
+        // For normal column layout, scrollTop 0 = top (newest)
+        isNearBottomRef.current = scrollTop < threshold;
 
-        if (distanceFromBottom > threshold) {
+        if (scrollTop > threshold) {
             setShowJumpToLatest(true);
         } else {
             setShowJumpToLatest(false);
@@ -927,7 +940,9 @@ function AchievementsFeed() {
                                             src={entry.avatar || DEFAULT_AVATAR}
                                             $size="xs"
                                         />
-                                        <LeaderboardName>
+                                        <LeaderboardName
+                                            to={`/user/${entry.playerName}/achievements`}
+                                        >
                                             {entry.playerName}
                                         </LeaderboardName>
                                     </LeaderboardPlayer>
@@ -1007,11 +1022,6 @@ function AchievementsFeed() {
                             </ClearButton>
                         )}
                     </SearchInput>
-
-                    <LiveIndicator>
-                        <LiveDot />
-                        Live
-                    </LiveIndicator>
                 </FilterBar>
 
                 {/* Feed Content */}
@@ -1033,28 +1043,29 @@ function AchievementsFeed() {
                             ref={feedContainerRef}
                             onScroll={handleScroll}
                         >
-                            <LoadMoreTrigger ref={loadMoreRef}>
-                                {isFetchingNextPage && <SpinnerMini />}
-                                {!isFetchingNextPage &&
-                                    hasNextPage &&
-                                    "Scroll for more..."}
-                            </LoadMoreTrigger>
-
-                            {groupsWithNewFlag.map((group) => (
+                            {groupsWithNewFlag.map((group, index) => (
                                 <AchievementTickerItem
                                     key={
                                         group.matchId || group.latestUnlockedAt
                                     }
                                     group={group}
                                     isNew={group.isNew}
+                                    isOdd={index % 2 === 1}
                                 />
                             ))}
+
+                            <LoadMoreTrigger ref={loadMoreRef}>
+                                {isFetchingNextPage && <SpinnerMini />}
+                                {!isFetchingNextPage &&
+                                    hasNextPage &&
+                                    "Scroll for more..."}
+                            </LoadMoreTrigger>
                         </FeedContainer>
                     )}
 
                     {showJumpToLatest && (
                         <JumpToLatestButton onClick={handleJumpToLatest}>
-                            <HiChevronDoubleDown />
+                            <HiChevronDoubleUp />
                             {newAchievementsCount > 0 && (
                                 <NewAchievementsBadge>
                                     {newAchievementsCount}

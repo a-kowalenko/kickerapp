@@ -45,7 +45,11 @@ const ItemContainer = styled.div`
     gap: 1rem;
     padding: 1.2rem;
     border-radius: var(--border-radius-md);
-    background-color: var(--secondary-background-color);
+    background-color: ${(props) =>
+        props.$isOdd
+            ? "var(--secondary-background-color)"
+            : "var(--tertiary-background-color)"};
+    /* background-color: var(--secondary-background-color); */
     border: 1px solid var(--primary-border-color);
     position: relative;
     overflow: hidden;
@@ -53,7 +57,7 @@ const ItemContainer = styled.div`
     flex-shrink: 0;
 
     &:hover {
-        background-color: var(--tertiary-background-color);
+        background-color: var(--primary-background-color);
     }
 
     ${(props) =>
@@ -207,9 +211,7 @@ const AchievementRow = styled.div`
     padding: 0.4rem 0.6rem;
     border-radius: var(--border-radius-sm);
     background-color: ${(props) =>
-        props.$isExpanded
-            ? "var(--primary-border-color)"
-            : "var(--tertiary-background-color)"};
+        props.$isExpanded ? "var(--primary-border-color)" : "transparent"};
     transition: background-color 0.15s;
     cursor: pointer;
     user-select: none;
@@ -303,7 +305,7 @@ function formatMatchTeams(match) {
 
 // ============== COMPONENT ==============
 
-function AchievementTickerItem({ group, isNew = false }) {
+function AchievementTickerItem({ group, isNew = false, isOdd = false }) {
     const { matchId, match, players, latestUnlockedAt } = group;
     const [expandedAchievementId, setExpandedAchievementId] = useState(null);
 
@@ -325,7 +327,7 @@ function AchievementTickerItem({ group, isNew = false }) {
     );
 
     return (
-        <ItemContainer $isNew={isNew}>
+        <ItemContainer $isNew={isNew} $isOdd={isOdd}>
             {/* Header - Match Info or Season Achievement */}
             {hasMatch ? (
                 <MatchHeader>
@@ -359,7 +361,7 @@ function AchievementTickerItem({ group, isNew = false }) {
                     <PlayerSection key={playerGroup.player.id}>
                         <PlayerHeader>
                             <PlayerLink
-                                to={`/user/${playerGroup.player.name}/profile`}
+                                to={`/user/${playerGroup.player.name}/achievements`}
                             >
                                 <Avatar
                                     src={
@@ -399,6 +401,7 @@ function AchievementTickerItem({ group, isNew = false }) {
                                         <AchievementWrapper key={item.id}>
                                             <AchievementRow
                                                 $isNew={isNew}
+                                                $isOdd={isOdd}
                                                 $isExpanded={isExpanded}
                                                 onClick={() =>
                                                     handleAchievementClick(

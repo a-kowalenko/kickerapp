@@ -43,15 +43,15 @@ function User() {
             component: <ProfileMatches />,
         },
         {
-            path: `/user/${userId}/achievements`,
-            label: "Achievements",
-            component: <AchievementsOverview playerId={profilePlayer?.id} />,
-        },
-        {
             path: `/user/${userId}/statistics`,
             label: "Statistics",
             mobileLabel: isMobile ? "Stats" : undefined,
             component: <PlayerStatistics />,
+        },
+        {
+            path: `/user/${userId}/achievements`,
+            label: "Achievements",
+            component: <AchievementsOverview playerId={profilePlayer?.id} />,
         },
     ];
 
