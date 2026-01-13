@@ -128,13 +128,13 @@ const BountyValue = styled.div`
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: #ef4444;
 `;
 
 const BountyLabel = styled.span`
-    font-size: 0.7rem;
+    font-size: 1rem;
     color: var(--secondary-text-color);
     text-transform: uppercase;
     letter-spacing: 0.5px;
