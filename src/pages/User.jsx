@@ -3,7 +3,6 @@ import Profile from "../features/players/Profile";
 import Heading from "../ui/Heading";
 import TabView from "../ui/TabView";
 import Spinner from "../ui/Spinner";
-import ProfileSettings from "../features/players/ProfileSettings";
 import ProfileMatches from "../features/players/ProfileMatches";
 import ProfileAchievements from "../features/players/ProfileAchievements";
 import PlayerStatistics from "../features/players/PlayerStatistics";
@@ -49,14 +48,6 @@ function User() {
             component: <PlayerStatistics />,
         },
     ];
-
-    if (ownAccount) {
-        tabs.push({
-            path: `/user/${userId}/settings`,
-            label: "Settings",
-            component: <ProfileSettings />,
-        });
-    }
 
     return (
         <>

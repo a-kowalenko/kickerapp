@@ -35,6 +35,7 @@ import TabView from "../ui/TabView";
 import SeasonManagement from "../features/seasons/SeasonManagement";
 import SeasonSelector from "../features/seasons/SeasonSelector";
 import NotificationSettings from "../features/settings/NotificationSettings";
+import ProfileSettings from "../features/players/ProfileSettings";
 import StatusDisplaySettings from "../features/settings/StatusDisplaySettings";
 import UserPermissionsManager from "../features/settings/UserPermissionsManager";
 import KickerSettings from "../features/settings/KickerSettings";
@@ -785,6 +786,11 @@ function Settings() {
             path: "/settings/general",
             label: "General",
             component: <GeneralSettings />,
+        },
+        {
+            path: "/settings/profile",
+            label: "Profile",
+            component: <ProfileSettings />,
         },
         {
             path: "/settings/notifications",
