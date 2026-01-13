@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import Heading from "../../ui/Heading";
 import AchievementsFeed from "./AchievementsFeed";
+import { DropdownProvider } from "../../contexts/DropdownContext";
 
 const StyledAchievements = styled.div`
     display: flex;
@@ -14,7 +15,9 @@ function AchievementsPage() {
             <Heading as="h1" type="page" hasBackBtn={true}>
                 Achievements
             </Heading>
-            <AchievementsFeed />
+            <DropdownProvider>
+                <AchievementsFeed />
+            </DropdownProvider>
         </StyledAchievements>
     );
 }
