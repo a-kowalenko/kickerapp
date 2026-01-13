@@ -9,10 +9,13 @@ import {
     HiOutlineTrash,
     HiOutlineTrophy,
     HiOutlineUserGroup,
+    HiOutlineShieldCheck,
     HiPlus,
 } from "react-icons/hi2";
 import Divider from "./Divider";
 import { useMatchContext } from "../contexts/MatchContext";
+import { useKickerInfo } from "../hooks/useKickerInfo";
+import { useUser } from "../features/authentication/useUser";
 import SeasonBadge from "../features/seasons/SeasonBadge";
 import { media } from "../utils/constants";
 
@@ -144,6 +147,10 @@ const ActiveMatchListElement = styled.li`
 
 function MainNav({ close }) {
     const { activeMatch } = useMatchContext();
+    const { data: kickerData } = useKickerInfo();
+    const { user } = useUser();
+
+    const isAdmin = kickerData?.admin === user?.id;
 
     return (
         <StyledMainNav>
@@ -216,6 +223,18 @@ function MainNav({ close }) {
                         <span>Settings</span>
                     </StyledNavLink>
                 </li>
+                {isAdmin && (
+                    <li>
+                        <StyledNavLink
+                            to="/admin"
+                            title="Admin"
+                            onClick={close}
+                        >
+                            <HiOutlineShieldCheck />
+                            <span>Admin</span>
+                        </StyledNavLink>
+                    </li>
+                )}
                 <Divider $variation="horizontal" />
 
                 {activeMatch ? (

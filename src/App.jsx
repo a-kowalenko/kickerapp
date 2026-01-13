@@ -22,6 +22,7 @@ import CreateMatch from "./pages/CreateMatch";
 import Matches from "./pages/Matches";
 import Fatalities from "./pages/Fatalities";
 import AchievementsPage from "./features/achievements/AchievementsPage";
+import AdminPage from "./features/admin/AdminPage";
 import ProtectedRoute from "./features/authentication/ProtectedRoute";
 import Players from "./pages/Players";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
@@ -120,8 +121,12 @@ function App() {
                                             element={<Matches />}
                                         />
                                         <Route
-                                            path="achievements/*"
+                                            path="achievements"
                                             element={<AchievementsPage />}
+                                        />
+                                        <Route
+                                            path="admin/*"
+                                            element={<AdminPage />}
                                         />
                                         <Route
                                             path="players"

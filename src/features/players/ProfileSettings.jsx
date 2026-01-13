@@ -5,7 +5,7 @@ import AvatarUpload from "../authentication/AvatarUpload";
 import { media } from "../../utils/constants";
 import { HiOutlineUser, HiOutlineLockClosed } from "react-icons/hi2";
 
-const StyledProfileSettings = styled.div`
+const Container = styled.div`
     display: flex;
     flex-direction: column;
     gap: 2.4rem;
@@ -13,122 +13,66 @@ const StyledProfileSettings = styled.div`
     ${media.tablet} {
         padding: 0 2.4rem;
     }
-
-    ${media.mobile} {
-        padding: 0;
-        gap: 1.6rem;
-    }
 `;
 
-const Card = styled.div`
-    background-color: var(--color-grey-0);
-    border: 1px solid var(--secondary-border-color);
+const Section = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+`;
+
+const SectionTitle = styled.h3`
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--primary-text-color);
+`;
+
+const ProfileCard = styled.div`
+    display: flex;
+    align-items: flex-start;
+    gap: 1.6rem;
+    padding: 1.6rem;
+    background-color: var(--secondary-background-color);
     border-radius: var(--border-radius-md);
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--primary-border-color);
 
     ${media.tablet} {
-        border-radius: var(--border-radius-sm);
-    }
-
-    ${media.mobile} {
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
+        flex-direction: column;
+        align-items: center;
     }
 `;
 
-const CardHeader = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-    padding: 2rem 2.4rem;
-    background-color: var(--color-grey-50);
-    border-bottom: 1px solid var(--secondary-border-color);
-
-    ${media.mobile} {
-        padding: 1.6rem;
-    }
-`;
-
-const IconWrapper = styled.div`
+const ProfileIcon = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 4rem;
-    height: 4rem;
+    width: 4.8rem;
+    height: 4.8rem;
     border-radius: 50%;
-    background-color: var(--primary-button-color);
-    color: var(--primary-button-color-text);
+    background-color: var(--tertiary-background-color);
+    color: var(--primary-button-color);
+    flex-shrink: 0;
 
-    svg {
-        width: 2rem;
-        height: 2rem;
+    & svg {
+        font-size: 2.4rem;
     }
 
-    ${media.mobile} {
-        width: 3.2rem;
-        height: 3.2rem;
-
-        svg {
-            width: 1.6rem;
-            height: 1.6rem;
-        }
+    ${media.tablet} {
+        display: none;
     }
-`;
-
-const HeaderContent = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-`;
-
-const CardTitle = styled.span`
-    font-size: 1.8rem;
-    font-weight: 600;
-    color: var(--color-grey-800);
-
-    ${media.mobile} {
-        font-size: 1.6rem;
-    }
-`;
-
-const CardDescription = styled.span`
-    font-size: 1.4rem;
-    color: var(--color-grey-500);
-
-    ${media.mobile} {
-        font-size: 1.2rem;
-    }
-`;
-
-const CardBody = styled.div`
-    padding: 2.4rem;
-
-    ${media.mobile} {
-        padding: 1.6rem;
-    }
-`;
-
-const ProfileCard = styled(Card)`
-    display: flex;
-    flex-direction: column;
 `;
 
 const ProfileContent = styled.div`
+    flex: 1;
     display: flex;
-    gap: 4rem;
-    padding: 2.4rem;
+    gap: 3.2rem;
+    min-width: 0;
 
     ${media.tablet} {
         flex-direction: column;
         align-items: center;
         gap: 2.4rem;
-    }
-
-    ${media.mobile} {
-        padding: 1.6rem;
-        gap: 1.6rem;
+        width: 100%;
     }
 `;
 
@@ -137,12 +81,7 @@ const AvatarSection = styled.div`
     flex-direction: column;
     align-items: center;
     gap: 1.6rem;
-    min-width: 20rem;
-
-    ${media.tablet} {
-        min-width: unset;
-        width: 100%;
-    }
+    flex-shrink: 0;
 `;
 
 const FormSection = styled.div`
@@ -156,48 +95,83 @@ const FormSection = styled.div`
     }
 `;
 
+const SecurityCard = styled.div`
+    display: flex;
+    align-items: flex-start;
+    gap: 1.6rem;
+    padding: 1.6rem;
+    background-color: var(--secondary-background-color);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--primary-border-color);
+
+    ${media.mobile} {
+        flex-direction: column;
+    }
+`;
+
+const SecurityIcon = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.8rem;
+    height: 4.8rem;
+    border-radius: 50%;
+    background-color: var(--tertiary-background-color);
+    color: var(--primary-button-color);
+    flex-shrink: 0;
+
+    & svg {
+        font-size: 2.4rem;
+    }
+
+    ${media.mobile} {
+        display: none;
+    }
+`;
+
+const SecurityContent = styled.div`
+    flex: 1;
+    min-width: 0;
+    max-width: 40rem;
+
+    ${media.tablet} {
+        max-width: 100%;
+        width: 100%;
+    }
+`;
+
 function ProfileSettings() {
     return (
-        <StyledProfileSettings>
-            <ProfileCard>
-                <CardHeader>
-                    <IconWrapper>
+        <Container>
+            <Section>
+                <SectionTitle>Profile Information</SectionTitle>
+                <ProfileCard>
+                    <ProfileIcon>
                         <HiOutlineUser />
-                    </IconWrapper>
-                    <HeaderContent>
-                        <CardTitle>Profile Information</CardTitle>
-                        <CardDescription>
-                            Update your profile details and avatar
-                        </CardDescription>
-                    </HeaderContent>
-                </CardHeader>
-                <ProfileContent>
-                    <AvatarSection>
-                        <AvatarUpload />
-                    </AvatarSection>
-                    <FormSection>
-                        <UserDataForm />
-                    </FormSection>
-                </ProfileContent>
-            </ProfileCard>
+                    </ProfileIcon>
+                    <ProfileContent>
+                        <AvatarSection>
+                            <AvatarUpload />
+                        </AvatarSection>
+                        <FormSection>
+                            <UserDataForm />
+                        </FormSection>
+                    </ProfileContent>
+                </ProfileCard>
+            </Section>
 
-            <Card>
-                <CardHeader>
-                    <IconWrapper>
+            <Section>
+                <SectionTitle>Security</SectionTitle>
+                <SecurityCard>
+                    <SecurityIcon>
                         <HiOutlineLockClosed />
-                    </IconWrapper>
-                    <HeaderContent>
-                        <CardTitle>Security</CardTitle>
-                        <CardDescription>
-                            Update your password to keep your account secure
-                        </CardDescription>
-                    </HeaderContent>
-                </CardHeader>
-                <CardBody>
-                    <UpdatePasswordForm variant="settings" />
-                </CardBody>
-            </Card>
-        </StyledProfileSettings>
+                    </SecurityIcon>
+                    <SecurityContent>
+                        <UpdatePasswordForm variant="settings" />
+                    </SecurityContent>
+                </SecurityCard>
+            </Section>
+        </Container>
     );
 }
 

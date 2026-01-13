@@ -625,3 +625,143 @@ export async function getPlayerAchievementById(achievementRecordId) {
 
     return data;
 }
+
+// ============== FEED STATISTICS ==============
+
+/**
+ * Get achievement feed statistics (counts for today, week, month, total)
+ * This is a client-side implementation - for better performance,
+ * use the RPC function get_achievement_feed_stats if available
+ */
+export async function getAchievementFeedStats(kickerId, seasonId = null) {
+    const now = new Date();
+    const startOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+    );
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - 7);
+    const startOfMonth = new Date(now);
+    startOfMonth.setDate(now.getDate() - 30);
+
+    // Build base query for kicker's players
+    let baseQuery = supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .select(
+            `
+            id,
+            unlocked_at,
+            player!player_achievements_player_id_fkey(kicker_id)
+        `
+        )
+        .eq("player.kicker_id", kickerId);
+
+    if (seasonId) {
+        baseQuery = baseQuery.eq("season_id", seasonId);
+    }
+
+    const { data, error } = await baseQuery;
+
+    if (error) {
+        console.error("Error fetching achievement feed stats:", error);
+        return {
+            todayCount: 0,
+            weekCount: 0,
+            monthCount: 0,
+            totalCount: 0,
+        };
+    }
+
+    // Filter out achievements where player is null (not matching kicker)
+    const achievements = (data || []).filter((a) => a.player !== null);
+
+    // Calculate counts
+    const todayCount = achievements.filter(
+        (a) => new Date(a.unlocked_at) >= startOfDay
+    ).length;
+
+    const weekCount = achievements.filter(
+        (a) => new Date(a.unlocked_at) >= startOfWeek
+    ).length;
+
+    const monthCount = achievements.filter(
+        (a) => new Date(a.unlocked_at) >= startOfMonth
+    ).length;
+
+    const totalCount = achievements.length;
+
+    return {
+        todayCount,
+        weekCount,
+        monthCount,
+        totalCount,
+    };
+}
+
+/**
+ * Get achievement leaderboard (top players by total achievement points)
+ * This is a client-side implementation - for better performance,
+ * use the RPC function get_achievement_leaderboard if available
+ */
+export async function getAchievementLeaderboard(
+    kickerId,
+    seasonId = null,
+    limit = 5
+) {
+    let query = supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .select(
+            `
+            player_id,
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievements_achievement_id_fkey(
+                points
+            ),
+            player!player_achievements_player_id_fkey(
+                id,
+                name,
+                avatar,
+                kicker_id
+            )
+        `
+        )
+        .eq("player.kicker_id", kickerId);
+
+    if (seasonId) {
+        query = query.eq("season_id", seasonId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error("Error fetching achievement leaderboard:", error);
+        return [];
+    }
+
+    // Filter out achievements where player is null (not matching kicker)
+    const achievements = (data || []).filter((a) => a.player !== null);
+
+    // Sum points by player
+    const playerPoints = achievements.reduce((acc, a) => {
+        const playerId = a.player_id;
+        if (!acc[playerId]) {
+            acc[playerId] = {
+                playerId,
+                playerName: a.player?.name,
+                avatar: a.player?.avatar,
+                totalPoints: 0,
+                count: 0,
+            };
+        }
+        acc[playerId].totalPoints += a.achievement?.points || 0;
+        acc[playerId].count++;
+        return acc;
+    }, {});
+
+    // Sort by total points and return top N
+    return Object.values(playerPoints)
+        .sort((a, b) => b.totalPoints - a.totalPoints)
+        .slice(0, limit);
+}
