@@ -16,7 +16,13 @@ const MAX_RECONNECT_ATTEMPTS = 5; // Maximum reconnect attempts before giving up
 const RECONNECT_BACKOFF_MULTIPLIER = 1.5; // Exponential backoff multiplier
 
 // Activity events to listen for
-const ACTIVITY_EVENTS = ["mousedown", "keydown", "scroll", "touchstart", "click"];
+const ACTIVITY_EVENTS = [
+    "mousedown",
+    "keydown",
+    "scroll",
+    "touchstart",
+    "click",
+];
 
 // Debounce delay for syncing presence after activity (leading-edge)
 const ACTIVITY_SYNC_DELAY = 2000; // 2 seconds
@@ -118,7 +124,7 @@ export function useOnlinePresence() {
         try {
             const status = calculateStatus();
             lastSyncedStatusRef.current = status;
-            
+
             await channelRef.current.track({
                 player_id: currentPlayerId,
                 player_name: currentPlayerName,
