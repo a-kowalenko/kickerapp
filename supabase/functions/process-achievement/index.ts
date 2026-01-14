@@ -179,7 +179,74 @@ const corsHeaders = {
         "authorization, x-client-info, apikey, content-type",
 };
 
-// ============== MAIN HANDLER ==============
+// ============== TIMEZONE HELPER ==============
+
+// Cache for kicker timezones to avoid repeated DB calls
+const kickerTimezoneCache: Map<number, string> = new Map();
+
+async function getKickerTimezone(
+    supabase: any,
+    kickerId: number
+): Promise<string> {
+    // Check cache first
+    if (kickerTimezoneCache.has(kickerId)) {
+        return kickerTimezoneCache.get(kickerId)!;
+    }
+
+    // Fetch from database
+    const { data } = await supabase
+        .from("kicker")
+        .select("timezone")
+        .eq("id", kickerId)
+        .single();
+
+    const timezone = data?.timezone || "Europe/Berlin";
+    kickerTimezoneCache.set(kickerId, timezone);
+    return timezone;
+}
+
+// Get hour and minute in kicker's local timezone
+function getLocalTime(
+    date: Date,
+    timezone: string
+): { hour: number; minute: number; dayOfWeek: number } {
+    // Use Intl.DateTimeFormat to get local time parts
+    const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false,
+        weekday: "long",
+    });
+
+    const parts = formatter.formatToParts(date);
+    const hour = parseInt(
+        parts.find((p) => p.type === "hour")?.value || "0",
+        10
+    );
+    const minute = parseInt(
+        parts.find((p) => p.type === "minute")?.value || "0",
+        10
+    );
+    const weekdayStr = parts
+        .find((p) => p.type === "weekday")
+        ?.value?.toLowerCase();
+
+    const dayMap: { [key: string]: number } = {
+        sunday: 0,
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6,
+    };
+    const dayOfWeek = dayMap[weekdayStr || "sunday"] || 0;
+
+    return { hour, minute, dayOfWeek };
+}
+
+// ============== MAIN HANDLER ==
 
 serve(async (req) => {
     if (req.method === "OPTIONS") {
@@ -2709,64 +2776,62 @@ async function evaluateMatchCondition(
         }
     }
 
-    // Check time_before filter (match must have ended before this time of day)
-    if (filters.time_before) {
+    // Check time-based filters using kicker timezone
+    if (filters.time_before || filters.time_after || filters.day_of_week) {
         const matchEndTime = ctx.match.end_time
             ? new Date(ctx.match.end_time)
             : new Date();
-        const [targetHour, targetMin] = filters.time_before
-            .split(":")
-            .map(Number);
-        const matchHour = matchEndTime.getHours();
-        const matchMin = matchEndTime.getMinutes();
 
-        // Match must be before the target time
-        if (
-            matchHour > targetHour ||
-            (matchHour === targetHour && matchMin >= targetMin)
-        ) {
-            return false;
+        // Get kicker timezone for accurate local time calculation
+        const timezone = await getKickerTimezone(supabase, match.kicker_id);
+        const localTime = getLocalTime(matchEndTime, timezone);
+
+        // Check time_before filter (match must have ended before this time of day)
+        if (filters.time_before) {
+            const [targetHour, targetMin] = filters.time_before
+                .split(":")
+                .map(Number);
+
+            // Match must be before the target time
+            if (
+                localTime.hour > targetHour ||
+                (localTime.hour === targetHour && localTime.minute >= targetMin)
+            ) {
+                return false;
+            }
         }
-    }
 
-    // Check time_after filter (match must have ended after this time of day)
-    if (filters.time_after) {
-        const matchEndTime = ctx.match.end_time
-            ? new Date(ctx.match.end_time)
-            : new Date();
-        const [targetHour, targetMin] = filters.time_after
-            .split(":")
-            .map(Number);
-        const matchHour = matchEndTime.getHours();
-        const matchMin = matchEndTime.getMinutes();
+        // Check time_after filter (match must have ended after this time of day)
+        if (filters.time_after) {
+            const [targetHour, targetMin] = filters.time_after
+                .split(":")
+                .map(Number);
 
-        // Match must be after the target time
-        if (
-            matchHour < targetHour ||
-            (matchHour === targetHour && matchMin < targetMin)
-        ) {
-            return false;
+            // Match must be after the target time
+            if (
+                localTime.hour < targetHour ||
+                (localTime.hour === targetHour && localTime.minute < targetMin)
+            ) {
+                return false;
+            }
         }
-    }
 
-    // Check day_of_week filter
-    if (filters.day_of_week) {
-        const matchEndTime = ctx.match.end_time
-            ? new Date(ctx.match.end_time)
-            : new Date();
-        const dayNames = [
-            "sunday",
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-        ];
-        const matchDay = dayNames[matchEndTime.getDay()];
+        // Check day_of_week filter
+        if (filters.day_of_week) {
+            const dayNames = [
+                "sunday",
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+            ];
+            const matchDay = dayNames[localTime.dayOfWeek];
 
-        if (matchDay !== filters.day_of_week.toLowerCase()) {
-            return false;
+            if (matchDay !== filters.day_of_week.toLowerCase()) {
+                return false;
+            }
         }
     }
 
