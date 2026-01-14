@@ -1,5 +1,11 @@
+import { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
 import { HiOutlineTrophy, HiXMark } from "react-icons/hi2";
+import { media, MAX_MOBILE_WIDTH } from "../../utils/constants";
+import {
+    TOAST_DURATION,
+    TOAST_DURATION_MOBILE,
+} from "./useAchievementNotifications.js";
 
 const slideIn = keyframes`
     from {
@@ -8,6 +14,17 @@ const slideIn = keyframes`
     }
     to {
         transform: translateX(0);
+        opacity: 1;
+    }
+`;
+
+const slideInTop = keyframes`
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
         opacity: 1;
     }
 `;
@@ -27,6 +44,13 @@ const Container = styled.div`
     right: 2rem;
     z-index: 9999;
     animation: ${slideIn} 0.5s ease-out;
+
+    ${media.mobile} {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        animation: ${slideInTop} 0.4s ease-out;
+    }
 `;
 
 const ToastCard = styled.div`
@@ -63,6 +87,14 @@ const ToastCard = styled.div`
         background-size: 200% 100%;
         animation: ${shimmer} 2s ease-in-out;
     }
+
+    ${media.mobile} {
+        min-width: unset;
+        max-width: unset;
+        width: 100%;
+        gap: 0.8rem;
+        padding: 0.8rem 1rem;
+    }
 `;
 
 const IconContainer = styled.div`
@@ -77,6 +109,13 @@ const IconContainer = styled.div`
     font-size: 2.4rem;
     position: relative;
     z-index: 1;
+
+    ${media.mobile} {
+        width: 2.8rem;
+        height: 2.8rem;
+        min-width: 2.8rem;
+        font-size: 1.4rem;
+    }
 `;
 
 const Content = styled.div`
@@ -101,21 +140,47 @@ const Title = styled.div`
         width: 1.6rem;
         height: 1.6rem;
     }
+
+    ${media.mobile} {
+        display: none;
+    }
 `;
 
 const AchievementName = styled.div`
     font-size: 1.8rem;
     font-weight: 700;
+
+    ${media.mobile} {
+        font-size: 1.3rem;
+    }
+`;
+
+const PlayerNamePrefix = styled.span`
+    display: none;
+    font-weight: 400;
+    opacity: 0.85;
+
+    ${media.mobile} {
+        display: inline;
+    }
 `;
 
 const AchievementDescription = styled.div`
     font-size: 1.4rem;
     opacity: 0.85;
+
+    ${media.mobile} {
+        display: none;
+    }
 `;
 
 const Points = styled.div`
     font-size: 1.4rem;
     opacity: 0.9;
+
+    ${media.mobile} {
+        display: none;
+    }
 `;
 
 const CloseButton = styled.button`
@@ -138,11 +203,62 @@ const CloseButton = styled.button`
         width: 2rem;
         height: 2rem;
     }
+
+    ${media.mobile} {
+        position: static;
+        padding: 0.2rem;
+        opacity: 0.8;
+        margin-left: auto;
+
+        & svg {
+            width: 1.6rem;
+            height: 1.6rem;
+        }
+    }
+`;
+
+const TimerBar = styled.div.attrs((props) => ({
+    style: {
+        width: `${props.$progress}%`,
+    },
+}))`
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.8);
+    transition: width 0.1s linear;
+    z-index: 3;
+
+    ${media.mobile} {
+        height: 2px;
+    }
 `;
 
 function AchievementToast({ achievement, onClose }) {
     const { name, points, icon, description, playerName, isOwnAchievement } =
         achievement;
+
+    const isMobile = window.innerWidth <= MAX_MOBILE_WIDTH;
+    const duration = isMobile ? TOAST_DURATION_MOBILE : TOAST_DURATION;
+    const [progress, setProgress] = useState(100);
+
+    // Visual timer countdown
+    useEffect(() => {
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+            setProgress(remaining);
+
+            if (remaining <= 0) {
+                clearInterval(interval);
+                onClose();
+            }
+        }, 50);
+
+        return () => clearInterval(interval);
+    }, [duration, onClose]);
 
     return (
         <Container>
@@ -160,12 +276,17 @@ function AchievementToast({ achievement, onClose }) {
                             ? "Achievement Unlocked!"
                             : `${playerName} unlocked:`}
                     </Title>
-                    <AchievementName>{name}</AchievementName>
+                    <AchievementName>
+                        <PlayerNamePrefix>{playerName}: </PlayerNamePrefix>
+                        {name}
+                    </AchievementName>
                     <AchievementDescription>
                         {description}
                     </AchievementDescription>
                     <Points>+{points} points</Points>
                 </Content>
+
+                <TimerBar $progress={progress} />
             </ToastCard>
         </Container>
     );

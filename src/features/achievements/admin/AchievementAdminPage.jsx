@@ -5,6 +5,8 @@ import {
     HiOutlinePencil,
     HiOutlineTrash,
     HiOutlineSparkles,
+    HiOutlineUser,
+    HiOutlineChartBar,
 } from "react-icons/hi2";
 import Button from "../../../ui/Button";
 import Spinner from "../../../ui/Spinner";
@@ -19,6 +21,8 @@ import { useUser } from "../../authentication/useUser";
 import AchievementForm from "./AchievementForm";
 import CategoryForm from "./CategoryForm";
 import RewardForm from "./RewardForm";
+import PlayerUnlockedTab from "./PlayerUnlockedTab";
+import PlayerProgressTab from "./PlayerProgressTab";
 
 const StyledAdmin = styled.div`
     display: flex;
@@ -172,6 +176,22 @@ const Tab = styled.button`
         width: 1.8rem;
         height: 1.8rem;
     }
+
+    @media (max-width: 600px) {
+        padding: 0.8rem 1rem;
+        font-size: 1.2rem;
+
+        & svg {
+            width: 1.6rem;
+            height: 1.6rem;
+        }
+    }
+`;
+
+const TabLabel = styled.span`
+    @media (max-width: 480px) {
+        display: none;
+    }
 `;
 
 function AchievementAdminPage() {
@@ -278,13 +298,25 @@ function AchievementAdminPage() {
                     $active={activeTab === "achievements"}
                     onClick={() => setActiveTab("achievements")}
                 >
-                    🏆 Achievements
+                    🏆 <TabLabel>Achievements</TabLabel>
                 </Tab>
                 <Tab
                     $active={activeTab === "rewards"}
                     onClick={() => setActiveTab("rewards")}
                 >
-                    <HiOutlineSparkles /> Rewards
+                    <HiOutlineSparkles /> <TabLabel>Rewards</TabLabel>
+                </Tab>
+                <Tab
+                    $active={activeTab === "playerUnlocked"}
+                    onClick={() => setActiveTab("playerUnlocked")}
+                >
+                    <HiOutlineUser /> <TabLabel>Player Unlocked</TabLabel>
+                </Tab>
+                <Tab
+                    $active={activeTab === "playerProgress"}
+                    onClick={() => setActiveTab("playerProgress")}
+                >
+                    <HiOutlineChartBar /> <TabLabel>Player Progress</TabLabel>
                 </Tab>
             </TabContainer>
 
@@ -576,6 +608,10 @@ function AchievementAdminPage() {
                     )}
                 </Section>
             )}
+
+            {activeTab === "playerUnlocked" && <PlayerUnlockedTab />}
+
+            {activeTab === "playerProgress" && <PlayerProgressTab />}
 
             {/* Forms/Modals */}
             {showCategoryForm && (

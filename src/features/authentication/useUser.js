@@ -11,5 +11,10 @@ export function useUser() {
         queryFn: getCurrentUser,
     });
 
-    return { user, isLoading, isAuthenticated: user?.role === "authenticated" };
+    return {
+        user,
+        isLoading,
+        isAuthenticated: user?.role === "authenticated",
+        isSuperAdmin: user?.app_metadata?.is_super_admin === true,
+    };
 }
