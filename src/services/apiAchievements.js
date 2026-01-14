@@ -765,3 +765,320 @@ export async function getAchievementLeaderboard(
         .sort((a, b) => b.totalPoints - a.totalPoints)
         .slice(0, limit);
 }
+
+// ============== ADMIN: PLAYER ACHIEVEMENTS ==============
+
+/**
+ * Get all player achievements for admin management with optional filters
+ */
+export async function getAdminPlayerAchievements({
+    seasonId = null,
+    playerId = null,
+} = {}) {
+    let query = supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .select(
+            `
+            *,
+            player:player!player_achievements_player_id_fkey(id, name, avatar),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievements_achievement_id_fkey(
+                id,
+                key,
+                name,
+                description,
+                icon,
+                points,
+                category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
+            ),
+            season:seasons(id, name),
+            match:matches!player_achievements_match_id_fkey(
+                id, 
+                nr, 
+                scoreTeam1, 
+                scoreTeam2,
+                player1:player!matches_player1_fkey(id, name),
+                player2:player!matches_player2_fkey(id, name),
+                player3:player!matches_player3_fkey(id, name),
+                player4:player!matches_player4_fkey(id, name)
+            )
+        `
+        )
+        .order("unlocked_at", { ascending: false });
+
+    if (seasonId) {
+        query = query.eq("season_id", seasonId);
+    }
+
+    if (playerId) {
+        query = query.eq("player_id", playerId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Create a new player achievement record
+ */
+export async function createAdminPlayerAchievement({
+    playerId,
+    achievementId,
+    seasonId = null,
+    matchId = null,
+    timesCompleted = 1,
+    unlockedAt = null,
+}) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .insert({
+            player_id: playerId,
+            achievement_id: achievementId,
+            season_id: seasonId || null,
+            match_id: matchId || null,
+            times_completed: timesCompleted,
+            unlocked_at: unlockedAt || new Date().toISOString(),
+        })
+        .select(
+            `
+            *,
+            player:player!player_achievements_player_id_fkey(id, name, avatar),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievements_achievement_id_fkey(
+                id,
+                key,
+                name,
+                icon,
+                points,
+                category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
+            ),
+            season:seasons(id, name),
+            match:matches!player_achievements_match_id_fkey(id, nr)
+        `
+        )
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Update a player achievement record
+ */
+export async function updateAdminPlayerAchievement(id, updates) {
+    const updateData = {};
+
+    if (updates.playerId !== undefined) updateData.player_id = updates.playerId;
+    if (updates.achievementId !== undefined)
+        updateData.achievement_id = updates.achievementId;
+    if (updates.seasonId !== undefined)
+        updateData.season_id = updates.seasonId || null;
+    if (updates.matchId !== undefined)
+        updateData.match_id = updates.matchId || null;
+    if (updates.timesCompleted !== undefined)
+        updateData.times_completed = updates.timesCompleted;
+    if (updates.unlockedAt !== undefined)
+        updateData.unlocked_at = updates.unlockedAt;
+
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .update(updateData)
+        .eq("id", id)
+        .select(
+            `
+            *,
+            player:player!player_achievements_player_id_fkey(id, name, avatar),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievements_achievement_id_fkey(
+                id,
+                key,
+                name,
+                icon,
+                points,
+                category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
+            ),
+            season:seasons(id, name),
+            match:matches!player_achievements_match_id_fkey(id, nr)
+        `
+        )
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Delete a player achievement record
+ */
+export async function deleteAdminPlayerAchievement(id) {
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENTS)
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+}
+
+// ============== ADMIN: PLAYER ACHIEVEMENT PROGRESS ==============
+
+/**
+ * Get all player achievement progress for admin management with optional filters
+ */
+export async function getAdminPlayerProgress({
+    seasonId = null,
+    playerId = null,
+} = {}) {
+    let query = supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENT_PROGRESS)
+        .select(
+            `
+            *,
+            player:player!player_achievement_progress_player_id_fkey(id, name, avatar),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievement_progress_achievement_id_fkey(
+                id,
+                key,
+                name,
+                description,
+                icon,
+                max_progress,
+                category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
+            ),
+            season:seasons(id, name)
+        `
+        )
+        .order("updated_at", { ascending: false });
+
+    if (seasonId) {
+        query = query.eq("season_id", seasonId);
+    }
+
+    if (playerId) {
+        query = query.eq("player_id", playerId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Create a new player achievement progress record
+ */
+export async function createAdminPlayerProgress({
+    playerId,
+    achievementId,
+    currentProgress = 0,
+    seasonId = null,
+}) {
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENT_PROGRESS)
+        .insert({
+            player_id: playerId,
+            achievement_id: achievementId,
+            current_progress: currentProgress,
+            season_id: seasonId || null,
+            updated_at: new Date().toISOString(),
+        })
+        .select(
+            `
+            *,
+            player:player!player_achievement_progress_player_id_fkey(id, name, avatar),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievement_progress_achievement_id_fkey(
+                id,
+                key,
+                name,
+                icon,
+                max_progress,
+                category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
+            ),
+            season:seasons(id, name)
+        `
+        )
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Update a player achievement progress record
+ */
+export async function updateAdminPlayerProgress(id, updates) {
+    const updateData = {
+        updated_at: new Date().toISOString(),
+    };
+
+    if (updates.playerId !== undefined) updateData.player_id = updates.playerId;
+    if (updates.achievementId !== undefined)
+        updateData.achievement_id = updates.achievementId;
+    if (updates.currentProgress !== undefined)
+        updateData.current_progress = updates.currentProgress;
+    if (updates.seasonId !== undefined)
+        updateData.season_id = updates.seasonId || null;
+
+    const { data, error } = await supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENT_PROGRESS)
+        .update(updateData)
+        .eq("id", id)
+        .select(
+            `
+            *,
+            player:player!player_achievement_progress_player_id_fkey(id, name, avatar),
+            achievement:${ACHIEVEMENT_DEFINITIONS}!player_achievement_progress_achievement_id_fkey(
+                id,
+                key,
+                name,
+                icon,
+                max_progress,
+                category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
+            ),
+            season:seasons(id, name)
+        `
+        )
+        .single();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return data;
+}
+
+/**
+ * Delete a player achievement progress record
+ */
+export async function deleteAdminPlayerProgress(id) {
+    const { error } = await supabase
+        .schema(databaseSchema)
+        .from(PLAYER_ACHIEVEMENT_PROGRESS)
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+}

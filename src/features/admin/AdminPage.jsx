@@ -5,9 +5,11 @@ import Heading from "../../ui/Heading";
 import Spinner from "../../ui/Spinner";
 import TabView from "../../ui/TabView";
 import AchievementAdminPage from "../achievements/admin/AchievementAdminPage";
+import StatusAdminPage from "../achievements/admin/StatusAdminPage";
+import MatchesAdminTab from "./MatchesAdminTab";
+import RankingsAdminPage from "./RankingsAdminPage";
 import SeasonManagement from "../seasons/SeasonManagement";
 import KickerSettings from "../settings/KickerSettings";
-import StatusDisplaySettings from "../settings/StatusDisplaySettings";
 import UserPermissionsManager from "../settings/UserPermissionsManager";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
@@ -55,6 +57,21 @@ function AdminPage() {
             component: <AchievementAdminPage />,
         },
         {
+            path: "/admin/status",
+            label: "Status",
+            component: <StatusAdminPage />,
+        },
+        {
+            path: "/admin/matches",
+            label: "Matches",
+            component: <MatchesAdminTab />,
+        },
+        {
+            path: "/admin/rankings",
+            label: "Rankings",
+            component: <RankingsAdminPage />,
+        },
+        {
             path: "/admin/seasons",
             label: "Seasons",
             component: <SeasonManagement />,
@@ -63,11 +80,6 @@ function AdminPage() {
             path: "/admin/kicker",
             label: "Kicker",
             component: <KickerSettings />,
-        },
-        {
-            path: "/admin/status-display",
-            label: "Status Display",
-            component: <StatusDisplaySettings />,
         },
         {
             path: "/admin/permissions",
