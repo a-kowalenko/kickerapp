@@ -211,14 +211,14 @@ const AchievementRow = styled.div`
     padding: 0.4rem 0.6rem;
     border-radius: var(--border-radius-sm);
     background-color: ${(props) =>
-        props.$isExpanded ? "var(--primary-border-color)" : "transparent"};
+        props.$isExpanded ? "var(--tertiary-background-color)" : "transparent"};
     transition: background-color 0.15s;
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 
     &:hover {
-        background-color: var(--primary-border-color);
+        background-color: var(--tertiary-background-color);
     }
 
     ${(props) =>
