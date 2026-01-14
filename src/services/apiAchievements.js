@@ -791,7 +791,7 @@ export async function getAdminPlayerAchievements({
                 points,
                 category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
             ),
-            season:seasons(id, name),
+            season:seasons!player_achievements_season_id_fkey(id, name),
             match:matches!player_achievements_match_id_fkey(
                 id, 
                 nr, 
@@ -857,7 +857,7 @@ export async function createAdminPlayerAchievement({
                 points,
                 category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
             ),
-            season:seasons(id, name),
+            season:seasons!player_achievements_season_id_fkey(id, name),
             match:matches!player_achievements_match_id_fkey(id, nr)
         `
         )
@@ -905,7 +905,7 @@ export async function updateAdminPlayerAchievement(id, updates) {
                 points,
                 category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
             ),
-            season:seasons(id, name),
+            season:seasons!player_achievements_season_id_fkey(id, name),
             match:matches!player_achievements_match_id_fkey(id, nr)
         `
         )
@@ -958,7 +958,7 @@ export async function getAdminPlayerProgress({
                 max_progress,
                 category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
             ),
-            season:seasons(id, name)
+            season:seasons!player_achievement_progress_season_id_fkey(id, name)
         `
         )
         .order("updated_at", { ascending: false });
@@ -1011,7 +1011,7 @@ export async function createAdminPlayerProgress({
                 max_progress,
                 category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
             ),
-            season:seasons(id, name)
+            season:seasons!player_achievement_progress_season_id_fkey(id, name)
         `
         )
         .single();
@@ -1056,7 +1056,7 @@ export async function updateAdminPlayerProgress(id, updates) {
                 max_progress,
                 category:${ACHIEVEMENT_CATEGORIES}(id, name, icon)
             ),
-            season:seasons(id, name)
+            season:seasons!player_achievement_progress_season_id_fkey(id, name)
         `
         )
         .single();
