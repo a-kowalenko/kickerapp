@@ -3,8 +3,10 @@ import { useQueryClient } from "react-query";
 import supabase, { databaseSchema } from "../../services/supabase";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { getAchievementDefinition } from "../../services/apiAchievements";
+import { MAX_MOBILE_WIDTH } from "../../utils/constants";
 
-const TOAST_DURATION = 6000; // 6 seconds
+export const TOAST_DURATION = 6000; // 6 seconds
+export const TOAST_DURATION_MOBILE = 4000; // 4 seconds on mobile
 
 function useAchievementNotifications() {
     const { data: player } = useOwnPlayer();
@@ -12,21 +14,27 @@ function useAchievementNotifications() {
     const [toastQueue, setToastQueue] = useState([]);
     const [currentToast, setCurrentToast] = useState(null);
 
-    // Process toast queue
+    // Process toast queue - pick next toast when current is null
     useEffect(() => {
         if (currentToast === null && toastQueue.length > 0) {
             const [next, ...rest] = toastQueue;
             setCurrentToast(next);
             setToastQueue(rest);
-
-            // Auto-dismiss after duration
-            const timer = setTimeout(() => {
-                setCurrentToast(null);
-            }, TOAST_DURATION);
-
-            return () => clearTimeout(timer);
         }
     }, [currentToast, toastQueue]);
+
+    // Auto-dismiss timer - runs whenever a toast is shown
+    useEffect(() => {
+        if (currentToast === null) return;
+
+        const isMobile = window.innerWidth <= MAX_MOBILE_WIDTH;
+        const duration = isMobile ? TOAST_DURATION_MOBILE : TOAST_DURATION;
+        const timer = setTimeout(() => {
+            setCurrentToast(null);
+        }, duration);
+
+        return () => clearTimeout(timer);
+    }, [currentToast]);
 
     const handleDismiss = useCallback(() => {
         setCurrentToast(null);
