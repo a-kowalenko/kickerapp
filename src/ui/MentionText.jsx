@@ -1,5 +1,5 @@
-import styled from "styled-components";
-import { useState } from "react";
+import styled, { keyframes } from "styled-components";
+import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { HiPlay } from "react-icons/hi2";
 import MatchLinkWithTooltip from "./MatchLinkWithTooltip";
@@ -35,12 +35,41 @@ const ExternalLink = styled.a`
     }
 `;
 
+// Skeleton loading animation
+const shimmer = keyframes`
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+`;
+
+// Container to maintain consistent height during load
+const ImageContainer = styled.div`
+    position: relative;
+    max-width: 100%;
+    border-radius: var(--border-radius-sm);
+    margin: 0.4rem 0;
+    /* Reserve space: min-height prevents layout shift, aspect-ratio provides natural sizing */
+    min-height: ${(props) => (props.$isLoaded ? "0" : "15rem")};
+    max-height: 30rem;
+    overflow: hidden;
+    background: ${(props) =>
+        props.$isLoaded
+            ? "transparent"
+            : "linear-gradient(90deg, var(--tertiary-background-color) 25%, var(--secondary-background-color) 50%, var(--tertiary-background-color) 75%)"};
+    background-size: 200% 100%;
+    animation: ${(props) => (props.$isLoaded ? "none" : shimmer)} 1.5s infinite;
+`;
+
 const GifImage = styled.img`
     max-width: 100%;
     max-height: 30rem;
     border-radius: var(--border-radius-sm);
     display: block;
-    margin: 0.4rem 0;
+    opacity: ${(props) => (props.$isLoaded ? 1 : 0)};
+    transition: opacity 0.2s ease-in;
 `;
 
 const UploadedImage = styled.img`
@@ -48,14 +77,61 @@ const UploadedImage = styled.img`
     max-height: 30rem;
     border-radius: var(--border-radius-sm);
     display: block;
-    margin: 0.4rem 0;
     cursor: pointer;
-    transition: opacity 0.2s;
+    opacity: ${(props) => (props.$isLoaded ? 1 : 0)};
+    transition: opacity 0.2s ease-in;
 
     &:hover {
         opacity: 0.9;
     }
 `;
+
+// Wrapper component for GIF images with loading state
+function GifImageWithPlaceholder({ src, alt = "GIF" }) {
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    const handleLoad = useCallback(() => {
+        setIsLoaded(true);
+    }, []);
+
+    return (
+        <ImageContainer $isLoaded={isLoaded}>
+            <GifImage
+                src={src}
+                alt={alt}
+                loading="lazy"
+                $isLoaded={isLoaded}
+                onLoad={handleLoad}
+            />
+        </ImageContainer>
+    );
+}
+
+// Wrapper component for uploaded images with loading state
+function UploadedImageWithPlaceholder({
+    src,
+    alt = "Uploaded image",
+    onClick,
+}) {
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    const handleLoad = useCallback(() => {
+        setIsLoaded(true);
+    }, []);
+
+    return (
+        <ImageContainer $isLoaded={isLoaded}>
+            <UploadedImage
+                src={src}
+                alt={alt}
+                loading="lazy"
+                $isLoaded={isLoaded}
+                onLoad={handleLoad}
+                onClick={onClick}
+            />
+        </ImageContainer>
+    );
+}
 
 // YouTube Embed Styled Components
 const YouTubeContainer = styled.div`
@@ -239,10 +315,9 @@ function YouTubeEmbed({ videoId, isShort, startTime, originalUrl }) {
 // Helper component for clickable images that open the viewer
 function ClickableImage({ src, onOpenViewer }) {
     return (
-        <UploadedImage
+        <UploadedImageWithPlaceholder
             src={src}
             alt="Uploaded image"
-            loading="lazy"
             onClick={() => onOpenViewer(src)}
         />
     );
@@ -260,7 +335,7 @@ function MentionText({ content }) {
     const gifOnlyRegex = /^\[gif:(https?:\/\/[^\]]+)\]$/;
     const gifOnlyMatch = content.match(gifOnlyRegex);
     if (gifOnlyMatch) {
-        return <GifImage src={gifOnlyMatch[1]} alt="GIF" loading="lazy" />;
+        return <GifImageWithPlaceholder src={gifOnlyMatch[1]} alt="GIF" />;
     }
 
     // Check if entire content is just an uploaded image
@@ -269,10 +344,9 @@ function MentionText({ content }) {
     if (imgOnlyMatch) {
         return (
             <>
-                <UploadedImage
+                <UploadedImageWithPlaceholder
                     src={imgOnlyMatch[1]}
                     alt="Uploaded image"
-                    loading="lazy"
                     onClick={() => setViewerImage(imgOnlyMatch[1])}
                 />
                 {viewerImage && (
@@ -457,11 +531,10 @@ function MentionText({ content }) {
             );
         } else if (m.type === "gif") {
             parts.push(
-                <GifImage
+                <GifImageWithPlaceholder
                     key={`gif-${m.index}`}
                     src={m.url}
                     alt="GIF"
-                    loading="lazy"
                 />
             );
         } else if (m.type === "img") {

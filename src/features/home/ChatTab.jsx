@@ -1,6 +1,13 @@
 import React from "react";
 import styled from "styled-components";
-import { useRef, useEffect, useMemo, useState, useCallback } from "react";
+import {
+    useRef,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useState,
+    useCallback,
+} from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { HiChatBubbleLeftRight, HiChevronDoubleDown } from "react-icons/hi2";
@@ -40,6 +47,8 @@ const MessagesContainer = styled.div`
     padding: 1rem;
     position: relative;
     -webkit-overflow-scrolling: touch;
+    /* Disable browser auto scroll anchoring - we handle it manually for infinite scroll */
+    overflow-anchor: none;
     /* Force GPU acceleration for smoother rendering on mobile */
     will-change: transform;
     transform: translateZ(0);
@@ -94,6 +103,20 @@ const EmptyState = styled.div`
         font-size: 4rem;
         opacity: 0.5;
     }
+`;
+
+// Overlay that covers the chat while media is loading
+const MediaLoadingOverlay = styled.div`
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-background-color);
+    z-index: 10;
+    opacity: ${(props) => (props.$isVisible ? 1 : 0)};
+    visibility: ${(props) => (props.$isVisible ? "visible" : "hidden")};
+    transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
 `;
 
 const EmptyText = styled.p`
@@ -216,12 +239,29 @@ function ChatTab() {
     const [highlightedMessageId, setHighlightedMessageId] = useState(null);
     const [pendingScrollToMessageId, setPendingScrollToMessageId] =
         useState(null);
+    // Track media loading state - wait for images before showing chat
+    const [isMediaLoading, setIsMediaLoading] = useState(true);
+    const mediaLoadTimeoutRef = useRef(null);
     const prevMessageCountRef = useRef(0);
     const isNearBottomRef = useRef(true);
     const prevFirstMessageIdRef = useRef(null);
     const pendingScrollRef = useRef(false);
     const hasMarkedAsReadRef = useRef(false);
     const lastScrollRequestRef = useRef(null);
+    // Scroll restoration for infinite scroll (mobile) - anchor-based approach
+    // Instead of saving scrollTop/scrollHeight, we save the first visible message ID
+    // and its offset from the container top, then restore relative to that anchor
+    const scrollRestorationRef = useRef({
+        anchorMessageId: null,
+        anchorOffsetFromTop: 0,
+        needsRestore: false,
+    });
+    // Track previous isFetchingNextPage to detect fetch completion
+    const prevIsFetchingRef = useRef(false);
+    // Track if user manually scrolled away from bottom (prevents auto-scroll on new messages)
+    const userScrolledAwayRef = useRef(false);
+    // Debounce fetch to prevent rapid re-triggers
+    const fetchCooldownRef = useRef(false);
     const [searchParams] = useSearchParams();
     const location = useLocation();
 
@@ -290,6 +330,70 @@ function ChatTab() {
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
+
+    // Track media loading - wait for images before showing chat to prevent jumping
+    // This effect only runs on initial load (when isMediaLoading is still true)
+    useEffect(() => {
+        // Skip if already done loading media or if messages are still loading
+        if (!isMediaLoading || isLoadingMessages || !messages?.length) return;
+
+        const container = messagesContainerRef.current;
+
+        // If no container yet, set a small timeout and re-check
+        // The container might not be available on first render
+        if (!container) {
+            const checkContainerTimer = setTimeout(() => {
+                // Force re-run by setting state
+                setIsMediaLoading(true);
+            }, 100);
+            return () => clearTimeout(checkContainerTimer);
+        }
+
+        // Wait one frame to ensure all images are rendered in the DOM
+        const rafId = requestAnimationFrame(() => {
+            // Find all images that need to load
+            const images = container.querySelectorAll("img");
+            const unloadedImages = Array.from(images).filter(
+                (img) => !img.complete
+            );
+
+            // If no images or all loaded, we're done
+            if (unloadedImages.length === 0) {
+                setIsMediaLoading(false);
+                return;
+            }
+
+            let loadedCount = 0;
+            const totalToLoad = unloadedImages.length;
+
+            // Handler for each image load
+            const handleImageLoad = () => {
+                loadedCount++;
+                // All images loaded - we're done
+                if (loadedCount >= totalToLoad) {
+                    clearTimeout(mediaLoadTimeoutRef.current);
+                    setIsMediaLoading(false);
+                }
+            };
+
+            // Attach load handlers to all unloaded images
+            unloadedImages.forEach((img) => {
+                img.addEventListener("load", handleImageLoad, { once: true });
+                img.addEventListener("error", handleImageLoad, { once: true }); // Count errors as "loaded" to not block forever
+            });
+
+            // Timeout fallback - don't wait forever (max 3 seconds)
+            mediaLoadTimeoutRef.current = setTimeout(() => {
+                setIsMediaLoading(false);
+            }, 3000);
+        });
+
+        // Cleanup
+        return () => {
+            cancelAnimationFrame(rafId);
+            clearTimeout(mediaLoadTimeoutRef.current);
+        };
+    }, [isMediaLoading, isLoadingMessages, messages?.length]);
 
     // Detect new scroll request from URL params or location state
     useEffect(() => {
@@ -453,24 +557,140 @@ function ChatTab() {
         if (nearBottom) {
             setShowJumpToLatest(false);
             setNewMessagesCount(0);
+            // User returned to bottom - reset scroll away flag
+            userScrolledAwayRef.current = false;
 
             if (!wasNearBottom && currentKicker) {
                 markAsRead();
             }
         } else {
             setShowJumpToLatest(true);
+            // User scrolled away from bottom - set flag to prevent auto-scroll
+            userScrolledAwayRef.current = true;
         }
     }, [currentKicker, markAsRead, isMobile]);
 
-    // Infinite scroll - load more when scrolling to top
+    // Infinite scroll - load more when scrolling to top (Mobile)
+    // Anchor-based scroll restoration: find the anchor message and restore scroll relative to it
+    // This runs synchronously before paint via useLayoutEffect
+    useLayoutEffect(() => {
+        if (!isMobile) return;
+        
+        const restoration = scrollRestorationRef.current;
+        const container = messagesContainerRef.current;
+        
+        // Only restore when transitioning from fetching to not-fetching
+        const wasFetching = prevIsFetchingRef.current;
+        prevIsFetchingRef.current = isFetchingNextPage;
+        
+        if (restoration.needsRestore && container && wasFetching && !isFetchingNextPage) {
+            // Find the anchor message element by its data attribute
+            const anchorElement = container.querySelector(
+                `[data-message-id="${restoration.anchorMessageId}"]`
+            );
+            
+            if (anchorElement) {
+                // Calculate where the anchor element is now and restore scroll
+                // so the anchor stays at the same visual position
+                const newAnchorOffset = anchorElement.offsetTop;
+                const targetScrollTop = newAnchorOffset - restoration.anchorOffsetFromTop;
+                
+                // Use requestAnimationFrame to ensure DOM has settled
+                requestAnimationFrame(() => {
+                    container.scrollTop = Math.max(0, targetScrollTop);
+                    // Reset cooldown after successful restoration
+                    fetchCooldownRef.current = false;
+                });
+            } else {
+                // Anchor not found - reset cooldown anyway to prevent stuck state
+                fetchCooldownRef.current = false;
+            }
+            
+            restoration.needsRestore = false;
+        }
+    }, [messages, isMobile, isFetchingNextPage]); // Run when messages change or fetch completes
+
     useEffect(() => {
         const container = messagesContainerRef.current;
-        if (!container || !hasNextPage) return;
+        if (!container || !hasNextPage || !isMobile) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && !isFetchingNextPage) {
+                if (
+                    entries[0].isIntersecting &&
+                    !isFetchingNextPage &&
+                    !fetchCooldownRef.current
+                ) {
+                    // Find the first visible message to use as scroll anchor
+                    // This message will be used to restore scroll position after new messages load
+                    const messageElements = container.querySelectorAll('[data-message-id]');
+                    let anchorMessageId = null;
+                    let anchorOffsetFromTop = 0;
+                    
+                    for (const el of messageElements) {
+                        const rect = el.getBoundingClientRect();
+                        const containerRect = container.getBoundingClientRect();
+                        // Find first message that's at least partially visible in the viewport
+                        if (rect.bottom > containerRect.top && rect.top < containerRect.bottom) {
+                            anchorMessageId = el.getAttribute('data-message-id');
+                            // Save offset from container top (how far down from container top the element is)
+                            anchorOffsetFromTop = el.offsetTop - container.scrollTop;
+                            break;
+                        }
+                    }
+                    
+                    // Save anchor-based scroll state
+                    scrollRestorationRef.current = {
+                        anchorMessageId,
+                        anchorOffsetFromTop,
+                        needsRestore: true,
+                    };
+                    
+                    // Set cooldown and fetch
+                    fetchCooldownRef.current = true;
                     fetchNextPage();
+                    
+                    // Fallback: reset cooldown after timeout if restoration fails
+                    setTimeout(() => {
+                        if (fetchCooldownRef.current) {
+                            fetchCooldownRef.current = false;
+                        }
+                    }, 2000);
+                }
+            },
+            { 
+                root: container, 
+                threshold: 0.1,
+                // Add rootMargin buffer to delay trigger - user must scroll 50px into the zone
+                rootMargin: '-50px 0px 0px 0px'
+            }
+        );
+
+        if (loadMoreRef.current) {
+            observer.observe(loadMoreRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage, isMobile]);
+
+    // Desktop infinite scroll (no restoration needed due to column-reverse)
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container || !hasNextPage || isMobile) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (
+                    entries[0].isIntersecting &&
+                    !isFetchingNextPage &&
+                    !fetchCooldownRef.current
+                ) {
+                    fetchCooldownRef.current = true;
+                    fetchNextPage();
+                    // Reset cooldown after a short delay
+                    setTimeout(() => {
+                        fetchCooldownRef.current = false;
+                    }, 500);
                 }
             },
             { root: container, threshold: 0.1 }
@@ -481,7 +701,7 @@ function ChatTab() {
         }
 
         return () => observer.disconnect();
-    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage, isMobile]);
 
     // Helper function to reliably scroll to bottom
     // Mobile (column): scrollTop = scrollHeight (standard scroll to bottom)
@@ -625,8 +845,8 @@ function ChatTab() {
         scrollToBottom();
 
         // Scroll a few more frames to ensure layout is complete
-        // iOS Safari needs more frames for layout settling
-        const maxFrames = isMobile ? 15 : 10;
+        // Reduced frame count to prevent interference with user scroll
+        const maxFrames = isMobile ? 5 : 5;
         let frameCount = 0;
         let rafId;
         const scrollFrames = () => {
@@ -635,7 +855,10 @@ function ChatTab() {
             if (frameCount < maxFrames) {
                 rafId = requestAnimationFrame(scrollFrames);
             } else {
-                // After initial frames, disconnect resize observer to avoid interfering with user scroll
+                // IMPORTANT: Disconnect ALL observers after initial scroll to prevent
+                // interference when loading older messages
+                isCleanedUp = true;
+                mutationObserver.disconnect();
                 resizeObserver.disconnect();
                 pendingScrollRef.current = false;
             }
@@ -655,11 +878,27 @@ function ChatTab() {
     }, [scrollTrigger, scrollToBottomReliable, isMobile]);
 
     // Track new messages and auto-scroll if near bottom
+    // IMPORTANT: Only scroll for NEW messages (at front of array), not for older messages loaded via infinite scroll
     useEffect(() => {
         if (!messages.length) return;
 
         const currentFirstMessageId = messages[0]?.id;
         const newCount = messages.length - prevMessageCountRef.current;
+
+        // Detect if this is loading OLDER messages (infinite scroll) vs NEW messages
+        // When loading older messages: first message ID stays the same, but count increases
+        // When receiving new messages: first message ID changes (new message at front)
+        const isLoadingOlderMessages =
+            newCount > 0 &&
+            prevMessageCountRef.current > 0 &&
+            currentFirstMessageId === prevFirstMessageIdRef.current;
+
+        // Skip scroll logic entirely when loading older messages
+        if (isLoadingOlderMessages) {
+            prevMessageCountRef.current = messages.length;
+            // Don't update prevFirstMessageIdRef - it stays the same
+            return;
+        }
 
         const hasNewRecentMessages =
             newCount > 0 &&
@@ -699,9 +938,15 @@ function ChatTab() {
                     isCurrentlyNearBottom = true;
                 }
 
-                if (isCurrentlyNearBottom) {
+                // On mobile, also check if user manually scrolled away
+                // This prevents auto-scroll when user is reading old messages
+                const shouldAutoScroll =
+                    isCurrentlyNearBottom &&
+                    (!isMobile || !userScrolledAwayRef.current);
+
+                if (shouldAutoScroll) {
                     // Scroll using helper function with retries for iOS
-                    scrollToBottomReliable(container, { retryCount: 5 });
+                    scrollToBottomReliable(container, { retryCount: 3 });
                 } else {
                     setNewMessagesCount((prev) => prev + newCount);
                 }
@@ -713,7 +958,11 @@ function ChatTab() {
     }, [messages, currentPlayerId, isMobile, scrollToBottomReliable]);
 
     // Force repaint on mount (fixes mobile chat view on iOS Safari)
+    // Only runs once on initial mount
     useEffect(() => {
+        // Skip if already ready (prevent re-running)
+        if (isContainerReady) return;
+
         const container = messagesContainerRef.current;
         if (!container) return;
 
@@ -725,18 +974,27 @@ function ChatTab() {
         // Scroll to bottom - method depends on layout mode
         scrollToBottomReliable(container, { retryCount: 3 });
         setIsContainerReady(true);
-    }, [scrollToBottomReliable]); // Re-run if scroll method changes
+    }, [scrollToBottomReliable, isContainerReady]); // Re-run if scroll method changes
 
     // Initial scroll - scroll to bottom when messages first loaded
     // Uses MutationObserver to catch dynamically loaded images - NO TIMEOUTS
+    // IMPORTANT: Wait for media to load first to prevent jumping
     useEffect(() => {
         if (isLoadingMessages || !messages.length || hasInitiallyScrolled)
             return;
 
         if (isLoadingReactions) return;
 
+        // Wait for initial media (images/gifs) to load before scrolling
+        if (isMediaLoading) return;
+
         const container = messagesContainerRef.current;
         if (!container) return;
+
+        // Mark as initially scrolled FIRST to prevent re-runs
+        setHasInitiallyScrolled(true);
+        setIsContainerReady(true);
+        prevMessageCountRef.current = messages.length;
 
         // Force reflow to fix iOS Safari rendering issues
         // eslint-disable-next-line no-unused-expressions
@@ -803,8 +1061,8 @@ function ChatTab() {
             scrollToBottom();
 
             // Scroll a few frames for layout completion
-            // iOS Safari needs more frames
-            const maxFrames = isMobile ? 15 : 10;
+            // Then disconnect observers to prevent interference with user scroll
+            const maxFrames = 5;
             let frameCount = 0;
             let rafId;
             const scrollFrames = () => {
@@ -812,6 +1070,11 @@ function ChatTab() {
                 frameCount++;
                 if (frameCount < maxFrames) {
                     rafId = requestAnimationFrame(scrollFrames);
+                } else {
+                    // IMPORTANT: Disconnect observer after initial scroll to prevent
+                    // interference when loading older messages
+                    isActive = false;
+                    mutationObserver.disconnect();
                 }
             };
             rafId = requestAnimationFrame(scrollFrames);
@@ -827,13 +1090,10 @@ function ChatTab() {
                 imageLoadHandlers.clear();
             };
         }
-
-        setHasInitiallyScrolled(true);
-        setIsContainerReady(true);
-        prevMessageCountRef.current = messages.length;
     }, [
         isLoadingMessages,
         isLoadingReactions,
+        isMediaLoading,
         messages.length,
         hasInitiallyScrolled,
         deepLinkMessageId,
@@ -848,6 +1108,8 @@ function ChatTab() {
         }
         setShowJumpToLatest(false);
         setNewMessagesCount(0);
+        // Reset scroll away flag - user explicitly returned to bottom
+        userScrolledAwayRef.current = false;
     }
 
     function handleScrollToMessage(messageId) {
@@ -873,6 +1135,8 @@ function ChatTab() {
         if (!currentPlayerId) return;
 
         pendingScrollRef.current = true;
+        // Reset scroll away flag - user is sending a message, expects to see it
+        userScrolledAwayRef.current = false;
 
         const container = messagesContainerRef.current;
         if (container) {
@@ -1000,6 +1264,11 @@ function ChatTab() {
     return (
         <ChatTabWrapper>
             <ContentWrapper>
+                {/* Overlay while media (images/gifs) is loading */}
+                <MediaLoadingOverlay $isVisible={isMediaLoading}>
+                    <LoadingSpinner />
+                </MediaLoadingOverlay>
+
                 <MessagesContainer
                     ref={messagesContainerRef}
                     onScroll={handleScroll}
