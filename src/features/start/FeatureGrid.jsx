@@ -186,9 +186,9 @@ const features = [
     },
 ];
 
-function FeatureGrid() {
+function FeatureGrid({ id }) {
     return (
-        <Section>
+        <Section id={id}>
             <SectionTitle>Everything you need</SectionTitle>
             <SectionSubtitle>
                 Powerful features to track your table football games

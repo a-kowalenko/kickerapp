@@ -274,6 +274,7 @@ const defaultScreenshots = [
 ];
 
 function ScreenshotCarousel({
+    id,
     screenshots = defaultScreenshots,
     autoplayInterval = 5000,
 }) {
@@ -397,7 +398,7 @@ function ScreenshotCarousel({
     };
 
     return (
-        <Section>
+        <Section id={id}>
             <SectionTitle>See it in action</SectionTitle>
             <SectionSubtitle>
                 Explore the features that make KickerApp unique

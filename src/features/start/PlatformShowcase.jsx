@@ -162,9 +162,9 @@ const PlaceholderScreen = styled.div`
     font-style: italic;
 `;
 
-function PlatformShowcase({ desktopScreenshot, mobileScreenshot }) {
+function PlatformShowcase({ id, desktopScreenshot, mobileScreenshot }) {
     return (
-        <Section>
+        <Section id={id}>
             <SectionTitle>Play anywhere</SectionTitle>
             <SectionSubtitle>
                 Full experience on desktop and mobile devices

@@ -14,10 +14,17 @@ import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { useCreateKicker } from "../../features/kicker/useCreateKicker";
 import { useJoinKicker } from "../../features/kicker/useJoinKicker";
 import { useUpdateKickerOrder } from "../../features/kicker/useUpdateKickerOrder";
-import { FaBars } from "react-icons/fa";
+import { FaBars, FaTimes } from "react-icons/fa";
 import {
     HiOutlineQuestionMarkCircle,
     HiOutlineSquare3Stack3D,
+    HiSparkles,
+    HiChartBar,
+    HiDevicePhoneMobile,
+    HiPhoto,
+    HiHome,
+    HiOutlineBars3,
+    HiOutlineEnvelope,
 } from "react-icons/hi2";
 import { MdDragIndicator } from "react-icons/md";
 import { useUserKickers } from "../../features/kicker/useUserKickers";
@@ -30,6 +37,7 @@ import FeatureGrid from "./FeatureGrid";
 import PlatformShowcase from "./PlatformShowcase";
 import ScreenshotCarousel from "./ScreenshotCarousel";
 import PublicStats from "./PublicStats";
+import ContactForm from "./ContactForm";
 import { screenshotsUrl } from "../../services/supabase";
 
 // Screenshot filenames for PlatformShowcase
@@ -232,21 +240,31 @@ const AvatarPlaceholder = styled.div`
 `;
 
 const BurgerMenuContainer = styled.div`
-    display: flex;
+    display: none;
     position: absolute;
     left: 1.5rem;
-    top: 1.6rem;
+    top: 50%;
+    transform: translateY(-50%);
     gap: 1rem;
+
+    ${media.tablet} {
+        display: flex;
+    }
 `;
 
 const Navbar = styled.nav`
     display: flex;
-    border-left: 5px;
     align-items: center;
-    justify-content: ${(props) =>
-        props.$isAuthenticated ? "center" : "flex-start"};
-    padding: 1rem;
+    justify-content: center;
+    padding: 1rem 2rem;
     background-color: var(--primary-background-color);
+    position: relative;
+    gap: 3rem;
+
+    ${media.tablet} {
+        padding: 1rem;
+        gap: 1rem;
+    }
 `;
 
 const NavButtonsContainer = styled.div`
@@ -267,6 +285,177 @@ const NavButton = styled.button`
     &:hover {
         text-decoration: underline;
     }
+`;
+
+const NavLinksContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    ${media.tablet} {
+        display: none;
+    }
+`;
+
+const NavLinkItem = styled.button`
+    background: none;
+    border: none;
+    color: var(--secondary-text-color);
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 0.8rem 1.2rem;
+    border-radius: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+
+    &:hover {
+        color: var(--primary-text-color);
+        background: var(--secondary-background-color);
+    }
+
+    & svg {
+        font-size: 1.6rem;
+    }
+`;
+
+const MobileNavOverlay = styled.div`
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+
+    ${media.tablet} {
+        display: block;
+    }
+
+    &.active {
+        opacity: 1;
+        visibility: visible;
+    }
+`;
+
+const MobileNavMenu = styled.div`
+    display: none;
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 32rem;
+    height: 100%;
+    background: var(--secondary-background-color);
+    z-index: 1002;
+    flex-direction: column;
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.2);
+    border-radius: 0 1.2rem 1.2rem 0;
+    transition: left 0.3s ease-in-out;
+    overflow: hidden;
+
+    ${media.tablet} {
+        display: flex;
+    }
+
+    ${media.mobile} {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    &.active {
+        left: 0;
+    }
+`;
+
+const MobileNavHeader = styled.div`
+    background: linear-gradient(
+        135deg,
+        var(--primary-button-color) 0%,
+        var(--primary-button-color-hover) 100%
+    );
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+`;
+
+const MobileNavTitle = styled.h3`
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--primary-button-color-text);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    & svg {
+        font-size: 2.4rem;
+    }
+`;
+
+const MobileNavLinks = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+`;
+
+const MobileNavLinkItem = styled.button`
+    background: var(--primary-background-color);
+    border: 2px solid transparent;
+    color: var(--primary-text-color);
+    font-size: 1.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 1.2rem 1.5rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    transition: all 0.2s ease;
+    text-align: left;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+    &:hover {
+        border-color: var(--primary-button-color);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    &:active {
+        transform: scale(0.98);
+    }
+
+    & svg {
+        font-size: 2rem;
+        color: var(--primary-button-color);
+    }
+`;
+
+const MobileNavCloseButton = styled(ButtonIcon)`
+    color: var(--primary-button-color-text);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.8rem;
+    padding: 0.6rem;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+`;
+
+const MobileNavAuthButtons = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--primary-border-color);
 `;
 
 const Logo = styled.img`
@@ -601,6 +790,9 @@ function Startpage() {
     );
     const toggleSidebar = () => setSidebarActive(!sidebarActive);
 
+    const [mobileNavActive, setMobileNavActive] = useState(false);
+    const toggleMobileNav = () => setMobileNavActive(!mobileNavActive);
+
     const {
         currentKicker,
         setCurrentKicker,
@@ -783,17 +975,53 @@ function Startpage() {
         navigate("/home");
     }
 
+    const NAV_SECTIONS = [
+        { id: "hero", label: "Home", icon: HiHome },
+        { id: "stats", label: "Stats", icon: HiChartBar },
+        { id: "features", label: "Features", icon: HiSparkles },
+        { id: "platform", label: "Platform", icon: HiDevicePhoneMobile },
+        { id: "screenshots", label: "Screenshots", icon: HiPhoto },
+        { id: "contact", label: "Contact", icon: HiOutlineEnvelope },
+    ];
+
+    function scrollToSection(sectionId) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+            element.scrollIntoView({ behavior: "smooth" });
+        }
+        setMobileNavActive(false);
+    }
+
     return (
         <StyledStartpage>
             <Navbar $isAuthenticated={isAuthenticated}>
-                {!isLoading && isAuthenticated && (
-                    <BurgerMenuContainer>
+                <BurgerMenuContainer>
+                    <ButtonIcon onClick={toggleMobileNav}>
+                        <FaBars />
+                    </ButtonIcon>
+                    {!isLoading && isAuthenticated && (
                         <ButtonIcon onClick={toggleSidebar}>
-                            <FaBars />
+                            <HiOutlineSquare3Stack3D />
                         </ButtonIcon>
-                    </BurgerMenuContainer>
-                )}
-                <Logo src={logo} alt="Logo" />
+                    )}
+                </BurgerMenuContainer>
+                <Logo
+                    src={logo}
+                    alt="Logo"
+                    onClick={() => scrollToSection("hero")}
+                    style={{ cursor: "pointer" }}
+                />
+                <NavLinksContainer>
+                    {NAV_SECTIONS.map((section) => (
+                        <NavLinkItem
+                            key={section.id}
+                            onClick={() => scrollToSection(section.id)}
+                        >
+                            <section.icon />
+                            {section.label}
+                        </NavLinkItem>
+                    ))}
+                </NavLinksContainer>
                 <ResponsiveNavButtonsContainer>
                     <DarkModeToggle />
                     {!isLoading && !isAuthenticated && (
@@ -813,6 +1041,68 @@ function Startpage() {
                     )}
                 </ResponsiveNavButtonsContainer>
             </Navbar>
+
+            {/* Mobile Navigation Menu */}
+            <MobileNavOverlay
+                className={mobileNavActive ? "active" : ""}
+                onClick={() => setMobileNavActive(false)}
+            />
+            <MobileNavMenu className={mobileNavActive ? "active" : ""}>
+                <MobileNavHeader>
+                    <MobileNavTitle>
+                        <HiOutlineBars3 />
+                        <span>Menu</span>
+                    </MobileNavTitle>
+                    <MobileNavCloseButton
+                        onClick={() => setMobileNavActive(false)}
+                    >
+                        <HiXMark />
+                    </MobileNavCloseButton>
+                </MobileNavHeader>
+                <MobileNavLinks>
+                    {NAV_SECTIONS.map((section) => (
+                        <MobileNavLinkItem
+                            key={section.id}
+                            onClick={() => scrollToSection(section.id)}
+                        >
+                            <section.icon />
+                            {section.label}
+                        </MobileNavLinkItem>
+                    ))}
+                </MobileNavLinks>
+                <MobileNavAuthButtons>
+                    {!isLoading && !isAuthenticated && (
+                        <>
+                            <Button
+                                as={NavLink}
+                                to="/register"
+                                onClick={() => setMobileNavActive(false)}
+                            >
+                                Sign Up
+                            </Button>
+                            <Button
+                                as={NavLink}
+                                to="/login"
+                                $variation="secondary"
+                                onClick={() => setMobileNavActive(false)}
+                            >
+                                Sign In
+                            </Button>
+                        </>
+                    )}
+                    {!isLoading && isAuthenticated && (
+                        <Button
+                            $variation="danger"
+                            onClick={() => {
+                                setMobileNavActive(false);
+                                logout();
+                            }}
+                        >
+                            Logout
+                        </Button>
+                    )}
+                </MobileNavAuthButtons>
+            </MobileNavMenu>
             {!isLoading && isAuthenticated && (
                 <>
                     <SidebarBackdrop
@@ -903,7 +1193,7 @@ function Startpage() {
                 </>
             )}
             <Main>
-                <HeroSection>
+                <HeroSection id="hero">
                     <Title>Welcome to KickerApp</Title>
                     <Tagline>The one and only table football manager</Tagline>
 
@@ -988,18 +1278,23 @@ function Startpage() {
                     </CTASection>
                 </HeroSection>
 
-                <PublicStats />
+                <PublicStats id="stats" />
 
                 <SectionDivider />
 
-                <FeatureGrid />
+                <FeatureGrid id="features" />
 
                 <PlatformShowcase
+                    id="platform"
                     desktopScreenshot={PLATFORM_SCREENSHOTS.desktop}
                     mobileScreenshot={PLATFORM_SCREENSHOTS.mobile}
                 />
 
-                <ScreenshotCarousel />
+                <ScreenshotCarousel id="screenshots" />
+
+                <SectionDivider />
+
+                <ContactForm id="contact" />
             </Main>
             <Footer>
                 <div>© 2023-{new Date().getFullYear()} Andreas Kowalenko</div>

@@ -119,7 +119,7 @@ function formatNumber(num) {
     return num?.toLocaleString() ?? "0";
 }
 
-function PublicStats() {
+function PublicStats({ id }) {
     const { stats, isLoading, error } = usePublicStats();
 
     // Don't show section if there's an error (fail silently for public stats)
@@ -153,7 +153,7 @@ function PublicStats() {
     ];
 
     return (
-        <Section>
+        <Section id={id}>
             <StatsGrid>
                 {statsConfig.map((stat) => (
                     <StatCard key={stat.title}>
