@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
@@ -118,6 +118,9 @@ const ChatContent = styled.div`
     min-height: 0;
     overflow: hidden;
     background-color: var(--secondary-background-color);
+    /* Force GPU layer for iOS Safari */
+    transform: translateZ(0);
+    backface-visibility: hidden;
 `;
 
 const TabPanel = styled.div`
@@ -126,6 +129,8 @@ const TabPanel = styled.div`
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    /* Force GPU layer for iOS Safari */
+    transform: translateZ(0);
 `;
 
 function ChatPage() {
@@ -134,12 +139,35 @@ function ChatPage() {
         return saved === "comments" ? "comments" : "chat";
     });
 
+    const contentRef = useRef(null);
     const { currentKicker } = useKicker();
     const { user } = useUser();
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
     const { isKeyboardOpen, blurInput } = useKeyboard();
+
+    // Force repaint on mount to fix iOS Safari rendering issues
+    useEffect(() => {
+        const container = contentRef.current;
+        if (!container) return;
+
+        // Force reflow/repaint
+        const forceRepaint = () => {
+            if (!container) return;
+            // eslint-disable-next-line no-unused-expressions
+            container.offsetHeight;
+        };
+
+        forceRepaint();
+
+        const raf = requestAnimationFrame(() => {
+            forceRepaint();
+            requestAnimationFrame(forceRepaint);
+        });
+
+        return () => cancelAnimationFrame(raf);
+    }, [activeTab]); // Also run when tab changes
 
     // Persist tab selection
     useEffect(() => {
@@ -172,9 +200,18 @@ function ChatPage() {
             const clickedOnInput = e.target.closest("[contenteditable]");
             const clickedOnButton = e.target.closest("button");
             const clickedOnLink = e.target.closest("a");
+            // Also check for the input container area
+            const clickedOnInputContainer = e.target.closest(
+                '[data-chat-input="true"]'
+            );
 
-            // If clicking on input area, don't interfere
-            if (clickedOnInput || clickedOnButton || clickedOnLink) {
+            // If clicking on input area or any interactive element, don't interfere
+            if (
+                clickedOnInput ||
+                clickedOnButton ||
+                clickedOnLink ||
+                clickedOnInputContainer
+            ) {
                 return;
             }
 
@@ -207,7 +244,7 @@ function ChatPage() {
                     )}
                 </TabButton>
             </TabBar>
-            <ChatContent onMouseDown={handleContentMouseDown}>
+            <ChatContent ref={contentRef} onMouseDown={handleContentMouseDown}>
                 {activeTab === "chat" && (
                     <TabPanel>
                         <ChatTab />

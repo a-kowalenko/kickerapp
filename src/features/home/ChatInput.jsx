@@ -993,7 +993,7 @@ const ChatInput = forwardRef(function ChatInput(
     if (!currentPlayer) return null;
 
     return (
-        <InputContainer>
+        <InputContainer data-chat-input="true">
             {/* Reply Banner */}
             {replyTo && (
                 <ReplyBanner>
@@ -1207,6 +1207,10 @@ const ChatInput = forwardRef(function ChatInput(
                         {(showSendButton || isSubmitting) && (
                             <SendButton
                                 $visible={showSendButton || isSubmitting}
+                                onMouseDown={(e) => {
+                                    // Prevent blur of input when clicking send button
+                                    e.preventDefault();
+                                }}
                                 onClick={handleSubmit}
                                 disabled={!canSubmit || isUploading}
                                 title="Send message"

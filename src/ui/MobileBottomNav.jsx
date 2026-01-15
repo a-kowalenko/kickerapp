@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
     HiOutlineHome,
     HiHome,
@@ -10,6 +10,18 @@ import {
 import { media } from "../utils/constants";
 import { useUnreadChatCount } from "../features/chat/useUnreadChatCount";
 import { useKeyboard } from "../contexts/KeyboardContext";
+
+// Check if device is a real mobile device (phone/tablet, not laptop with touchscreen)
+const isMobileDevice = () => {
+    if (typeof window === "undefined") return false;
+    // Check user agent for mobile devices
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const mobileRegex =
+        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i;
+    // Also check screen width as fallback (most phones are < 768px wide)
+    const isSmallScreen = window.innerWidth <= 768;
+    return mobileRegex.test(userAgent) || isSmallScreen;
+};
 
 const NavContainer = styled.nav`
     display: none;
@@ -121,9 +133,14 @@ const Label = styled.span`
 function MobileBottomNav() {
     const { unreadCount } = useUnreadChatCount();
     const { isKeyboardOpen } = useKeyboard();
+    const location = useLocation();
+
+    // Only hide navbar when keyboard is open on actual mobile devices AND on chat page
+    const isChatPage = location.pathname === "/chat";
+    const shouldHide = isKeyboardOpen && isMobileDevice() && isChatPage;
 
     return (
-        <NavContainer $hidden={isKeyboardOpen}>
+        <NavContainer $hidden={shouldHide}>
             <NavItem to="/home">
                 {({ isActive }) => (
                     <>

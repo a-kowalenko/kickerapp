@@ -61,8 +61,9 @@ const Main = styled.main`
 
     ${media.tablet} {
         padding: 1.6rem 0rem;
-        /* Space for mobile bottom nav */
-        padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+        /* Space for mobile bottom nav - ensure content isn't hidden */
+        padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
+        min-height: calc(100dvh - 66px);
         ${(props) =>
             props.$isChatPage &&
             `

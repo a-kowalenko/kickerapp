@@ -15,6 +15,7 @@ import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 import { useUser } from "../authentication/useUser";
 import { useKicker } from "../../contexts/KickerContext";
+import { useKeyboard } from "../../contexts/KeyboardContext";
 import { useChatReadStatus } from "../../hooks/useChatReadStatus";
 import { updateChatReadStatus } from "../../services/apiChat";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
@@ -34,6 +35,11 @@ const MessagesContainer = styled.div`
     padding: 1rem;
     position: relative;
     -webkit-overflow-scrolling: touch;
+    /* Force GPU acceleration for smoother rendering on mobile */
+    will-change: transform;
+    transform: translateZ(0);
+    /* Ensure immediate paint on iOS Safari */
+    backface-visibility: hidden;
 
     /* Prevent browser context menu on messages container for custom menu */
     & > * {
@@ -191,6 +197,7 @@ function formatDateDivider(date) {
 
 function ChatTab() {
     const messagesContainerRef = useRef(null);
+    const messagesEndRef = useRef(null);
     const loadMoreRef = useRef(null);
     const focusInputRef = useRef(null);
     const chatInputRef = useRef(null);
@@ -200,6 +207,7 @@ function ChatTab() {
     const [lastWhisperFrom, setLastWhisperFrom] = useState(null);
     const [scrollTrigger, setScrollTrigger] = useState(0);
     const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
+    const [isContainerReady, setIsContainerReady] = useState(false);
     const [highlightedMessageId, setHighlightedMessageId] = useState(null);
     const [pendingScrollToMessageId, setPendingScrollToMessageId] =
         useState(null);
@@ -258,6 +266,7 @@ function ChatTab() {
     const { data: kickerData } = useKickerInfo();
     const { user } = useUser();
     const { currentKicker } = useKicker();
+    const { isKeyboardOpen } = useKeyboard();
 
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
@@ -450,47 +459,148 @@ function ChatTab() {
         return () => observer.disconnect();
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-    // Dedicated effect for scrolling to bottom after sending a message
+    // Helper function to reliably scroll to bottom (works with column-reverse on iOS)
+    const scrollToBottomReliable = useCallback((container) => {
+        if (!container) return;
+        // For column-reverse, scrollTop = 0 is at the bottom (newest messages)
+        // But iOS Safari sometimes needs both approaches
+        container.scrollTop = 0;
+        // Also try scrollTo as backup
+        container.scrollTo?.({ top: 0, behavior: "instant" });
+    }, []);
+
+    // Fix iOS Safari scroll position after keyboard opens
+    // When input is focused, iOS scrolls to show the input, but with column-reverse
+    // this can scroll to the wrong position. We need to scroll back to bottom after keyboard opens.
     useEffect(() => {
-        if (scrollTrigger === 0) return;
+        if (!isKeyboardOpen) return;
 
         const container = messagesContainerRef.current;
         if (!container) return;
 
+        // Small delay to let iOS finish its default scroll behavior
+        const timeoutId = setTimeout(() => {
+            // Only scroll if we were near bottom before keyboard opened
+            if (
+                isNearBottomRef.current ||
+                Math.abs(container.scrollTop) < 200
+            ) {
+                scrollToBottomReliable(container);
+            }
+        }, 100);
+
+        return () => clearTimeout(timeoutId);
+    }, [isKeyboardOpen, scrollToBottomReliable]);
+
+    // Scroll to bottom when user sends a message
+    // Scrolls once immediately, then listens for image loads
+    useEffect(() => {
+        if (scrollTrigger === 0) return;
+
+        const container = messagesContainerRef.current;
+        if (!container) {
+            pendingScrollRef.current = false;
+            return;
+        }
+
+        // Track if user has scrolled away - if so, stop auto-scrolling
+        let userScrolledAway = false;
+        let isCleanedUp = false;
+
         const scrollToBottom = () => {
-            container.scrollTop = 0;
-            try {
-                container.scrollTo(0, 0);
-            } catch (e) {
-                // Ignore if not supported
+            if (userScrolledAway || isCleanedUp) return;
+            scrollToBottomReliable(container);
+        };
+
+        // Detect if user scrolls away (only after initial scroll settles)
+        let scrollListenerEnabled = false;
+        const handleUserScroll = () => {
+            if (!scrollListenerEnabled) return;
+            // If scrollTop is not near 0, user scrolled away
+            if (Math.abs(container.scrollTop) > 100) {
+                userScrolledAway = true;
             }
         };
 
-        const mutationObserver = new MutationObserver(() => {
-            scrollToBottom();
-        });
-
-        mutationObserver.observe(container, { childList: true, subtree: true });
-
+        // Scroll immediately
         scrollToBottom();
 
-        const timeouts = [
-            setTimeout(scrollToBottom, 0),
-            setTimeout(scrollToBottom, 50),
-            setTimeout(scrollToBottom, 100),
-            setTimeout(scrollToBottom, 200),
-            setTimeout(() => {
-                scrollToBottom();
+        // Enable scroll listener after a brief delay to avoid false positives
+        const enableTimeout = setTimeout(() => {
+            scrollListenerEnabled = true;
+        }, 300);
+
+        // Add scroll listener to detect user interaction
+        container.addEventListener("scroll", handleUserScroll, {
+            passive: true,
+        });
+
+        // Track all image load handlers for cleanup
+        const imageLoadHandlers = new Map();
+
+        // Attach load listener to an image
+        const observeImage = (img) => {
+            if (!img.complete && !imageLoadHandlers.has(img)) {
+                const handler = () => scrollToBottom();
+                imageLoadHandlers.set(img, handler);
+                img.addEventListener("load", handler, { once: true });
+            }
+        };
+
+        // Observe all current images
+        container.querySelectorAll("img").forEach(observeImage);
+
+        // MutationObserver to catch new images added to DOM (e.g. GIFs loading)
+        const mutationObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.tagName === "IMG") {
+                            observeImage(node);
+                        }
+                        node.querySelectorAll?.("img").forEach(observeImage);
+                    }
+                });
+            });
+        });
+
+        mutationObserver.observe(container, {
+            childList: true,
+            subtree: true,
+        });
+
+        // Also scroll after next paint and a few more times for iOS
+        let frameCount = 0;
+        let rafId;
+        const scrollFrames = () => {
+            scrollToBottom();
+            frameCount++;
+            if (frameCount < 10) {
+                rafId = requestAnimationFrame(scrollFrames);
+            } else {
                 pendingScrollRef.current = false;
-                mutationObserver.disconnect();
-            }, 500),
-        ];
+            }
+        };
+        rafId = requestAnimationFrame(scrollFrames);
+
+        // Stop observing after 2 seconds
+        const stopTimeout = setTimeout(() => {
+            mutationObserver.disconnect();
+        }, 2000);
 
         return () => {
-            timeouts.forEach(clearTimeout);
+            isCleanedUp = true;
+            clearTimeout(enableTimeout);
+            clearTimeout(stopTimeout);
+            cancelAnimationFrame(rafId);
             mutationObserver.disconnect();
+            container.removeEventListener("scroll", handleUserScroll);
+            imageLoadHandlers.forEach((handler, img) => {
+                img.removeEventListener("load", handler);
+            });
+            imageLoadHandlers.clear();
         };
-    }, [scrollTrigger]);
+    }, [scrollTrigger, scrollToBottomReliable]);
 
     // Track new messages and auto-scroll if near bottom
     useEffect(() => {
@@ -513,6 +623,7 @@ function ChatTab() {
                 setLastWhisperFrom(latestMessage.player);
             }
 
+            // If we're actively sending a message, the scrollTrigger effect handles scrolling
             if (!pendingScrollRef.current) {
                 const container = messagesContainerRef.current;
                 const threshold = 100;
@@ -521,11 +632,8 @@ function ChatTab() {
                     : true;
 
                 if (isCurrentlyNearBottom) {
-                    if (container) {
-                        setTimeout(() => {
-                            container.scrollTop = 0;
-                        }, 50);
-                    }
+                    // Scroll using helper function
+                    scrollToBottomReliable(container);
                 } else {
                     setNewMessagesCount((prev) => prev + newCount);
                 }
@@ -536,41 +644,24 @@ function ChatTab() {
         prevFirstMessageIdRef.current = currentFirstMessageId;
     }, [messages, currentPlayerId]);
 
-    // Force scroll to bottom on mount with retries (fixes mobile chat view)
+    // Force repaint on mount (fixes mobile chat view on iOS Safari)
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
 
-        const scrollToBottom = () => {
-            if (container) {
-                container.scrollTop = 0;
-            }
-        };
+        // Force a reflow/repaint to fix iOS Safari rendering issues
+        // eslint-disable-next-line no-unused-expressions
+        container.offsetHeight;
+        container.style.transform = "translateZ(0)";
 
-        // Multiple attempts to ensure scroll works even with delayed renders
-        scrollToBottom();
-
-        // Use requestAnimationFrame for smoother scroll after render
-        const raf1 = requestAnimationFrame(scrollToBottom);
-        const raf2 = requestAnimationFrame(() =>
-            requestAnimationFrame(scrollToBottom)
-        );
-
-        const timeouts = [
-            setTimeout(scrollToBottom, 50),
-            setTimeout(scrollToBottom, 150),
-            setTimeout(scrollToBottom, 300),
-            setTimeout(scrollToBottom, 500),
-        ];
-
-        return () => {
-            timeouts.forEach(clearTimeout);
-            cancelAnimationFrame(raf1);
-            cancelAnimationFrame(raf2);
-        };
+        // Scroll to bottom using scrollTop (column-reverse means 0 is bottom)
+        container.scrollTop = 0;
+        container.scrollTo?.({ top: 0, behavior: "instant" });
+        setIsContainerReady(true);
     }, []); // Only on mount
 
-    // Initial scroll - just scroll to top when first loaded
+    // Initial scroll - scroll to bottom when messages first loaded
+    // Uses MutationObserver to catch dynamically loaded images
     useEffect(() => {
         if (isLoadingMessages || !messages.length || hasInitiallyScrolled)
             return;
@@ -578,26 +669,109 @@ function ChatTab() {
         if (isLoadingReactions) return;
 
         const container = messagesContainerRef.current;
-        if (container) {
-            // Don't interfere if there's a deep link - let the scroll effect handle it
-            if (!deepLinkMessageId) {
-                container.scrollTop = 0;
-            }
-            setHasInitiallyScrolled(true);
-            prevMessageCountRef.current = messages.length;
+        if (!container) return;
+
+        // Force reflow to fix iOS Safari rendering issues
+        // eslint-disable-next-line no-unused-expressions
+        container.offsetHeight;
+        container.style.transform = "translateZ(0)";
+
+        // Don't interfere if there's a deep link - let the scroll effect handle it
+        if (!deepLinkMessageId) {
+            // Track all image load handlers for cleanup
+            const imageLoadHandlers = new Map();
+            let isActive = true;
+
+            const scrollToBottom = () => {
+                if (!isActive) return;
+                scrollToBottomReliable(container);
+            };
+
+            // Attach load listener to an image
+            const observeImage = (img) => {
+                if (!img.complete && !imageLoadHandlers.has(img)) {
+                    const handler = () => scrollToBottom();
+                    imageLoadHandlers.set(img, handler);
+                    img.addEventListener("load", handler, { once: true });
+                }
+            };
+
+            // Observe all current images
+            container.querySelectorAll("img").forEach(observeImage);
+
+            // MutationObserver to catch new images added to DOM (e.g. GIFs loading)
+            const mutationObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Check if the node itself is an image
+                            if (node.tagName === "IMG") {
+                                observeImage(node);
+                            }
+                            // Check for images within the added node
+                            node.querySelectorAll?.("img").forEach(
+                                observeImage
+                            );
+                        }
+                    });
+                });
+            });
+
+            mutationObserver.observe(container, {
+                childList: true,
+                subtree: true,
+            });
+
+            // Initial scroll
+            scrollToBottom();
+
+            // Scroll multiple times over ~300ms to handle iOS Safari delays
+            let frameCount = 0;
+            let rafId;
+            const scrollFrames = () => {
+                scrollToBottom();
+                frameCount++;
+                if (frameCount < 15) {
+                    rafId = requestAnimationFrame(scrollFrames);
+                }
+            };
+            rafId = requestAnimationFrame(scrollFrames);
+
+            // Stop observing after 3 seconds (images should be loaded by then)
+            const stopTimeout = setTimeout(() => {
+                isActive = false;
+                mutationObserver.disconnect();
+            }, 3000);
+
+            // Cleanup
+            return () => {
+                isActive = false;
+                clearTimeout(stopTimeout);
+                cancelAnimationFrame(rafId);
+                mutationObserver.disconnect();
+                imageLoadHandlers.forEach((handler, img) => {
+                    img.removeEventListener("load", handler);
+                });
+                imageLoadHandlers.clear();
+            };
         }
+
+        setHasInitiallyScrolled(true);
+        setIsContainerReady(true);
+        prevMessageCountRef.current = messages.length;
     }, [
         isLoadingMessages,
         isLoadingReactions,
         messages.length,
         hasInitiallyScrolled,
         deepLinkMessageId,
+        scrollToBottomReliable,
     ]);
 
     function handleJumpToLatest() {
         const container = messagesContainerRef.current;
         if (container) {
-            container.scrollTop = 0;
+            scrollToBottomReliable(container);
         }
         setShowJumpToLatest(false);
         setNewMessagesCount(0);
@@ -629,7 +803,7 @@ function ChatTab() {
 
         const container = messagesContainerRef.current;
         if (container) {
-            container.scrollTop = 0;
+            scrollToBottomReliable(container);
         }
 
         setShowJumpToLatest(false);
@@ -655,9 +829,10 @@ function ChatTab() {
 
     function handleReply(message) {
         setReplyTo(message);
-        setTimeout(() => {
+        // Focus input after state update using requestAnimationFrame
+        requestAnimationFrame(() => {
             focusInputRef.current?.();
-        }, 50);
+        });
     }
 
     function handleCancelReply() {
@@ -669,9 +844,9 @@ function ChatTab() {
         if (!player) return;
         // Call the ChatInput's external whisper setter
         chatInputRef.current?.setWhisperRecipient(player);
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             focusInputRef.current?.();
-        }, 50);
+        });
     }
 
     // Context menu: mention player in input
@@ -679,9 +854,9 @@ function ChatTab() {
         if (!player) return;
         // Call the ChatInput's external mention inserter
         chatInputRef.current?.insertMention(player);
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             focusInputRef.current?.();
-        }, 50);
+        });
     }
 
     function handleToggleReaction({ messageId, reactionType }) {
@@ -733,6 +908,11 @@ function ChatTab() {
                     ref={messagesContainerRef}
                     onScroll={handleScroll}
                 >
+                    {/* Scroll anchor - visually at bottom due to column-reverse */}
+                    <div
+                        ref={messagesEndRef}
+                        style={{ height: 0, width: "100%" }}
+                    />
                     {messages?.length === 0 ? (
                         <EmptyState>
                             <HiChatBubbleLeftRight />
