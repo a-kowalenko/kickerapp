@@ -3,10 +3,11 @@ import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { useDarkMode } from "../contexts/DarkModeContext";
 import { useRef, useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 
 const PickerWrapper = styled.div`
     position: fixed;
-    z-index: 10000;
+    z-index: 10001;
 `;
 
 const Overlay = styled.div`
@@ -15,7 +16,7 @@ const Overlay = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 9999;
+    z-index: 10000;
 `;
 
 // Calculate position immediately (not in useEffect)
@@ -33,26 +34,37 @@ function calculatePosition(
     const padding = 10;
 
     // On mobile (centered picker), position it in the center of the screen
-    // but above the keyboard area (roughly bottom 40% of screen)
+    // Position near the top to avoid the keyboard
     if (useCenteredPicker) {
         const left = Math.max(padding, (viewportWidth - pickerWidth) / 2);
-        // Position in upper portion of screen to avoid keyboard
-        const top = Math.max(padding, viewportHeight * 0.15);
+        // Position near top of viewport (10% from top)
+        const top = Math.max(padding, viewportHeight * 0.1);
         return { top, left };
     }
 
-    // If fixedPosition is provided, use it directly with viewport bounds check
+    // If fixedPosition is provided, use it directly with smart positioning
     if (fixedPosition) {
         let top = fixedPosition.y;
-        let left = fixedPosition.x;
+        let left = fixedPosition.x - pickerWidth / 2; // Center horizontally on touch point
 
-        // Adjust if going off-screen
-        if (top + pickerHeight > viewportHeight - padding) {
-            top = viewportHeight - pickerHeight - padding;
+        // Check available space below vs above the touch point
+        const spaceBelow = viewportHeight - fixedPosition.y;
+        const spaceAbove = fixedPosition.y;
+
+        // Prefer showing above the touch point if not enough space below
+        if (
+            spaceBelow < pickerHeight + padding &&
+            spaceAbove > pickerHeight + padding
+        ) {
+            top = fixedPosition.y - pickerHeight - padding;
+        } else if (spaceBelow >= pickerHeight + padding) {
+            top = fixedPosition.y + padding;
+        } else {
+            // Not enough space either way, position at best spot
+            top = Math.max(padding, viewportHeight - pickerHeight - padding);
         }
-        if (top < padding) {
-            top = padding;
-        }
+
+        // Horizontal bounds check
         if (left + pickerWidth > viewportWidth - padding) {
             left = viewportWidth - pickerWidth - padding;
         }
@@ -187,7 +199,7 @@ function EmojiPicker({
         onClose();
     }
 
-    return (
+    return createPortal(
         <>
             <Overlay onClick={onClose} />
             <PickerWrapper
@@ -203,7 +215,8 @@ function EmojiPicker({
                     maxFrequentRows={2}
                 />
             </PickerWrapper>
-        </>
+        </>,
+        document.body
     );
 }
 

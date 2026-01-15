@@ -72,17 +72,22 @@ const MessageContainer = styled.div`
         props.$isGrouped ? "0.2rem 1rem 0.2rem 1rem" : "0.8rem 1rem"};
     padding-left: ${(props) => (props.$isGrouped ? "5.4rem" : "1rem")};
     border-radius: var(--border-radius-md);
-    background-color: ${(props) =>
-        props.$isUnread
-            ? "rgba(59, 130, 246, 0.08)"
-            : "var(--secondary-background-color)"};
+    background-color: ${(props) => {
+        if (props.$isLongPressing) return "var(--tertiary-background-color)";
+        if (props.$isUnread) return "rgba(59, 130, 246, 0.08)";
+        return "var(--secondary-background-color)";
+    }};
     border-left: 3px solid
         ${(props) =>
             props.$isUnread && !props.$isWhisper
                 ? "var(--primary-button-color)"
                 : "transparent"};
-    transition: border-left-color 0.2s;
+    transition: background-color 0.15s, border-left-color 0.2s, transform 0.15s;
     position: relative;
+
+    /* Scale effect during long press */
+    transform: ${(props) =>
+        props.$isLongPressing ? "scale(0.98)" : "scale(1)"};
 
     /* Prevent text selection on mobile during long press */
     -webkit-user-select: none;
@@ -336,10 +341,18 @@ const MessageBody = styled.div`
     word-break: break-word;
     white-space: pre-wrap;
 
-    /* Re-enable text selection in message body */
-    -webkit-user-select: text;
-    -webkit-touch-callout: default;
-    user-select: text;
+    /* Allow text selection only on desktop (hover capable devices) */
+    @media (hover: hover) and (pointer: fine) {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+
+    /* Disable text selection on touch devices to prevent interference with long press */
+    @media (hover: none), (pointer: coarse) {
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        user-select: none;
+    }
 `;
 
 const EditActionButton = styled.button`
@@ -687,6 +700,9 @@ function ChatMessage({
         // Prevent default context menu and text selection
         e.preventDefault();
 
+        // Dispatch event to close any other open context menus
+        window.dispatchEvent(new CustomEvent("closeChatContextMenus"));
+
         const target = e.target;
 
         // Check if long-pressing on player avatar/name - show player menu
@@ -707,10 +723,32 @@ function ChatMessage({
         }
     }, []);
 
+    // State for long press visual feedback
+    const [isLongPressing, setIsLongPressing] = useState(false);
+
     const longPressHandlers = useLongPress(handleLongPress, {
         threshold: 10,
         cancelRef: isSwipingRef,
+        onPressStart: () => setIsLongPressing(true),
+        onPressEnd: () => setIsLongPressing(false),
     });
+
+    // Listen for global close event (when another message opens its context menu)
+    useEffect(() => {
+        const handleCloseMenus = () => {
+            if (contextMenu) {
+                setContextMenu(null);
+            }
+        };
+
+        window.addEventListener("closeChatContextMenus", handleCloseMenus);
+        return () => {
+            window.removeEventListener(
+                "closeChatContextMenus",
+                handleCloseMenus
+            );
+        };
+    }, [contextMenu]);
 
     // Handle switching to emoji picker from context menu
     function handleOpenReactionPicker() {
@@ -864,6 +902,7 @@ function ChatMessage({
             $isUnread={isUnread}
             $swipeOffset={swipeOffset}
             $isGrouped={isGrouped}
+            $isLongPressing={isLongPressing}
             onTouchStart={(e) => {
                 handleTouchStart(e);
                 longPressHandlers.onTouchStart(e);
@@ -1168,6 +1207,7 @@ function ChatMessage({
                     items={getPlayerMenuItems()}
                     position={contextMenu.position}
                     onClose={closeContextMenu}
+                    anchorRef={containerRef}
                 />
             )}
 
@@ -1176,6 +1216,7 @@ function ChatMessage({
                     items={getMessageMenuItems()}
                     position={contextMenu.position}
                     onClose={closeContextMenu}
+                    anchorRef={containerRef}
                 />
             )}
 
