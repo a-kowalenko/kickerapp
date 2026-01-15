@@ -24,10 +24,15 @@ import ChatInput from "./ChatInput";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
 import JumpToLatestButton from "../../ui/JumpToLatestButton";
+import useWindowWidth from "../../hooks/useWindowWidth";
+import { media } from "../../utils/constants";
 
 const MessagesContainer = styled.div`
     display: flex;
-    flex-direction: column-reverse;
+    /* Desktop: column-reverse (newest at bottom, scrollTop=0 is bottom) */
+    /* Mobile: column with reversed array (more reliable on iOS Safari) */
+    flex-direction: ${(props) =>
+        props.$isMobile ? "column" : "column-reverse"};
     gap: 0.6rem;
     overflow-y: auto;
     overflow-x: hidden;
@@ -268,6 +273,10 @@ function ChatTab() {
     const { currentKicker } = useKicker();
     const { isKeyboardOpen } = useKeyboard();
 
+    // Detect mobile for scroll behavior (tablet breakpoint matches ChatPage)
+    const { windowWidth } = useWindowWidth();
+    const isMobile = windowWidth <= media.maxTablet;
+
     const isAdmin = kickerData?.admin === user?.id;
     const currentPlayerId = currentPlayer?.id;
 
@@ -417,12 +426,27 @@ function ChatTab() {
     }, [currentKicker, markAsReadIfAtBottom]);
 
     // Handle scroll for showing/hiding jump to latest
+    // Mobile (column): near bottom = scrollTop + clientHeight >= scrollHeight - threshold
+    // Desktop (column-reverse): near bottom = scrollTop close to 0
     const handleScroll = useCallback(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
 
         const threshold = 100;
-        const nearBottom = Math.abs(container.scrollTop) < threshold;
+        let nearBottom;
+
+        if (isMobile) {
+            // Mobile: normal scroll - bottom is at scrollHeight
+            const distanceFromBottom =
+                container.scrollHeight -
+                container.scrollTop -
+                container.clientHeight;
+            nearBottom = distanceFromBottom < threshold;
+        } else {
+            // Desktop: column-reverse - bottom is at scrollTop = 0
+            nearBottom = Math.abs(container.scrollTop) < threshold;
+        }
+
         const wasNearBottom = isNearBottomRef.current;
         isNearBottomRef.current = nearBottom;
 
@@ -436,7 +460,7 @@ function ChatTab() {
         } else {
             setShowJumpToLatest(true);
         }
-    }, [currentKicker, markAsRead]);
+    }, [currentKicker, markAsRead, isMobile]);
 
     // Infinite scroll - load more when scrolling to top
     useEffect(() => {
@@ -459,15 +483,50 @@ function ChatTab() {
         return () => observer.disconnect();
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-    // Helper function to reliably scroll to bottom (works with column-reverse on iOS)
-    const scrollToBottomReliable = useCallback((container) => {
-        if (!container) return;
-        // For column-reverse, scrollTop = 0 is at the bottom (newest messages)
-        // But iOS Safari sometimes needs both approaches
-        container.scrollTop = 0;
-        // Also try scrollTo as backup
-        container.scrollTo?.({ top: 0, behavior: "instant" });
-    }, []);
+    // Helper function to reliably scroll to bottom
+    // Mobile (column): scrollTop = scrollHeight (standard scroll to bottom)
+    // Desktop (column-reverse): scrollTop = 0 (inverted - 0 is bottom)
+    const scrollToBottomReliable = useCallback(
+        (container, options = {}) => {
+            if (!container) return;
+
+            const { retryCount = 3 } = options;
+
+            const doScroll = () => {
+                if (isMobile) {
+                    // Mobile: normal flex-direction column, scroll to max
+                    const targetScroll = container.scrollHeight;
+                    container.scrollTop = targetScroll;
+                    container.scrollTo?.({
+                        top: targetScroll,
+                        behavior: "instant",
+                    });
+                } else {
+                    // Desktop: column-reverse, scrollTop = 0 is at bottom
+                    container.scrollTop = 0;
+                    container.scrollTo?.({ top: 0, behavior: "instant" });
+                }
+            };
+
+            // Initial scroll
+            doScroll();
+
+            // iOS Safari sometimes ignores scroll commands during layout
+            // Retry with RAF to ensure scroll completes
+            if (retryCount > 0) {
+                let remaining = retryCount;
+                const retryScroll = () => {
+                    doScroll();
+                    remaining--;
+                    if (remaining > 0) {
+                        requestAnimationFrame(retryScroll);
+                    }
+                };
+                requestAnimationFrame(retryScroll);
+            }
+        },
+        [isMobile]
+    );
 
     // Fix iOS Safari scroll position after keyboard opens
     // When input is focused, iOS scrolls to show the input, but with column-reverse
@@ -478,22 +537,31 @@ function ChatTab() {
         const container = messagesContainerRef.current;
         if (!container) return;
 
-        // Small delay to let iOS finish its default scroll behavior
-        const timeoutId = setTimeout(() => {
-            // Only scroll if we were near bottom before keyboard opened
-            if (
-                isNearBottomRef.current ||
-                Math.abs(container.scrollTop) < 200
-            ) {
-                scrollToBottomReliable(container);
-            }
-        }, 100);
+        // Check if near bottom using correct logic for current layout
+        const threshold = 200;
+        let isCloseToBottom;
+        if (isMobile) {
+            const distanceFromBottom =
+                container.scrollHeight -
+                container.scrollTop -
+                container.clientHeight;
+            isCloseToBottom = distanceFromBottom < threshold;
+        } else {
+            isCloseToBottom = Math.abs(container.scrollTop) < threshold;
+        }
 
-        return () => clearTimeout(timeoutId);
-    }, [isKeyboardOpen, scrollToBottomReliable]);
+        // Only scroll if we were near bottom before keyboard opened
+        if (isNearBottomRef.current || isCloseToBottom) {
+            // Use RAF to scroll after iOS finishes its layout
+            const rafId = requestAnimationFrame(() => {
+                scrollToBottomReliable(container, { retryCount: 5 });
+            });
+            return () => cancelAnimationFrame(rafId);
+        }
+    }, [isKeyboardOpen, scrollToBottomReliable, isMobile]);
 
     // Scroll to bottom when user sends a message
-    // Scrolls once immediately, then listens for image loads
+    // Uses MutationObserver, ResizeObserver and image load events - NO TIMEOUTS
     useEffect(() => {
         if (scrollTrigger === 0) return;
 
@@ -503,37 +571,12 @@ function ChatTab() {
             return;
         }
 
-        // Track if user has scrolled away - if so, stop auto-scrolling
-        let userScrolledAway = false;
         let isCleanedUp = false;
 
         const scrollToBottom = () => {
-            if (userScrolledAway || isCleanedUp) return;
+            if (isCleanedUp) return;
             scrollToBottomReliable(container);
         };
-
-        // Detect if user scrolls away (only after initial scroll settles)
-        let scrollListenerEnabled = false;
-        const handleUserScroll = () => {
-            if (!scrollListenerEnabled) return;
-            // If scrollTop is not near 0, user scrolled away
-            if (Math.abs(container.scrollTop) > 100) {
-                userScrolledAway = true;
-            }
-        };
-
-        // Scroll immediately
-        scrollToBottom();
-
-        // Enable scroll listener after a brief delay to avoid false positives
-        const enableTimeout = setTimeout(() => {
-            scrollListenerEnabled = true;
-        }, 300);
-
-        // Add scroll listener to detect user interaction
-        container.addEventListener("scroll", handleUserScroll, {
-            passive: true,
-        });
 
         // Track all image load handlers for cleanup
         const imageLoadHandlers = new Map();
@@ -550,8 +593,11 @@ function ChatTab() {
         // Observe all current images
         container.querySelectorAll("img").forEach(observeImage);
 
-        // MutationObserver to catch new images added to DOM (e.g. GIFs loading)
+        // MutationObserver to catch new images added to DOM
         const mutationObserver = new MutationObserver((mutations) => {
+            // Scroll on any DOM change (new message appearing)
+            scrollToBottom();
+
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === Node.ELEMENT_NODE) {
@@ -569,38 +615,44 @@ function ChatTab() {
             subtree: true,
         });
 
-        // Also scroll after next paint and a few more times for iOS
+        // ResizeObserver to catch size changes (avatar/image loading)
+        const resizeObserver = new ResizeObserver(() => {
+            scrollToBottom();
+        });
+        resizeObserver.observe(container);
+
+        // Initial scroll
+        scrollToBottom();
+
+        // Scroll a few more frames to ensure layout is complete
+        // iOS Safari needs more frames for layout settling
+        const maxFrames = isMobile ? 15 : 10;
         let frameCount = 0;
         let rafId;
         const scrollFrames = () => {
             scrollToBottom();
             frameCount++;
-            if (frameCount < 10) {
+            if (frameCount < maxFrames) {
                 rafId = requestAnimationFrame(scrollFrames);
             } else {
+                // After initial frames, disconnect resize observer to avoid interfering with user scroll
+                resizeObserver.disconnect();
                 pendingScrollRef.current = false;
             }
         };
         rafId = requestAnimationFrame(scrollFrames);
 
-        // Stop observing after 2 seconds
-        const stopTimeout = setTimeout(() => {
-            mutationObserver.disconnect();
-        }, 2000);
-
         return () => {
             isCleanedUp = true;
-            clearTimeout(enableTimeout);
-            clearTimeout(stopTimeout);
             cancelAnimationFrame(rafId);
             mutationObserver.disconnect();
-            container.removeEventListener("scroll", handleUserScroll);
+            resizeObserver.disconnect();
             imageLoadHandlers.forEach((handler, img) => {
                 img.removeEventListener("load", handler);
             });
             imageLoadHandlers.clear();
         };
-    }, [scrollTrigger, scrollToBottomReliable]);
+    }, [scrollTrigger, scrollToBottomReliable, isMobile]);
 
     // Track new messages and auto-scroll if near bottom
     useEffect(() => {
@@ -627,13 +679,29 @@ function ChatTab() {
             if (!pendingScrollRef.current) {
                 const container = messagesContainerRef.current;
                 const threshold = 100;
-                const isCurrentlyNearBottom = container
-                    ? Math.abs(container.scrollTop) < threshold
-                    : true;
+
+                // Check near-bottom based on layout mode
+                let isCurrentlyNearBottom;
+                if (container) {
+                    if (isMobile) {
+                        // Mobile: normal scroll
+                        const distanceFromBottom =
+                            container.scrollHeight -
+                            container.scrollTop -
+                            container.clientHeight;
+                        isCurrentlyNearBottom = distanceFromBottom < threshold;
+                    } else {
+                        // Desktop: column-reverse
+                        isCurrentlyNearBottom =
+                            Math.abs(container.scrollTop) < threshold;
+                    }
+                } else {
+                    isCurrentlyNearBottom = true;
+                }
 
                 if (isCurrentlyNearBottom) {
-                    // Scroll using helper function
-                    scrollToBottomReliable(container);
+                    // Scroll using helper function with retries for iOS
+                    scrollToBottomReliable(container, { retryCount: 5 });
                 } else {
                     setNewMessagesCount((prev) => prev + newCount);
                 }
@@ -642,7 +710,7 @@ function ChatTab() {
 
         prevMessageCountRef.current = messages.length;
         prevFirstMessageIdRef.current = currentFirstMessageId;
-    }, [messages, currentPlayerId]);
+    }, [messages, currentPlayerId, isMobile, scrollToBottomReliable]);
 
     // Force repaint on mount (fixes mobile chat view on iOS Safari)
     useEffect(() => {
@@ -654,14 +722,13 @@ function ChatTab() {
         container.offsetHeight;
         container.style.transform = "translateZ(0)";
 
-        // Scroll to bottom using scrollTop (column-reverse means 0 is bottom)
-        container.scrollTop = 0;
-        container.scrollTo?.({ top: 0, behavior: "instant" });
+        // Scroll to bottom - method depends on layout mode
+        scrollToBottomReliable(container, { retryCount: 3 });
         setIsContainerReady(true);
-    }, []); // Only on mount
+    }, [scrollToBottomReliable]); // Re-run if scroll method changes
 
     // Initial scroll - scroll to bottom when messages first loaded
-    // Uses MutationObserver to catch dynamically loaded images
+    // Uses MutationObserver to catch dynamically loaded images - NO TIMEOUTS
     useEffect(() => {
         if (isLoadingMessages || !messages.length || hasInitiallyScrolled)
             return;
@@ -681,6 +748,7 @@ function ChatTab() {
             // Track all image load handlers for cleanup
             const imageLoadHandlers = new Map();
             let isActive = true;
+            let imageLoadCount = 0;
 
             const scrollToBottom = () => {
                 if (!isActive) return;
@@ -690,7 +758,15 @@ function ChatTab() {
             // Attach load listener to an image
             const observeImage = (img) => {
                 if (!img.complete && !imageLoadHandlers.has(img)) {
-                    const handler = () => scrollToBottom();
+                    const handler = () => {
+                        imageLoadCount++;
+                        scrollToBottom();
+                        // After enough images loaded, stop observing
+                        if (imageLoadCount >= 10) {
+                            isActive = false;
+                            mutationObserver.disconnect();
+                        }
+                    };
                     imageLoadHandlers.set(img, handler);
                     img.addEventListener("load", handler, { once: true });
                 }
@@ -701,14 +777,15 @@ function ChatTab() {
 
             // MutationObserver to catch new images added to DOM (e.g. GIFs loading)
             const mutationObserver = new MutationObserver((mutations) => {
+                // Scroll on any DOM change
+                scrollToBottom();
+
                 mutations.forEach((mutation) => {
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === Node.ELEMENT_NODE) {
-                            // Check if the node itself is an image
                             if (node.tagName === "IMG") {
                                 observeImage(node);
                             }
-                            // Check for images within the added node
                             node.querySelectorAll?.("img").forEach(
                                 observeImage
                             );
@@ -725,28 +802,23 @@ function ChatTab() {
             // Initial scroll
             scrollToBottom();
 
-            // Scroll multiple times over ~300ms to handle iOS Safari delays
+            // Scroll a few frames for layout completion
+            // iOS Safari needs more frames
+            const maxFrames = isMobile ? 15 : 10;
             let frameCount = 0;
             let rafId;
             const scrollFrames = () => {
                 scrollToBottom();
                 frameCount++;
-                if (frameCount < 15) {
+                if (frameCount < maxFrames) {
                     rafId = requestAnimationFrame(scrollFrames);
                 }
             };
             rafId = requestAnimationFrame(scrollFrames);
 
-            // Stop observing after 3 seconds (images should be loaded by then)
-            const stopTimeout = setTimeout(() => {
-                isActive = false;
-                mutationObserver.disconnect();
-            }, 3000);
-
             // Cleanup
             return () => {
                 isActive = false;
-                clearTimeout(stopTimeout);
                 cancelAnimationFrame(rafId);
                 mutationObserver.disconnect();
                 imageLoadHandlers.forEach((handler, img) => {
@@ -766,6 +838,7 @@ function ChatTab() {
         hasInitiallyScrolled,
         deepLinkMessageId,
         scrollToBottomReliable,
+        isMobile,
     ]);
 
     function handleJumpToLatest() {
@@ -889,6 +962,29 @@ function ChatTab() {
         return timeDiffMinutes <= 10;
     }
 
+    // For mobile, reverse the messages array so oldest is first (top), newest last (bottom)
+    // Desktop uses column-reverse CSS, so messages array stays as-is (newest first)
+    const displayMessages = useMemo(() => {
+        if (!messages?.length) return [];
+        return isMobile ? [...messages].reverse() : messages;
+    }, [messages, isMobile]);
+
+    // Helper to get adjacent message for grouping/date dividers
+    // Mobile (column): previous message is index - 1 (chronologically before)
+    // Desktop (column-reverse): next message is index + 1 (chronologically before)
+    const getAdjacentMessage = useCallback(
+        (displayMsgs, index) => {
+            if (isMobile) {
+                // Mobile: compare with previous (older) message
+                return displayMsgs[index - 1];
+            } else {
+                // Desktop: compare with next (older due to column-reverse) message
+                return displayMsgs[index + 1];
+            }
+        },
+        [isMobile]
+    );
+
     if (isLoadingMessages) {
         return (
             <ChatTabWrapper>
@@ -907,13 +1003,28 @@ function ChatTab() {
                 <MessagesContainer
                     ref={messagesContainerRef}
                     onScroll={handleScroll}
+                    $isMobile={isMobile}
                 >
-                    {/* Scroll anchor - visually at bottom due to column-reverse */}
-                    <div
-                        ref={messagesEndRef}
-                        style={{ height: 0, width: "100%" }}
-                    />
-                    {messages?.length === 0 ? (
+                    {/* Mobile: LoadMore at top (scroll up for older) */}
+                    {isMobile && hasNextPage && (
+                        <LoadMoreTrigger ref={loadMoreRef}>
+                            {isFetchingNextPage ? (
+                                <SpinnerMini />
+                            ) : (
+                                "Scroll up for more messages"
+                            )}
+                        </LoadMoreTrigger>
+                    )}
+
+                    {/* Desktop only: Scroll anchor at start (visually at bottom due to column-reverse) */}
+                    {!isMobile && (
+                        <div
+                            ref={messagesEndRef}
+                            style={{ height: 0, width: "100%" }}
+                        />
+                    )}
+
+                    {displayMessages?.length === 0 ? (
                         <EmptyState>
                             <HiChatBubbleLeftRight />
                             <EmptyText>
@@ -924,13 +1035,16 @@ function ChatTab() {
                         </EmptyState>
                     ) : (
                         <>
-                            {messages?.map((message, index) => {
-                                const nextMessage = messages[index + 1];
+                            {displayMessages?.map((message, index) => {
+                                const adjacentMessage = getAdjacentMessage(
+                                    displayMessages,
+                                    index
+                                );
                                 const isGrouped =
-                                    nextMessage &&
+                                    adjacentMessage &&
                                     shouldGroupWithPrevious(
                                         message,
-                                        nextMessage
+                                        adjacentMessage
                                     );
 
                                 // Message is unread if:
@@ -940,31 +1054,31 @@ function ChatTab() {
                                 // - If no lastReadAt exists (null), all messages are considered READ
                                 // TEMPORARILY DISABLED - all messages shown as read
                                 const isUnread = false;
-                                // const isUnread = Boolean(
-                                //     currentPlayerId &&
-                                //         message.player_id !== currentPlayerId &&
-                                //         lastReadAt &&
-                                //         typeof lastReadAt === "string" &&
-                                //         lastReadAt.length > 0 &&
-                                //         new Date(message.created_at) >
-                                //             new Date(lastReadAt)
-                                // );
 
                                 // Check if we need a date divider
-                                // Due to column-reverse, nextMessage is chronologically BEFORE current
-                                // Show divider when this message is on a different day than the next (older) one
+                                // Show divider when this message is on a different day than the adjacent (older) one
                                 const currentDate = new Date(
                                     message.created_at
                                 );
-                                const nextDate = nextMessage
-                                    ? new Date(nextMessage.created_at)
+                                const adjacentDate = adjacentMessage
+                                    ? new Date(adjacentMessage.created_at)
                                     : null;
                                 const showDateDivider =
-                                    !nextDate ||
-                                    !isSameDay(currentDate, nextDate);
+                                    !adjacentDate ||
+                                    !isSameDay(currentDate, adjacentDate);
 
                                 return (
                                     <React.Fragment key={message.id}>
+                                        {/* Mobile: Date divider BEFORE message (at top of day group) */}
+                                        {isMobile && showDateDivider && (
+                                            <DateDividerContainer>
+                                                <DateLabel>
+                                                    {formatDateDivider(
+                                                        currentDate
+                                                    )}
+                                                </DateLabel>
+                                            </DateDividerContainer>
+                                        )}
                                         <ChatMessage
                                             message={message}
                                             currentPlayerId={currentPlayerId}
@@ -1000,7 +1114,8 @@ function ChatTab() {
                                             onWhisper={handleWhisper}
                                             onMention={handleMention}
                                         />
-                                        {showDateDivider && (
+                                        {/* Desktop: Date divider AFTER message (column-reverse) */}
+                                        {!isMobile && showDateDivider && (
                                             <DateDividerContainer>
                                                 <DateLabel>
                                                     {formatDateDivider(
@@ -1012,7 +1127,8 @@ function ChatTab() {
                                     </React.Fragment>
                                 );
                             })}
-                            {hasNextPage && (
+                            {/* Desktop: LoadMore at end (visually at top due to column-reverse) */}
+                            {!isMobile && hasNextPage && (
                                 <LoadMoreTrigger ref={loadMoreRef}>
                                     {isFetchingNextPage ? (
                                         <SpinnerMini />
@@ -1022,6 +1138,14 @@ function ChatTab() {
                                 </LoadMoreTrigger>
                             )}
                         </>
+                    )}
+
+                    {/* Mobile only: Scroll anchor at end (bottom) */}
+                    {isMobile && (
+                        <div
+                            ref={messagesEndRef}
+                            style={{ height: 0, width: "100%" }}
+                        />
                     )}
                 </MessagesContainer>
 

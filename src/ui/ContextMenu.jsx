@@ -14,6 +14,11 @@ const MenuContainer = styled.div`
     padding: 0.4rem;
     animation: fadeIn 0.1s ease-out;
 
+    /* Prevent text selection in context menu */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+
     @keyframes fadeIn {
         from {
             opacity: 0;

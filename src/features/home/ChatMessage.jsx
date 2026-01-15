@@ -89,8 +89,11 @@ const MessageContainer = styled.div`
     -webkit-touch-callout: none;
     user-select: none;
 
-    &:hover {
-        background-color: var(--tertiary-background-color) !important;
+    /* Only show hover effect on devices that support hover */
+    @media (hover: hover) and (pointer: fine) {
+        &:hover {
+            background-color: var(--tertiary-background-color) !important;
+        }
     }
 
     ${(props) =>
@@ -136,9 +139,12 @@ const HoverToolbar = styled.div`
     transition: opacity 0.15s, visibility 0.15s;
     z-index: 20;
 
-    ${MessageContainer}:hover &:not([data-hidden="true"]) {
-        opacity: 1;
-        visibility: visible;
+    /* Only show on hover for devices that support hover (not touch) */
+    @media (hover: hover) and (pointer: fine) {
+        ${MessageContainer}:hover &:not([data-hidden="true"]) {
+            opacity: 1;
+            visibility: visible;
+        }
     }
 
     &[data-hidden="true"] {
@@ -278,8 +284,11 @@ const HoverTimestamp = styled.span`
     opacity: 0;
     transition: opacity 0.2s;
 
-    ${MessageContainer}:hover & {
-        opacity: 1;
+    /* Only show on hover for devices that support hover */
+    @media (hover: hover) and (pointer: fine) {
+        ${MessageContainer}:hover & {
+            opacity: 1;
+        }
     }
 `;
 
@@ -673,14 +682,14 @@ function ChatMessage({
         });
     }
 
-    // Handle long press for mobile
+    // Handle long press for mobile - opens context menu (same as right-click)
     const handleLongPress = useCallback((e, position) => {
         // Prevent default context menu and text selection
         e.preventDefault();
 
         const target = e.target;
 
-        // Check if long-pressing on player avatar/name
+        // Check if long-pressing on player avatar/name - show player menu
         if (target.closest("[data-player-context]")) {
             setContextMenu({
                 type: "player",
@@ -688,12 +697,12 @@ function ChatMessage({
                 selectedText: "",
             });
         } else {
-            // Message context menu
-            const selectedText = getSelectedText();
+            // Long press on message body - open message context menu
             setContextMenu({
                 type: "message",
                 position,
-                selectedText,
+                selectedText: "",
+                isMobile: true, // Flag to show Copy option for full message
             });
         }
     }, []);
@@ -708,6 +717,8 @@ function ChatMessage({
         setContextMenu((prev) => ({
             ...prev,
             type: "react",
+            // On mobile, center the picker
+            useCenteredPicker: prev?.isMobile || false,
         }));
     }
 
@@ -742,12 +753,20 @@ function ChatMessage({
         const player = message.player;
         const isOwnMessage = message.player_id === currentPlayerId;
 
-        // Copy - only show if text is selected
+        // Copy - show selected text on desktop, or full message on mobile
         if (contextMenu?.selectedText) {
             items.push({
                 label: "Copy",
                 icon: <HiClipboard />,
                 onClick: () => handleCopy(contextMenu.selectedText),
+            });
+            items.push({ type: "divider" });
+        } else if (contextMenu?.isMobile) {
+            // On mobile, always show Copy option for full message text
+            items.push({
+                label: "Copy",
+                icon: <HiClipboard />,
+                onClick: () => handleCopy(stripMentions(message.content)),
             });
             items.push({ type: "divider" });
         }
@@ -1172,6 +1191,7 @@ function ChatMessage({
                     onClose={closeContextMenu}
                     position="fixed"
                     fixedPosition={contextMenu.position}
+                    useCenteredPicker={contextMenu.useCenteredPicker}
                 />
             )}
         </MessageContainer>

@@ -19,15 +19,30 @@ const Overlay = styled.div`
 `;
 
 // Calculate position immediately (not in useEffect)
-function calculatePosition(triggerRef, position, align, fixedPosition) {
+function calculatePosition(
+    triggerRef,
+    position,
+    align,
+    fixedPosition,
+    useCenteredPicker
+) {
+    const pickerHeight = 435;
+    const pickerWidth = 352;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const padding = 10;
+
+    // On mobile (centered picker), position it in the center of the screen
+    // but above the keyboard area (roughly bottom 40% of screen)
+    if (useCenteredPicker) {
+        const left = Math.max(padding, (viewportWidth - pickerWidth) / 2);
+        // Position in upper portion of screen to avoid keyboard
+        const top = Math.max(padding, viewportHeight * 0.15);
+        return { top, left };
+    }
+
     // If fixedPosition is provided, use it directly with viewport bounds check
     if (fixedPosition) {
-        const pickerHeight = 435;
-        const pickerWidth = 352;
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        const padding = 10;
-
         let top = fixedPosition.y;
         let left = fixedPosition.x;
 
@@ -51,10 +66,6 @@ function calculatePosition(triggerRef, position, align, fixedPosition) {
     if (!triggerRef?.current) return { top: -9999, left: -9999 };
 
     const rect = triggerRef.current.getBoundingClientRect();
-    const pickerHeight = 435;
-    const pickerWidth = 352;
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
 
     let top, left;
 
@@ -84,14 +95,22 @@ function EmojiPicker({
     align = "left",
     triggerRef,
     fixedPosition = null, // { x, y } for context menu positioning
+    useCenteredPicker = false, // Center picker on mobile
 }) {
     const { isDarkMode } = useDarkMode();
     const pickerRef = useRef(null);
 
     // Calculate initial position synchronously
     const initialPosition = useMemo(
-        () => calculatePosition(triggerRef, position, align, fixedPosition),
-        [triggerRef, position, align, fixedPosition]
+        () =>
+            calculatePosition(
+                triggerRef,
+                position,
+                align,
+                fixedPosition,
+                useCenteredPicker
+            ),
+        [triggerRef, position, align, fixedPosition, useCenteredPicker]
     );
 
     const [pickerPosition, setPickerPosition] = useState(initialPosition);
@@ -99,9 +118,15 @@ function EmojiPicker({
     // Update position if needed (e.g., window resize)
     useEffect(() => {
         setPickerPosition(
-            calculatePosition(triggerRef, position, align, fixedPosition)
+            calculatePosition(
+                triggerRef,
+                position,
+                align,
+                fixedPosition,
+                useCenteredPicker
+            )
         );
-    }, [triggerRef, position, align, fixedPosition]);
+    }, [triggerRef, position, align, fixedPosition, useCenteredPicker]);
 
     useEffect(() => {
         function handleClickOutside(event) {

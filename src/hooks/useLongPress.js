@@ -24,6 +24,11 @@ export function useLongPress(onLongPress, options = {}) {
         }
     }, []);
 
+    // Prevent text selection during long press
+    const preventSelection = useCallback((e) => {
+        e.preventDefault();
+    }, []);
+
     const handleTouchStart = useCallback(
         (e) => {
             // Don't start long press if touching interactive elements
@@ -43,10 +48,17 @@ export function useLongPress(onLongPress, options = {}) {
             };
             isLongPressRef.current = false;
 
+            // Add selection prevention during long press detection
+            document.addEventListener("selectstart", preventSelection);
+
             timerRef.current = setTimeout(() => {
                 // Check if external cancel ref is set (e.g., swipe in progress)
                 if (cancelRef?.current) {
                     clearTimer();
+                    document.removeEventListener(
+                        "selectstart",
+                        preventSelection
+                    );
                     return;
                 }
                 isLongPressRef.current = true;
@@ -56,7 +68,7 @@ export function useLongPress(onLongPress, options = {}) {
                 });
             }, LONG_PRESS_DURATION);
         },
-        [onLongPress, cancelRef, clearTimer]
+        [onLongPress, cancelRef, clearTimer, preventSelection]
     );
 
     const handleTouchMove = useCallback(
@@ -70,15 +82,17 @@ export function useLongPress(onLongPress, options = {}) {
             // Cancel long press if moved too much or external cancel ref is set
             if (moveX > threshold || moveY > threshold || cancelRef?.current) {
                 clearTimer();
+                document.removeEventListener("selectstart", preventSelection);
             }
         },
-        [threshold, clearTimer, cancelRef]
+        [threshold, clearTimer, cancelRef, preventSelection]
     );
 
     const handleTouchEnd = useCallback(() => {
         clearTimer();
         touchStartRef.current = null;
-    }, [clearTimer]);
+        document.removeEventListener("selectstart", preventSelection);
+    }, [clearTimer, preventSelection]);
 
     return {
         onTouchStart: handleTouchStart,
