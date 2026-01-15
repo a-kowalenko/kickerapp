@@ -1,4 +1,4 @@
-import { KICKER, PLAYER } from "../utils/constants";
+import { KICKER, PLAYER, USER_KICKER_ORDER } from "../utils/constants";
 import { getCurrentUser } from "./apiAuth";
 import { createPlayer } from "./apiPlayer";
 import supabase from "./supabase";
@@ -128,7 +128,31 @@ export async function getUserKickers() {
         throw new Error(kickerError.message);
     }
 
-    return kickerData;
+    // Get user's custom order
+    const { data: orderData } = await supabase
+        .from(USER_KICKER_ORDER)
+        .select("kicker_id, sort_order")
+        .eq("user_id", user.id);
+
+    // Sort kickers by custom order, fallback to creation date
+    const orderMap = new Map(
+        orderData?.map((o) => [o.kicker_id, o.sort_order]) || []
+    );
+
+    return kickerData.sort((a, b) => {
+        const orderA = orderMap.get(a.id);
+        const orderB = orderMap.get(b.id);
+
+        // If both have custom order, use it
+        if (orderA !== undefined && orderB !== undefined) {
+            return orderA - orderB;
+        }
+        // If only one has custom order, it comes first
+        if (orderA !== undefined) return -1;
+        if (orderB !== undefined) return 1;
+        // Fallback to creation date
+        return new Date(a.created_at) - new Date(b.created_at);
+    });
 }
 
 export async function getKickerInfo(kickerId) {
@@ -180,4 +204,23 @@ export async function getKickerInvitePreview({ token, inviterId }) {
 
     // RPC returns an array, get first item
     return data?.[0] || null;
+}
+
+export async function updateKickerOrder(kickerIds) {
+    const user = await getCurrentUser();
+
+    if (!user) {
+        throw new Error("User not authenticated");
+    }
+
+    const { error } = await supabase.rpc("update_kicker_order", {
+        p_user_id: user.id,
+        p_kicker_ids: kickerIds,
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return true;
 }

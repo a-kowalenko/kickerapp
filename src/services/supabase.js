@@ -6,6 +6,7 @@ export const databaseSchema =
 
 export const supabaseUrl = "https://dixhaxicjwqchhautpje.supabase.co";
 export const avatarHighlightsUrl = `${supabaseUrl}/storage/v1/object/public/avatar_highlights`;
+export const screenshotsUrl = `${supabaseUrl}/storage/v1/object/public/screenshots`;
 const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey, {
     db: { schema: databaseSchema },
