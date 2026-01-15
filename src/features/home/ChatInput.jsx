@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import {
     useState,
     useRef,
@@ -14,11 +14,17 @@ import {
     HiXMark,
     HiPhoto,
     HiChatBubbleLeftRight,
+    HiPlus,
 } from "react-icons/hi2";
 import { PiGifBold } from "react-icons/pi";
 import { usePlayers } from "../../hooks/usePlayers";
 import { useKicker } from "../../contexts/KickerContext";
-import { MAX_CHAT_MESSAGE_LENGTH, DEFAULT_AVATAR } from "../../utils/constants";
+import { useKeyboard } from "../../contexts/KeyboardContext";
+import {
+    MAX_CHAT_MESSAGE_LENGTH,
+    DEFAULT_AVATAR,
+    media,
+} from "../../utils/constants";
 import Avatar from "../../ui/Avatar";
 import EmojiPicker from "../../ui/EmojiPicker";
 import GifPicker from "../../ui/GifPicker";
@@ -29,7 +35,57 @@ import RichTextInput from "../../ui/RichTextInput";
 import { getMatch, formatMatchDisplay } from "../../services/apiMatches";
 import { useCanUploadImages } from "../../hooks/useCanUploadImages";
 import { useImageUpload } from "../../hooks/useImageUpload";
+import useWindowWidth from "../../hooks/useWindowWidth";
 import toast from "react-hot-toast";
+
+// Animations
+const slideIn = keyframes`
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+`;
+
+const slideOut = keyframes`
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: scale(0);
+        opacity: 0;
+    }
+`;
+
+const iconFlyIn = keyframes`
+    0% {
+        transform: translateX(-10px) rotate(-45deg);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(2px) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(0) rotate(0deg);
+        opacity: 1;
+    }
+`;
+
+const iconFlyOut = keyframes`
+    0% {
+        transform: translateX(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(10px) rotate(45deg);
+        opacity: 0;
+    }
+`;
 
 const InputContainer = styled.div`
     display: flex;
@@ -38,6 +94,11 @@ const InputContainer = styled.div`
     padding: 1rem;
     background-color: var(--secondary-background-color);
     border-top: 1px solid var(--primary-border-color);
+
+    ${media.tablet} {
+        padding: 0.6rem 0.8rem;
+        gap: 0.4rem;
+    }
 `;
 
 const ReplyBanner = styled.div`
@@ -125,11 +186,148 @@ const InputRow = styled.div`
     display: flex;
     align-items: flex-start;
     gap: 1rem;
+
+    ${media.tablet} {
+        gap: 0.8rem;
+        align-items: center;
+    }
 `;
 
 const TextAreaWrapper = styled.div`
     flex: 1;
     position: relative;
+`;
+
+const MobileInputRow = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+`;
+
+const AddButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.2rem;
+    height: 3.2rem;
+    border: none;
+    background-color: var(--tertiary-background-color);
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s;
+    flex-shrink: 0;
+
+    &:hover:not(:disabled) {
+        color: var(--primary-button-color);
+        background-color: var(--primary-border-color);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    & svg {
+        font-size: 2rem;
+        transition: transform 0.2s;
+    }
+
+    &[data-open="true"] svg {
+        transform: rotate(45deg);
+    }
+`;
+
+const AddMenu = styled.div`
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    background-color: var(--secondary-background-color);
+    border: 1px solid var(--primary-border-color);
+    border-radius: var(--border-radius-md);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+    padding: 0.6rem;
+    z-index: 100;
+`;
+
+const AddMenuItem = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.8rem 1.2rem;
+    border: none;
+    background: transparent;
+    color: var(--primary-text-color);
+    font-size: 1.4rem;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.2s;
+    white-space: nowrap;
+
+    &:hover {
+        background-color: var(--tertiary-background-color);
+    }
+
+    & svg {
+        font-size: 2rem;
+        color: var(--secondary-text-color);
+    }
+`;
+
+const MobileTextWrapper = styled.div`
+    flex: 1;
+    position: relative;
+`;
+
+const SendButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.2rem;
+    height: 3.2rem;
+    border: none;
+    background-color: var(--primary-button-color);
+    color: var(--primary-button-color-text);
+    cursor: pointer;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+    overflow: hidden;
+
+    ${(props) =>
+        props.$visible
+            ? css`
+                  animation: ${slideIn} 0.2s ease-out forwards;
+              `
+            : css`
+                  animation: ${slideOut} 0.15s ease-in forwards;
+                  pointer-events: none;
+              `}
+
+    &:hover:not(:disabled) {
+        background-color: var(--primary-button-color-hover);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    & svg {
+        font-size: 1.6rem;
+        ${(props) =>
+            props.$visible
+                ? css`
+                      animation: ${iconFlyIn} 0.3s ease-out 0.1s both;
+                  `
+                : css`
+                      animation: ${iconFlyOut} 0.15s ease-in forwards;
+                  `}
+    }
 `;
 
 const BottomRow = styled.div`
@@ -304,6 +502,7 @@ const ChatInput = forwardRef(function ChatInput(
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
     const [showMatchDropdown, setShowMatchDropdown] = useState(false);
+    const [showAddMenu, setShowAddMenu] = useState(false);
     const [playerSearch, setPlayerSearch] = useState("");
     const [matchSearch, setMatchSearch] = useState("");
     const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0);
@@ -312,12 +511,17 @@ const ChatInput = forwardRef(function ChatInput(
     const [whisperRecipient, setWhisperRecipient] = useState(null);
     const [shouldRefocusAfterSubmit, setShouldRefocusAfterSubmit] =
         useState(false);
+    const [showSendButton, setShowSendButton] = useState(false);
     const inputRef = useRef(null);
     const emojiButtonRef = useRef(null);
     const gifButtonRef = useRef(null);
     const fileInputRef = useRef(null);
+    const addMenuRef = useRef(null);
+    const mobileTextWrapperRef = useRef(null);
     const { players } = usePlayers();
     const { currentKicker: kicker } = useKicker();
+    const { isDesktop } = useWindowWidth();
+    const { setInputFocused, setInputBlurred } = useKeyboard();
 
     // Image upload permission and hook
     const { canUpload: canUploadImages } = useCanUploadImages();
@@ -381,6 +585,29 @@ const ChatInput = forwardRef(function ChatInput(
     useEffect(() => {
         contentRef.current = content;
     }, [content]);
+
+    // Track send button visibility based on content
+    useEffect(() => {
+        setShowSendButton(content.trim().length > 0);
+    }, [content]);
+
+    // Close add menu when clicking outside
+    useEffect(() => {
+        if (!showAddMenu) return;
+
+        function handleClickOutside(e) {
+            if (addMenuRef.current && !addMenuRef.current.contains(e.target)) {
+                setShowAddMenu(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
+        };
+    }, [showAddMenu]);
 
     // Expose focus function to parent (with cursor at end)
     useEffect(() => {
@@ -825,160 +1052,338 @@ const ChatInput = forwardRef(function ChatInput(
                 </UploadProgress>
             )}
 
-            <InputRow>
-                <Avatar
-                    $size="small"
-                    src={currentPlayer.avatar || DEFAULT_AVATAR}
-                    alt={currentPlayer.name}
-                />
-                <TextAreaWrapper>
-                    <RichTextInput
-                        ref={inputRef}
-                        value={content}
-                        onChange={handleContentChange}
-                        onKeyDown={handleKeyDown}
-                        onMentionTrigger={handleMentionTrigger}
-                        onMatchTrigger={handleMatchTrigger}
-                        onMatchPaste={handleMatchPaste}
-                        onImagePaste={handleImagePaste}
-                        placeholder={placeholder}
-                        disabled={isSubmitting}
-                    />
-                    {showMatchDropdown && (
-                        <MatchDropdown
-                            search={matchSearch}
-                            selectedIndex={selectedMatchIndex}
-                            onSelect={handleSelectMatch}
-                        />
-                    )}
-                    {showPlayerDropdown && (
-                        <PlayerDropdown>
-                            {filteredPlayers?.length > 0 ? (
-                                filteredPlayers.map((player, index) => (
-                                    <PlayerItem
-                                        key={player.id}
-                                        className={
-                                            index === selectedPlayerIndex
-                                                ? "active"
-                                                : ""
-                                        }
-                                        onClick={() =>
-                                            handleSelectPlayer(player)
-                                        }
-                                    >
-                                        {player.isEveryone ? (
-                                            <>
-                                                <Avatar
-                                                    $size="xs"
-                                                    src={DEFAULT_AVATAR}
-                                                    alt="everyone"
-                                                />
-                                                <PlayerName>
-                                                    @everyone
-                                                    <EveryoneLabel>
-                                                        (notify all players)
-                                                    </EveryoneLabel>
-                                                </PlayerName>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Avatar
-                                                    $size="xs"
-                                                    src={
-                                                        player.avatar ||
-                                                        DEFAULT_AVATAR
-                                                    }
-                                                    alt={player.name}
-                                                />
-                                                <PlayerName>
-                                                    {player.name}
-                                                </PlayerName>
-                                            </>
-                                        )}
-                                    </PlayerItem>
-                                ))
-                            ) : (
-                                <PlayerItem>
-                                    <PlayerName>No players found</PlayerName>
-                                </PlayerItem>
-                            )}
-                        </PlayerDropdown>
-                    )}
-                </TextAreaWrapper>
-            </InputRow>
+            {/* Hidden file input for image upload */}
+            <HiddenFileInput
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleImageSelect}
+            />
 
-            <BottomRow>
-                <div>
-                    <CharacterCount $isOverLimit={isOverLimit}>
-                        {content.length} / {MAX_CHAT_MESSAGE_LENGTH}
-                    </CharacterCount>
-                    {!whisperRecipient && !replyTo && (
-                        <HintText>
-                            /w or /whisper &lt;name&gt; • /r to reply to last
-                            whisper
-                        </HintText>
-                    )}
-                </div>
-                <ButtonsRow>
-                    {/* Hidden file input for image upload */}
-                    <HiddenFileInput
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        onChange={handleImageSelect}
-                    />
-                    {canUploadImages && (
-                        <IconButton
-                            onClick={handleImageButtonClick}
-                            disabled={isSubmitting || isUploading}
-                            title="Upload image (max 5MB)"
-                        >
-                            <HiPhoto />
-                        </IconButton>
-                    )}
-                    <IconButton
-                        ref={gifButtonRef}
-                        onClick={() => setShowGifPicker(!showGifPicker)}
-                        disabled={isSubmitting}
-                        title="Add GIF"
-                    >
-                        <PiGifBold />
-                    </IconButton>
-                    {showGifPicker && (
-                        <GifPicker
-                            onSelect={handleGifSelect}
-                            onClose={() => setShowGifPicker(false)}
-                            position="top"
-                            align="right"
-                            triggerRef={gifButtonRef}
+            {/* Mobile Layout */}
+            {!isDesktop ? (
+                <>
+                    <MobileInputRow>
+                        <div style={{ position: "relative" }} ref={addMenuRef}>
+                            <AddButton
+                                onClick={() => setShowAddMenu(!showAddMenu)}
+                                disabled={isSubmitting || isUploading}
+                                data-open={showAddMenu}
+                                title="Add content"
+                            >
+                                <HiPlus />
+                            </AddButton>
+                            {showAddMenu && (
+                                <AddMenu>
+                                    {canUploadImages && (
+                                        <AddMenuItem
+                                            onClick={() => {
+                                                handleImageButtonClick();
+                                                setShowAddMenu(false);
+                                            }}
+                                        >
+                                            <HiPhoto />
+                                            Photo
+                                        </AddMenuItem>
+                                    )}
+                                    <AddMenuItem
+                                        onClick={() => {
+                                            setShowGifPicker(true);
+                                            setShowAddMenu(false);
+                                        }}
+                                    >
+                                        <PiGifBold />
+                                        GIF
+                                    </AddMenuItem>
+                                    <AddMenuItem
+                                        onClick={() => {
+                                            setShowEmojiPicker(true);
+                                            setShowAddMenu(false);
+                                        }}
+                                    >
+                                        <HiOutlineFaceSmile />
+                                        Emoji
+                                    </AddMenuItem>
+                                </AddMenu>
+                            )}
+                        </div>
+                        <MobileTextWrapper ref={mobileTextWrapperRef}>
+                            <RichTextInput
+                                ref={inputRef}
+                                value={content}
+                                onChange={handleContentChange}
+                                onKeyDown={handleKeyDown}
+                                onMentionTrigger={handleMentionTrigger}
+                                onMatchTrigger={handleMatchTrigger}
+                                onMatchPaste={handleMatchPaste}
+                                onImagePaste={handleImagePaste}
+                                placeholder=""
+                                disabled={isSubmitting}
+                                onFocus={() => setInputFocused(inputRef)}
+                                onBlur={() => setInputBlurred()}
+                            />
+                            {showMatchDropdown && (
+                                <MatchDropdown
+                                    search={matchSearch}
+                                    selectedIndex={selectedMatchIndex}
+                                    onSelect={handleSelectMatch}
+                                />
+                            )}
+                            {showPlayerDropdown && (
+                                <PlayerDropdown>
+                                    {filteredPlayers?.length > 0 ? (
+                                        filteredPlayers.map((player, index) => (
+                                            <PlayerItem
+                                                key={player.id}
+                                                className={
+                                                    index ===
+                                                    selectedPlayerIndex
+                                                        ? "active"
+                                                        : ""
+                                                }
+                                                onClick={() =>
+                                                    handleSelectPlayer(player)
+                                                }
+                                            >
+                                                {player.isEveryone ? (
+                                                    <>
+                                                        <Avatar
+                                                            $size="xs"
+                                                            src={DEFAULT_AVATAR}
+                                                            alt="everyone"
+                                                        />
+                                                        <PlayerName>
+                                                            @everyone
+                                                            <EveryoneLabel>
+                                                                (notify all)
+                                                            </EveryoneLabel>
+                                                        </PlayerName>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Avatar
+                                                            $size="xs"
+                                                            src={
+                                                                player.avatar ||
+                                                                DEFAULT_AVATAR
+                                                            }
+                                                            alt={player.name}
+                                                        />
+                                                        <PlayerName>
+                                                            {player.name}
+                                                        </PlayerName>
+                                                    </>
+                                                )}
+                                            </PlayerItem>
+                                        ))
+                                    ) : (
+                                        <PlayerItem>
+                                            <PlayerName>
+                                                No players found
+                                            </PlayerName>
+                                        </PlayerItem>
+                                    )}
+                                </PlayerDropdown>
+                            )}
+                            {showGifPicker && (
+                                <GifPicker
+                                    onSelect={handleGifSelect}
+                                    onClose={() => setShowGifPicker(false)}
+                                    position="top"
+                                    align="center"
+                                    triggerRef={mobileTextWrapperRef}
+                                />
+                            )}
+                            {showEmojiPicker && (
+                                <EmojiPicker
+                                    onSelect={handleEmojiSelect}
+                                    onClose={() => setShowEmojiPicker(false)}
+                                    position="top"
+                                    align="center"
+                                    triggerRef={mobileTextWrapperRef}
+                                />
+                            )}
+                        </MobileTextWrapper>
+                        {(showSendButton || isSubmitting) && (
+                            <SendButton
+                                $visible={showSendButton || isSubmitting}
+                                onClick={handleSubmit}
+                                disabled={!canSubmit || isUploading}
+                                title="Send message"
+                            >
+                                {isSubmitting ? (
+                                    <SpinnerMini />
+                                ) : (
+                                    <HiPaperAirplane />
+                                )}
+                            </SendButton>
+                        )}
+                    </MobileInputRow>
+                </>
+            ) : (
+                /* Desktop Layout */
+                <>
+                    <InputRow>
+                        <Avatar
+                            $size="small"
+                            src={currentPlayer.avatar || DEFAULT_AVATAR}
+                            alt={currentPlayer.name}
                         />
-                    )}
-                    <IconButton
-                        ref={emojiButtonRef}
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        disabled={isSubmitting}
-                        title="Add emoji"
-                    >
-                        <HiOutlineFaceSmile />
-                    </IconButton>
-                    {showEmojiPicker && (
-                        <EmojiPicker
-                            onSelect={handleEmojiSelect}
-                            onClose={() => setShowEmojiPicker(false)}
-                            position="top"
-                            align="right"
-                            triggerRef={emojiButtonRef}
-                        />
-                    )}
-                    <SubmitButton
-                        onClick={handleSubmit}
-                        disabled={!canSubmit || isUploading}
-                        title="Send message"
-                    >
-                        {isSubmitting ? <SpinnerMini /> : <HiPaperAirplane />}
-                    </SubmitButton>
-                </ButtonsRow>
-            </BottomRow>
+                        <TextAreaWrapper>
+                            <RichTextInput
+                                ref={inputRef}
+                                value={content}
+                                onChange={handleContentChange}
+                                onKeyDown={handleKeyDown}
+                                onMentionTrigger={handleMentionTrigger}
+                                onMatchTrigger={handleMatchTrigger}
+                                onMatchPaste={handleMatchPaste}
+                                onImagePaste={handleImagePaste}
+                                placeholder={placeholder}
+                                disabled={isSubmitting}
+                                onFocus={() => setInputFocused(inputRef)}
+                                onBlur={() => setInputBlurred()}
+                            />
+                            {showMatchDropdown && (
+                                <MatchDropdown
+                                    search={matchSearch}
+                                    selectedIndex={selectedMatchIndex}
+                                    onSelect={handleSelectMatch}
+                                />
+                            )}
+                            {showPlayerDropdown && (
+                                <PlayerDropdown>
+                                    {filteredPlayers?.length > 0 ? (
+                                        filteredPlayers.map((player, index) => (
+                                            <PlayerItem
+                                                key={player.id}
+                                                className={
+                                                    index ===
+                                                    selectedPlayerIndex
+                                                        ? "active"
+                                                        : ""
+                                                }
+                                                onClick={() =>
+                                                    handleSelectPlayer(player)
+                                                }
+                                            >
+                                                {player.isEveryone ? (
+                                                    <>
+                                                        <Avatar
+                                                            $size="xs"
+                                                            src={DEFAULT_AVATAR}
+                                                            alt="everyone"
+                                                        />
+                                                        <PlayerName>
+                                                            @everyone
+                                                            <EveryoneLabel>
+                                                                (notify all
+                                                                players)
+                                                            </EveryoneLabel>
+                                                        </PlayerName>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Avatar
+                                                            $size="xs"
+                                                            src={
+                                                                player.avatar ||
+                                                                DEFAULT_AVATAR
+                                                            }
+                                                            alt={player.name}
+                                                        />
+                                                        <PlayerName>
+                                                            {player.name}
+                                                        </PlayerName>
+                                                    </>
+                                                )}
+                                            </PlayerItem>
+                                        ))
+                                    ) : (
+                                        <PlayerItem>
+                                            <PlayerName>
+                                                No players found
+                                            </PlayerName>
+                                        </PlayerItem>
+                                    )}
+                                </PlayerDropdown>
+                            )}
+                        </TextAreaWrapper>
+                    </InputRow>
+
+                    <BottomRow>
+                        <div>
+                            <CharacterCount $isOverLimit={isOverLimit}>
+                                {content.length} / {MAX_CHAT_MESSAGE_LENGTH}
+                            </CharacterCount>
+                            {!whisperRecipient && !replyTo && (
+                                <HintText>
+                                    /w or /whisper &lt;name&gt; • /r to reply to
+                                    last whisper
+                                </HintText>
+                            )}
+                        </div>
+                        <ButtonsRow>
+                            {canUploadImages && (
+                                <IconButton
+                                    onClick={handleImageButtonClick}
+                                    disabled={isSubmitting || isUploading}
+                                    title="Upload image (max 5MB)"
+                                >
+                                    <HiPhoto />
+                                </IconButton>
+                            )}
+                            <IconButton
+                                ref={gifButtonRef}
+                                onClick={() => setShowGifPicker(!showGifPicker)}
+                                disabled={isSubmitting}
+                                title="Add GIF"
+                            >
+                                <PiGifBold />
+                            </IconButton>
+                            {showGifPicker && (
+                                <GifPicker
+                                    onSelect={handleGifSelect}
+                                    onClose={() => setShowGifPicker(false)}
+                                    position="top"
+                                    align="right"
+                                    triggerRef={gifButtonRef}
+                                />
+                            )}
+                            <IconButton
+                                ref={emojiButtonRef}
+                                onClick={() =>
+                                    setShowEmojiPicker(!showEmojiPicker)
+                                }
+                                disabled={isSubmitting}
+                                title="Add emoji"
+                            >
+                                <HiOutlineFaceSmile />
+                            </IconButton>
+                            {showEmojiPicker && (
+                                <EmojiPicker
+                                    onSelect={handleEmojiSelect}
+                                    onClose={() => setShowEmojiPicker(false)}
+                                    position="top"
+                                    align="right"
+                                    triggerRef={emojiButtonRef}
+                                />
+                            )}
+                            <SubmitButton
+                                onClick={handleSubmit}
+                                disabled={!canSubmit || isUploading}
+                                title="Send message"
+                            >
+                                {isSubmitting ? (
+                                    <SpinnerMini />
+                                ) : (
+                                    <HiPaperAirplane />
+                                )}
+                            </SubmitButton>
+                        </ButtonsRow>
+                    </BottomRow>
+                </>
+            )}
         </InputContainer>
     );
 });

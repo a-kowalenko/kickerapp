@@ -23,9 +23,10 @@ const ContentWrapper = styled.div`
     flex: 1;
     position: relative;
     min-height: 0;
+    height: 100%;
 
     ${media.tablet} {
-        height: 80rem;
+        /* No fixed height on mobile - let flex take over */
     }
 `;
 

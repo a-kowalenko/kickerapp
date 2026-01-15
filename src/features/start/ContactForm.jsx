@@ -9,6 +9,7 @@ import {
 } from "react-icons/hi2";
 import { media } from "../../utils/constants";
 import toast from "react-hot-toast";
+import supabase from "../../services/supabase";
 
 const fadeIn = keyframes`
     from { opacity: 0; transform: translateY(20px); }
@@ -356,22 +357,36 @@ function ContactForm({ id }) {
         setIsSubmitting(true);
 
         try {
-            // For now, use mailto as fallback - can be replaced with Edge Function
-            const mailtoLink = `mailto:support@kickerapp.dev?subject=${encodeURIComponent(
-                `[${formData.subject}] Contact from ${formData.name}`
-            )}&body=${encodeURIComponent(
-                `Name: ${formData.name}\nEmail: ${formData.email}\nSubject: ${formData.subject}\n\nMessage:\n${formData.message}`
-            )}`;
+            const { data, error } = await supabase.functions.invoke(
+                "send-contact-email",
+                {
+                    body: {
+                        name: formData.name.trim(),
+                        email: formData.email.trim(),
+                        subject: formData.subject,
+                        message: formData.message.trim(),
+                        honeypot: formData.honeypot,
+                        formLoadTime: formLoadTime.current,
+                    },
+                }
+            );
 
-            window.location.href = mailtoLink;
+            if (error) {
+                throw error;
+            }
 
-            // Show success after a short delay
-            setTimeout(() => {
-                setIsSubmitted(true);
-                setIsSubmitting(false);
-            }, 500);
+            if (data?.error) {
+                throw new Error(data.error);
+            }
+
+            setIsSubmitted(true);
+            toast.success("Message sent successfully!");
         } catch (error) {
-            toast.error("Failed to send message. Please try again.");
+            console.error("Contact form error:", error);
+            toast.error(
+                error.message || "Failed to send message. Please try again."
+            );
+        } finally {
             setIsSubmitting(false);
         }
     }
@@ -403,9 +418,9 @@ function ContactForm({ id }) {
                         </SuccessIcon>
                         <SuccessTitle>Message Sent!</SuccessTitle>
                         <SuccessText>
-                            Thank you for reaching out. Your email client should
-                            have opened with your message. If not, please send
-                            your inquiry directly to support@kickerapp.dev
+                            Thank you for reaching out. We&apos;ve received your
+                            message and sent a confirmation to your email.
+                            We&apos;ll get back to you as soon as possible.
                         </SuccessText>
                         <SubmitButton type="button" onClick={handleReset}>
                             Send Another Message

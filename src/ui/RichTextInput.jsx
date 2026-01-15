@@ -350,6 +350,8 @@ const RichTextInput = forwardRef(function RichTextInput(
         onMatchTrigger,
         onMatchPaste,
         onImagePaste,
+        onFocus,
+        onBlur,
     },
     ref
 ) {
@@ -690,6 +692,8 @@ const RichTextInput = forwardRef(function RichTextInput(
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            onFocus={onFocus}
+            onBlur={onBlur}
             onCompositionStart={() => setIsComposing(true)}
             onCompositionEnd={() => {
                 setIsComposing(false);

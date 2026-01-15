@@ -6,6 +6,7 @@ import TodayStats from "./TodayStats";
 import ChatSection from "./ChatSection";
 import { media } from "../../utils/constants";
 import TimePlayedChart from "./TimePlayedChart";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const StyledHomeLayout = styled.div`
     display: flex;
@@ -33,6 +34,8 @@ const StatsGrid = styled.div`
 `;
 
 function HomeLayout() {
+    const { isDesktop } = useWindowWidth();
+
     return (
         <StyledHomeLayout>
             <StatsGrid>
@@ -40,7 +43,7 @@ function HomeLayout() {
                 <MonthlyFatalities />
                 <MostPlayed />
                 <RecentMatches />
-                <ChatSection />
+                {isDesktop && <ChatSection />}
                 <TimePlayedChart />
             </StatsGrid>
         </StyledHomeLayout>

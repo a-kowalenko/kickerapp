@@ -8,7 +8,7 @@ import { NavLink, useNavigate, Link } from "react-router-dom";
 import { useUser } from "../../features/authentication/useUser";
 import Spinner from "../../ui/Spinner";
 import { useLogout } from "../../features/authentication/useLogout";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { useCreateKicker } from "../../features/kicker/useCreateKicker";
@@ -62,55 +62,61 @@ const Sidebar = styled.aside`
     background-color: var(--secondary-background-color);
     color: var(--primary-text-color);
     position: fixed;
-    top: 0;
+    top: 66px;
     bottom: 0;
-    left: -100%;
+    left: 0;
     width: 32rem;
-    transition: left 0.3s ease-in-out;
-    z-index: 1001;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    border-radius: 0 1.2rem 1.2rem 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 99;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    border-right: 1px solid var(--primary-border-color);
     display: flex;
     flex-direction: column;
     overflow: hidden;
 
     &.active {
-        left: 0;
+        transform: translateX(0);
     }
 
     ${media.tablet} {
         width: 100%;
         border-radius: 0;
+        border-right: none;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     }
 `;
 
 const SidebarHeader = styled.div`
-    background: linear-gradient(
-        135deg,
-        var(--primary-button-color) 0%,
-        var(--primary-button-color-hover) 100%
-    );
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    display: none;
 `;
 
 const SidebarHeaderTitle = styled.div`
     display: flex;
     align-items: center;
     gap: 1rem;
-    color: var(--primary-button-color-text);
+    color: var(--primary-text-color);
 
     svg {
-        font-size: 2.4rem;
+        font-size: 2rem;
     }
 
     h2 {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
         font-weight: 600;
         margin: 0;
+    }
+
+    ${media.tablet} {
+        color: var(--primary-button-color-text);
+
+        svg {
+            font-size: 2.4rem;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+        }
     }
 `;
 
@@ -121,13 +127,18 @@ const SidebarContent = styled.div`
 `;
 
 const SidebarBackdrop = styled.div`
+    display: none;
     position: fixed;
-    top: 0;
+    top: 66px;
     left: 0;
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    z-index: 98;
+
+    ${media.tablet} {
+        display: block;
+    }
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
@@ -252,14 +263,79 @@ const BurgerMenuContainer = styled.div`
     }
 `;
 
+const BurgerButton = styled(ButtonIcon)`
+    & > svg {
+        transition: transform 0.3s ease;
+        transform: ${(props) =>
+            props.$isOpen ? "rotate(90deg)" : "rotate(0)"};
+    }
+`;
+
+const KickerSidebarButton = styled(ButtonIcon)`
+    & > svg {
+        transition: transform 0.3s ease, color 0.2s ease;
+        transform: ${(props) =>
+            props.$isOpen ? "rotate(180deg)" : "rotate(0deg)"};
+        color: ${(props) =>
+            props.$isOpen ? "var(--primary-button-color)" : "inherit"};
+    }
+`;
+
+const DesktopKickerButton = styled.button`
+    position: absolute;
+    left: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--primary-text-color);
+    font-size: 1.6rem;
+    padding: 0.5rem;
+
+    &:hover {
+        text-decoration: underline;
+    }
+
+    & > svg {
+        transition: transform 0.3s ease, color 0.2s ease;
+        transform: ${(props) =>
+            props.$isOpen ? "rotate(180deg)" : "rotate(0deg)"};
+        color: ${(props) =>
+            props.$isOpen
+                ? "var(--primary-button-color)"
+                : "var(--primary-text-color)"};
+    }
+
+    ${media.tablet} {
+        display: none;
+    }
+`;
+
+const KickerButtonLabel = styled.span`
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--primary-text-color);
+`;
+
 const Navbar = styled.nav`
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1rem 2rem;
     background-color: var(--primary-background-color);
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
     gap: 3rem;
+    transform: translateY(${(props) => (props.$isVisible ? "0" : "-100%")});
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-bottom: 1px solid var(--primary-border-color);
 
     ${media.tablet} {
         padding: 1rem;
@@ -324,12 +400,12 @@ const NavLinkItem = styled.button`
 const MobileNavOverlay = styled.div`
     display: none;
     position: fixed;
-    top: 0;
+    top: 66px;
     left: 0;
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 1001;
+    z-index: 98;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -347,15 +423,15 @@ const MobileNavOverlay = styled.div`
 const MobileNavMenu = styled.div`
     display: none;
     position: fixed;
-    top: 0;
+    top: 66px;
     left: -100%;
     width: 32rem;
-    height: 100%;
+    height: calc(100% - 66px);
     background: var(--secondary-background-color);
-    z-index: 1002;
+    z-index: 99;
     flex-direction: column;
     box-shadow: 8px 0 32px rgba(0, 0, 0, 0.2);
-    border-radius: 0 1.2rem 1.2rem 0;
+    border-radius: 0;
     transition: left 0.3s ease-in-out;
     overflow: hidden;
 
@@ -365,7 +441,6 @@ const MobileNavMenu = styled.div`
 
     ${media.mobile} {
         width: 100%;
-        border-radius: 0;
     }
 
     &.active {
@@ -374,15 +449,7 @@ const MobileNavMenu = styled.div`
 `;
 
 const MobileNavHeader = styled.div`
-    background: linear-gradient(
-        135deg,
-        var(--primary-button-color) 0%,
-        var(--primary-button-color-hover) 100%
-    );
-    padding: 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: none;
 `;
 
 const MobileNavTitle = styled.h3`
@@ -728,13 +795,22 @@ const ResponsiveNavButtonsContainer = styled(NavButtonsContainer)`
 `;
 
 const SidebarCloseButton = styled(ButtonIcon)`
-    color: var(--primary-button-color-text);
-    background: rgba(255, 255, 255, 0.15);
+    color: var(--primary-text-color);
+    background: var(--secondary-background-color);
     border-radius: 0.8rem;
     padding: 0.6rem;
 
     &:hover {
-        background: rgba(255, 255, 255, 0.25);
+        background: var(--color-grey-200);
+    }
+
+    ${media.tablet} {
+        color: var(--primary-button-color-text);
+        background: rgba(255, 255, 255, 0.15);
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
     }
 `;
 
@@ -781,6 +857,7 @@ const Main = styled.main`
     text-align: center;
     flex-grow: 1;
     position: relative;
+    margin-top: 66px;
 `;
 
 function Startpage() {
@@ -788,10 +865,68 @@ function Startpage() {
         null,
         "sidebar-open"
     );
-    const toggleSidebar = () => setSidebarActive(!sidebarActive);
+    const toggleSidebar = () => {
+        if (!sidebarActive) {
+            setMobileNavActive(false); // Close burger nav when opening kicker nav
+        }
+        setSidebarActive(!sidebarActive);
+    };
 
     const [mobileNavActive, setMobileNavActive] = useState(false);
-    const toggleMobileNav = () => setMobileNavActive(!mobileNavActive);
+    const toggleMobileNav = () => {
+        if (!mobileNavActive) {
+            setSidebarActive(false); // Close kicker nav when opening burger nav
+        }
+        setMobileNavActive(!mobileNavActive);
+    };
+
+    // Smart header visibility - hide on scroll down, show on scroll up
+    const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+    const lastScrollY = useRef(0);
+
+    const handleScroll = useCallback(() => {
+        const currentScrollY = window.scrollY;
+        const scrollDiff = Math.abs(currentScrollY - lastScrollY.current);
+
+        // In the first 100px, require a threshold of 30px before reacting
+        const threshold = currentScrollY < 100 ? 30 : 0;
+
+        // Always show header when at the very top
+        if (currentScrollY < 50) {
+            setIsHeaderVisible(true);
+            lastScrollY.current = currentScrollY;
+            return;
+        }
+
+        // Don't hide header when mobile nav or sidebar is open
+        if (mobileNavActive || sidebarActive) {
+            setIsHeaderVisible(true);
+            lastScrollY.current = currentScrollY;
+            return;
+        }
+
+        // Only react if scrolled more than threshold
+        if (scrollDiff < threshold) {
+            return;
+        }
+
+        // Scrolling down - hide header
+        if (currentScrollY > lastScrollY.current) {
+            setIsHeaderVisible(false);
+        }
+        // Scrolling up - show header
+        else if (currentScrollY < lastScrollY.current) {
+            setIsHeaderVisible(true);
+        }
+
+        lastScrollY.current = currentScrollY;
+    }, [mobileNavActive, sidebarActive]);
+
+    // Scroll event listener
+    useEffect(() => {
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, [handleScroll]);
 
     const {
         currentKicker,
@@ -893,18 +1028,17 @@ function Startpage() {
     useEffect(() => {
         const isDesktop = window.innerWidth > 768;
         const savedState = localStorage.getItem("sidebar-open");
-        const shouldOpenSidebar =
-            isAuthenticated &&
-            kickers?.length > 0 &&
-            isDesktop &&
-            savedState === "null";
 
-        if (shouldOpenSidebar) {
-            setSidebarActive(true);
-        } else if (isAuthenticated && kickers?.length > 0) {
-            setSidebarActive(savedState === "true");
+        // On desktop, default to open if user has kickers and hasn't explicitly closed it
+        if (!isLoading && isAuthenticated && kickers?.length > 0 && isDesktop) {
+            // Only respect saved state if it was explicitly set to false
+            if (savedState === "false") {
+                setSidebarActive(false);
+            } else {
+                setSidebarActive(true);
+            }
         }
-    }, [isAuthenticated, kickers?.length, setSidebarActive]);
+    }, [isLoading, isAuthenticated, kickers?.length, setSidebarActive]);
 
     if (isCreatingKicker || isJoiningKicker) {
         return <Spinner />;
@@ -994,15 +1128,34 @@ function Startpage() {
 
     return (
         <StyledStartpage>
-            <Navbar $isAuthenticated={isAuthenticated}>
+            <Navbar
+                $isAuthenticated={isAuthenticated}
+                $isVisible={isHeaderVisible}
+            >
+                {!isLoading && isAuthenticated && (
+                    <DesktopKickerButton
+                        $isOpen={sidebarActive}
+                        onClick={toggleSidebar}
+                        title="Your Kickers"
+                    >
+                        <HiOutlineSquare3Stack3D />
+                        <KickerButtonLabel>Kickers</KickerButtonLabel>
+                    </DesktopKickerButton>
+                )}
                 <BurgerMenuContainer>
-                    <ButtonIcon onClick={toggleMobileNav}>
+                    <BurgerButton
+                        $isOpen={mobileNavActive}
+                        onClick={toggleMobileNav}
+                    >
                         <FaBars />
-                    </ButtonIcon>
+                    </BurgerButton>
                     {!isLoading && isAuthenticated && (
-                        <ButtonIcon onClick={toggleSidebar}>
+                        <KickerSidebarButton
+                            $isOpen={sidebarActive}
+                            onClick={toggleSidebar}
+                        >
                             <HiOutlineSquare3Stack3D />
-                        </ButtonIcon>
+                        </KickerSidebarButton>
                     )}
                 </BurgerMenuContainer>
                 <Logo
@@ -1047,7 +1200,10 @@ function Startpage() {
                 className={mobileNavActive ? "active" : ""}
                 onClick={() => setMobileNavActive(false)}
             />
-            <MobileNavMenu className={mobileNavActive ? "active" : ""}>
+            <MobileNavMenu
+                className={mobileNavActive ? "active" : ""}
+                onClick={() => setMobileNavActive(false)}
+            >
                 <MobileNavHeader>
                     <MobileNavTitle>
                         <HiOutlineBars3 />
@@ -1059,7 +1215,7 @@ function Startpage() {
                         <HiXMark />
                     </MobileNavCloseButton>
                 </MobileNavHeader>
-                <MobileNavLinks>
+                <MobileNavLinks onClick={(e) => e.stopPropagation()}>
                     {NAV_SECTIONS.map((section) => (
                         <MobileNavLinkItem
                             key={section.id}
@@ -1070,7 +1226,7 @@ function Startpage() {
                         </MobileNavLinkItem>
                     ))}
                 </MobileNavLinks>
-                <MobileNavAuthButtons>
+                <MobileNavAuthButtons onClick={(e) => e.stopPropagation()}>
                     {!isLoading && !isAuthenticated && (
                         <>
                             <Button
@@ -1109,7 +1265,10 @@ function Startpage() {
                         className={sidebarActive ? "active" : ""}
                         onClick={() => setSidebarActive(false)}
                     />
-                    <Sidebar className={sidebarActive ? "active" : ""}>
+                    <Sidebar
+                        className={sidebarActive ? "active" : ""}
+                        onClick={() => setSidebarActive(false)}
+                    >
                         <SidebarHeader>
                             <SidebarHeaderTitle>
                                 <HiOutlineSquare3Stack3D />
@@ -1121,7 +1280,7 @@ function Startpage() {
                                 <HiXMark />
                             </SidebarCloseButton>
                         </SidebarHeader>
-                        <SidebarContent>
+                        <SidebarContent onClick={(e) => e.stopPropagation()}>
                             {isLoadingKickers ? (
                                 <SpinnerMini />
                             ) : localKickers?.length > 0 ? (

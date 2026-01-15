@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import styled from "styled-components";
@@ -10,6 +10,8 @@ import useAchievementNotifications from "../features/achievements/useAchievement
 import AchievementToast from "../features/achievements/AchievementToast";
 import PlayerActivitySidebar from "../features/activity/PlayerActivitySidebar";
 import useWindowWidth from "../hooks/useWindowWidth";
+import MobileBottomNav from "./MobileBottomNav";
+import { KeyboardProvider, useKeyboard } from "../contexts/KeyboardContext";
 
 const StyledAppLayout = styled.div`
     @media (min-width: 850px) {
@@ -25,6 +27,13 @@ const StyledAppLayout = styled.div`
 
     ${media.tablet} {
         grid-template-columns: 1fr;
+        ${(props) =>
+            props.$isChatPage &&
+            `
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+        `}
     }
 `;
 
@@ -52,6 +61,24 @@ const Main = styled.main`
 
     ${media.tablet} {
         padding: 1.6rem 0rem;
+        /* Space for mobile bottom nav */
+        padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+        ${(props) =>
+            props.$isChatPage &&
+            `
+            padding: 0;
+            padding-bottom: ${
+                props.$keyboardOpen
+                    ? "0"
+                    : "calc(8rem + env(safe-area-inset-bottom, 0px))"
+            };
+            min-height: auto;
+            height: calc(100vh - 66px);
+            height: calc(100dvh - 66px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `}
     }
 `;
 
@@ -68,14 +95,19 @@ const RightSidebarWrapper = styled.div`
     }
 `;
 
-function AppLayout() {
+function AppLayoutInner() {
     const { showAnnouncement, seasonName, acknowledgeNewSeason } =
         useNewSeasonAnnouncement();
     const { currentToast, handleDismiss } = useAchievementNotifications();
     const { isDesktop } = useWindowWidth();
+    const location = useLocation();
+    const { isKeyboardOpen } = useKeyboard();
+
+    // Check if we're on the chat page (for mobile-specific styling)
+    const isChatPage = location.pathname === "/chat";
 
     return (
-        <StyledAppLayout>
+        <StyledAppLayout $isChatPage={isChatPage}>
             {showAnnouncement && (
                 <NewSeasonModal
                     seasonName={seasonName}
@@ -90,7 +122,7 @@ function AppLayout() {
             )}
             <Header />
             <Sidebar />
-            <Main>
+            <Main $isChatPage={isChatPage} $keyboardOpen={isKeyboardOpen}>
                 <Outlet />
             </Main>
             {isDesktop && (
@@ -98,8 +130,18 @@ function AppLayout() {
                     <PlayerActivitySidebar />
                 </RightSidebarWrapper>
             )}
-            <Footer />
+            {!isDesktop && <MobileBottomNav />}
+            {/* Hide footer on mobile chat page */}
+            {!(isChatPage && !isDesktop) && <Footer />}
         </StyledAppLayout>
+    );
+}
+
+function AppLayout() {
+    return (
+        <KeyboardProvider>
+            <AppLayoutInner />
+        </KeyboardProvider>
     );
 }
 

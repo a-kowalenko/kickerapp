@@ -33,6 +33,7 @@ const MessagesContainer = styled.div`
     flex: 1;
     padding: 1rem;
     position: relative;
+    -webkit-overflow-scrolling: touch;
 
     /* Prevent browser context menu on messages container for custom menu */
     & > * {
@@ -149,6 +150,13 @@ const ContentWrapper = styled.div`
     flex: 1;
     position: relative;
     min-height: 0;
+`;
+
+const ChatTabWrapper = styled.div`
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
 `;
 
 const DateDividerContainer = styled.div`
@@ -528,6 +536,40 @@ function ChatTab() {
         prevFirstMessageIdRef.current = currentFirstMessageId;
     }, [messages, currentPlayerId]);
 
+    // Force scroll to bottom on mount with retries (fixes mobile chat view)
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const scrollToBottom = () => {
+            if (container) {
+                container.scrollTop = 0;
+            }
+        };
+
+        // Multiple attempts to ensure scroll works even with delayed renders
+        scrollToBottom();
+
+        // Use requestAnimationFrame for smoother scroll after render
+        const raf1 = requestAnimationFrame(scrollToBottom);
+        const raf2 = requestAnimationFrame(() =>
+            requestAnimationFrame(scrollToBottom)
+        );
+
+        const timeouts = [
+            setTimeout(scrollToBottom, 50),
+            setTimeout(scrollToBottom, 150),
+            setTimeout(scrollToBottom, 300),
+            setTimeout(scrollToBottom, 500),
+        ];
+
+        return () => {
+            timeouts.forEach(clearTimeout);
+            cancelAnimationFrame(raf1);
+            cancelAnimationFrame(raf2);
+        };
+    }, []); // Only on mount
+
     // Initial scroll - just scroll to top when first loaded
     useEffect(() => {
         if (isLoadingMessages || !messages.length || hasInitiallyScrolled)
@@ -674,16 +716,18 @@ function ChatTab() {
 
     if (isLoadingMessages) {
         return (
-            <ContentWrapper>
-                <EmptyState>
-                    <LoadingSpinner />
-                </EmptyState>
-            </ContentWrapper>
+            <ChatTabWrapper>
+                <ContentWrapper>
+                    <EmptyState>
+                        <LoadingSpinner />
+                    </EmptyState>
+                </ContentWrapper>
+            </ChatTabWrapper>
         );
     }
 
     return (
-        <>
+        <ChatTabWrapper>
             <ContentWrapper>
                 <MessagesContainer
                     ref={messagesContainerRef}
@@ -842,7 +886,7 @@ function ChatTab() {
                     }}
                 />
             )}
-        </>
+        </ChatTabWrapper>
     );
 }
 
