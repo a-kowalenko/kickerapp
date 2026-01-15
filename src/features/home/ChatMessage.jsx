@@ -490,6 +490,7 @@ function ChatMessage({
     onHighlightEnd,
     onWhisper,
     onMention,
+    onFocusInput,
 }) {
     const navigate = useNavigate();
     const [isEditing, setIsEditing] = useState(false);
@@ -813,7 +814,11 @@ function ChatMessage({
         items.push({
             label: "Reply",
             icon: <HiArrowUturnLeft />,
-            onClick: () => onReply(message),
+            onClick: () => {
+                // Call focus synchronously from click event to trigger mobile keyboard
+                onFocusInput?.();
+                onReply(message);
+            },
             disabled: isUpdating || isDeleting,
         });
 
@@ -823,6 +828,8 @@ function ChatMessage({
                 label: "Reply privately",
                 icon: <HiChatBubbleLeftRight />,
                 onClick: () => {
+                    // Call focus synchronously from click event to trigger mobile keyboard
+                    onFocusInput?.();
                     onWhisper?.(player);
                     onReply(message);
                 },

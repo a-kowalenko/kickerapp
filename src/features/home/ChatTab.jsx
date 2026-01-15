@@ -1113,6 +1113,9 @@ function ChatTab() {
                                             }
                                             onWhisper={handleWhisper}
                                             onMention={handleMention}
+                                            onFocusInput={() =>
+                                                focusInputRef.current?.()
+                                            }
                                         />
                                         {/* Desktop: Date divider AFTER message (column-reverse) */}
                                         {!isMobile && showDateDivider && (
