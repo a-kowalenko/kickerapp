@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { ScrollMemoryProvider } from "./contexts/ScrollMemoryContext";
 
 import AppLayout from "./ui/AppLayout";
+import ChatPage from "./features/chat/ChatPage";
 import UnreadBadgeManager from "./ui/UnreadBadgeManager";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -159,6 +160,10 @@ function App() {
                                         <Route
                                             path="notifications"
                                             element={<Notifications />}
+                                        />
+                                        <Route
+                                            path="chat"
+                                            element={<ChatPage />}
                                         />
                                         <Route
                                             path="testwiese"

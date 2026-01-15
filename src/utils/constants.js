@@ -58,6 +58,7 @@ export const CHAT_REACTIONS = "chat_reactions";
 export const CHAT_TYPING = "chat_typing";
 export const TEAMS = "teams";
 export const TEAM_INVITATIONS = "team_invitations";
+export const USER_KICKER_ORDER = "user_kicker_order";
 
 // TEAM CONSTANTS
 export const TEAM_STATUS_PENDING = "pending";

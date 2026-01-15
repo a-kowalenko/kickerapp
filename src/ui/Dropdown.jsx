@@ -96,7 +96,7 @@ const List = styled.ul`
     top: 100%; // Beginnt direkt unter dem Toggle-Button
     left: 0; // Ausgerichtet am linken Rand des Containers
     width: 100%; // Nimmt die volle Breite des Containers ein
-    z-index: 10;
+    z-index: 11;
 
     align-items: flex-start;
     flex-direction: column;
@@ -235,6 +235,16 @@ function Dropdown({
             {/* Hidden sizer that renders all options to establish minimum width */}
             {autoWidth && (
                 <HiddenSizer>
+                    {/* Include initSelected in width calculation if it exists */}
+                    {initSelected && (
+                        <SizerToggle>
+                            <SizerContent>
+                                {hasAnyAvatar && <AvatarPlaceholder />}
+                                {initSelected.text}
+                            </SizerContent>
+                            <RotateIcon />
+                        </SizerToggle>
+                    )}
                     {options.map((opt) => (
                         <SizerToggle key={opt.value}>
                             <SizerContent>

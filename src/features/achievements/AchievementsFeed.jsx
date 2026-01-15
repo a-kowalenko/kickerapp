@@ -7,6 +7,9 @@ import {
     HiOutlineMagnifyingGlass,
     HiOutlineSparkles,
     HiXMark,
+    HiOutlineUsers,
+    HiOutlineSquares2X2,
+    HiOutlineClock,
 } from "react-icons/hi2";
 import { useAchievementFeed } from "../home/useAchievementFeed";
 import { useAchievementFeedStats } from "./useAchievementFeedStats";
@@ -17,6 +20,7 @@ import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
 import JumpToLatestButton from "../../ui/JumpToLatestButton";
 import Avatar from "../../ui/Avatar";
+import Dropdown from "../../ui/Dropdown";
 import { media, DEFAULT_AVATAR } from "../../utils/constants";
 
 // ============== ANIMATIONS ==============
@@ -371,18 +375,24 @@ const FilterBar = styled.div`
 `;
 
 const FilterGroup = styled.div`
+    display: none;
+`;
+
+const FilterDropdownWrapper = styled.div`
+    display: inline-block;
+    max-width: 25rem;
+`;
+
+const OptionContent = styled.span`
     display: flex;
     align-items: center;
     gap: 0.6rem;
-`;
 
-const FilterLabel = styled.span`
-    font-size: 1.2rem;
-    color: var(--tertiary-text-color);
-    white-space: nowrap;
-
-    ${media.mobile} {
-        display: none;
+    & svg {
+        width: 1.4rem;
+        height: 1.4rem;
+        flex-shrink: 0;
+        color: var(--color-brand-500);
     }
 `;
 
@@ -390,16 +400,30 @@ const SearchInput = styled.div`
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.6rem 1rem;
-    background-color: var(--secondary-background-color);
-    border: 1px solid var(--primary-border-color);
+    padding: 1.6rem 2.4rem;
+    background-color: var(--primary-dropdown-background-color);
+    border: 1px solid var(--primary-dropdown-border-color);
     border-radius: var(--border-radius-sm);
     flex: 1;
     min-width: 15rem;
     max-width: 25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.361);
+    transition: all 0.2s;
+    height: fit-content;
+    line-height: 1.2;
+
+    &:hover {
+        background-color: var(--primary-dropdown-background-color-hover);
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.727);
+    }
+
+    &:focus-within {
+        background-color: var(--primary-dropdown-background-color-hover);
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.727);
+    }
 
     & svg {
-        color: var(--tertiary-text-color);
+        color: var(--primary-dropdown-text-color);
         font-size: 1.6rem;
         flex-shrink: 0;
     }
@@ -407,19 +431,22 @@ const SearchInput = styled.div`
     & input {
         border: none;
         background: transparent;
-        color: var(--primary-text-color);
-        font-size: 1.3rem;
+        color: var(--primary-dropdown-text-color);
+        font-size: 1.2rem;
         width: 100%;
         outline: none;
+        line-height: 1.2;
 
         &::placeholder {
-            color: var(--tertiary-text-color);
+            color: var(--primary-dropdown-text-color);
+            opacity: 0.6;
         }
     }
 
     ${media.mobile} {
         min-width: 100%;
         max-width: none;
+        padding: 0.9rem 1.6rem;
     }
 `;
 
@@ -427,7 +454,7 @@ const ClearButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.2rem;
+    /* padding: 0.2rem; */
     background: transparent;
     border: none;
     color: var(--tertiary-text-color);
@@ -552,34 +579,6 @@ const NewAchievementsBadge = styled.span`
     text-align: center;
 `;
 
-const StyledSelect = styled.select`
-    min-width: 12rem;
-    font-size: 1.3rem;
-    padding: 0.6rem 1rem;
-    border: 1px solid var(--primary-border-color);
-    border-radius: var(--border-radius-sm);
-    background-color: var(--secondary-background-color);
-    color: var(--primary-text-color);
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s;
-
-    &:hover {
-        border-color: var(--color-brand-500);
-    }
-
-    &:focus {
-        border-color: var(--color-brand-500);
-        box-shadow: 0 0 0 2px rgba(var(--color-brand-rgb), 0.2);
-    }
-
-    ${media.mobile} {
-        min-width: 10rem;
-        font-size: 1.2rem;
-        padding: 0.5rem 0.8rem;
-    }
-`;
-
 function AchievementsFeed() {
     const feedContainerRef = useRef(null);
     const loadMoreRef = useRef(null);
@@ -618,29 +617,38 @@ function AchievementsFeed() {
     const { categories } = useAchievementCategories();
     const { players } = usePlayers();
 
-    // Filter options
-    const playerOptions = [
-        { value: "all", label: "All Players" },
-        ...(players || []).map((p) => ({
-            value: p.id.toString(),
-            label: p.name,
-        })),
-    ];
+    // Filter options - memoized to prevent dependency warnings
+    const playerOptions = useMemo(
+        () => [
+            { value: "all", label: "All Players" },
+            ...(players || []).map((p) => ({
+                value: p.id.toString(),
+                label: p.name,
+            })),
+        ],
+        [players]
+    );
 
-    const categoryOptions = [
-        { value: "all", label: "All Categories" },
-        ...(categories || []).map((c) => ({
-            value: c.id.toString(),
-            label: c.name,
-        })),
-    ];
+    const categoryOptions = useMemo(
+        () => [
+            { value: "all", label: "All Categories" },
+            ...(categories || []).map((c) => ({
+                value: c.id.toString(),
+                label: c.name,
+            })),
+        ],
+        [categories]
+    );
 
-    const timeOptions = [
-        { value: "all", label: "All Time" },
-        { value: "today", label: "Today" },
-        { value: "week", label: "This Week" },
-        { value: "month", label: "This Month" },
-    ];
+    const timeOptions = useMemo(
+        () => [
+            { value: "all", label: "All Time" },
+            { value: "today", label: "Today" },
+            { value: "week", label: "This Week" },
+            { value: "month", label: "This Month" },
+        ],
+        []
+    );
 
     // Update filter params
     const handleFilterChange = useCallback(
@@ -660,6 +668,59 @@ function AchievementsFeed() {
     const handleClearSearch = useCallback(() => {
         setSearchQuery("");
     }, []);
+
+    // Memoize dropdown selected states to prevent flickering
+    const playerInitSelected = useMemo(
+        () => ({
+            text: (
+                <OptionContent>
+                    <HiOutlineUsers />
+                    <span>
+                        {
+                            playerOptions.find((o) => o.value === playerFilter)
+                                ?.label
+                        }
+                    </span>
+                </OptionContent>
+            ),
+            value: playerFilter,
+        }),
+        [playerFilter, playerOptions]
+    );
+
+    const categoryInitSelected = useMemo(
+        () => ({
+            text: (
+                <OptionContent>
+                    <HiOutlineSquares2X2 />
+                    <span>
+                        {
+                            categoryOptions.find(
+                                (o) => o.value === categoryFilter
+                            )?.label
+                        }
+                    </span>
+                </OptionContent>
+            ),
+            value: categoryFilter,
+        }),
+        [categoryFilter, categoryOptions]
+    );
+
+    const timeInitSelected = useMemo(
+        () => ({
+            text: (
+                <OptionContent>
+                    <HiOutlineClock />
+                    <span>
+                        {timeOptions.find((o) => o.value === timeFilter)?.label}
+                    </span>
+                </OptionContent>
+            ),
+            value: timeFilter,
+        }),
+        [timeFilter, timeOptions]
+    );
 
     // Filter achievements based on current filters
     const filteredAchievements = useMemo(() => {
@@ -960,53 +1021,47 @@ function AchievementsFeed() {
             <FeedColumn>
                 {/* Filter Bar */}
                 <FilterBar>
-                    <FilterGroup>
-                        <FilterLabel>Player:</FilterLabel>
-                        <StyledSelect
-                            value={playerFilter}
-                            onChange={(e) =>
-                                handleFilterChange("player", e.target.value)
+                    <FilterDropdownWrapper>
+                        <Dropdown
+                            options={playerOptions.map((option) => ({
+                                text: option.label,
+                                value: option.value,
+                            }))}
+                            onSelect={(value) =>
+                                handleFilterChange("player", value)
                             }
-                        >
-                            {playerOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </StyledSelect>
-                    </FilterGroup>
+                            initSelected={playerInitSelected}
+                            autoWidth={true}
+                        />
+                    </FilterDropdownWrapper>
 
-                    <FilterGroup>
-                        <FilterLabel>Category:</FilterLabel>
-                        <StyledSelect
-                            value={categoryFilter}
-                            onChange={(e) =>
-                                handleFilterChange("category", e.target.value)
+                    <FilterDropdownWrapper>
+                        <Dropdown
+                            options={categoryOptions.map((option) => ({
+                                text: option.label,
+                                value: option.value,
+                            }))}
+                            onSelect={(value) =>
+                                handleFilterChange("category", value)
                             }
-                        >
-                            {categoryOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </StyledSelect>
-                    </FilterGroup>
+                            initSelected={categoryInitSelected}
+                            autoWidth={true}
+                        />
+                    </FilterDropdownWrapper>
 
-                    <FilterGroup>
-                        <FilterLabel>Time:</FilterLabel>
-                        <StyledSelect
-                            value={timeFilter}
-                            onChange={(e) =>
-                                handleFilterChange("time", e.target.value)
+                    <FilterDropdownWrapper>
+                        <Dropdown
+                            options={timeOptions.map((option) => ({
+                                text: option.label,
+                                value: option.value,
+                            }))}
+                            onSelect={(value) =>
+                                handleFilterChange("time", value)
                             }
-                        >
-                            {timeOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </StyledSelect>
-                    </FilterGroup>
+                            initSelected={timeInitSelected}
+                            autoWidth={true}
+                        />
+                    </FilterDropdownWrapper>
 
                     <SearchInput>
                         <HiOutlineMagnifyingGlass />

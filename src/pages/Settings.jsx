@@ -50,7 +50,6 @@ import { UAParser } from "ua-parser-js";
 const StyledSettings = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 2.4rem;
 `;
 
 const Container = styled.div`

@@ -5,8 +5,10 @@ import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { useKicker } from "../../contexts/KickerContext";
 import { getAchievementDefinition } from "../../services/apiAchievements";
 import { getPlayerById } from "../../services/apiMatches";
+import { MAX_MOBILE_WIDTH } from "../../utils/constants";
 
-const TOAST_DURATION = 6000; // 6 seconds
+export const TOAST_DURATION = 10000; // 10 seconds
+export const TOAST_DURATION_MOBILE = 4000; // 4 seconds on mobile
 
 function useAchievementNotifications() {
     const { data: player } = useOwnPlayer();

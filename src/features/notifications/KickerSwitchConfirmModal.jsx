@@ -104,11 +104,20 @@ function KickerSwitchConfirmModal({
 }) {
     const [dontAskAgain, setDontAskAgain] = useState(false);
 
-    function handleConfirm() {
+    function persistDontAskAgain() {
         if (dontAskAgain) {
             onDontAskAgain?.();
         }
+    }
+
+    function handleConfirm() {
+        persistDontAskAgain();
         onConfirm();
+    }
+
+    function handleCancel() {
+        persistDontAskAgain();
+        onCancel();
     }
 
     function handleOverlayClick(e) {
@@ -148,7 +157,7 @@ function KickerSwitchConfirmModal({
                     Don&apos;t ask again
                 </CheckboxWrapper>
                 <ModalButtons>
-                    <ModalButton $variation="secondary" onClick={onCancel}>
+                    <ModalButton $variation="secondary" onClick={handleCancel}>
                         Cancel
                     </ModalButton>
                     <ModalButton $variation="primary" onClick={handleConfirm}>
