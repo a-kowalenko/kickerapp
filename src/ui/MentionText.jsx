@@ -26,7 +26,7 @@ const EveryoneMention = styled.span`
 `;
 
 const ExternalLink = styled.a`
-    color: var(--primary-button-color);
+    color: var(--link-text-color);
     text-decoration: none;
     word-break: break-all;
 

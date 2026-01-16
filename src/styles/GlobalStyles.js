@@ -77,6 +77,8 @@ const GlobalStyles = createGlobalStyle`
     --secondary-text-color: #888;
     --tertiary-text-color: #4d98c9;
 
+    --link-text-color: #00a6ff;
+
 
     // Border
     --primary-border-color: #525252;
@@ -207,6 +209,8 @@ const GlobalStyles = createGlobalStyle`
     --secondary-text-color: #666666;
     --tertiary-text-color: var(--color-grey-500);
 
+    --link-text-color: #00a6ff;
+
     // Border
     --primary-border-color: #000;
     --secondary-border-color: var(--color-amber-100);
@@ -283,8 +287,8 @@ const GlobalStyles = createGlobalStyle`
     --chart-line-color: #0c00f3;
 
     // Mentions
-    --everyone-mention-color: #1c62b9;
-    --player-mention-color: #1c62b9;
+    --everyone-mention-color: #00a6ff;
+    --player-mention-color: #00a6ff;
 
 
 

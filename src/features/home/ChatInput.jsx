@@ -723,6 +723,13 @@ const ChatInput = forwardRef(function ChatInput(
                 setTimeout(() => inputRef.current?.focus(), 0);
                 return;
             }
+        } else {
+            // No command detected - close whisper dropdown if it was open
+            if (dropdownMode === "whisper") {
+                setShowPlayerDropdown(false);
+                setDropdownMode(null);
+                setPlayerSearch("");
+            }
         }
     }
 
