@@ -6,7 +6,6 @@ import { useRecentPerformance } from "./useRecentPerformance";
 import { hasPlayerWonMatch } from "../../utils/helpers";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import { MatchTooltip, useMatchTooltip } from "../../ui/MatchTooltip";
-import { useMatchPreview } from "../matches/useMatchPreview";
 import { media } from "../../utils/constants";
 
 const Card = styled.div`
@@ -218,9 +217,8 @@ const LoadingContainer = styled.div`
     padding: 2rem;
 `;
 
-function ShieldIcon({ isWin, matchId, opacity }) {
+function ShieldIcon({ isWin, match, opacity }) {
     const navigate = useNavigate();
-    const { match, isLoading, error } = useMatchPreview(matchId);
     const {
         isVisible,
         tooltipPos,
@@ -239,7 +237,7 @@ function ShieldIcon({ isWin, matchId, opacity }) {
 
     const handleClick = (e) => {
         e.preventDefault();
-        navigate(`/matches/${matchId}`);
+        navigate(`/matches/${match.id}`);
     };
 
     return (
@@ -270,8 +268,8 @@ function ShieldIcon({ isWin, matchId, opacity }) {
                 arrowPosition={arrowPosition}
                 arrowLeft={arrowLeft}
                 match={match}
-                isLoading={isLoading}
-                error={error}
+                isLoading={false}
+                error={null}
             />
         </>
     );
@@ -325,7 +323,7 @@ function GamemodePerformance({ title, matches, playerId, isTeamMode = false }) {
                         <ShieldIcon
                             key={match.id}
                             isWin={isWin}
-                            matchId={match.id}
+                            match={match}
                             opacity={getOpacity(index)}
                         />
                     );
