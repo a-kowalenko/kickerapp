@@ -364,6 +364,15 @@ function ScreenshotCarousel({
     // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e) => {
+            // Don't intercept keyboard events when user is typing in an input/textarea
+            const activeElement = document.activeElement;
+            const isTyping =
+                activeElement?.tagName === "INPUT" ||
+                activeElement?.tagName === "TEXTAREA" ||
+                activeElement?.isContentEditable;
+
+            if (isTyping) return;
+
             if (e.key === "ArrowLeft") goPrev();
             if (e.key === "ArrowRight") goNext();
             if (e.key === " ") {

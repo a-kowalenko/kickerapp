@@ -419,8 +419,9 @@ function ContactForm({ id }) {
                         <SuccessTitle>Message Sent!</SuccessTitle>
                         <SuccessText>
                             Thank you for reaching out. We&apos;ve received your
-                            message and sent a confirmation to your email.
-                            We&apos;ll get back to you as soon as possible.
+                            message and sent a confirmation to{" "}
+                            <strong>{formData.email}</strong>. We&apos;ll get
+                            back to you as soon as possible.
                         </SuccessText>
                         <SubmitButton type="button" onClick={handleReset}>
                             Send Another Message
