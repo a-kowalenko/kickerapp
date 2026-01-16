@@ -2,6 +2,7 @@ import styled, { keyframes } from "styled-components";
 import ScrollAwareNavLink from "./ScrollAwareNavLink";
 import {
     HiOutlineBookOpen,
+    HiOutlineChatBubbleLeftRight,
     HiOutlineCog6Tooth,
     HiOutlineHome,
     HiOutlineListBullet,
@@ -18,18 +19,29 @@ import { useKickerInfo } from "../hooks/useKickerInfo";
 import { useUser } from "../features/authentication/useUser";
 import SeasonBadge from "../features/seasons/SeasonBadge";
 import { media } from "../utils/constants";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const StyledMainNav = styled.nav`
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     flex-grow: 1;
+    // not scrollable itself, but its children can be
+    overflow: hidden;
 `;
 
 const NavList = styled.ul`
     display: flex;
     flex-direction: column;
     gap: 0.8rem;
+    overflow: auto;
+
+    // make scrollbar invisible but still scrollable
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 `;
 
 const SeasonBadgeContainer = styled.div`
@@ -149,6 +161,7 @@ function MainNav({ close }) {
     const { activeMatch } = useMatchContext();
     const { data: kickerData } = useKickerInfo();
     const { user } = useUser();
+    const { isDesktop } = useWindowWidth();
 
     const isAdmin = kickerData?.admin === user?.id;
 
@@ -213,6 +226,15 @@ function MainNav({ close }) {
                         <span>Players</span>
                     </StyledNavLink>
                 </li> */}
+
+                {isDesktop && (
+                    <li>
+                        <StyledNavLink to="/chat" title="Chat" onClick={close}>
+                            <HiOutlineChatBubbleLeftRight />
+                            <span>Chat</span>
+                        </StyledNavLink>
+                    </li>
+                )}
                 <li>
                     <StyledNavLink
                         to="/settings"

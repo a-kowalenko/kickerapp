@@ -685,9 +685,11 @@ function ChatTab() {
     }, [hasNextPage, isFetchingNextPage, fetchNextPage, isMobile]);
 
     // Desktop infinite scroll (no restoration needed due to column-reverse)
+    // Wait for hasInitiallyScrolled to prevent immediate fetching before container is ready
     useEffect(() => {
         const container = messagesContainerRef.current;
-        if (!container || !hasNextPage || isMobile) return;
+        if (!container || !hasNextPage || isMobile || !hasInitiallyScrolled)
+            return;
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -712,7 +714,13 @@ function ChatTab() {
         }
 
         return () => observer.disconnect();
-    }, [hasNextPage, isFetchingNextPage, fetchNextPage, isMobile]);
+    }, [
+        hasNextPage,
+        isFetchingNextPage,
+        fetchNextPage,
+        isMobile,
+        hasInitiallyScrolled,
+    ]);
 
     // Helper function to reliably scroll to bottom
     // Mobile (column): scrollTop = scrollHeight (standard scroll to bottom)

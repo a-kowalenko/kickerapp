@@ -52,6 +52,18 @@ const Main = styled.main`
     /* Space for fixed header */
     margin-top: 66px;
 
+    /* Desktop chat page: fixed height for proper scroll container */
+    ${(props) =>
+        props.$isChatPage &&
+        `
+        height: calc(100dvh - 66px);
+        min-height: auto;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 0;
+    `}
+
     /* Removing scrollbars for webkit, firefox, and ms, respectively */
     /* &::-webkit-scrollbar {
         display: none;
