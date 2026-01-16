@@ -28,6 +28,7 @@ import { updateChatReadStatus } from "../../services/apiChat";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
+import ChatInputDesktop from "./ChatInputDesktop";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
 import JumpToLatestButton from "../../ui/JumpToLatestButton";
@@ -314,7 +315,7 @@ function ChatTab() {
     const { isKeyboardOpen } = useKeyboard();
 
     // Detect mobile for scroll behavior (tablet breakpoint matches ChatPage)
-    const { windowWidth } = useWindowWidth();
+    const { windowWidth, isDesktop } = useWindowWidth();
     const isMobile = windowWidth <= media.maxTablet;
 
     const isAdmin = kickerData?.admin === user?.id;
@@ -1465,22 +1466,38 @@ function ChatTab() {
                 )}
             </ContentWrapper>
 
-            {currentPlayer && (
-                <ChatInput
-                    ref={chatInputRef}
-                    onSubmit={handleCreateMessage}
-                    isSubmitting={isCreating}
-                    currentPlayer={currentPlayer}
-                    replyTo={replyTo}
-                    onCancelReply={handleCancelReply}
-                    lastWhisperFrom={lastWhisperFrom}
-                    onTyping={onTyping}
-                    stopTyping={stopTyping}
-                    onFocusInput={(fn) => {
-                        focusInputRef.current = fn;
-                    }}
-                />
-            )}
+            {currentPlayer &&
+                (isDesktop ? (
+                    <ChatInputDesktop
+                        ref={chatInputRef}
+                        onSubmit={handleCreateMessage}
+                        isSubmitting={isCreating}
+                        currentPlayer={currentPlayer}
+                        replyTo={replyTo}
+                        onCancelReply={handleCancelReply}
+                        lastWhisperFrom={lastWhisperFrom}
+                        onTyping={onTyping}
+                        stopTyping={stopTyping}
+                        onFocusInput={(fn) => {
+                            focusInputRef.current = fn;
+                        }}
+                    />
+                ) : (
+                    <ChatInput
+                        ref={chatInputRef}
+                        onSubmit={handleCreateMessage}
+                        isSubmitting={isCreating}
+                        currentPlayer={currentPlayer}
+                        replyTo={replyTo}
+                        onCancelReply={handleCancelReply}
+                        lastWhisperFrom={lastWhisperFrom}
+                        onTyping={onTyping}
+                        stopTyping={stopTyping}
+                        onFocusInput={(fn) => {
+                            focusInputRef.current = fn;
+                        }}
+                    />
+                ))}
         </ChatTabWrapper>
     );
 }

@@ -165,11 +165,18 @@ function MainNav({ close }) {
 
     const isAdmin = kickerData?.admin === user?.id;
 
+    // Only close sidebar on mobile
+    const handleNavClick = isDesktop ? undefined : close;
+
     return (
         <StyledMainNav>
             <NavList>
                 <li>
-                    <StyledNavLink to="/home" title="Home" onClick={close}>
+                    <StyledNavLink
+                        to="/home"
+                        title="Home"
+                        onClick={handleNavClick}
+                    >
                         <HiOutlineHome />
                         <span>Home</span>
                     </StyledNavLink>
@@ -178,7 +185,7 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/rankings"
                         title="Rankings"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineListBullet />
                         <span>Rankings</span>
@@ -188,7 +195,7 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/fatalities"
                         title="Fatalities"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineTrash />
                         <span>Fatalities</span>
@@ -198,7 +205,7 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/matches"
                         title="Matches"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineBookOpen />
                         <span>Matches</span>
@@ -208,14 +215,18 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/achievements"
                         title="Achievements"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineTrophy />
                         <span>Achievements</span>
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/teams" title="Teams" onClick={close}>
+                    <StyledNavLink
+                        to="/teams"
+                        title="Teams"
+                        onClick={handleNavClick}
+                    >
                         <HiOutlineUserGroup />
                         <span>Teams</span>
                     </StyledNavLink>
@@ -229,7 +240,11 @@ function MainNav({ close }) {
 
                 {isDesktop && (
                     <li>
-                        <StyledNavLink to="/chat" title="Chat" onClick={close}>
+                        <StyledNavLink
+                            to="/chat"
+                            title="Chat"
+                            onClick={handleNavClick}
+                        >
                             <HiOutlineChatBubbleLeftRight />
                             <span>Chat</span>
                         </StyledNavLink>
@@ -239,7 +254,7 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/settings"
                         title="Settings"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineCog6Tooth />
                         <span>Settings</span>
@@ -250,7 +265,7 @@ function MainNav({ close }) {
                         <StyledNavLink
                             to="/admin"
                             title="Admin"
-                            onClick={close}
+                            onClick={handleNavClick}
                         >
                             <HiOutlineShieldCheck />
                             <span>Admin</span>
@@ -264,7 +279,7 @@ function MainNav({ close }) {
                         <StyledNavLink
                             to={`/matches/${activeMatch.id}`}
                             title="Active Match"
-                            onClick={close}
+                            onClick={handleNavClick}
                         >
                             <HiOutlinePlay />
                             <span>Active Match</span>
@@ -275,7 +290,7 @@ function MainNav({ close }) {
                         <StyledNavLink
                             to="/matches/create"
                             title="New match"
-                            onClick={close}
+                            onClick={handleNavClick}
                         >
                             <HiPlus />
                             <span>New match</span>
