@@ -27,6 +27,7 @@ const ContentWrapper = styled.div`
 
     ${media.tablet} {
         /* No fixed height on mobile - let flex take over */
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
     }
 `;
 

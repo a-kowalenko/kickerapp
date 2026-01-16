@@ -50,11 +50,13 @@ const Container = styled.div`
     background-color: var(--secondary-background-color);
     border-top: 1px solid var(--primary-border-color);
     padding: 0.8rem;
-    padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
     /* gap: 0.6rem; */
     flex-shrink: 0;
     /* Prevent zoom on mobile */
     touch-action: manipulation;
+    /* Swipe-to-dismiss keyboard support */
+    will-change: transform;
 `;
 
 const ReplyBanner = styled.div`
@@ -395,6 +397,8 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         lastWhisperFrom,
         onTyping,
         stopTyping,
+        containerRef,
+        dragOffset = 0,
     },
     ref
 ) {
@@ -857,8 +861,14 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
 
     if (!currentPlayer) return null;
 
+    // Calculate drag styles for swipe-to-dismiss keyboard
+    const dragStyle = {
+        transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+        transition: dragOffset > 0 ? "none" : "transform 0.2s ease-out",
+    };
+
     return (
-        <Container>
+        <Container ref={containerRef} style={dragStyle}>
             {/* Upload progress */}
             {isUploading && (
                 <UploadProgress>

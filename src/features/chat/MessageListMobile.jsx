@@ -20,6 +20,7 @@ import ChatMessage from "../home/ChatMessage";
 import ChatInputMobile from "./ChatInputMobile";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
+import { useKeyboard } from "../../contexts/KeyboardContext";
 
 // Format date for dividers
 function formatDateDivider(date) {
@@ -191,9 +192,15 @@ function MessageListMobile({
     const containerRef = useRef(null);
     const loadMoreRef = useRef(null);
     const chatInputRef = useRef(null);
+    const inputContainerRef = useRef(null);
     const lastScrollRequestRef = useRef(null);
     const isAtBottomRef = useRef(true);
     const hasMarkedAsReadRef = useRef(false);
+
+    // Swipe-to-dismiss keyboard refs
+    const touchStartTimeRef = useRef(null);
+    const entryYRef = useRef(null);
+    const isDraggingKeyboardRef = useRef(false);
 
     const [highlightedMessageId, setHighlightedMessageId] = useState(null);
     const [pendingScrollId, setPendingScrollId] = useState(null);
@@ -201,6 +208,7 @@ function MessageListMobile({
     const [newMessagesCount, setNewMessagesCount] = useState(0);
     const [replyTo, setReplyTo] = useState(null);
     const [lastWhisperFrom, setLastWhisperFrom] = useState(null);
+    const [inputDragOffset, setInputDragOffset] = useState(0);
 
     // Hooks
     const {
@@ -237,6 +245,7 @@ function MessageListMobile({
         useChatReadStatus(currentKicker);
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
+    const { isKeyboardOpen, blurInput } = useKeyboard();
 
     // Mark as read
     const markAsRead = useCallback(async () => {
@@ -419,6 +428,56 @@ function MessageListMobile({
         }
     }, [isLoading, messages?.length, markAsRead]);
 
+    // Swipe-to-dismiss keyboard handlers
+    const handleTouchStart = useCallback(
+        () => {
+            touchStartTimeRef.current = Date.now();
+            // Reset drag state on new touch
+            entryYRef.current = null;
+            isDraggingKeyboardRef.current = false;
+        },
+        []
+    );
+
+    const handleTouchMove = useCallback(
+        (e) => {
+            if (!inputContainerRef.current) return;
+
+            const touchY = e.touches[0].clientY;
+            const inputRect = inputContainerRef.current.getBoundingClientRect();
+
+            // Check if touch entered the input area while keyboard is open
+            if (touchY >= inputRect.top && isKeyboardOpen) {
+                if (!isDraggingKeyboardRef.current) {
+                    // First entry into input area - start drag and immediately blur
+                    // This closes the keyboard while we animate the input
+                    entryYRef.current = touchY;
+                    isDraggingKeyboardRef.current = true;
+                    blurInput();
+                }
+            }
+
+            // If dragging, update offset (drag persists even if finger moves back up)
+            if (isDraggingKeyboardRef.current && entryYRef.current !== null) {
+                const dragOffset = Math.max(0, touchY - entryYRef.current);
+                setInputDragOffset(dragOffset);
+            }
+        },
+        [isKeyboardOpen, blurInput]
+    );
+
+    const handleTouchEnd = useCallback(
+        () => {
+            if (!isDraggingKeyboardRef.current) return;
+
+            // Reset drag state with animation (keyboard already closed on drag start)
+            isDraggingKeyboardRef.current = false;
+            entryYRef.current = null;
+            setInputDragOffset(0);
+        },
+        []
+    );
+
     // Jump to bottom
     const handleJumpToBottom = useCallback(() => {
         scrollToBottom("smooth");
@@ -514,13 +573,19 @@ function MessageListMobile({
 
     if (!messages?.length) {
         return (
-            <Container>
+            <Container
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
                 <EmptyState>
                     <HiChatBubbleLeftRight />
                     <span>No messages yet. Start the conversation!</span>
                 </EmptyState>
                 <ChatInputMobile
                     ref={chatInputRef}
+                    containerRef={inputContainerRef}
+                    dragOffset={inputDragOffset}
                     onSubmit={handleSendMessage}
                     isSubmitting={isCreating}
                     onTyping={onTyping}
@@ -531,7 +596,11 @@ function MessageListMobile({
     }
 
     return (
-        <Container>
+        <Container
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
             <MessagesWrapper ref={containerRef} onScroll={handleScroll}>
                 {/* Typing indicator at bottom (newest) */}
                 <TypingIndicator $visible={!!typingText}>
@@ -608,6 +677,8 @@ function MessageListMobile({
 
             <ChatInputMobile
                 ref={chatInputRef}
+                containerRef={inputContainerRef}
+                dragOffset={inputDragOffset}
                 onSubmit={handleSendMessage}
                 isSubmitting={isCreating}
                 replyTo={replyTo}
