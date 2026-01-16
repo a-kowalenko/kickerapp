@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { HiPlay } from "react-icons/hi2";
 import MatchLinkWithTooltip from "./MatchLinkWithTooltip";
 import MediaViewer from "./MediaViewer";
+import LinkPreview from "./LinkPreview";
 
 const MentionLink = styled(Link)`
     color: var(--player-mention-color);
@@ -441,7 +442,9 @@ function MentionText({ content }) {
 
     // Find URLs (but not those inside [gif:...] or [img:...])
     // Track if we've already found a YouTube video (limit to 1 embed per message)
+    // Track if we've already found a URL for preview (limit to 1 preview per message)
     let hasYouTubeEmbed = false;
+    let hasLinkPreview = false;
 
     urlRegex.lastIndex = 0;
     while ((match = urlRegex.exec(content)) !== null) {
@@ -471,7 +474,18 @@ function MentionText({ content }) {
                     startTime: youtubeData.startTime,
                     fullMatch: url,
                 });
+            } else if (!youtubeData && !hasLinkPreview) {
+                // First non-YouTube URL gets a rich preview
+                hasLinkPreview = true;
+                allMatches.push({
+                    type: "linkPreview",
+                    index: startIndex,
+                    length: url.length,
+                    url: url,
+                    fullMatch: url,
+                });
             } else {
+                // Subsequent URLs are plain links
                 allMatches.push({
                     type: "url",
                     index: startIndex,
@@ -544,6 +558,10 @@ function MentionText({ content }) {
                     src={m.url}
                     onOpenViewer={setViewerImage}
                 />
+            );
+        } else if (m.type === "linkPreview") {
+            parts.push(
+                <LinkPreview key={`linkPreview-${m.index}`} url={m.url} />
             );
         } else if (m.type === "url") {
             // Add https:// prefix if URL starts with www.
