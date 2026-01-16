@@ -248,6 +248,7 @@ const AuthorName = styled(Link)`
 // Wrapper for avatar to handle context menu separately from Link
 const AvatarWrapper = styled.div`
     cursor: pointer;
+    height: fit-content;
 `;
 
 // Wrapper for author name to handle context menu separately from Link
