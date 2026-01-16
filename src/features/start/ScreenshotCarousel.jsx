@@ -283,7 +283,6 @@ function ScreenshotCarousel({
     const [progress, setProgress] = useState(0);
     const [loadedImages, setLoadedImages] = useState({});
     const [imageErrors, setImageErrors] = useState({});
-    const progressRef = useRef(null);
     const containerRef = useRef(null);
 
     const totalSlides = screenshots.length;
@@ -295,44 +294,46 @@ function ScreenshotCarousel({
 
     const goNext = useCallback(() => {
         setCurrentIndex((prev) => (prev + 1) % totalSlides);
-        setProgress(0);
     }, [totalSlides]);
 
     const goPrev = useCallback(() => {
         setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
-        setProgress(0);
     }, [totalSlides]);
 
-    // Autoplay logic
+    // Autoplay and progress logic
     useEffect(() => {
-        if (!isPlaying) return;
+        if (!isPlaying) {
+            setProgress(0);
+            return;
+        }
 
         const startTime = Date.now();
+        let animationId;
 
         const updateProgress = () => {
             const elapsed = Date.now() - startTime;
-            const newProgress = (elapsed / autoplayInterval) * 100;
+            const newProgress = Math.min(
+                (elapsed / autoplayInterval) * 100,
+                100
+            );
 
             if (newProgress >= 100) {
-                goNext();
+                setCurrentIndex((prev) => (prev + 1) % totalSlides);
+                // Don't call goNext here, directly update to avoid dependency issues
             } else {
                 setProgress(newProgress);
-                progressRef.current = requestAnimationFrame(updateProgress);
+                animationId = requestAnimationFrame(updateProgress);
             }
         };
 
-        progressRef.current = requestAnimationFrame(updateProgress);
+        animationId = requestAnimationFrame(updateProgress);
 
         return () => {
-            if (progressRef.current) {
-                cancelAnimationFrame(progressRef.current);
+            if (animationId) {
+                cancelAnimationFrame(animationId);
             }
         };
-    }, [isPlaying, currentIndex, autoplayInterval, goNext]);
-
-    // Pause on hover/touch
-    const handleMouseEnter = () => setIsPlaying(false);
-    const handleMouseLeave = () => setIsPlaying(true);
+    }, [isPlaying, currentIndex, autoplayInterval, totalSlides]);
 
     // Prefetch next image
     useEffect(() => {
@@ -390,7 +391,6 @@ function ScreenshotCarousel({
 
     const handleTouchStart = (e) => {
         touchStartX.current = e.touches[0].clientX;
-        setIsPlaying(false);
     };
 
     const handleTouchEnd = (e) => {
@@ -414,8 +414,6 @@ function ScreenshotCarousel({
             </SectionSubtitle>
             <CarouselContainer
                 ref={containerRef}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
             >

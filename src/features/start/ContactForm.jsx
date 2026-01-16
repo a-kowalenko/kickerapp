@@ -20,6 +20,7 @@ const Section = styled.section`
     padding: 4rem 4rem;
     max-width: 100rem;
     margin: 0 auto;
+    width: -webkit-fill-available;
 
     ${media.tablet} {
         padding: 3rem 2rem;
