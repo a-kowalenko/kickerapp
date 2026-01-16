@@ -1,9 +1,17 @@
 import styled from "styled-components";
 import Heading from "./Heading";
 import { Link } from "react-router-dom";
-import { FaGithub, FaXTwitter, FaInstagram, FaPatreon } from "react-icons/fa6";
+import {
+    FaGithub,
+    FaXTwitter,
+    FaInstagram,
+    FaPatreon,
+    FaPaypal,
+} from "react-icons/fa6";
 import { SiBuymeacoffee } from "react-icons/si";
 import { media } from "../utils/constants";
+import BugReportButton from "./BugReportButton";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const StyledFooter = styled.footer`
     grid-column: 1 / -1;
@@ -139,6 +147,8 @@ const Copyright = styled.p`
 `;
 
 function Footer() {
+    const { isDesktop } = useWindowWidth();
+
     return (
         <StyledFooter>
             <FooterLayout>
@@ -278,6 +288,14 @@ function Footer() {
                         </SocialElement>
                         <SocialElement>
                             <Link
+                                to="https://www.paypal.com/donate/?hosted_button_id=DUNVHWC5FBN3N"
+                                target={"_blank"}
+                            >
+                                <FaPaypal title="Donate via PayPal" />
+                            </Link>
+                        </SocialElement>
+                        <SocialElement>
+                            <Link
                                 to="https://www.patreon.com/andreaskowalenko"
                                 target={"_blank"}
                             >
@@ -303,9 +321,13 @@ function Footer() {
                         <LegalElement>
                             <Link to="/privacy">Privacy</Link>
                         </LegalElement>
+                        <LegalElement>
+                            <Link to="/contact">Contact</Link>
+                        </LegalElement>
                     </LegalList>
                 </LegalContainer>
             </FooterLayout>
+            {!isDesktop && <BugReportButton variant="footer" />}
             <Copyright>
                 © 2023-{new Date().getFullYear()} Andreas Kowalenko
             </Copyright>

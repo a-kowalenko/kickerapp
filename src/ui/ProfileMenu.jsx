@@ -457,7 +457,8 @@ function ProfileMenu({ inSidebar = false }) {
                     showStatusBadge={true}
                     showTargetIcon={false}
                     showLabel={true}
-                    showStatusTooltip={true}
+                    showStatusTooltip={isDesktop}
+                    showStreakTooltip={isDesktop}
                 />
             </ProfileMenuContainer>
 

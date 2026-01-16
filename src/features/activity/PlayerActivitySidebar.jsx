@@ -7,6 +7,7 @@ import { usePlayersActivity } from "./usePlayersActivity";
 import PlayerActivityCard from "./PlayerActivityCard";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import ProfileMenu from "../../ui/ProfileMenu";
+import BugReportButton from "../../ui/BugReportButton";
 
 /* ----------------------------------------
    Styled Components
@@ -428,6 +429,7 @@ export function PlayerActivitySidebar() {
                     )}
                 </SidebarContent>
             )}
+            <BugReportButton variant="sidebar" isExpanded={isOpen} />
         </SidebarContainer>
     );
 }
