@@ -448,16 +448,21 @@ function MessageListMobile({
         const result = [];
 
         // Messages come newest-first, we display newest at bottom with column-reverse
-        // So we iterate newest-first and add dividers
+        // With column-reverse, array index 0 appears at bottom, last index at top
+        // So dividers need to come AFTER messages in array to appear ABOVE them visually
         for (let i = 0; i < messages.length; i++) {
             const msg = messages[i];
             const msgDate = new Date(msg.created_at);
+
+            // Push message first
+            result.push({ type: "message", data: msg, key: msg.id });
 
             // Check if we need a date divider (comparing with next older message)
             const nextMsg = messages[i + 1];
             if (nextMsg) {
                 const nextDate = new Date(nextMsg.created_at);
                 if (!isSameDay(msgDate, nextDate)) {
+                    // Different day - add divider for current message's date
                     result.push({
                         type: "divider",
                         date: msgDate,
@@ -465,15 +470,13 @@ function MessageListMobile({
                     });
                 }
             } else {
-                // First message (oldest in current batch) - show its date
+                // Oldest message in batch - show its date divider above it
                 result.push({
                     type: "divider",
                     date: msgDate,
                     key: `divider-${msg.id}`,
                 });
             }
-
-            result.push({ type: "message", data: msg, key: msg.id });
         }
 
         return result;
