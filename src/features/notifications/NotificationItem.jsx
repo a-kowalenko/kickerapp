@@ -13,6 +13,7 @@ import { DEFAULT_AVATAR } from "../../utils/constants";
 import { useKicker } from "../../contexts/KickerContext";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import KickerSwitchConfirmModal from "./KickerSwitchConfirmModal";
+import useWindowWidth from "../../hooks/useWindowWidth";
 
 const highlightPulse = keyframes`
     0% {
@@ -191,6 +192,7 @@ function cleanContentPreview(content) {
 function NotificationItem({ notification, onMarkAsRead, onClose }) {
     const navigate = useNavigate();
     const { currentKicker, setCurrentKicker } = useKicker();
+    const { isDesktop } = useWindowWidth();
     const [autoSwitchKicker, setAutoSwitchKicker] = useLocalStorageState(
         false,
         "autoSwitchKickerOnNotification"
@@ -228,7 +230,10 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
         if (type === "comment" && match_id) {
             return `/matches/${match_id}?scrollTo=comment-${source_id}`;
         } else if (type === "chat") {
-            return `/home?tab=chat&scrollTo=message-${source_id}&_t=${Date.now()}`;
+            // On mobile (when MobileBottomNav is shown), navigate to /chat page
+            // On desktop, navigate to /home with chat tab
+            const basePath = isDesktop ? "/home" : "/chat";
+            return `${basePath}?tab=chat&scrollTo=message-${source_id}&_t=${Date.now()}`;
         } else if (type === "team_invite") {
             return "/teams/my";
         } else if (type === "fatality" && match_id) {

@@ -575,26 +575,32 @@ function ChatTab() {
     // This runs synchronously before paint via useLayoutEffect
     useLayoutEffect(() => {
         if (!isMobile) return;
-        
+
         const restoration = scrollRestorationRef.current;
         const container = messagesContainerRef.current;
-        
+
         // Only restore when transitioning from fetching to not-fetching
         const wasFetching = prevIsFetchingRef.current;
         prevIsFetchingRef.current = isFetchingNextPage;
-        
-        if (restoration.needsRestore && container && wasFetching && !isFetchingNextPage) {
+
+        if (
+            restoration.needsRestore &&
+            container &&
+            wasFetching &&
+            !isFetchingNextPage
+        ) {
             // Find the anchor message element by its data attribute
             const anchorElement = container.querySelector(
                 `[data-message-id="${restoration.anchorMessageId}"]`
             );
-            
+
             if (anchorElement) {
                 // Calculate where the anchor element is now and restore scroll
                 // so the anchor stays at the same visual position
                 const newAnchorOffset = anchorElement.offsetTop;
-                const targetScrollTop = newAnchorOffset - restoration.anchorOffsetFromTop;
-                
+                const targetScrollTop =
+                    newAnchorOffset - restoration.anchorOffsetFromTop;
+
                 // Use requestAnimationFrame to ensure DOM has settled
                 requestAnimationFrame(() => {
                     container.scrollTop = Math.max(0, targetScrollTop);
@@ -605,7 +611,7 @@ function ChatTab() {
                 // Anchor not found - reset cooldown anyway to prevent stuck state
                 fetchCooldownRef.current = false;
             }
-            
+
             restoration.needsRestore = false;
         }
     }, [messages, isMobile, isFetchingNextPage]); // Run when messages change or fetch completes
@@ -623,33 +629,39 @@ function ChatTab() {
                 ) {
                     // Find the first visible message to use as scroll anchor
                     // This message will be used to restore scroll position after new messages load
-                    const messageElements = container.querySelectorAll('[data-message-id]');
+                    const messageElements =
+                        container.querySelectorAll("[data-message-id]");
                     let anchorMessageId = null;
                     let anchorOffsetFromTop = 0;
-                    
+
                     for (const el of messageElements) {
                         const rect = el.getBoundingClientRect();
                         const containerRect = container.getBoundingClientRect();
                         // Find first message that's at least partially visible in the viewport
-                        if (rect.bottom > containerRect.top && rect.top < containerRect.bottom) {
-                            anchorMessageId = el.getAttribute('data-message-id');
+                        if (
+                            rect.bottom > containerRect.top &&
+                            rect.top < containerRect.bottom
+                        ) {
+                            anchorMessageId =
+                                el.getAttribute("data-message-id");
                             // Save offset from container top (how far down from container top the element is)
-                            anchorOffsetFromTop = el.offsetTop - container.scrollTop;
+                            anchorOffsetFromTop =
+                                el.offsetTop - container.scrollTop;
                             break;
                         }
                     }
-                    
+
                     // Save anchor-based scroll state
                     scrollRestorationRef.current = {
                         anchorMessageId,
                         anchorOffsetFromTop,
                         needsRestore: true,
                     };
-                    
+
                     // Set cooldown and fetch
                     fetchCooldownRef.current = true;
                     fetchNextPage();
-                    
+
                     // Fallback: reset cooldown after timeout if restoration fails
                     setTimeout(() => {
                         if (fetchCooldownRef.current) {
@@ -658,11 +670,10 @@ function ChatTab() {
                     }, 2000);
                 }
             },
-            { 
-                root: container, 
-                threshold: 0.1,
-                // Add rootMargin buffer to delay trigger - user must scroll 50px into the zone
-                rootMargin: '-50px 0px 0px 0px'
+            {
+                root: container,
+                // Lower threshold for more reliable triggering on mobile
+                threshold: 0.01,
             }
         );
 
