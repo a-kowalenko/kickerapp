@@ -1323,7 +1323,7 @@ function Startpage() {
                 <ContactForm id="contact" />
             </Main>
             <Footer>
-                <div>© 2023-{new Date().getFullYear()} Andreas Kowalenko</div>
+                <div>© 2023-{new Date().getFullYear()} KickerApp. All rights reserved.</div>
                 <FooterLinks>
                     <Link to="/imprint">Imprint</Link>
                     <span>|</span>

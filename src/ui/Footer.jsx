@@ -329,7 +329,8 @@ function Footer() {
             </FooterLayout>
             {!isDesktop && <BugReportButton variant="footer" />}
             <Copyright>
-                © 2023-{new Date().getFullYear()} Andreas Kowalenko
+                © 2023-{new Date().getFullYear()} KickerApp. All rights
+                reserved.
             </Copyright>
         </StyledFooter>
     );

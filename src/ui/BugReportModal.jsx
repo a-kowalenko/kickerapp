@@ -66,20 +66,8 @@ const ModalHeader = styled.div`
     align-items: center;
     justify-content: space-between;
     padding: 2rem 2.4rem;
-    background: linear-gradient(
-        135deg,
-        var(--color-red-100) 0%,
-        var(--color-orange-100) 100%
-    );
+    background: var(--tertiary-background-color);
     border-bottom: 1px solid var(--primary-border-color);
-
-    .dark-mode & {
-        background: linear-gradient(
-            135deg,
-            rgba(239, 68, 68, 0.15) 0%,
-            rgba(249, 115, 22, 0.15) 100%
-        );
-    }
 `;
 
 const HeaderTitle = styled.div`
@@ -88,8 +76,8 @@ const HeaderTitle = styled.div`
     gap: 1.2rem;
 
     & svg {
-        font-size: 2.8rem;
-        color: var(--color-red-600);
+        font-size: 2.4rem;
+        color: var(--secondary-text-color);
     }
 `;
 
@@ -211,8 +199,8 @@ const Textarea = styled.textarea`
 
     &:focus {
         outline: none;
-        border-color: var(--color-red-500);
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+        border-color: var(--primary-button-color);
+        box-shadow: 0 0 0 3px var(--primary-button-color-transparent);
     }
 
     &::placeholder {
@@ -270,30 +258,33 @@ const Button = styled.button`
 `;
 
 const CancelButton = styled(Button)`
-    background: var(--tertiary-background-color);
-    color: var(--secondary-text-color);
+    background: var(--secondary-button-color);
+    color: var(--secondary-button-color-text);
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
 
     &:hover:not(:disabled) {
-        background: var(--quaternary-background-color);
-        color: var(--primary-text-color);
+        box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.7);
+    }
+
+    &:active:not(:disabled) {
+        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.7);
+        background: var(--secondary-button-color-active);
     }
 `;
 
 const SubmitButton = styled(Button)`
-    background: linear-gradient(
-        135deg,
-        var(--color-red-500) 0%,
-        var(--color-orange-500) 100%
-    );
-    color: white;
+    background: var(--primary-button-color);
+    color: var(--primary-button-color-text);
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.4);
 
     &:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.7);
+        background: var(--primary-button-color-hover);
     }
 
     &:active:not(:disabled) {
-        transform: translateY(0);
+        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.7);
+        background: var(--primary-button-color-active);
     }
 `;
 
