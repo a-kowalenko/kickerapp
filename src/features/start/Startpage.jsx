@@ -23,14 +23,12 @@ import {
     HiDevicePhoneMobile,
     HiPhoto,
     HiHome,
-    HiOutlineBars3,
     HiOutlineEnvelope,
 } from "react-icons/hi2";
 import { MdDragIndicator } from "react-icons/md";
 import { useUserKickers } from "../../features/kicker/useUserKickers";
 import { useKicker } from "../../contexts/KickerContext";
 import ButtonIcon from "../../ui/ButtonIcon";
-import { HiXMark } from "react-icons/hi2";
 import { media } from "../../utils/constants";
 import SpinnerMini from "../../ui/SpinnerMini";
 import FeatureGrid from "./FeatureGrid";
@@ -79,44 +77,12 @@ const Sidebar = styled.aside`
         transform: translateX(0);
     }
 
-    ${media.tablet} {
+    ${media.mobile} {
         width: 100%;
         border-radius: 0;
         border-right: none;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    }
-`;
-
-const SidebarHeader = styled.div`
-    display: none;
-`;
-
-const SidebarHeaderTitle = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    color: var(--primary-text-color);
-
-    svg {
-        font-size: 2rem;
-    }
-
-    h2 {
-        font-size: 1.6rem;
-        font-weight: 600;
-        margin: 0;
-    }
-
-    ${media.tablet} {
-        color: var(--primary-button-color-text);
-
-        svg {
-            font-size: 2.4rem;
-        }
-
-        h2 {
-            font-size: 1.8rem;
-        }
+        padding-bottom: 3rem;
     }
 `;
 
@@ -126,8 +92,8 @@ const SidebarContent = styled.div`
     overflow-y: auto;
 `;
 
+/* Unified sidebar backdrop - closes on any click */
 const SidebarBackdrop = styled.div`
-    display: none;
     position: fixed;
     top: 66px;
     left: 0;
@@ -135,10 +101,6 @@ const SidebarBackdrop = styled.div`
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 98;
-
-    ${media.tablet} {
-        display: block;
-    }
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
@@ -271,16 +233,6 @@ const BurgerButton = styled(ButtonIcon)`
     }
 `;
 
-const KickerSidebarButton = styled(ButtonIcon)`
-    & > svg {
-        transition: transform 0.3s ease, color 0.2s ease;
-        transform: ${(props) =>
-            props.$isOpen ? "rotate(180deg)" : "rotate(0deg)"};
-        color: ${(props) =>
-            props.$isOpen ? "var(--primary-button-color)" : "inherit"};
-    }
-`;
-
 const DesktopKickerButton = styled.button`
     position: absolute;
     left: 1.5rem;
@@ -316,9 +268,9 @@ const DesktopKickerButton = styled.button`
 `;
 
 const KickerButtonLabel = styled.span`
-    font-size: 1.6rem;
-    font-weight: 400;
-    color: var(--primary-text-color);
+    ${media.tablet} {
+        display: none;
+    }
 `;
 
 const Navbar = styled.nav`
@@ -348,6 +300,11 @@ const NavButtonsContainer = styled.div`
     position: absolute;
     right: 2.5rem;
     gap: 1rem;
+    align-items: center;
+
+    ${media.tablet} {
+        right: 1rem;
+    }
 `;
 
 const NavButton = styled.button`
@@ -357,6 +314,11 @@ const NavButton = styled.button`
     font-size: 1.6rem;
     cursor: pointer;
     padding: 0.5rem;
+
+    /* Hide auth buttons on mobile - they're in the sidebar */
+    ${media.tablet} {
+        display: none;
+    }
 
     &:hover {
         text-decoration: underline;
@@ -397,85 +359,41 @@ const NavLinkItem = styled.button`
     }
 `;
 
-const MobileNavOverlay = styled.div`
-    display: none;
-    position: fixed;
-    top: 66px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 98;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+/* Sidebar section divider with title */
+const SidebarSection = styled.div`
+    margin-bottom: 1.5rem;
 
-    ${media.tablet} {
+    /* Hide navigation section on desktop - only show kickers */
+    &.mobile-only {
         display: block;
-    }
 
-    &.active {
-        opacity: 1;
-        visibility: visible;
-    }
-`;
+        ${media.tablet} {
+            display: block;
+        }
 
-const MobileNavMenu = styled.div`
-    display: none;
-    position: fixed;
-    top: 66px;
-    left: -100%;
-    width: 32rem;
-    height: calc(100% - 66px);
-    background: var(--secondary-background-color);
-    z-index: 99;
-    flex-direction: column;
-    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.2);
-    border-radius: 0;
-    transition: left 0.3s ease-in-out;
-    overflow: hidden;
-
-    ${media.tablet} {
-        display: flex;
-    }
-
-    ${media.mobile} {
-        width: 100%;
-    }
-
-    &.active {
-        left: 0;
+        @media (min-width: 769px) {
+            display: none;
+        }
     }
 `;
 
-const MobileNavHeader = styled.div`
-    display: none;
-`;
-
-const MobileNavTitle = styled.h3`
-    font-size: 1.8rem;
+const SidebarSectionTitle = styled.h3`
+    font-size: 1.2rem;
     font-weight: 600;
-    color: var(--primary-button-color-text);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-
-    & svg {
-        font-size: 2.4rem;
-    }
+    color: var(--secondary-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 1rem 0;
+    padding: 0 0.5rem;
 `;
 
-const MobileNavLinks = styled.div`
+const SidebarNavLinks = styled.div`
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding: 1.5rem;
-    flex: 1;
-    overflow-y: auto;
 `;
 
-const MobileNavLinkItem = styled.button`
+const SidebarNavLinkItem = styled.button`
     background: var(--primary-background-color);
     border: 2px solid transparent;
     color: var(--primary-text-color);
@@ -490,6 +408,7 @@ const MobileNavLinkItem = styled.button`
     transition: all 0.2s ease;
     text-align: left;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    width: 100%;
 
     &:hover {
         border-color: var(--primary-button-color);
@@ -506,23 +425,22 @@ const MobileNavLinkItem = styled.button`
     }
 `;
 
-const MobileNavCloseButton = styled(ButtonIcon)`
-    color: var(--primary-button-color-text);
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 0.8rem;
-    padding: 0.6rem;
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.25);
-    }
-`;
-
-const MobileNavAuthButtons = styled.div`
+const SidebarAuthButtons = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1rem;
     padding: 1.5rem;
     border-top: 1px solid var(--primary-border-color);
+    margin-top: auto;
+
+    /* Hide auth buttons on desktop - only show in mobile sidebar */
+    &.mobile-only {
+        display: flex;
+
+        @media (min-width: 769px) {
+            display: none;
+        }
+    }
 `;
 
 const Logo = styled.img`
@@ -562,7 +480,6 @@ const HeroSection = styled.section`
 `;
 
 const CTASection = styled.section`
-    padding: 0 2rem 3rem;
     background: transparent;
     position: relative;
     z-index: 1;
@@ -582,7 +499,6 @@ const ColumnsContainer = styled.div`
         flex-direction: column;
         align-items: center;
         gap: 1.5rem;
-        padding: 0 1rem;
     }
 `;
 
@@ -794,26 +710,6 @@ const ResponsiveNavButtonsContainer = styled(NavButtonsContainer)`
     } */
 `;
 
-const SidebarCloseButton = styled(ButtonIcon)`
-    color: var(--primary-text-color);
-    background: var(--secondary-background-color);
-    border-radius: 0.8rem;
-    padding: 0.6rem;
-
-    &:hover {
-        background: var(--color-grey-200);
-    }
-
-    ${media.tablet} {
-        color: var(--primary-button-color-text);
-        background: rgba(255, 255, 255, 0.15);
-
-        &:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
-    }
-`;
-
 const EmptyStateContainer = styled.div`
     display: flex;
     flex-direction: column;
@@ -866,18 +762,7 @@ function Startpage() {
         "sidebar-open"
     );
     const toggleSidebar = () => {
-        if (!sidebarActive) {
-            setMobileNavActive(false); // Close burger nav when opening kicker nav
-        }
         setSidebarActive(!sidebarActive);
-    };
-
-    const [mobileNavActive, setMobileNavActive] = useState(false);
-    const toggleMobileNav = () => {
-        if (!mobileNavActive) {
-            setSidebarActive(false); // Close kicker nav when opening burger nav
-        }
-        setMobileNavActive(!mobileNavActive);
     };
 
     // Smart header visibility - hide on scroll down, show on scroll up
@@ -898,8 +783,8 @@ function Startpage() {
             return;
         }
 
-        // Don't hide header when mobile nav or sidebar is open
-        if (mobileNavActive || sidebarActive) {
+        // Don't hide header when sidebar is open
+        if (sidebarActive) {
             setIsHeaderVisible(true);
             lastScrollY.current = currentScrollY;
             return;
@@ -920,7 +805,7 @@ function Startpage() {
         }
 
         lastScrollY.current = currentScrollY;
-    }, [mobileNavActive, sidebarActive]);
+    }, [sidebarActive]);
 
     // Scroll event listener
     useEffect(() => {
@@ -1121,9 +1006,18 @@ function Startpage() {
     function scrollToSection(sectionId) {
         const element = document.getElementById(sectionId);
         if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
+            // bedenke header height, header ist nav, get real height
+            const headerHeight = document.querySelector("nav").offsetHeight;
+            const elementPosition =
+                element.getBoundingClientRect().top + window.pageYOffset;
+            window.scrollTo({
+                top: elementPosition - headerHeight,
+                behavior: "smooth",
+            });
+
+            setIsHeaderVisible(true);
         }
-        setMobileNavActive(false);
+        setSidebarActive(false);
     }
 
     return (
@@ -1144,19 +1038,12 @@ function Startpage() {
                 )}
                 <BurgerMenuContainer>
                     <BurgerButton
-                        $isOpen={mobileNavActive}
-                        onClick={toggleMobileNav}
+                        $isOpen={sidebarActive}
+                        onClick={toggleSidebar}
+                        data-burger-menu
                     >
-                        <FaBars />
+                        {sidebarActive ? <FaTimes /> : <FaBars />}
                     </BurgerButton>
-                    {!isLoading && isAuthenticated && (
-                        <KickerSidebarButton
-                            $isOpen={sidebarActive}
-                            onClick={toggleSidebar}
-                        >
-                            <HiOutlineSquare3Stack3D />
-                        </KickerSidebarButton>
-                    )}
                 </BurgerMenuContainer>
                 <Logo
                     src={logo}
@@ -1195,92 +1082,38 @@ function Startpage() {
                 </ResponsiveNavButtonsContainer>
             </Navbar>
 
-            {/* Mobile Navigation Menu */}
-            <MobileNavOverlay
-                className={mobileNavActive ? "active" : ""}
-                onClick={() => setMobileNavActive(false)}
+            {/* Unified Sidebar (mobile: nav + kickers, desktop: kickers only) */}
+            <SidebarBackdrop
+                className={sidebarActive ? "active" : ""}
+                onClick={() => setSidebarActive(false)}
             />
-            <MobileNavMenu
-                className={mobileNavActive ? "active" : ""}
-                onClick={() => setMobileNavActive(false)}
+            <Sidebar
+                className={sidebarActive ? "active" : ""}
+                onClick={() => setSidebarActive(false)}
             >
-                <MobileNavHeader>
-                    <MobileNavTitle>
-                        <HiOutlineBars3 />
-                        <span>Menu</span>
-                    </MobileNavTitle>
-                    <MobileNavCloseButton
-                        onClick={() => setMobileNavActive(false)}
-                    >
-                        <HiXMark />
-                    </MobileNavCloseButton>
-                </MobileNavHeader>
-                <MobileNavLinks onClick={(e) => e.stopPropagation()}>
-                    {NAV_SECTIONS.map((section) => (
-                        <MobileNavLinkItem
-                            key={section.id}
-                            onClick={() => scrollToSection(section.id)}
-                        >
-                            <section.icon />
-                            {section.label}
-                        </MobileNavLinkItem>
-                    ))}
-                </MobileNavLinks>
-                <MobileNavAuthButtons onClick={(e) => e.stopPropagation()}>
-                    {!isLoading && !isAuthenticated && (
-                        <>
-                            <Button
-                                as={NavLink}
-                                to="/register"
-                                onClick={() => setMobileNavActive(false)}
-                            >
-                                Sign Up
-                            </Button>
-                            <Button
-                                as={NavLink}
-                                to="/login"
-                                $variation="secondary"
-                                onClick={() => setMobileNavActive(false)}
-                            >
-                                Sign In
-                            </Button>
-                        </>
-                    )}
+                <SidebarContent onClick={(e) => e.stopPropagation()}>
+                    {/* Navigation Section - shown on mobile for all users */}
+                    <SidebarSection className="mobile-only">
+                        <SidebarSectionTitle>Navigation</SidebarSectionTitle>
+                        <SidebarNavLinks>
+                            {NAV_SECTIONS.map((section) => (
+                                <SidebarNavLinkItem
+                                    key={section.id}
+                                    onClick={() => scrollToSection(section.id)}
+                                >
+                                    <section.icon />
+                                    {section.label}
+                                </SidebarNavLinkItem>
+                            ))}
+                        </SidebarNavLinks>
+                    </SidebarSection>
+
+                    {/* Kickers Section - shown for authenticated users */}
                     {!isLoading && isAuthenticated && (
-                        <Button
-                            $variation="danger"
-                            onClick={() => {
-                                setMobileNavActive(false);
-                                logout();
-                            }}
-                        >
-                            Logout
-                        </Button>
-                    )}
-                </MobileNavAuthButtons>
-            </MobileNavMenu>
-            {!isLoading && isAuthenticated && (
-                <>
-                    <SidebarBackdrop
-                        className={sidebarActive ? "active" : ""}
-                        onClick={() => setSidebarActive(false)}
-                    />
-                    <Sidebar
-                        className={sidebarActive ? "active" : ""}
-                        onClick={() => setSidebarActive(false)}
-                    >
-                        <SidebarHeader>
-                            <SidebarHeaderTitle>
-                                <HiOutlineSquare3Stack3D />
-                                <h2>Your Kickers</h2>
-                            </SidebarHeaderTitle>
-                            <SidebarCloseButton
-                                onClick={() => setSidebarActive(false)}
-                            >
-                                <HiXMark />
-                            </SidebarCloseButton>
-                        </SidebarHeader>
-                        <SidebarContent onClick={(e) => e.stopPropagation()}>
+                        <SidebarSection>
+                            <SidebarSectionTitle>
+                                Your Kickers
+                            </SidebarSectionTitle>
                             {isLoadingKickers ? (
                                 <SpinnerMini />
                             ) : localKickers?.length > 0 ? (
@@ -1347,10 +1180,44 @@ function Startpage() {
                                     </EmptyStateHint>
                                 </EmptyStateContainer>
                             )}
-                        </SidebarContent>
-                    </Sidebar>
-                </>
-            )}
+                        </SidebarSection>
+                    )}
+                </SidebarContent>
+
+                {/* Auth Buttons - mobile only */}
+                <SidebarAuthButtons className="mobile-only">
+                    {!isLoading && !isAuthenticated && (
+                        <>
+                            <Button
+                                as={NavLink}
+                                to="/register"
+                                onClick={() => setSidebarActive(false)}
+                            >
+                                Sign Up
+                            </Button>
+                            <Button
+                                as={NavLink}
+                                to="/login"
+                                $variation="secondary"
+                                onClick={() => setSidebarActive(false)}
+                            >
+                                Sign In
+                            </Button>
+                        </>
+                    )}
+                    {!isLoading && isAuthenticated && (
+                        <Button
+                            $variation="danger"
+                            onClick={() => {
+                                setSidebarActive(false);
+                                logout();
+                            }}
+                        >
+                            Logout
+                        </Button>
+                    )}
+                </SidebarAuthButtons>
+            </Sidebar>
             <Main>
                 <HeroSection id="hero">
                     <Title>Welcome to KickerApp</Title>

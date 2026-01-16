@@ -1110,7 +1110,7 @@ const sizes = {
 ----------------------------------------- */
 const AvatarWrapper = styled.div`
     position: relative;
-    display: inline-block;
+    /* display: inline-block; */
     transition: transform 0.3s;
 
     &:hover {

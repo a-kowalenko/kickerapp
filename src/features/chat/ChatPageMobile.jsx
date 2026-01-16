@@ -1,72 +1,62 @@
 import styled from "styled-components";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
 } from "react-icons/hi2";
-import ChatTab from "../home/ChatTab";
+import MessageListMobile from "./MessageListMobile";
 import MatchCommentsTab from "../home/MatchCommentsTab";
 import { useKicker } from "../../contexts/KickerContext";
 import { useUser } from "../authentication/useUser";
 import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
+import { useKeyboard } from "../../contexts/KeyboardContext";
 
-const DESKTOP_CHAT_TAB_KEY = "zerohero-desktop-chat-tab";
+const MOBILE_CHAT_TAB_KEY = "zerohero-mobile-chat-tab";
 
-const StyledChatPage = styled.div`
+const PageContainer = styled.div`
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
+    height: 100%;
     overflow: hidden;
     background-color: var(--secondary-background-color);
-    border-radius: var(--border-radius-lg);
-    border: none;
-    /* Offset parent padding for full-height layout */
-    margin: -1rem -4.8rem 0;
-    padding: 0;
-    height: calc(100% + 3.2rem);
 `;
 
 const TabBar = styled.div`
     display: flex;
-    /* background-color: var(--tertiary-background-color); */
+    background-color: var(--tertiary-background-color);
     flex-shrink: 0;
     border-bottom: 1px solid var(--primary-border-color);
 `;
 
 const TabButton = styled.button`
     flex: 1;
-    max-width: 20rem;
-    padding: 1.2rem 2rem;
+    padding: 1rem 1.4rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
+    gap: 0.8rem;
     border: none;
-    border-bottom: ${(props) =>
-        props.$active
-            ? "3px solid var(--color-brand-500)"
-            : "3px solid transparent"};
+    border-bottom: 2px solid
+        ${(props) => (props.$active ? "var(--color-brand-500)" : "transparent")};
     background-color: transparent;
     color: ${(props) =>
         props.$active
             ? "var(--color-brand-500)"
             : "var(--secondary-text-color)"};
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     font-weight: ${(props) => (props.$active ? "600" : "500")};
     cursor: pointer;
-    transition: all 0.2s;
+    transition: color 0.2s, border-color 0.2s;
 
-    &:hover:not([disabled]) {
-        color: var(--color-brand-500);
+    &:active {
         background-color: var(--quaternary-background-color);
     }
 
     & svg {
-        font-size: 2rem;
-        transition: color 0.2s;
+        font-size: 1.8rem;
     }
 `;
 
@@ -81,16 +71,7 @@ const UnreadBadge = styled.span`
     text-align: center;
 `;
 
-const ChatContent = styled.div`
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    background-color: var(--secondary-background-color);
-`;
-
-const TabPanel = styled.div`
+const TabContent = styled.div`
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -98,28 +79,52 @@ const TabPanel = styled.div`
     overflow: hidden;
 `;
 
-function ChatPage() {
+function ChatPageMobile() {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Determine initial tab from URL or localStorage
     const [activeTab, setActiveTab] = useState(() => {
-        const saved = localStorage.getItem(DESKTOP_CHAT_TAB_KEY);
+        const urlTab = searchParams.get("tab");
+        if (urlTab === "chat" || urlTab === "comments") return urlTab;
+        const saved = localStorage.getItem(MOBILE_CHAT_TAB_KEY);
         return saved === "comments" ? "comments" : "chat";
     });
+
+    // Deep link message ID from URL
+    const scrollToMessageId = useMemo(() => {
+        const scrollTo = searchParams.get("scrollTo");
+        if (scrollTo?.startsWith("message-")) {
+            return scrollTo.replace("message-", "");
+        }
+        return null;
+    }, [searchParams]);
+
+    const scrollTimestamp = searchParams.get("_t");
 
     const { currentKicker } = useKicker();
     const { user } = useUser();
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+    const { blurInput } = useKeyboard();
+
+    // Switch to chat tab if scrollTo param is present
+    useEffect(() => {
+        if (scrollToMessageId && activeTab !== "chat") {
+            setActiveTab("chat");
+        }
+    }, [scrollToMessageId, activeTab]);
 
     // Persist tab selection
     useEffect(() => {
-        localStorage.setItem(DESKTOP_CHAT_TAB_KEY, activeTab);
+        localStorage.setItem(MOBILE_CHAT_TAB_KEY, activeTab);
     }, [activeTab]);
 
     const handleTabChange = useCallback(
         async (tab) => {
+            blurInput();
             setActiveTab(tab);
 
-            // Mark comments as read when switching to comments tab
             if (tab === "comments" && currentKicker) {
                 try {
                     await updateCommentReadStatus(currentKicker);
@@ -130,11 +135,20 @@ function ChatPage() {
                 }
             }
         },
-        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]
+        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge, blurInput]
     );
 
+    const handleScrollComplete = useCallback(() => {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("scrollTo");
+        newParams.delete("_t");
+        if (newParams.toString() !== searchParams.toString()) {
+            setSearchParams(newParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
     return (
-        <StyledChatPage>
+        <PageContainer>
             <TabBar>
                 <TabButton
                     $active={activeTab === "chat"}
@@ -154,20 +168,19 @@ function ChatPage() {
                     )}
                 </TabButton>
             </TabBar>
-            <ChatContent>
+
+            <TabContent>
                 {activeTab === "chat" && (
-                    <TabPanel>
-                        <ChatTab />
-                    </TabPanel>
+                    <MessageListMobile
+                        scrollToMessageId={scrollToMessageId}
+                        scrollTimestamp={scrollTimestamp}
+                        onScrollComplete={handleScrollComplete}
+                    />
                 )}
-                {activeTab === "comments" && (
-                    <TabPanel>
-                        <MatchCommentsTab />
-                    </TabPanel>
-                )}
-            </ChatContent>
-        </StyledChatPage>
+                {activeTab === "comments" && <MatchCommentsTab />}
+            </TabContent>
+        </PageContainer>
     );
 }
 
-export default ChatPage;
+export default ChatPageMobile;

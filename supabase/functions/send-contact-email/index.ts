@@ -128,16 +128,81 @@ Deno.serve(async (req) => {
             to: [SUPPORT_EMAIL],
             replyTo: data.email,
             subject: `[${subjectLabel}] Contact Form: ${data.name}`,
-            html: `
-        <h2>New Contact Form Submission</h2>
-        <p><strong>From:</strong> ${data.name} (${data.email})</p>
-        <p><strong>Subject:</strong> ${subjectLabel}</p>
-        <hr />
-        <h3>Message:</h3>
-        <p style="white-space: pre-wrap;">${data.message}</p>
-        <hr />
-        <p style="color: #666; font-size: 12px;">Sent from KickerApp Contact Form</p>
-      `,
+            html: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Contact Form Submission</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr>
+                        <td style="padding: 32px 40px 24px 40px; text-align: center; border-bottom: 1px solid #e4e4e7;">
+                            <img src="https://www.kickerapp.dev/logo_darkmode.png" alt="KickerApp" width="48" height="48" style="border-radius: 10px; display: inline-block; vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 700; color: #0284c7; vertical-align: middle; margin-left: 12px;">KickerApp</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px 40px;">
+                            <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #18181b; text-align: center;">📬 New Contact Form Submission</h1>
+                            <p style="margin: 0 0 24px 0; font-size: 15px; color: #71717a; text-align: center;">You received a new message from the contact form.</p>
+                            
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5; border-radius: 8px; margin-bottom: 16px;">
+                                <tr>
+                                    <td style="padding: 16px;">
+                                        <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a;">👤 <strong>From:</strong></p>
+                                        <p style="margin: 0 0 16px 0; font-size: 15px; color: #18181b;">${
+                                            data.name
+                                        } (<a href="mailto:${
+                data.email
+            }" style="color: #0284c7; text-decoration: none;">${
+                data.email
+            }</a>)</p>
+                                        <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a;">🏷️ <strong>Subject:</strong></p>
+                                        <p style="margin: 0; font-size: 15px; color: #18181b;">${subjectLabel}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a; font-weight: 600;">💬 Message:</p>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px;">
+                                <tr>
+                                    <td style="padding: 16px;">
+                                        <p style="margin: 0; font-size: 15px; color: #18181b; white-space: pre-wrap;">${
+                                            data.message
+                                        }</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <a href="mailto:${
+                                            data.email
+                                        }?subject=Re: ${subjectLabel}" style="display: inline-block; padding: 14px 40px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Reply to ${
+                data.name
+            }</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 24px 40px; border-top: 1px solid #e4e4e7; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; color: #a1a1aa;">&copy; ${new Date().getFullYear()} KickerApp. Contact Form Submission.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`,
         });
 
         if (supportError) {
@@ -150,17 +215,64 @@ Deno.serve(async (req) => {
             from: "KickerApp <noreply@kickerapp.dev>",
             to: [data.email],
             subject: "We received your message - KickerApp",
-            html: `
-        <h2>Thanks for contacting us, ${data.name}!</h2>
-        <p>We've received your message and will get back to you as soon as possible.</p>
-        <hr />
-        <h3>Your message:</h3>
-        <p><strong>Subject:</strong> ${subjectLabel}</p>
-        <p style="white-space: pre-wrap;">${data.message}</p>
-        <hr />
-        <p>Best regards,<br />The KickerApp Team</p>
-        <p style="color: #666; font-size: 12px;">This is an automated confirmation. Please don't reply to this email.</p>
-      `,
+            html: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Received</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr>
+                        <td style="padding: 32px 40px 24px 40px; text-align: center; border-bottom: 1px solid #e4e4e7;">
+                            <img src="https://www.kickerapp.dev/logo_darkmode.png" alt="KickerApp" width="48" height="48" style="border-radius: 10px; display: inline-block; vertical-align: middle;">
+                            <span style="font-size: 24px; font-weight: 700; color: #0284c7; vertical-align: middle; margin-left: 12px;">KickerApp</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px 40px;">
+                            <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #18181b; text-align: center;">Thanks for reaching out, ${
+                                data.name
+                            }! 👋</h1>
+                            <p style="margin: 0 0 28px 0; font-size: 15px; color: #71717a; text-align: center;">We've received your message and will get back to you as soon as possible.</p>
+                            
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a; font-weight: 600;">📋 Your message:</p>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5; border-radius: 8px; margin-bottom: 16px;">
+                                <tr>
+                                    <td style="padding: 16px;">
+                                        <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a;">🏷️ <strong>Subject:</strong> ${subjectLabel}</p>
+                                        <p style="margin: 0; font-size: 15px; color: #18181b; white-space: pre-wrap;">${
+                                            data.message
+                                        }</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0f9ff; border-radius: 8px;">
+                                <tr>
+                                    <td style="padding: 14px 16px;">
+                                        <p style="margin: 0; font-size: 13px; color: #0369a1;">💡 We typically respond within 24-48 hours. Check your inbox (and spam folder) for our reply.</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 24px 40px; border-top: 1px solid #e4e4e7; text-align: center;">
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #a1a1aa;">Need urgent help? <a href="mailto:support@kickerapp.dev" style="color: #0284c7; text-decoration: none;">Contact Support</a></p>
+                            <p style="margin: 0; font-size: 12px; color: #a1a1aa;">&copy; ${new Date().getFullYear()} KickerApp. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`,
         });
 
         if (confirmError) {

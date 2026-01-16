@@ -36,7 +36,7 @@ const NavContainer = styled.nav`
         border-top: 1px solid var(--secondary-border-color);
         padding: 0.8rem 1.6rem;
         padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
-        z-index: 100;
+        z-index: 9999;
         justify-content: space-around;
         align-items: center;
         transform: translateY(${(props) => (props.$hidden ? "100%" : "0")});

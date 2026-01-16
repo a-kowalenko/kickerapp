@@ -169,7 +169,7 @@ function MatchDropdown({ search, selectedIndex, onSelect }) {
                             </MatchPlayers>
                         </MatchInfo>
                         <MatchScore>
-                            {match.score1} : {match.score2}
+                            {match.scoreTeam1} : {match.scoreTeam2}
                         </MatchScore>
                     </MatchItem>
                 ))
