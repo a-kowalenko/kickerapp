@@ -23,12 +23,14 @@ import { MAX_CHAT_MESSAGE_LENGTH, DEFAULT_AVATAR } from "../../utils/constants";
 import Avatar from "../../ui/Avatar";
 import EmojiPicker from "../../ui/EmojiPicker";
 import GifPicker from "../../ui/GifPicker";
+import MatchDropdown from "../../ui/MatchDropdown";
 import RichTextInput from "../../ui/RichTextInput";
 import SpinnerMini from "../../ui/SpinnerMini";
 import MentionText from "../../ui/MentionText";
 import { useCanUploadImages } from "../../hooks/useCanUploadImages";
 import { useImageUpload } from "../../hooks/useImageUpload";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
+import { getMatch, formatMatchDisplay } from "../../services/apiMatches";
 
 // Animations
 const scaleIn = keyframes`
@@ -401,8 +403,11 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+    const [showMatchDropdown, setShowMatchDropdown] = useState(false);
     const [playerSearch, setPlayerSearch] = useState("");
+    const [matchSearch, setMatchSearch] = useState("");
     const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0);
+    const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
     const [dropdownMode, setDropdownMode] = useState(null);
     const [whisperRecipient, setWhisperRecipient] = useState(null);
     const [hasContent, setHasContent] = useState(false);
@@ -459,13 +464,14 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
     );
 
     const filteredPlayers = useMemo(() => {
-        if (!showPlayerDropdown || dropdownMode !== "mention") return [];
+        if (!showPlayerDropdown) return [];
+        if (dropdownMode !== "mention" && dropdownMode !== "whisper") return [];
         const search = (playerSearch || "").toLowerCase();
         let filtered = availablePlayers.filter((p) =>
             p.name?.toLowerCase().includes(search)
         );
-        // Add @everyone for mentions (not whispers)
-        if ("everyone".includes(search)) {
+        // Add @everyone for mentions only (not whispers)
+        if (dropdownMode === "mention" && "everyone".includes(search)) {
             filtered = [EVERYONE_OPTION, ...filtered];
         }
         return filtered.slice(0, 8);
@@ -481,48 +487,100 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         setSelectedPlayerIndex(0);
     }, [filteredPlayers.length]);
 
+    // Close player dropdown when clicking outside
+    useEffect(() => {
+        if (!showPlayerDropdown) return;
+
+        function handleClickOutside(e) {
+            // Don't close if clicking inside the dropdown or input area
+            if (
+                e.target.closest("[data-player-dropdown]") ||
+                e.target.closest("[data-input-wrapper]")
+            ) {
+                return;
+            }
+            handleMentionCancel();
+        }
+
+        // Small delay to prevent immediate close on open
+        const timeoutId = setTimeout(() => {
+            document.addEventListener("touchstart", handleClickOutside);
+            document.addEventListener("mousedown", handleClickOutside);
+        }, 100);
+
+        return () => {
+            clearTimeout(timeoutId);
+            document.removeEventListener("touchstart", handleClickOutside);
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showPlayerDropdown]);
+
+    // Close match dropdown when clicking outside
+    useEffect(() => {
+        if (!showMatchDropdown) return;
+
+        function handleClickOutside(e) {
+            if (
+                e.target.closest("[data-match-dropdown]") ||
+                e.target.closest("[data-input-wrapper]")
+            ) {
+                return;
+            }
+            setShowMatchDropdown(false);
+            setMatchSearch("");
+        }
+
+        const timeoutId = setTimeout(() => {
+            document.addEventListener("touchstart", handleClickOutside);
+            document.addEventListener("mousedown", handleClickOutside);
+        }, 100);
+
+        return () => {
+            clearTimeout(timeoutId);
+            document.removeEventListener("touchstart", handleClickOutside);
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showMatchDropdown]);
+
     const isOverLimit = content.length > MAX_CHAT_MESSAGE_LENGTH;
     const canSubmit = hasContent && !isOverLimit && !isSubmitting;
-
-    // Parse command from input
-    function parseCommand(value) {
-        const whisperMatch = value.match(/^\/(?:w|whisper)\s+(\S+)\s*/i);
-        if (whisperMatch) {
-            return {
-                type: "whisper",
-                name: whisperMatch[1],
-                remaining: value.slice(whisperMatch[0].length),
-            };
-        }
-        const replyMatch = value.match(/^\/(?:r|reply)\s*/i);
-        if (replyMatch && lastWhisperFrom) {
-            return {
-                type: "reply",
-                player: lastWhisperFrom,
-                remaining: value.slice(replyMatch[0].length),
-            };
-        }
-        return null;
-    }
 
     function handleContentChange(newValue) {
         setContent(newValue);
         onTyping?.(whisperRecipient?.id);
 
-        const command = parseCommand(newValue);
-        if (command?.type === "whisper") {
-            const matchedPlayer = availablePlayers.find(
-                (p) => p.name?.toLowerCase() === command.name.toLowerCase()
-            );
-            if (matchedPlayer) {
-                setWhisperRecipient(matchedPlayer);
-                setContent(command.remaining);
-                inputRef.current?.setContent?.(command.remaining);
-            }
-        } else if (command?.type === "reply") {
-            setWhisperRecipient(command.player);
-            setContent(command.remaining);
-            inputRef.current?.setContent?.(command.remaining);
+        // Check for whisper command with partial name (show dropdown)
+        const whisperPartialMatch = newValue.match(
+            /^\/(?:w|whisper)\s+(\S*)$/i
+        );
+        if (whisperPartialMatch && !whisperRecipient) {
+            const searchTerm = whisperPartialMatch[1] || "";
+            setPlayerSearch(searchTerm);
+            setDropdownMode("whisper");
+            setShowPlayerDropdown(true);
+            setShowEmojiPicker(false);
+            setShowGifPicker(false);
+            return;
+        }
+
+        // Hide whisper dropdown if not in whisper command anymore
+        if (
+            dropdownMode === "whisper" &&
+            !newValue.match(/^\/(?:w|whisper)\s/i)
+        ) {
+            setShowPlayerDropdown(false);
+            setDropdownMode(null);
+            setPlayerSearch("");
+        }
+
+        // Check for reply command
+        const replyMatch = newValue.match(/^\/(?:r|reply)(?:\s|$)/i);
+        if (replyMatch && lastWhisperFrom) {
+            setWhisperRecipient(lastWhisperFrom);
+            const remaining = newValue.slice(replyMatch[0].length);
+            setContent(remaining);
+            inputRef.current?.setContent?.(remaining);
+            return;
         }
     }
 
@@ -535,10 +593,22 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
             // Close pickers when mentioning
             setShowEmojiPicker(false);
             setShowGifPicker(false);
+        } else {
+            // @ was deleted - close dropdown if in mention mode
+            if (dropdownMode === "mention") {
+                setShowPlayerDropdown(false);
+                setDropdownMode(null);
+                setPlayerSearch("");
+            }
         }
     }
 
     function handleMentionCancel() {
+        // If in whisper mode, also clear the /w command from input
+        if (dropdownMode === "whisper") {
+            setContent("");
+            inputRef.current?.setContent?.("");
+        }
         setShowPlayerDropdown(false);
         setPlayerSearch("");
         setDropdownMode(null);
@@ -546,16 +616,88 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
 
     function handleSelectPlayer(player) {
         if (dropdownMode === "mention") {
-            if (player.isEveryone) {
-                inputRef.current?.insertEveryoneMention?.();
-            } else {
-                inputRef.current?.insertMention?.(player.name, player.id);
-            }
+            // insertMention expects the full player object
+            inputRef.current?.insertMention?.(player);
+        } else if (dropdownMode === "whisper") {
+            // Set whisper recipient and clear the /w command from input
+            setWhisperRecipient(player);
+            setContent("");
+            inputRef.current?.setContent?.("");
+            inputRef.current?.focus?.();
         }
         handleMentionCancel();
     }
 
+    // Handle # match trigger
+    function handleMatchTrigger(search, hashIndex) {
+        if (search !== null && hashIndex !== -1) {
+            setMatchSearch(search);
+            setShowMatchDropdown(true);
+            setShowPlayerDropdown(false);
+            setDropdownMode(null);
+            // Close pickers when matching
+            setShowEmojiPicker(false);
+            setShowGifPicker(false);
+        } else {
+            setShowMatchDropdown(false);
+            setMatchSearch("");
+        }
+    }
+
+    // Handle match selection
+    function handleSelectMatch(match, display) {
+        inputRef.current?.insertMatch(match, display);
+        setShowMatchDropdown(false);
+        setMatchSearch("");
+        setSelectedMatchIndex(0);
+    }
+
+    // Handle pasted match URLs
+    const handleMatchPaste = useCallback(
+        async (matchIds) => {
+            for (const matchId of matchIds) {
+                try {
+                    const matchData = await getMatch({ matchId, kicker });
+                    if (matchData) {
+                        const display = formatMatchDisplay(matchData);
+                        inputRef.current?.replaceMatchPlaceholder(
+                            matchId,
+                            display
+                        );
+                    } else {
+                        inputRef.current?.replaceMatchPlaceholder(
+                            matchId,
+                            `Match ${matchId}`
+                        );
+                    }
+                } catch (error) {
+                    console.error("Failed to load match:", error);
+                    inputRef.current?.replaceMatchPlaceholder(
+                        matchId,
+                        `Match ${matchId}`
+                    );
+                }
+            }
+        },
+        [kicker]
+    );
+
     function handleKeyDown(e) {
+        // Handle match dropdown navigation
+        if (showMatchDropdown) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setSelectedMatchIndex((prev) => prev + 1);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setSelectedMatchIndex((prev) => Math.max(0, prev - 1));
+            } else if (e.key === "Escape") {
+                setShowMatchDropdown(false);
+                setMatchSearch("");
+            }
+            return;
+        }
+
         if (showPlayerDropdown && filteredPlayers.length > 0) {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -764,7 +906,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
 
             {/* Player dropdown - positioned above the whole container */}
             {showPlayerDropdown && filteredPlayers.length > 0 && (
-                <PlayerDropdown>
+                <PlayerDropdown data-player-dropdown>
                     {filteredPlayers.map((player, index) => (
                         <PlayerItem
                             key={player.id}
@@ -781,9 +923,9 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                             ) : (
                                 <>
                                     <Avatar
+                                        $size="xs"
                                         src={player.avatar || DEFAULT_AVATAR}
                                         alt={player.name}
-                                        size="small"
                                     />
                                     <PlayerName>{player.name}</PlayerName>
                                 </>
@@ -793,8 +935,19 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                 </PlayerDropdown>
             )}
 
+            {/* Match dropdown */}
+            {showMatchDropdown && (
+                <div data-match-dropdown>
+                    <MatchDropdown
+                        search={matchSearch}
+                        selectedIndex={selectedMatchIndex}
+                        onSelect={handleSelectMatch}
+                    />
+                </div>
+            )}
+
             {/* Main input row: [+] [input] [send] - all inside one rounded container */}
-            <InputWrapper ref={inputWrapperRef}>
+            <InputWrapper ref={inputWrapperRef} data-input-wrapper>
                 {/* Plus button */}
                 <PlusButton
                     onClick={handleTogglePlusMenu}
@@ -813,6 +966,8 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                         placeholder={placeholder}
                         onMentionTrigger={handleMentionTrigger}
                         onMentionCancel={handleMentionCancel}
+                        onMatchTrigger={handleMatchTrigger}
+                        onMatchPaste={handleMatchPaste}
                         onImagePaste={handleImagePaste}
                         onFocus={() => setInputFocused(inputRef)}
                         onBlur={() => setInputBlurred()}
