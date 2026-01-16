@@ -2,6 +2,7 @@ import styled, { css } from "styled-components";
 import { Link } from "react-router-dom";
 import Avatar from "../../ui/Avatar";
 import { StatusBadge } from "../../ui/StatusBadge";
+import StreakInfo from "../../ui/StreakInfo";
 import {
     BountyTooltip,
     StatusTooltip,
@@ -176,6 +177,9 @@ export function PlayerActivityCard({
         statuses1on1,
         statuses2on2,
         last_seen,
+        streak,
+        streak1on1,
+        streak2on2,
     } = player;
 
     // Bounty tooltip
@@ -302,6 +306,18 @@ export function PlayerActivityCard({
                                     showLabel={true}
                                 />
                             </StatusBadgeWrapper>
+                        )}
+
+                        {/* Streak indicator - icon only, no label */}
+                        {!isOffline && !isInMatch && (
+                            <StreakInfo
+                                streak={streak}
+                                streak1on1={streak1on1}
+                                streak2on2={streak2on2}
+                                size="small"
+                                showLabel={false}
+                                showTooltip={true}
+                            />
                         )}
 
                         {/* Offline time - when offline */}
