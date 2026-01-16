@@ -38,7 +38,7 @@ const EditableDiv = styled.div`
 
     /* Mention styling */
     .mention {
-        color: var(--primary-button-color);
+        color: var(--everyone-mention-color);
         background-color: rgba(var(--primary-button-color-rgb), 0.1);
         border-radius: 3px;
         padding: 0 2px;

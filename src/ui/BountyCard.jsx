@@ -1,14 +1,13 @@
 import styled, { keyframes, css } from "styled-components";
 import Avatar from "./Avatar";
 import { StatusBadge, SimpleStreakBadge } from "./StatusBadge";
-import { HiOutlineFire } from "react-icons/hi2";
-import { TbTarget, TbSnowflake } from "react-icons/tb";
+import { TbTarget } from "react-icons/tb";
 import {
     BountyTooltip,
-    StreakTooltip,
     StatusTooltip,
     useBountyTooltip,
 } from "./BountyTooltip";
+import StreakInfo from "./StreakInfo";
 
 /* ----------------------------------------
    Size Configuration
@@ -269,30 +268,6 @@ const BountyLabel = styled.span`
     display: ${(props) => (props.$size === "xs" ? "none" : "block")};
 `;
 
-const StreakInfo = styled.div`
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: ${(props) =>
-        sizeConfig[props.$size]?.streakSize || sizeConfig.medium.streakSize};
-    color: var(--secondary-text-color);
-    cursor: ${(props) => (props.$hoverable ? "pointer" : "default")};
-    transition: transform 0.2s ease;
-
-    ${(props) =>
-        props.$hoverable &&
-        css`
-            &:hover {
-                transform: scale(1.08);
-            }
-        `}
-
-    svg {
-        color: ${(props) => (props.$cold ? "#3B82F6" : "#EF4444")};
-        font-size: 1.4em;
-    }
-`;
-
 const StatusBadgeWrapper = styled.span`
     display: inline-flex;
     cursor: ${(props) => (props.$hoverable ? "pointer" : "default")};
@@ -391,15 +366,6 @@ export function BountyCard({
         handleMouseEnter: handleBountyMouseEnter,
         handleMouseLeave: handleBountyMouseLeave,
         triggerRef: bountyTriggerRef,
-    } = useBountyTooltip(140);
-
-    // Streak tooltip hook
-    const {
-        isHovered: isStreakHovered,
-        tooltipPos: streakTooltipPos,
-        handleMouseEnter: handleStreakMouseEnter,
-        handleMouseLeave: handleStreakMouseLeave,
-        triggerRef: streakTriggerRef,
     } = useBountyTooltip(140);
 
     // Status tooltip hook
@@ -533,95 +499,33 @@ export function BountyCard({
                 )}
 
                 {/* Streak Info - shown for small sizes inline */}
-                {(isXs || isSmall) && (hasBounty || hasStreak) && (
+                {(isXs || isSmall) && (
                     <StreakInfo
-                        $size={size}
-                        $cold={streak < 0}
-                        $hoverable={
-                            showStreakTooltip &&
-                            hasStreakTooltipData &&
-                            hasStreak
-                        }
-                        ref={
-                            showStreakTooltip &&
-                            hasStreakTooltipData &&
-                            hasStreak
-                                ? streakTriggerRef
-                                : null
-                        }
-                        onMouseEnter={
-                            showStreakTooltip &&
-                            hasStreakTooltipData &&
-                            hasStreak
-                                ? handleStreakMouseEnter
-                                : undefined
-                        }
-                        onMouseLeave={
-                            showStreakTooltip &&
-                            hasStreakTooltipData &&
-                            hasStreak
-                                ? handleStreakMouseLeave
-                                : undefined
-                        }
-                    >
-                        {hasStreak && (
-                            <>
-                                {streak > 0 ? (
-                                    <HiOutlineFire />
-                                ) : (
-                                    <TbSnowflake />
-                                )}
-                                {Math.abs(streak)} {streak > 0 ? "Win" : "Loss"}{" "}
-                                Streak
-                            </>
-                        )}
-                        {hasBounty && !hasStreak && (
-                            <>
-                                <TbTarget style={{ color: "#ff6432" }} />
-                            </>
-                        )}
-                    </StreakInfo>
+                        streak={streak}
+                        streak1on1={tooltipStreak1on1}
+                        streak2on2={tooltipStreak2on2}
+                        size={size}
+                        showLabel={true}
+                        showTooltip={showStreakTooltip}
+                        labelVariant="short"
+                    />
                 )}
 
                 {/* Full streak info with gamemode - medium/large only */}
-                {!isXs && !isSmall && gamemode && showGamemode && hasStreak && (
+                {!isXs && !isSmall && gamemode && showGamemode && (
                     <StreakInfo
-                        $size={size}
-                        $cold={streak < 0}
-                        $hoverable={showStreakTooltip && hasStreakTooltipData}
-                        ref={
-                            showStreakTooltip && hasStreakTooltipData
-                                ? streakTriggerRef
-                                : null
-                        }
-                        onMouseEnter={
-                            showStreakTooltip && hasStreakTooltipData
-                                ? handleStreakMouseEnter
-                                : undefined
-                        }
-                        onMouseLeave={
-                            showStreakTooltip && hasStreakTooltipData
-                                ? handleStreakMouseLeave
-                                : undefined
-                        }
-                    >
-                        {streak > 0 ? <HiOutlineFire /> : <TbSnowflake />}
-                        {Math.abs(streak)}{" "}
-                        {streak > 0 ? "Siege" : "Niederlagen"} in Folge (
-                        {gamemode})
-                    </StreakInfo>
+                        streak={streak}
+                        streak1on1={tooltipStreak1on1}
+                        streak2on2={tooltipStreak2on2}
+                        size={size}
+                        showLabel={true}
+                        showTooltip={showStreakTooltip}
+                        gamemode={gamemode}
+                        showGamemode={true}
+                        labelVariant="long"
+                    />
                 )}
             </PlayerInfo>
-
-            {/* Streak Tooltip */}
-            {showStreakTooltip && hasStreakTooltipData && (
-                <StreakTooltip
-                    isVisible={isStreakHovered}
-                    position={streakTooltipPos}
-                    streak1on1={tooltipStreak1on1}
-                    streak2on2={tooltipStreak2on2}
-                />
-            )}
 
             {/* Status Tooltip */}
             {showStatusTooltip && hasStatusTooltipData && (
