@@ -2,6 +2,7 @@ import styled, { keyframes } from "styled-components";
 import ScrollAwareNavLink from "./ScrollAwareNavLink";
 import {
     HiOutlineBookOpen,
+    HiOutlineChatBubbleLeftRight,
     HiOutlineCog6Tooth,
     HiOutlineHome,
     HiOutlineListBullet,
@@ -18,18 +19,29 @@ import { useKickerInfo } from "../hooks/useKickerInfo";
 import { useUser } from "../features/authentication/useUser";
 import SeasonBadge from "../features/seasons/SeasonBadge";
 import { media } from "../utils/constants";
+import useWindowWidth from "../hooks/useWindowWidth";
 
 const StyledMainNav = styled.nav`
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     flex-grow: 1;
+    // not scrollable itself, but its children can be
+    overflow: hidden;
 `;
 
 const NavList = styled.ul`
     display: flex;
     flex-direction: column;
     gap: 0.8rem;
+    overflow: auto;
+
+    // make scrollbar invisible but still scrollable
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 `;
 
 const SeasonBadgeContainer = styled.div`
@@ -149,14 +161,22 @@ function MainNav({ close }) {
     const { activeMatch } = useMatchContext();
     const { data: kickerData } = useKickerInfo();
     const { user } = useUser();
+    const { isDesktop } = useWindowWidth();
 
     const isAdmin = kickerData?.admin === user?.id;
+
+    // Only close sidebar on mobile
+    const handleNavClick = isDesktop ? undefined : close;
 
     return (
         <StyledMainNav>
             <NavList>
                 <li>
-                    <StyledNavLink to="/home" title="Home" onClick={close}>
+                    <StyledNavLink
+                        to="/home"
+                        title="Home"
+                        onClick={handleNavClick}
+                    >
                         <HiOutlineHome />
                         <span>Home</span>
                     </StyledNavLink>
@@ -165,7 +185,7 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/rankings"
                         title="Rankings"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineListBullet />
                         <span>Rankings</span>
@@ -175,7 +195,7 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/fatalities"
                         title="Fatalities"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineTrash />
                         <span>Fatalities</span>
@@ -185,7 +205,7 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/matches"
                         title="Matches"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineBookOpen />
                         <span>Matches</span>
@@ -195,14 +215,18 @@ function MainNav({ close }) {
                     <StyledNavLink
                         to="/achievements"
                         title="Achievements"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineTrophy />
                         <span>Achievements</span>
                     </StyledNavLink>
                 </li>
                 <li>
-                    <StyledNavLink to="/teams" title="Teams" onClick={close}>
+                    <StyledNavLink
+                        to="/teams"
+                        title="Teams"
+                        onClick={handleNavClick}
+                    >
                         <HiOutlineUserGroup />
                         <span>Teams</span>
                     </StyledNavLink>
@@ -213,11 +237,24 @@ function MainNav({ close }) {
                         <span>Players</span>
                     </StyledNavLink>
                 </li> */}
+
+                {isDesktop && (
+                    <li>
+                        <StyledNavLink
+                            to="/chat"
+                            title="Chat"
+                            onClick={handleNavClick}
+                        >
+                            <HiOutlineChatBubbleLeftRight />
+                            <span>Chat</span>
+                        </StyledNavLink>
+                    </li>
+                )}
                 <li>
                     <StyledNavLink
                         to="/settings"
                         title="Settings"
-                        onClick={close}
+                        onClick={handleNavClick}
                     >
                         <HiOutlineCog6Tooth />
                         <span>Settings</span>
@@ -228,7 +265,7 @@ function MainNav({ close }) {
                         <StyledNavLink
                             to="/admin"
                             title="Admin"
-                            onClick={close}
+                            onClick={handleNavClick}
                         >
                             <HiOutlineShieldCheck />
                             <span>Admin</span>
@@ -242,7 +279,7 @@ function MainNav({ close }) {
                         <StyledNavLink
                             to={`/matches/${activeMatch.id}`}
                             title="Active Match"
-                            onClick={close}
+                            onClick={handleNavClick}
                         >
                             <HiOutlinePlay />
                             <span>Active Match</span>
@@ -253,7 +290,7 @@ function MainNav({ close }) {
                         <StyledNavLink
                             to="/matches/create"
                             title="New match"
-                            onClick={close}
+                            onClick={handleNavClick}
                         >
                             <HiPlus />
                             <span>New match</span>

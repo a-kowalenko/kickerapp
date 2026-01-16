@@ -1,6 +1,20 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 
 const LONG_PRESS_DURATION = 500; // ms
+
+/**
+ * Trigger haptic feedback on supported devices
+ */
+function triggerHapticFeedback() {
+    try {
+        // Use Vibration API if available (Android, some iOS via WebKit)
+        if (navigator.vibrate) {
+            navigator.vibrate(50); // Short vibration
+        }
+    } catch (e) {
+        // Silently fail if not supported
+    }
+}
 
 /**
  * Custom hook for handling long press events (mobile context menu)
@@ -8,14 +22,22 @@ const LONG_PRESS_DURATION = 500; // ms
  * @param {Object} options - Configuration options
  * @param {number} options.threshold - Movement threshold in pixels before canceling
  * @param {React.RefObject} options.cancelRef - External ref to cancel long press (e.g., when swiping)
- * @returns {Object} Event handlers for touch events
+ * @param {Function} options.onPressStart - Callback when press starts (for visual feedback)
+ * @param {Function} options.onPressEnd - Callback when press ends (for visual feedback)
+ * @returns {Object} Event handlers for touch events and isPressing state
  */
 export function useLongPress(onLongPress, options = {}) {
-    const { threshold = 10, cancelRef = null } = options;
+    const {
+        threshold = 10,
+        cancelRef = null,
+        onPressStart,
+        onPressEnd,
+    } = options;
 
     const timerRef = useRef(null);
     const touchStartRef = useRef(null);
     const isLongPressRef = useRef(false);
+    const [isPressing, setIsPressing] = useState(false);
 
     const clearTimer = useCallback(() => {
         if (timerRef.current) {
@@ -24,6 +46,19 @@ export function useLongPress(onLongPress, options = {}) {
         }
     }, []);
 
+    // Prevent text selection during long press
+    const preventSelection = useCallback((e) => {
+        e.preventDefault();
+    }, []);
+
+    // Cancel the long press detection
+    const cancelPress = useCallback(() => {
+        clearTimer();
+        setIsPressing(false);
+        onPressEnd?.();
+        document.removeEventListener("selectstart", preventSelection);
+    }, [clearTimer, onPressEnd, preventSelection]);
+
     const handleTouchStart = useCallback(
         (e) => {
             // Don't start long press if touching interactive elements
@@ -31,7 +66,8 @@ export function useLongPress(onLongPress, options = {}) {
             if (
                 target.closest("button") ||
                 target.closest('[role="button"]') ||
-                target.closest(".emoji-mart")
+                target.closest(".emoji-mart") ||
+                target.closest("a")
             ) {
                 return;
             }
@@ -43,20 +79,37 @@ export function useLongPress(onLongPress, options = {}) {
             };
             isLongPressRef.current = false;
 
+            // Add selection prevention during long press detection
+            document.addEventListener("selectstart", preventSelection);
+
+            // Start visual feedback immediately
+            setIsPressing(true);
+            onPressStart?.();
+
             timerRef.current = setTimeout(() => {
                 // Check if external cancel ref is set (e.g., swipe in progress)
                 if (cancelRef?.current) {
-                    clearTimer();
+                    cancelPress();
                     return;
                 }
+
                 isLongPressRef.current = true;
+
+                // Trigger haptic feedback
+                triggerHapticFeedback();
+
+                // Clear selection that might have started
+                window.getSelection()?.removeAllRanges();
+
                 onLongPress?.(e, {
                     x: touchStartRef.current.x,
                     y: touchStartRef.current.y,
                 });
+
+                // Keep visual feedback until touch end
             }, LONG_PRESS_DURATION);
         },
-        [onLongPress, cancelRef, clearTimer]
+        [onLongPress, cancelRef, preventSelection, onPressStart, cancelPress]
     );
 
     const handleTouchMove = useCallback(
@@ -69,21 +122,30 @@ export function useLongPress(onLongPress, options = {}) {
 
             // Cancel long press if moved too much or external cancel ref is set
             if (moveX > threshold || moveY > threshold || cancelRef?.current) {
-                clearTimer();
+                cancelPress();
             }
         },
-        [threshold, clearTimer, cancelRef]
+        [threshold, cancelRef, cancelPress]
     );
 
     const handleTouchEnd = useCallback(() => {
         clearTimer();
         touchStartRef.current = null;
-    }, [clearTimer]);
+        setIsPressing(false);
+        onPressEnd?.();
+        document.removeEventListener("selectstart", preventSelection);
+
+        // Clear any lingering selection
+        if (isLongPressRef.current) {
+            window.getSelection()?.removeAllRanges();
+        }
+    }, [clearTimer, preventSelection, onPressEnd]);
 
     return {
         onTouchStart: handleTouchStart,
         onTouchMove: handleTouchMove,
         onTouchEnd: handleTouchEnd,
+        isPressing,
     };
 }
 

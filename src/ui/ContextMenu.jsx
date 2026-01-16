@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 const MenuContainer = styled.div`
@@ -13,6 +13,13 @@ const MenuContainer = styled.div`
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     padding: 0.4rem;
     animation: fadeIn 0.1s ease-out;
+    /* Start invisible until positioned */
+    opacity: ${(props) => (props.$isPositioned ? 1 : 0)};
+
+    /* Prevent text selection in context menu */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
 
     @keyframes fadeIn {
         from {
@@ -67,8 +74,9 @@ const MenuLabel = styled.span`
     flex: 1;
 `;
 
-function ContextMenu({ items, position, onClose }) {
+function ContextMenu({ items, position, onClose, anchorRef }) {
     const menuRef = useRef(null);
+    const [isPositioned, setIsPositioned] = useState(false);
 
     // Safe position with fallback
     const safePosition = useMemo(() => {
@@ -88,33 +96,103 @@ function ContextMenu({ items, position, onClose }) {
         typeof position.y === "number";
 
     // Calculate position to keep menu within viewport
+    // Prefers showing menu below the touch point, but will flip above if no space
+    // Uses visualViewport API when available for correct positioning with keyboard open
     const getAdjustedPosition = useCallback(() => {
         if (!menuRef.current) return safePosition;
 
         const menu = menuRef.current;
         const menuRect = menu.getBoundingClientRect();
-        const padding = 8;
+        const padding = 12;
+        const touchOffset = 8; // Small offset from touch point
+
+        // Use visualViewport for accurate viewport size (especially on iOS with keyboard)
+        const viewport = window.visualViewport || {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            offsetTop: 0,
+            offsetLeft: 0,
+        };
+        const viewportHeight = viewport.height;
+        const viewportWidth = viewport.width;
+        const viewportOffsetTop = viewport.offsetTop || 0;
 
         let { x, y } = safePosition;
 
-        // Adjust horizontal position if menu goes off-screen
-        if (x + menuRect.width > window.innerWidth - padding) {
-            x = window.innerWidth - menuRect.width - padding;
+        // Adjust y coordinate relative to visual viewport when keyboard is open
+        // Touch coordinates are relative to layout viewport, but we need visual viewport
+        const adjustedY = y - viewportOffsetTop;
+
+        // Get anchor element bounds if provided (the message container)
+        const anchorRect = anchorRef?.current?.getBoundingClientRect();
+
+        // Horizontal positioning - center on touch point, but keep in viewport
+        x = x - menuRect.width / 2;
+        if (x + menuRect.width > viewportWidth - padding) {
+            x = viewportWidth - menuRect.width - padding;
         }
         if (x < padding) {
             x = padding;
         }
 
-        // Adjust vertical position if menu goes off-screen
-        if (y + menuRect.height > window.innerHeight - padding) {
-            y = window.innerHeight - menuRect.height - padding;
-        }
-        if (y < padding) {
-            y = padding;
+        // Vertical positioning - smart placement based on available space in visual viewport
+        const spaceBelow = viewportHeight - adjustedY - touchOffset;
+        const spaceAbove = adjustedY - touchOffset;
+
+        // Start with the original y (not adjusted) for final positioning
+        let finalY = y;
+
+        if (spaceBelow >= menuRect.height + padding) {
+            // Enough space below - position below touch point
+            finalY = y + touchOffset;
+        } else if (spaceAbove >= menuRect.height + padding) {
+            // Not enough space below, but enough above - position above touch point
+            finalY = y - menuRect.height - touchOffset;
+        } else {
+            // Not enough space either way - position at best available spot within visual viewport
+            if (spaceBelow > spaceAbove) {
+                finalY =
+                    viewportOffsetTop +
+                    viewportHeight -
+                    menuRect.height -
+                    padding;
+            } else {
+                finalY = viewportOffsetTop + padding;
+            }
         }
 
-        return { x, y };
-    }, [safePosition]);
+        // Ensure menu stays within visual viewport bounds
+        if (
+            finalY + menuRect.height >
+            viewportOffsetTop + viewportHeight - padding
+        ) {
+            finalY =
+                viewportOffsetTop + viewportHeight - menuRect.height - padding;
+        }
+        if (finalY < viewportOffsetTop + padding) {
+            finalY = viewportOffsetTop + padding;
+        }
+
+        // If we have an anchor, ensure menu doesn't overlap the message too much
+        if (anchorRect) {
+            // If menu would cover most of the message, adjust
+            const messageCenter = anchorRect.top + anchorRect.height / 2;
+            if (
+                finalY < messageCenter &&
+                finalY + menuRect.height > messageCenter
+            ) {
+                // Menu would cover the center of the message
+                // Try to position it clearly above or below
+                if (spaceBelow >= menuRect.height + padding) {
+                    finalY = anchorRect.bottom + touchOffset;
+                } else if (spaceAbove >= menuRect.height + padding) {
+                    finalY = anchorRect.top - menuRect.height - touchOffset;
+                }
+            }
+        }
+
+        return { x, y: finalY };
+    }, [safePosition, anchorRef]);
 
     // Handle escape key and outside clicks
     useEffect(() => {
@@ -162,11 +240,32 @@ function ContextMenu({ items, position, onClose }) {
     // Adjust position after initial render
     useEffect(() => {
         if (menuRef.current) {
-            const adjusted = getAdjustedPosition();
-            menuRef.current.style.left = `${adjusted.x}px`;
-            menuRef.current.style.top = `${adjusted.y}px`;
+            // Use requestAnimationFrame to ensure menu is rendered first
+            requestAnimationFrame(() => {
+                if (!menuRef.current) return;
+                const adjusted = getAdjustedPosition();
+                menuRef.current.style.left = `${adjusted.x}px`;
+                menuRef.current.style.top = `${adjusted.y}px`;
+                setIsPositioned(true);
+            });
         }
     }, [getAdjustedPosition]);
+
+    // Close menu on touch outside (for mobile)
+    useEffect(() => {
+        function handleTouchStart(e) {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                onClose();
+            }
+        }
+
+        document.addEventListener("touchstart", handleTouchStart, {
+            passive: true,
+        });
+        return () => {
+            document.removeEventListener("touchstart", handleTouchStart);
+        };
+    }, [onClose]);
 
     // Filter out null/undefined items
     const visibleItems = items.filter(Boolean);
@@ -177,8 +276,10 @@ function ContextMenu({ items, position, onClose }) {
     return createPortal(
         <MenuContainer
             ref={menuRef}
+            $isPositioned={isPositioned}
             style={{ left: position.x, top: position.y }}
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             onContextMenu={(e) => {
                 // Prevent context menu on the menu itself
                 e.preventDefault();

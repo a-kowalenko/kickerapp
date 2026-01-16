@@ -20,6 +20,8 @@ const StyledFooter = styled.footer`
 
     ${media.tablet} {
         padding: 2.4rem;
+        /* Space for mobile bottom nav */
+        padding-bottom: calc(10rem + env(safe-area-inset-bottom, 0px));
     }
 `;
 

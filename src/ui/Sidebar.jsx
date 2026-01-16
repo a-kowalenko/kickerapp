@@ -3,10 +3,8 @@ import MainNav from "./MainNav";
 import Logo from "./Logo";
 import BurgerMenu from "./BurgerMenu";
 import { useLocalStorageState } from "../hooks/useLocalStorageState";
-import { useOutsideClick } from "../hooks/useOutsideClick";
-import { isTouchDevice } from "../utils/helpers";
 import useWindowWidth from "../hooks/useWindowWidth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const StyledSidebar = styled.aside`
     display: flex;
@@ -71,12 +69,34 @@ const StyledSidebar = styled.aside`
     }
 `;
 
+const MobileBackdrop = styled.div`
+    display: none;
+
+    @media (max-width: 850px) {
+        display: block;
+        position: fixed;
+        inset: 0;
+        top: 66px;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+
+        &.active {
+            opacity: 1;
+            visibility: visible;
+        }
+    }
+`;
+
 function Sidebar() {
     const { isDesktop } = useWindowWidth();
     const [isOpen, setIsOpen] = useLocalStorageState(
         isDesktop,
         "isOpenLeftSidebar"
     );
+    const sidebarRef = useRef(null);
 
     // Track header visibility for BurgerMenu sync on mobile
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -97,18 +117,34 @@ function Sidebar() {
             );
     }, []);
 
-    const close = () => {
-        if (isTouchDevice()) {
-            setIsOpen(false);
-            // Dispatch after state update with slight delay to ensure localStorage is updated
-            setTimeout(
-                () => window.dispatchEvent(new Event("sidebarToggle")),
-                0
-            );
-        }
-    };
+    const close = useCallback(() => {
+        setIsOpen(false);
+        setTimeout(() => window.dispatchEvent(new Event("sidebarToggle")), 0);
+    }, [setIsOpen]);
 
-    const sidebarRef = useOutsideClick(close, false);
+    // Close sidebar on any click outside nav items (mobile only)
+    useEffect(() => {
+        if (!isOpen || isDesktop) return;
+
+        function handleClick(e) {
+            // Check if click was on a nav link (these have their own onClick handlers)
+            if (e.target.closest("a[href]")) return;
+            // Check if click was on the burger menu
+            if (e.target.closest("[data-burger-menu]")) return;
+            // Close sidebar for any other click
+            close();
+        }
+
+        // Use setTimeout to avoid closing immediately when opening
+        const timeoutId = setTimeout(() => {
+            document.addEventListener("click", handleClick);
+        }, 0);
+
+        return () => {
+            clearTimeout(timeoutId);
+            document.removeEventListener("click", handleClick);
+        };
+    }, [isOpen, isDesktop, close]);
 
     const toggleSidebar = (e) => {
         e.stopPropagation();
@@ -122,6 +158,10 @@ function Sidebar() {
             <BurgerMenu
                 onClick={toggleSidebar}
                 isHeaderVisible={isHeaderVisible}
+            />
+            <MobileBackdrop
+                className={isOpen ? "active" : ""}
+                onClick={close}
             />
             <StyledSidebar
                 ref={sidebarRef}
