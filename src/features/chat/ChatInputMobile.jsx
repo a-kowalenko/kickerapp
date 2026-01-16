@@ -825,6 +825,8 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                     <SendButton
                         $visible={hasContent}
                         onClick={handleSubmit}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onTouchStart={(e) => e.preventDefault()}
                         disabled={!canSubmit || isSubmitting}
                         type="button"
                     >
