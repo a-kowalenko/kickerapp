@@ -58,24 +58,27 @@ const EditableDiv = styled.div`
         cursor: default;
     }
 
-    /* GIF tag styling - show as placeholder */
-    .gif-tag {
-        color: var(--tertiary-text-color);
-        background-color: var(--tertiary-background-color);
-        border-radius: 3px;
-        padding: 0 4px;
-        font-size: 1.2rem;
+    /* GIF tag styling - show as inline preview */
+    .gif-tag,
+    .img-tag {
+        display: inline-block;
+        vertical-align: middle;
+        border-radius: 4px;
+        overflow: hidden;
         user-select: all;
+        cursor: default;
+        margin: 2px 0;
     }
 
-    /* Image tag styling - show as placeholder */
-    .img-tag {
-        color: var(--primary-button-color);
-        background-color: rgba(var(--primary-button-color-rgb), 0.1);
-        border-radius: 3px;
-        padding: 0 4px;
-        font-size: 1.2rem;
-        user-select: all;
+    .gif-tag img,
+    .img-tag img {
+        display: block;
+        max-height: 60px;
+        max-width: 100px;
+        height: auto;
+        width: auto;
+        object-fit: contain;
+        border-radius: 4px;
     }
 `;
 
@@ -109,16 +112,16 @@ function contentToHtml(content) {
         '<span class="match-link" data-match="$2" data-display="$1" contenteditable="false">#$1</span>'
     );
 
-    // Replace [gif:URL] with a styled tag
+    // Replace [gif:URL] with an inline image preview
     html = html.replace(
         /\[gif:([^\]]+)\]/g,
-        '<span class="gif-tag" data-gif="$1" contenteditable="false">[GIF]</span>'
+        '<span class="gif-tag" data-gif="$1" contenteditable="false"><img src="$1" alt="GIF" loading="lazy" /></span>'
     );
 
-    // Replace [img:URL] with a styled tag
+    // Replace [img:URL] with an inline image preview
     html = html.replace(
         /\[img:([^\]]+)\]/g,
-        '<span class="img-tag" data-img="$1" contenteditable="false">[IMG]</span>'
+        '<span class="img-tag" data-img="$1" contenteditable="false"><img src="$1" alt="IMG" loading="lazy" /></span>'
     );
 
     return html;
@@ -371,6 +374,36 @@ const RichTextInput = forwardRef(function RichTextInput(
             if (!editorRef.current) return;
             document.execCommand("insertText", false, text);
         },
+        // Append mention at current cursor position (for context menu)
+        appendMention: (player) => {
+            if (!editorRef.current) return;
+
+            const content = htmlToContent(editorRef.current);
+            const cursorPos = getCursorPosition(editorRef.current);
+
+            const beforeCursor = content.slice(0, cursorPos);
+            const afterCursor = content.slice(cursorPos);
+
+            let mentionText;
+            if (player.isEveryone) {
+                mentionText = "@everyone ";
+            } else {
+                mentionText = `@[${player.name}](${player.id}) `;
+            }
+
+            const newContent = beforeCursor + mentionText + afterCursor;
+            onChange(newContent);
+
+            // Set cursor after mention
+            setTimeout(() => {
+                if (editorRef.current) {
+                    setCursorPosition(
+                        editorRef.current,
+                        beforeCursor.length + mentionText.length
+                    );
+                }
+            }, 0);
+        },
         insertMention: (player) => {
             if (!editorRef.current) return;
 
@@ -461,11 +494,40 @@ const RichTextInput = forwardRef(function RichTextInput(
             const gifRegex = /\[gif:[^\]]+\]/g;
 
             content = content.replace(gifRegex, "").trim();
-            const newContent = content ? `${content} ${gifTag}` : gifTag;
+            // Add trailing space after tag for cursor positioning
+            const newContent = content ? `${content} ${gifTag} ` : `${gifTag} `;
 
             onChange(newContent);
 
-            // Position cursor at end
+            // Position cursor at end (after the trailing space)
+            setTimeout(() => {
+                if (editorRef.current) {
+                    setCursorPosition(editorRef.current, newContent.length);
+                }
+            }, 0);
+        },
+        appendImageTag: (imageUrlOrTag) => {
+            if (!editorRef.current) return;
+
+            // Extract URL if already wrapped in [img:...] tag
+            let imageUrl = imageUrlOrTag;
+            const tagMatch = imageUrlOrTag.match(/^\[img:(.+)\]$/);
+            if (tagMatch) {
+                imageUrl = tagMatch[1];
+            }
+
+            // Add image tag at end of content
+            let content = htmlToContent(editorRef.current);
+            const imgTag = `[img:${imageUrl}]`;
+
+            // Add trailing space after tag for cursor positioning
+            const newContent = content.trim()
+                ? `${content.trim()} ${imgTag} `
+                : `${imgTag} `;
+
+            onChange(newContent);
+
+            // Position cursor at end (after the trailing space)
             setTimeout(() => {
                 if (editorRef.current) {
                     setCursorPosition(editorRef.current, newContent.length);

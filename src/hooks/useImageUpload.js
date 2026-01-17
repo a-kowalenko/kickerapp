@@ -65,15 +65,13 @@ export function useImageUpload() {
                 });
                 setProgress(100);
 
-                // Return formatted tag
-                const tag = formatImageTag(url);
-
                 // Reset after short delay
                 setTimeout(() => {
                     reset();
                 }, 500);
 
-                return tag;
+                // Return formatted tag
+                return formatImageTag(url);
             } catch (err) {
                 const errorMessage = err.message || "Upload failed";
                 setError(errorMessage);

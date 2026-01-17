@@ -1405,6 +1405,9 @@ function ChatTab() {
                                             onFocusInput={() =>
                                                 focusInputRef.current?.()
                                             }
+                                            stackIndex={
+                                                displayMessages.length - index
+                                            }
                                         />
                                         {/* Desktop: Date divider AFTER message (column-reverse) */}
                                         {!isMobile && showDateDivider && (

@@ -20,6 +20,7 @@ import ChatMessage from "../home/ChatMessage";
 import ChatInputMobile from "./ChatInputMobile";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
+import EmojiPicker from "../../ui/EmojiPicker";
 import { useKeyboard } from "../../contexts/KeyboardContext";
 
 // Format date for dividers
@@ -209,6 +210,8 @@ function MessageListMobile({
     const [replyTo, setReplyTo] = useState(null);
     const [lastWhisperFrom, setLastWhisperFrom] = useState(null);
     const [inputDragOffset, setInputDragOffset] = useState(0);
+    const [reactionPickerMessageId, setReactionPickerMessageId] =
+        useState(null);
 
     // Hooks
     const {
@@ -429,15 +432,12 @@ function MessageListMobile({
     }, [isLoading, messages?.length, markAsRead]);
 
     // Swipe-to-dismiss keyboard handlers
-    const handleTouchStart = useCallback(
-        () => {
-            touchStartTimeRef.current = Date.now();
-            // Reset drag state on new touch
-            entryYRef.current = null;
-            isDraggingKeyboardRef.current = false;
-        },
-        []
-    );
+    const handleTouchStart = useCallback(() => {
+        touchStartTimeRef.current = Date.now();
+        // Reset drag state on new touch
+        entryYRef.current = null;
+        isDraggingKeyboardRef.current = false;
+    }, []);
 
     const handleTouchMove = useCallback(
         (e) => {
@@ -466,17 +466,14 @@ function MessageListMobile({
         [isKeyboardOpen, blurInput]
     );
 
-    const handleTouchEnd = useCallback(
-        () => {
-            if (!isDraggingKeyboardRef.current) return;
+    const handleTouchEnd = useCallback(() => {
+        if (!isDraggingKeyboardRef.current) return;
 
-            // Reset drag state with animation (keyboard already closed on drag start)
-            isDraggingKeyboardRef.current = false;
-            entryYRef.current = null;
-            setInputDragOffset(0);
-        },
-        []
-    );
+        // Reset drag state with animation (keyboard already closed on drag start)
+        isDraggingKeyboardRef.current = false;
+        entryYRef.current = null;
+        setInputDragOffset(0);
+    }, []);
 
     // Jump to bottom
     const handleJumpToBottom = useCallback(() => {
@@ -498,6 +495,33 @@ function MessageListMobile({
             stopTyping();
         },
         [createChatMessage, replyTo, stopTyping]
+    );
+
+    // Handle whisper from context menu
+    const handleWhisper = useCallback((player) => {
+        chatInputRef.current?.setWhisperRecipient?.(player);
+    }, []);
+
+    // Handle mention from context menu
+    const handleMention = useCallback((player) => {
+        chatInputRef.current?.insertMention?.(player);
+        chatInputRef.current?.focus?.();
+    }, []);
+
+    // Handle opening reaction picker from context menu
+    const handleOpenReactionPicker = useCallback((messageId) => {
+        setReactionPickerMessageId(messageId);
+    }, []);
+
+    // Handle emoji selection for reaction
+    const handleReactionEmojiSelect = useCallback(
+        (emoji) => {
+            if (reactionPickerMessageId) {
+                toggleReaction({ messageId: reactionPickerMessageId, emoji });
+                setReactionPickerMessageId(null);
+            }
+        },
+        [reactionPickerMessageId, toggleReaction]
     );
 
     // Prepare messages with date dividers
@@ -655,6 +679,13 @@ function MessageListMobile({
                             isUpdating={isUpdating}
                             isDeleting={isDeleting}
                             isTogglingReaction={isTogglingReaction}
+                            stackIndex={messagesWithDividers.length - index}
+                            onWhisper={handleWhisper}
+                            onMention={handleMention}
+                            onFocusInput={() => chatInputRef.current?.focus?.()}
+                            onOpenReactionPicker={() =>
+                                handleOpenReactionPicker(msg.id)
+                            }
                         />
                     );
                 })}
@@ -674,6 +705,17 @@ function MessageListMobile({
                     <NewMessagesBadge>{newMessagesCount}</NewMessagesBadge>
                 )}
             </JumpToBottom>
+
+            {/* Reaction emoji picker - positioned above ChatInputMobile */}
+            {reactionPickerMessageId && (
+                <EmojiPicker
+                    onSelect={handleReactionEmojiSelect}
+                    onClose={() => setReactionPickerMessageId(null)}
+                    position="top"
+                    align="left"
+                    triggerRef={inputContainerRef}
+                />
+            )}
 
             <ChatInputMobile
                 ref={chatInputRef}

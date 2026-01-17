@@ -84,6 +84,8 @@ const MessageContainer = styled.div`
                 : "transparent"};
     transition: background-color 0.15s, border-left-color 0.2s, transform 0.15s;
     position: relative;
+    /* z-index based on stack position - ensures avatar overlays appear above messages below */
+    z-index: ${(props) => props.$stackIndex || 1};
 
     /* Scale effect during long press */
     transform: ${(props) =>
@@ -492,6 +494,8 @@ function ChatMessage({
     onWhisper,
     onMention,
     onFocusInput,
+    stackIndex = 1,
+    onOpenReactionPicker,
 }) {
     const navigate = useNavigate();
     const [isEditing, setIsEditing] = useState(false);
@@ -754,6 +758,13 @@ function ChatMessage({
 
     // Handle switching to emoji picker from context menu
     function handleOpenReactionPicker() {
+        // On mobile, use the parent's fixed-position picker if available
+        if (contextMenu?.isMobile && onOpenReactionPicker) {
+            setContextMenu(null);
+            onOpenReactionPicker();
+            return;
+        }
+        // On desktop, show inline picker in context menu
         setContextMenu((prev) => ({
             ...prev,
             type: "react",
@@ -911,6 +922,7 @@ function ChatMessage({
             $swipeOffset={swipeOffset}
             $isGrouped={isGrouped}
             $isLongPressing={isLongPressing}
+            $stackIndex={stackIndex}
             onTouchStart={(e) => {
                 handleTouchStart(e);
                 longPressHandlers.onTouchStart(e);

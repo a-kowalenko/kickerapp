@@ -8,6 +8,7 @@ import {
     forwardRef,
     useImperativeHandle,
 } from "react";
+import toast from "react-hot-toast";
 import {
     HiOutlineFaceSmile,
     HiPaperAirplane,
@@ -26,11 +27,32 @@ import GifPicker from "../../ui/GifPicker";
 import MatchDropdown from "../../ui/MatchDropdown";
 import RichTextInput from "../../ui/RichTextInput";
 import SpinnerMini from "../../ui/SpinnerMini";
-import MentionText from "../../ui/MentionText";
 import { useCanUploadImages } from "../../hooks/useCanUploadImages";
 import { useImageUpload } from "../../hooks/useImageUpload";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { getMatch, formatMatchDisplay } from "../../services/apiMatches";
+
+// Helper function to format reply preview text
+function formatReplyPreview(text, maxLength = 50) {
+    if (!text) return "";
+
+    let formatted = text
+        // Convert @[Name](id) to @Name
+        .replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1")
+        // Convert #[Display](id) to #Display
+        .replace(/#\[([^\]]+)\]\(\d+\)/g, "#$1")
+        // Convert [gif:url] to [GIF]
+        .replace(/\[gif:[^\]]+\]/g, "[GIF]")
+        // Convert [img:url] to [Image]
+        .replace(/\[img:[^\]]+\]/g, "[Image]");
+
+    // Truncate if needed
+    if (formatted.length > maxLength) {
+        formatted = formatted.substring(0, maxLength) + "...";
+    }
+
+    return formatted;
+}
 
 // Animations
 const scaleIn = keyframes`
@@ -57,6 +79,7 @@ const Container = styled.div`
     touch-action: manipulation;
     /* Swipe-to-dismiss keyboard support */
     will-change: transform;
+    z-index: 100;
 `;
 
 const ReplyBanner = styled.div`
@@ -64,6 +87,7 @@ const ReplyBanner = styled.div`
     align-items: center;
     justify-content: space-between;
     padding: 0.6rem 1rem;
+    margin-bottom: 0.6rem;
     background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-sm);
     border-left: 3px solid var(--primary-button-color);
@@ -74,6 +98,7 @@ const WhisperBanner = styled.div`
     align-items: center;
     gap: 0.8rem;
     padding: 0.6rem 1rem;
+    margin-bottom: 0.6rem;
     background-color: rgba(34, 197, 94, 0.15);
     border-radius: var(--border-radius-sm);
     border-left: 3px solid var(--color-green-500);
@@ -272,7 +297,7 @@ const BottomSheet = styled.div`
     border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
     z-index: 999;
     animation: ${slideUp} 0.25s cubic-bezier(0.32, 0.72, 0, 1);
-    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0));
+    padding-bottom: calc(0 + env(safe-area-inset-bottom, 0));
     touch-action: none;
     will-change: transform;
 `;
@@ -363,6 +388,7 @@ const UploadProgress = styled.div`
     align-items: center;
     gap: 0.8rem;
     padding: 0.6rem 1rem;
+    margin-bottom: 0.6rem;
     background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-sm);
     font-size: 1.2rem;
@@ -442,7 +468,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                 inputRef.current?.focus?.();
             },
             insertMention: (player) => {
-                inputRef.current?.insertMention?.(player.name, player.id);
+                inputRef.current?.appendMention?.(player);
                 inputRef.current?.focus?.();
             },
             focus: () => inputRef.current?.focus?.(),
@@ -807,19 +833,27 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         if (!file || !canUploadImages) return;
         e.target.value = "";
 
-        const url = await uploadImageFile(file);
-        if (url) {
-            inputRef.current?.appendImageTag?.(url);
-            inputRef.current?.focus?.();
+        try {
+            const url = await uploadImageFile(file);
+            if (url) {
+                inputRef.current?.appendImageTag?.(url);
+                inputRef.current?.focus?.();
+            }
+        } catch (error) {
+            toast.error(error.message || "Image upload failed");
         }
     }
 
     const handleImagePaste = useCallback(
         async (file) => {
             if (!canUploadImages) return;
-            const url = await uploadImageFile(file);
-            if (url) {
-                inputRef.current?.appendImageTag?.(url);
+            try {
+                const url = await uploadImageFile(file);
+                if (url) {
+                    inputRef.current?.appendImageTag?.(url);
+                }
+            } catch (error) {
+                toast.error(error.message || "Image upload failed");
             }
         },
         [canUploadImages, uploadImageFile]
@@ -888,10 +922,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                             Replying to {replyTo.player?.name}
                         </BannerLabel>
                         <BannerText>
-                            <MentionText
-                                text={replyTo.content}
-                                maxLength={50}
-                            />
+                            {formatReplyPreview(replyTo.content, 50)}
                         </BannerText>
                     </BannerContent>
                     <CloseButton onClick={onCancelReply}>
@@ -900,8 +931,8 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                 </ReplyBanner>
             )}
 
-            {/* Whisper banner */}
-            {whisperRecipient && !replyTo && (
+            {/* Whisper banner - shown alongside reply banner when both exist */}
+            {whisperRecipient && (
                 <WhisperBanner>
                     <BannerContent>
                         <BannerLabel $whisper>
