@@ -270,7 +270,8 @@ export function useOnlinePresence() {
                                     setRecentOfflineActivity((prev) => {
                                         const updated = new Map(prev);
                                         updated.set(playerId, {
-                                            lastActivityAt: presence.last_activity_at,
+                                            lastActivityAt:
+                                                presence.last_activity_at,
                                             cachedAt: now,
                                         });
                                         return updated;
@@ -319,7 +320,8 @@ export function useOnlinePresence() {
                                 if (cached.data?.last_activity_at) {
                                     newlyOffline.push({
                                         playerId,
-                                        lastActivityAt: cached.data.last_activity_at,
+                                        lastActivityAt:
+                                            cached.data.last_activity_at,
                                     });
                                 }
                                 playerCacheRef.current.delete(playerId);
@@ -331,12 +333,14 @@ export function useOnlinePresence() {
                     if (newlyOffline.length > 0) {
                         setRecentOfflineActivity((prev) => {
                             const updated = new Map(prev);
-                            newlyOffline.forEach(({ playerId, lastActivityAt }) => {
-                                updated.set(playerId, {
-                                    lastActivityAt,
-                                    cachedAt: now,
-                                });
-                            });
+                            newlyOffline.forEach(
+                                ({ playerId, lastActivityAt }) => {
+                                    updated.set(playerId, {
+                                        lastActivityAt,
+                                        cachedAt: now,
+                                    });
+                                },
+                            );
                             // Clean up entries older than RECENT_OFFLINE_TTL
                             updated.forEach((entry, pid) => {
                                 if (now - entry.cachedAt > RECENT_OFFLINE_TTL) {
