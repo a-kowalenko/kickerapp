@@ -145,7 +145,7 @@ function AppLayoutInner() {
             )}
             {!isDesktop && <MobileBottomNav />}
             {/* Hide footer on mobile chat page */}
-            {!(isChatPage && !isDesktop) && <Footer />}
+            {!isChatPage && <Footer />}
         </StyledAppLayout>
     );
 }

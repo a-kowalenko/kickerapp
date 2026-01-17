@@ -1216,6 +1216,7 @@ function ChatMessage({
                     position={contextMenu.position}
                     onClose={closeContextMenu}
                     anchorRef={containerRef}
+                    isMobile={contextMenu.isMobile}
                 />
             )}
 
@@ -1225,6 +1226,7 @@ function ChatMessage({
                     position={contextMenu.position}
                     onClose={closeContextMenu}
                     anchorRef={containerRef}
+                    isMobile={contextMenu.isMobile}
                 />
             )}
 

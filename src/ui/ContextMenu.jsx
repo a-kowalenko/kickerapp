@@ -74,7 +74,13 @@ const MenuLabel = styled.span`
     flex: 1;
 `;
 
-function ContextMenu({ items, position, onClose, anchorRef }) {
+function ContextMenu({
+    items,
+    position,
+    onClose,
+    anchorRef,
+    isMobile = false,
+}) {
     const menuRef = useRef(null);
     const [isPositioned, setIsPositioned] = useState(false);
 
@@ -96,15 +102,14 @@ function ContextMenu({ items, position, onClose, anchorRef }) {
         typeof position.y === "number";
 
     // Calculate position to keep menu within viewport
-    // Prefers showing menu below the touch point, but will flip above if no space
-    // Uses visualViewport API when available for correct positioning with keyboard open
+    // Both desktop and mobile: position at touch/click point, clamped to viewport
+    // Mobile has additional offset to avoid finger covering the menu
     const getAdjustedPosition = useCallback(() => {
         if (!menuRef.current) return safePosition;
 
         const menu = menuRef.current;
         const menuRect = menu.getBoundingClientRect();
         const padding = 12;
-        const touchOffset = 8; // Small offset from touch point
 
         // Use visualViewport for accurate viewport size (especially on iOS with keyboard)
         const viewport = window.visualViewport || {
@@ -119,15 +124,13 @@ function ContextMenu({ items, position, onClose, anchorRef }) {
 
         let { x, y } = safePosition;
 
-        // Adjust y coordinate relative to visual viewport when keyboard is open
-        // Touch coordinates are relative to layout viewport, but we need visual viewport
-        const adjustedY = y - viewportOffsetTop;
+        // Mobile: offset menu slightly up and left so finger doesn't cover it
+        if (isMobile) {
+            x = x - 20; // Slight left offset
+            y = y - 30; // Offset up so menu appears above finger
+        }
 
-        // Get anchor element bounds if provided (the message container)
-        const anchorRect = anchorRef?.current?.getBoundingClientRect();
-
-        // Horizontal positioning - center on touch point, but keep in viewport
-        x = x - menuRect.width / 2;
+        // Clamp X to keep menu in viewport
         if (x + menuRect.width > viewportWidth - padding) {
             x = viewportWidth - menuRect.width - padding;
         }
@@ -135,33 +138,8 @@ function ContextMenu({ items, position, onClose, anchorRef }) {
             x = padding;
         }
 
-        // Vertical positioning - smart placement based on available space in visual viewport
-        const spaceBelow = viewportHeight - adjustedY - touchOffset;
-        const spaceAbove = adjustedY - touchOffset;
-
-        // Start with the original y (not adjusted) for final positioning
+        // Clamp Y to keep menu in viewport
         let finalY = y;
-
-        if (spaceBelow >= menuRect.height + padding) {
-            // Enough space below - position below touch point
-            finalY = y + touchOffset;
-        } else if (spaceAbove >= menuRect.height + padding) {
-            // Not enough space below, but enough above - position above touch point
-            finalY = y - menuRect.height - touchOffset;
-        } else {
-            // Not enough space either way - position at best available spot within visual viewport
-            if (spaceBelow > spaceAbove) {
-                finalY =
-                    viewportOffsetTop +
-                    viewportHeight -
-                    menuRect.height -
-                    padding;
-            } else {
-                finalY = viewportOffsetTop + padding;
-            }
-        }
-
-        // Ensure menu stays within visual viewport bounds
         if (
             finalY + menuRect.height >
             viewportOffsetTop + viewportHeight - padding
@@ -173,26 +151,8 @@ function ContextMenu({ items, position, onClose, anchorRef }) {
             finalY = viewportOffsetTop + padding;
         }
 
-        // If we have an anchor, ensure menu doesn't overlap the message too much
-        if (anchorRect) {
-            // If menu would cover most of the message, adjust
-            const messageCenter = anchorRect.top + anchorRect.height / 2;
-            if (
-                finalY < messageCenter &&
-                finalY + menuRect.height > messageCenter
-            ) {
-                // Menu would cover the center of the message
-                // Try to position it clearly above or below
-                if (spaceBelow >= menuRect.height + padding) {
-                    finalY = anchorRect.bottom + touchOffset;
-                } else if (spaceAbove >= menuRect.height + padding) {
-                    finalY = anchorRect.top - menuRect.height - touchOffset;
-                }
-            }
-        }
-
         return { x, y: finalY };
-    }, [safePosition, anchorRef]);
+    }, [safePosition, isMobile]);
 
     // Handle escape key and outside clicks
     useEffect(() => {
