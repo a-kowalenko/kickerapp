@@ -12,6 +12,7 @@ import PlayerActivitySidebar from "../features/activity/PlayerActivitySidebar";
 import useWindowWidth from "../hooks/useWindowWidth";
 import MobileBottomNav from "./MobileBottomNav";
 import { KeyboardProvider, useKeyboard } from "../contexts/KeyboardContext";
+import { useGlobalChatSubscription } from "../hooks/useGlobalChatSubscription";
 
 const StyledAppLayout = styled.div`
     @media (min-width: 850px) {
@@ -115,6 +116,10 @@ function AppLayoutInner() {
     const { isDesktop } = useWindowWidth();
     const location = useLocation();
     const { isKeyboardOpen } = useKeyboard();
+
+    // Global chat subscription for unread badge updates
+    // Stays active regardless of which page user is on
+    useGlobalChatSubscription();
 
     // Check if we're on the chat page (for mobile-specific styling)
     const isChatPage = location.pathname === "/chat";

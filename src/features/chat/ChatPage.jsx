@@ -11,6 +11,7 @@ import { useUser } from "../authentication/useUser";
 import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
+import CountBadge from "../../ui/CountBadge";
 
 const DESKTOP_CHAT_TAB_KEY = "zerohero-desktop-chat-tab";
 
@@ -70,17 +71,6 @@ const TabButton = styled.button`
     }
 `;
 
-const UnreadBadge = styled.span`
-    background-color: var(--color-red-700);
-    color: white;
-    padding: 0.1rem 0.5rem;
-    border-radius: var(--border-radius-pill);
-    font-size: 1.1rem;
-    font-weight: 600;
-    min-width: 1.8rem;
-    text-align: center;
-`;
-
 const ChatContent = styled.div`
     display: flex;
     flex-direction: column;
@@ -130,7 +120,7 @@ function ChatPage() {
                 }
             }
         },
-        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]
+        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge],
     );
 
     return (
@@ -149,9 +139,7 @@ function ChatPage() {
                 >
                     <HiChatBubbleOvalLeftEllipsis />
                     Comments
-                    {unreadCount > 0 && (
-                        <UnreadBadge>{unreadCount}</UnreadBadge>
-                    )}
+                    <CountBadge count={unreadCount} size="sm" />
                 </TabButton>
             </TabBar>
             <ChatContent>

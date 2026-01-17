@@ -221,6 +221,9 @@ const SendButton = styled.button`
     cursor: pointer;
     border-radius: 50%;
     transform-origin: center;
+    /* Prevent touch from causing input blur */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 
     ${(props) =>
         props.$visible
@@ -1054,7 +1057,6 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                         $visible={hasContent}
                         onClick={handleSubmit}
                         onMouseDown={(e) => e.preventDefault()}
-                        onTouchStart={(e) => e.preventDefault()}
                         disabled={!canSubmit || isSubmitting}
                         type="button"
                     >

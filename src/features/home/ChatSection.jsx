@@ -17,6 +17,7 @@ import MatchCommentsTab from "./MatchCommentsTab";
 import AchievementTickerTab from "./AchievementTickerTab";
 import { media } from "../../utils/constants";
 import ContentBox from "../../ui/ContentBox";
+import CountBadge from "../../ui/CountBadge";
 
 const CHAT_TAB_STORAGE_KEY = "zerohero-chat-active-tab";
 
@@ -103,17 +104,6 @@ const TabButton = styled.button`
     }
 `;
 
-const UnreadBadge = styled.span`
-    background-color: var(--color-red-700);
-    color: white;
-    padding: 0.1rem 0.5rem;
-    border-radius: var(--border-radius-pill);
-    font-size: 1.1rem;
-    font-weight: 600;
-    min-width: 1.8rem;
-    text-align: center;
-`;
-
 const TabContent = styled.div`
     display: flex;
     flex-direction: column;
@@ -147,7 +137,7 @@ function ChatSection() {
     const [activeTab, setActiveTab] = useState(() => {
         // Check if there's a scrollTo param that specifies a message (should switch to chat tab)
         const scrollTo = new URLSearchParams(window.location.search).get(
-            "scrollTo"
+            "scrollTo",
         );
         if (scrollTo?.startsWith("message-")) {
             return "chat";
@@ -213,11 +203,11 @@ function ChatSection() {
                 try {
                     console.log(
                         "[ChatSection] Marking comments as read for kicker:",
-                        currentKicker
+                        currentKicker,
                     );
                     await updateCommentReadStatus(currentKicker);
                     console.log(
-                        "[ChatSection] updateCommentReadStatus completed"
+                        "[ChatSection] updateCommentReadStatus completed",
                     );
                     invalidateUnreadCount();
                     // Also invalidate global badge to update browser tab title
@@ -227,7 +217,7 @@ function ChatSection() {
                 }
             }
         },
-        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge]
+        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge],
     );
 
     // Mark comments as read if comments tab is already active on mount
@@ -245,7 +235,7 @@ function ChatSection() {
                 try {
                     console.log(
                         "[ChatSection] Initial mark comments as read for kicker:",
-                        currentKicker
+                        currentKicker,
                     );
                     await updateCommentReadStatus(currentKicker);
                     invalidateUnreadCount();
@@ -253,7 +243,7 @@ function ChatSection() {
                 } catch (error) {
                     console.error(
                         "Error marking comments as read on mount:",
-                        error
+                        error,
                     );
                 }
             }, 500);
@@ -282,9 +272,7 @@ function ChatSection() {
                         {isDesktop && "Match Comments"}
                         {isTablet && "Comments"}
                         {isMobile && "Comments"}
-                        {unreadCount > 0 && (
-                            <UnreadBadge>{unreadCount}</UnreadBadge>
-                        )}
+                        <CountBadge count={unreadCount} size="sm" />
                     </TabButton>
                     <TabButton
                         $active={activeTab === "achievements"}

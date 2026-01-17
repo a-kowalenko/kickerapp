@@ -20,6 +20,8 @@ import { useUser } from "../features/authentication/useUser";
 import SeasonBadge from "../features/seasons/SeasonBadge";
 import { media } from "../utils/constants";
 import useWindowWidth from "../hooks/useWindowWidth";
+import { useUnreadChatCount } from "../features/chat/useUnreadChatCount";
+import CountBadge from "./CountBadge";
 
 const StyledMainNav = styled.nav`
     display: flex;
@@ -35,6 +37,17 @@ const NavList = styled.ul`
     flex-direction: column;
     gap: 0.8rem;
     overflow: auto;
+
+    ${media.tablet} {
+        // calculate height available to mobilebottomnav
+        max-height: calc(
+            100dvh -
+                295px - env(safe-area-inset-top, 0px) - env(
+                    safe-area-inset-bottom,
+                    0px
+                )
+        );
+    }
 
     // make scrollbar invisible but still scrollable
     &::-webkit-scrollbar {
@@ -157,11 +170,18 @@ const ActiveMatchListElement = styled.li`
     }
 `;
 
+const NavLinkWrapper = styled.div`
+    position: relative;
+    display: flex;
+    align-items: center;
+`;
+
 function MainNav({ close }) {
     const { activeMatch } = useMatchContext();
     const { data: kickerData } = useKickerInfo();
     const { user } = useUser();
     const { isDesktop } = useWindowWidth();
+    const { unreadCount } = useUnreadChatCount();
 
     const isAdmin = kickerData?.admin === user?.id;
 
@@ -247,6 +267,13 @@ function MainNav({ close }) {
                         >
                             <HiOutlineChatBubbleLeftRight />
                             <span>Chat</span>
+                            <CountBadge
+                                count={unreadCount}
+                                size="sm"
+                                // position="absolute"
+                                top="-0.6rem"
+                                right="1rem"
+                            />
                         </StyledNavLink>
                     </li>
                 )}

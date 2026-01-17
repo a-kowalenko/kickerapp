@@ -23,6 +23,7 @@ import { media } from "../utils/constants";
 import SpinnerMini from "./SpinnerMini";
 import { BountyCard } from "./BountyCard";
 import { useUnreadMentionCount } from "../features/notifications/useNotifications";
+import CountBadge from "./CountBadge";
 
 const ProfileMenuWrapper = styled.div`
     position: relative;
@@ -103,39 +104,6 @@ const ProfileMenuContainer = styled.div`
     position: relative;
 `;
 
-const MobileNotificationBadge = styled.span`
-    position: absolute;
-    top: -0.4rem;
-    left: -0.4rem;
-    min-width: 1.8rem;
-    height: 1.8rem;
-    padding: 0 0.5rem;
-    background-color: var(--color-red-700);
-    color: white;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: var(--border-radius-pill);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    z-index: 1;
-
-    ${media.tablet} {
-        display: flex;
-    }
-`;
-
-const NotificationCount = styled.span`
-    background-color: var(--color-red-700);
-    color: white;
-    font-size: 1.1rem;
-    font-weight: 600;
-    padding: 0.2rem 0.6rem;
-    border-radius: var(--border-radius-pill);
-    margin-left: auto;
-`;
-
 // Global state for syncing ProfileMenu dropdown across Header and Sidebar
 let globalProfileMenuOpen = false;
 const profileMenuListeners = new Set();
@@ -167,7 +135,7 @@ function ProfileMenu({ inSidebar = false }) {
     const [isOpen, setIsOpen] = useState(globalProfileMenuOpen);
     const [triggerRect, setTriggerRect] = useState(activeTriggerRect);
     const [isHeaderVisible, setIsHeaderVisible] = useState(
-        isHeaderCurrentlyVisible
+        isHeaderCurrentlyVisible,
     );
     const triggerRef = useRef(null);
     const portalDropdownRef = useRef(null);
@@ -210,7 +178,7 @@ function ProfileMenu({ inSidebar = false }) {
                 document.removeEventListener(
                     "click",
                     handleClickOutside,
-                    false
+                    false,
                 );
             }
         };
@@ -290,12 +258,12 @@ function ProfileMenu({ inSidebar = false }) {
 
         window.addEventListener(
             "headerVisibilityChange",
-            handleHeaderVisibility
+            handleHeaderVisibility,
         );
         return () => {
             window.removeEventListener(
                 "headerVisibilityChange",
-                handleHeaderVisibility
+                handleHeaderVisibility,
             );
         };
     }, [isDesktop]);
@@ -355,9 +323,6 @@ function ProfileMenu({ inSidebar = false }) {
         return <SpinnerMini />;
     }
 
-    // Format badge count (max 99+)
-    const badgeCount = unreadCount > 99 ? "99+" : unreadCount;
-
     function handleGoToNotifications(e) {
         e.stopPropagation();
         close();
@@ -394,9 +359,7 @@ function ProfileMenu({ inSidebar = false }) {
                 <StyledButton onClick={handleGoToNotifications}>
                     <HiOutlineBell />
                     Notifications
-                    {unreadCount > 0 && (
-                        <NotificationCount>{badgeCount}</NotificationCount>
-                    )}
+                    <CountBadge count={unreadCount} size="sm" />
                 </StyledButton>
             </MobileOnlyItem>
             <MobileOnlyItem>
@@ -435,10 +398,14 @@ function ProfileMenu({ inSidebar = false }) {
     return (
         <ProfileMenuWrapper ref={wrapperRef}>
             <ProfileMenuContainer ref={triggerRef}>
-                {isMobile && unreadCount > 0 && (
-                    <MobileNotificationBadge>
-                        {badgeCount}
-                    </MobileNotificationBadge>
+                {isMobile && (
+                    <CountBadge
+                        count={unreadCount}
+                        size="sm"
+                        position="absolute"
+                        top="-0.4rem"
+                        left="-0.4rem"
+                    />
                 )}
                 <BountyCard
                     player={player}
@@ -473,7 +440,7 @@ function ProfileMenu({ inSidebar = false }) {
                         >
                             {dropdownContent}
                         </PortalDropdown>,
-                        document.body
+                        document.body,
                     )
                 ) : (
                     // Inline dropdown for mobile

@@ -13,6 +13,7 @@ import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
 import { useKeyboard } from "../../contexts/KeyboardContext";
+import CountBadge from "../../ui/CountBadge";
 
 const MOBILE_CHAT_TAB_KEY = "zerohero-mobile-chat-tab";
 
@@ -49,7 +50,9 @@ const TabButton = styled.button`
     font-size: 1.4rem;
     font-weight: ${(props) => (props.$active ? "600" : "500")};
     cursor: pointer;
-    transition: color 0.2s, border-color 0.2s;
+    transition:
+        color 0.2s,
+        border-color 0.2s;
 
     &:active {
         background-color: var(--quaternary-background-color);
@@ -58,17 +61,6 @@ const TabButton = styled.button`
     & svg {
         font-size: 1.8rem;
     }
-`;
-
-const UnreadBadge = styled.span`
-    background-color: var(--color-red-700);
-    color: white;
-    padding: 0.1rem 0.5rem;
-    border-radius: var(--border-radius-pill);
-    font-size: 1.1rem;
-    font-weight: 600;
-    min-width: 1.8rem;
-    text-align: center;
 `;
 
 const TabContent = styled.div`
@@ -135,7 +127,12 @@ function ChatPageMobile() {
                 }
             }
         },
-        [currentKicker, invalidateUnreadCount, invalidateUnreadBadge, blurInput]
+        [
+            currentKicker,
+            invalidateUnreadCount,
+            invalidateUnreadBadge,
+            blurInput,
+        ],
     );
 
     const handleScrollComplete = useCallback(() => {
@@ -163,9 +160,7 @@ function ChatPageMobile() {
                 >
                     <HiChatBubbleOvalLeftEllipsis />
                     Comments
-                    {unreadCount > 0 && (
-                        <UnreadBadge>{unreadCount}</UnreadBadge>
-                    )}
+                    <CountBadge count={unreadCount} size="sm" />
                 </TabButton>
             </TabBar>
 
