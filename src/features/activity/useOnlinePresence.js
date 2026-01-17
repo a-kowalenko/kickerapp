@@ -4,16 +4,27 @@ import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import supabase from "../../services/supabase";
 import { upsertPlayerPresence } from "./apiPresence";
 
-// Constants
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Heartbeat: How often to broadcast presence to the channel
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-const IDLE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
-const LEAVE_GRACE_PERIOD = 45000; // 45 seconds - grace period before removing player on disconnect
-const VISIBILITY_IDLE_THRESHOLD = 30000; // 30 seconds - before showing as idle when tab hidden
-const ACTIVITY_THROTTLE = 1000; // 1 second - throttle activity event updates
-const DB_UPDATE_INTERVAL = 60000; // 60 seconds - update DB less frequently
-const RECONNECT_DELAY = 2000; // 2 seconds before reconnect attempt
-const MAX_RECONNECT_ATTEMPTS = 5; // Maximum reconnect attempts before giving up
-const RECONNECT_BACKOFF_MULTIPLIER = 1.5; // Exponential backoff multiplier
+
+// Database: How often to update last_seen in the database (for offline fallback)
+const DB_UPDATE_INTERVAL = 60000; // 60 seconds
+
+// Grace period: How long to wait before removing a disconnected player
+// Prevents flickering on page refresh
+const LEAVE_GRACE_PERIOD = 10000; // 10 seconds
+
+// Activity throttle: Minimum time between activity timestamp updates
+const ACTIVITY_THROTTLE = 1000; // 1 second
+
+// Reconnection settings
+const RECONNECT_DELAY = 2000; // 2 seconds initial delay
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BACKOFF_MULTIPLIER = 1.5;
 
 // Activity events to listen for
 const ACTIVITY_EVENTS = [
@@ -24,126 +35,89 @@ const ACTIVITY_EVENTS = [
     "click",
 ];
 
-// Debounce delay for syncing presence after activity (leading-edge)
-const ACTIVITY_SYNC_DELAY = 2000; // 2 seconds
-
 /**
- * Hook to manage online presence for the current user
- * Tracks activity and broadcasts presence status via Supabase Presence
+ * Discord-style presence hook.
  *
- * @returns {Object} - { onlinePlayers, isConnected }
- * - onlinePlayers: Map of online players with their status
- * - isConnected: Whether the presence channel is connected
+ * Key design principles:
+ * 1. RECEIVER-CALCULATED STATE: We only broadcast timestamps (onlineAt, lastActivityAt).
+ *    The receiving clients calculate "idle" status from lastActivityAt.
+ * 2. SINGLE HEARTBEAT: One interval for presence sync, one for DB updates. No racing timers.
+ * 3. TIMESTAMP-BASED GRACE PERIOD: Instead of setTimeout per player, we store leave timestamps
+ *    and filter based on age during sync events.
+ *
+ * @returns {Object} - { onlinePlayers, isConnected, currentPlayerId, goOffline }
  */
 export function useOnlinePresence() {
     const { currentKicker: kicker } = useKicker();
     const { data: currentPlayer } = useOwnPlayer();
+
+    // State
     const [onlinePlayers, setOnlinePlayers] = useState(new Map());
     const [isConnected, setIsConnected] = useState(false);
 
-    // Refs for tracking state without re-renders
+    // Refs for tracking without re-renders
     const channelRef = useRef(null);
+    const onlineAtRef = useRef(Date.now());
     const lastActivityRef = useRef(Date.now());
     const lastActivityUpdateRef = useRef(0);
-    const activitySyncTimeoutRef = useRef(null);
-    const lastSyncedStatusRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
     const dbUpdateIntervalRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
+    const reconnectAttemptsRef = useRef(0);
     const isReconnectingRef = useRef(false);
-    // Store callbacks in refs to avoid re-subscribing the channel
+
+    // Grace period: Map of playerId -> leaveTimestamp
+    // Instead of setTimeout, we just record when they left and filter on sync
+    const leaveTimestampsRef = useRef(new Map());
+
+    // Callback refs to avoid re-subscribing channel
     const trackPresenceRef = useRef(null);
     const updateDatabaseRef = useRef(null);
-    // Track pending leave timeouts (for grace period)
-    const pendingLeavesRef = useRef(new Map());
-    // Track when tab was hidden (for idle threshold on visibility change)
-    const tabHiddenSinceRef = useRef(null);
-    const visibilityTimeoutRef = useRef(null);
-    // Track reconnect attempts for exponential backoff
-    const reconnectAttemptsRef = useRef(0);
-    // Track last successful connection time
-    const lastConnectedRef = useRef(null);
 
     const currentPlayerId = currentPlayer?.id;
     const currentPlayerName = currentPlayer?.name;
     const currentPlayerAvatar = currentPlayer?.avatar;
 
-    // Calculate current status based on activity and visibility
-    const calculateStatus = useCallback(() => {
-        const timeSinceActivity = Date.now() - lastActivityRef.current;
+    // ========================================================================
+    // CORE FUNCTIONS
+    // ========================================================================
 
-        // Check if tab has been hidden for longer than VISIBILITY_IDLE_THRESHOLD (30s)
-        const tabHiddenDuration = tabHiddenSinceRef.current
-            ? Date.now() - tabHiddenSinceRef.current
-            : 0;
-        const isTabHiddenLongEnough =
-            tabHiddenDuration > VISIBILITY_IDLE_THRESHOLD;
-
-        if (timeSinceActivity > IDLE_THRESHOLD || isTabHiddenLongEnough) {
-            return "idle";
-        }
-        return "active";
-    }, []);
-
-    // Update activity timestamp (throttled) and trigger presence sync if needed
+    /**
+     * Update activity timestamp (throttled).
+     * Called on user interaction events.
+     */
     const updateActivity = useCallback(() => {
         const now = Date.now();
         if (now - lastActivityUpdateRef.current >= ACTIVITY_THROTTLE) {
-            const wasIdle = lastSyncedStatusRef.current === "idle";
             lastActivityRef.current = now;
             lastActivityUpdateRef.current = now;
-
-            // If we were idle, sync immediately (leading-edge) to show "active" faster
-            // Otherwise, debounce to avoid excessive syncs during normal activity
-            if (wasIdle && channelRef.current && trackPresenceRef.current) {
-                // Clear any pending debounced sync
-                if (activitySyncTimeoutRef.current) {
-                    clearTimeout(activitySyncTimeoutRef.current);
-                    activitySyncTimeoutRef.current = null;
-                }
-                // Sync immediately when transitioning from idle to active
-                trackPresenceRef.current();
-            } else if (channelRef.current && trackPresenceRef.current) {
-                // Debounce sync during normal activity to avoid flooding
-                if (!activitySyncTimeoutRef.current) {
-                    activitySyncTimeoutRef.current = setTimeout(() => {
-                        activitySyncTimeoutRef.current = null;
-                        if (trackPresenceRef.current) {
-                            trackPresenceRef.current();
-                        }
-                    }, ACTIVITY_SYNC_DELAY);
-                }
-            }
         }
     }, []);
 
-    // Track presence to the channel
+    /**
+     * Broadcast presence to the Supabase channel.
+     * Only sends timestamps - no calculated status.
+     */
     const trackPresence = useCallback(async () => {
         if (!channelRef.current || !currentPlayerId) return;
 
         try {
-            const status = calculateStatus();
-            lastSyncedStatusRef.current = status;
-
             await channelRef.current.track({
                 player_id: currentPlayerId,
                 player_name: currentPlayerName,
                 player_avatar: currentPlayerAvatar,
-                status,
-                last_activity: lastActivityRef.current,
-                updated_at: new Date().toISOString(),
+                online_at: onlineAtRef.current,
+                last_activity_at: lastActivityRef.current,
+                updated_at: Date.now(),
             });
         } catch (err) {
             console.error("Error tracking presence:", err);
         }
-    }, [
-        currentPlayerId,
-        currentPlayerName,
-        currentPlayerAvatar,
-        calculateStatus,
-    ]);
+    }, [currentPlayerId, currentPlayerName, currentPlayerAvatar]);
 
-    // Update database with last_seen (less frequent than presence updates)
+    /**
+     * Update database with last_seen (for offline fallback display).
+     */
     const updateDatabase = useCallback(async () => {
         if (!currentPlayerId || !kicker) return;
 
@@ -161,44 +135,41 @@ export function useOnlinePresence() {
         updateDatabaseRef.current = updateDatabase;
     }, [trackPresence, updateDatabase]);
 
-    // Helper to cleanup channel - returns promise for awaiting
+    /**
+     * Clean up channel and all related state.
+     */
     const cleanupChannel = useCallback(async () => {
+        // Clear reconnect timeout
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
         }
-        if (activitySyncTimeoutRef.current) {
-            clearTimeout(activitySyncTimeoutRef.current);
-            activitySyncTimeoutRef.current = null;
-        }
+
         isReconnectingRef.current = false;
-        lastSyncedStatusRef.current = null;
         setIsConnected(false);
 
-        // Clear all pending leave timeouts
-        pendingLeavesRef.current.forEach((timeoutId) =>
-            clearTimeout(timeoutId)
-        );
-        pendingLeavesRef.current.clear();
+        // Clear grace period timestamps
+        leaveTimestampsRef.current.clear();
 
         const channel = channelRef.current;
         channelRef.current = null;
 
         if (channel) {
             try {
-                // Wait for untrack to complete before removing channel
                 await channel.untrack();
             } catch (e) {
-                // Ignore errors
+                // Ignore errors during cleanup
             }
             supabase.removeChannel(channel);
         }
     }, []);
 
-    // Subscribe to presence channel
+    // ========================================================================
+    // CHANNEL SUBSCRIPTION
+    // ========================================================================
+
     useEffect(() => {
         if (!kicker || !currentPlayerId) {
-            // User logged out - cleanup any existing channel
             cleanupChannel();
             return;
         }
@@ -206,7 +177,7 @@ export function useOnlinePresence() {
         const channelName = `online-presence-${kicker}`;
 
         const setupChannel = () => {
-            // Clean up existing channel if any
+            // Clean up existing channel
             if (channelRef.current) {
                 supabase.removeChannel(channelRef.current);
                 channelRef.current = null;
@@ -223,102 +194,83 @@ export function useOnlinePresence() {
             channel
                 .on("presence", { event: "sync" }, () => {
                     const state = channel.presenceState();
+                    const now = Date.now();
 
-                    const players = new Map();
+                    // Build new players map from presence state
+                    const newPlayers = new Map();
 
-                    // Extract online players from presence state
                     Object.entries(state).forEach(([, presences]) => {
-                        // Get the most recent presence for this user
                         const presence = presences[presences.length - 1];
-                        if (presence && presence.player_id) {
-                            players.set(presence.player_id, {
+                        if (presence?.player_id) {
+                            newPlayers.set(presence.player_id, {
                                 player_id: presence.player_id,
                                 player_name: presence.player_name,
                                 player_avatar: presence.player_avatar,
-                                status: presence.status,
-                                last_activity: presence.last_activity,
+                                online_at: presence.online_at,
+                                last_activity_at: presence.last_activity_at,
                                 updated_at: presence.updated_at,
                             });
                         }
                     });
 
-                    // Merge with previous state - keep players that have pending leave timeouts
-                    // This prevents flickering when a player is refreshing
                     setOnlinePlayers((prevPlayers) => {
-                        const merged = new Map(players);
+                        const merged = new Map(newPlayers);
 
-                        // IMPORTANT: Always keep own player in the list to prevent flickering
-                        // The own player should always be considered online while connected
+                        // Always keep own player to prevent self-flickering
                         if (currentPlayerId && !merged.has(currentPlayerId)) {
-                            const ownPlayerData =
-                                prevPlayers.get(currentPlayerId);
-                            if (ownPlayerData) {
-                                merged.set(currentPlayerId, ownPlayerData);
+                            const ownData = prevPlayers.get(currentPlayerId);
+                            if (ownData) {
+                                merged.set(currentPlayerId, ownData);
                             }
                         }
 
-                        // Keep players from previous state if they have a pending leave timeout
-                        // and aren't in the new state (they're in grace period)
+                        // Keep players in grace period (left recently)
                         prevPlayers.forEach((playerData, playerId) => {
-                            if (
-                                !merged.has(playerId) &&
-                                pendingLeavesRef.current.has(playerId)
-                            ) {
-                                // Keep this player - they're in the grace period
-                                merged.set(playerId, playerData);
+                            if (!merged.has(playerId)) {
+                                const leaveTime =
+                                    leaveTimestampsRef.current.get(playerId);
+                                if (
+                                    leaveTime &&
+                                    now - leaveTime < LEAVE_GRACE_PERIOD
+                                ) {
+                                    // Still within grace period - keep them
+                                    merged.set(playerId, playerData);
+                                } else if (leaveTime) {
+                                    // Grace period expired - remove from tracking
+                                    leaveTimestampsRef.current.delete(playerId);
+                                }
                             }
                         });
+
+                        // Shallow compare to prevent unnecessary re-renders
+                        if (mapsAreEqual(prevPlayers, merged)) {
+                            return prevPlayers;
+                        }
 
                         return merged;
                     });
                 })
                 .on("presence", { event: "leave" }, ({ leftPresences }) => {
-                    // When a player leaves, start a timeout to remove them
-                    // During this grace period, they stay in the list with current status
-                    // This handles page refresh gracefully - the player will rejoin quickly
+                    // Record leave timestamp for grace period
                     leftPresences.forEach((presence) => {
-                        if (presence.player_id) {
-                            const playerId = presence.player_id;
-
-                            // NEVER start leave timeout for own player - prevents flickering
-                            if (playerId === currentPlayerId) {
-                                return;
-                            }
-
-                            // Clear any existing timeout for this player
-                            if (pendingLeavesRef.current.has(playerId)) {
-                                clearTimeout(
-                                    pendingLeavesRef.current.get(playerId)
-                                );
-                            }
-
-                            // Start a timeout - if they don't rejoin within grace period, remove them
-                            // We keep them showing as their CURRENT status during this time
-                            const timeoutId = setTimeout(() => {
-                                // After grace period, remove from online list
-                                setOnlinePlayers((prevPlayers) => {
-                                    const newPlayers = new Map(prevPlayers);
-                                    newPlayers.delete(playerId);
-                                    return newPlayers;
-                                });
-                                pendingLeavesRef.current.delete(playerId);
-                            }, LEAVE_GRACE_PERIOD);
-
-                            pendingLeavesRef.current.set(playerId, timeoutId);
+                        if (
+                            presence.player_id &&
+                            presence.player_id !== currentPlayerId
+                        ) {
+                            leaveTimestampsRef.current.set(
+                                presence.player_id,
+                                Date.now(),
+                            );
                         }
                     });
                 })
                 .on("presence", { event: "join" }, ({ newPresences }) => {
-                    // When player joins, cancel any pending leave timeout
+                    // Cancel grace period when player rejoins
                     newPresences.forEach((presence) => {
                         if (presence.player_id) {
-                            const playerId = presence.player_id;
-                            if (pendingLeavesRef.current.has(playerId)) {
-                                clearTimeout(
-                                    pendingLeavesRef.current.get(playerId)
-                                );
-                                pendingLeavesRef.current.delete(playerId);
-                            }
+                            leaveTimestampsRef.current.delete(
+                                presence.player_id,
+                            );
                         }
                     });
                 })
@@ -327,15 +279,16 @@ export function useOnlinePresence() {
                         channelRef.current = channel;
                         setIsConnected(true);
                         isReconnectingRef.current = false;
-                        reconnectAttemptsRef.current = 0; // Reset on successful connection
-                        lastConnectedRef.current = Date.now();
+                        reconnectAttemptsRef.current = 0;
+                        onlineAtRef.current = Date.now();
+                        lastActivityRef.current = Date.now();
 
-                        // Initial presence track - use ref to get latest function
+                        // Initial presence track
                         if (trackPresenceRef.current) {
                             await trackPresenceRef.current();
                         }
 
-                        // Initial database update - use ref to get latest function
+                        // Initial database update
                         if (updateDatabaseRef.current) {
                             await updateDatabaseRef.current();
                         }
@@ -343,11 +296,10 @@ export function useOnlinePresence() {
                         status === "CLOSED" ||
                         status === "CHANNEL_ERROR"
                     ) {
-                        // Don't clear onlinePlayers here - keep showing them until reconnect
                         setIsConnected(false);
                         channelRef.current = null;
 
-                        // Attempt to reconnect with exponential backoff
+                        // Attempt reconnection with exponential backoff
                         if (
                             !isReconnectingRef.current &&
                             reconnectAttemptsRef.current <
@@ -356,12 +308,11 @@ export function useOnlinePresence() {
                             isReconnectingRef.current = true;
                             reconnectAttemptsRef.current++;
 
-                            // Calculate delay with exponential backoff
                             const delay =
                                 RECONNECT_DELAY *
                                 Math.pow(
                                     RECONNECT_BACKOFF_MULTIPLIER,
-                                    reconnectAttemptsRef.current - 1
+                                    reconnectAttemptsRef.current - 1,
                                 );
 
                             reconnectTimeoutRef.current = setTimeout(() => {
@@ -372,12 +323,12 @@ export function useOnlinePresence() {
                             reconnectAttemptsRef.current >=
                             MAX_RECONNECT_ATTEMPTS
                         ) {
-                            // After max attempts, try one more time after a longer delay
+                            // After max attempts, reset and try again after longer delay
                             reconnectTimeoutRef.current = setTimeout(() => {
                                 reconnectAttemptsRef.current = 0;
                                 isReconnectingRef.current = false;
                                 setupChannel();
-                            }, 30000); // 30 second reset delay
+                            }, 30000);
                         }
                     }
                 });
@@ -385,33 +336,25 @@ export function useOnlinePresence() {
 
         setupChannel();
 
-        // Handle page unload - ensure we untrack before leaving
+        // Event handlers for cleanup and reconnection
         const handleBeforeUnload = () => {
             if (channelRef.current) {
-                // Synchronously unsubscribe - this may or may not complete
                 channelRef.current.unsubscribe();
             }
         };
-        window.addEventListener("beforeunload", handleBeforeUnload);
 
-        // Handle explicit logout event
         const handleLogout = () => {
             cleanupChannel();
         };
-        window.addEventListener("userLogout", handleLogout);
 
-        // Handle network online/offline events for more robust reconnection
         const handleOnline = () => {
-            // Network came back online - try to reconnect immediately
             if (!channelRef.current && !isReconnectingRef.current) {
-                reconnectAttemptsRef.current = 0; // Reset attempts on network recovery
+                reconnectAttemptsRef.current = 0;
                 setupChannel();
             }
         };
 
         const handleOffline = () => {
-            // Network went offline - don't try to reconnect yet
-            // The channel will handle the error and we'll reconnect when online
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
                 reconnectTimeoutRef.current = null;
@@ -419,6 +362,8 @@ export function useOnlinePresence() {
             isReconnectingRef.current = false;
         };
 
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("userLogout", handleLogout);
         window.addEventListener("online", handleOnline);
         window.addEventListener("offline", handleOffline);
 
@@ -429,20 +374,27 @@ export function useOnlinePresence() {
             window.removeEventListener("offline", handleOffline);
             cleanupChannel();
         };
-    }, [kicker, currentPlayerId, cleanupChannel]); // Only re-subscribe when kicker or playerId changes
+    }, [kicker, currentPlayerId, cleanupChannel]);
 
-    // Set up heartbeat interval
+    // ========================================================================
+    // HEARTBEAT INTERVALS
+    // ========================================================================
+
     useEffect(() => {
         if (!isConnected) return;
 
-        // Heartbeat - update presence every 30 seconds
+        // Presence heartbeat - every 30 seconds
         heartbeatIntervalRef.current = setInterval(() => {
-            trackPresence();
+            if (trackPresenceRef.current) {
+                trackPresenceRef.current();
+            }
         }, HEARTBEAT_INTERVAL);
 
-        // Database update - update last_seen every 60 seconds
+        // Database update - every 60 seconds
         dbUpdateIntervalRef.current = setInterval(() => {
-            updateDatabase();
+            if (updateDatabaseRef.current) {
+                updateDatabaseRef.current();
+            }
         }, DB_UPDATE_INTERVAL);
 
         return () => {
@@ -453,56 +405,46 @@ export function useOnlinePresence() {
                 clearInterval(dbUpdateIntervalRef.current);
             }
         };
-    }, [isConnected, trackPresence, updateDatabase]);
+    }, [isConnected]);
 
-    // Listen to activity events
+    // ========================================================================
+    // ACTIVITY LISTENERS
+    // ========================================================================
+
     useEffect(() => {
         if (!isConnected) return;
 
-        // Add activity listeners
+        // Listen for activity events
         ACTIVITY_EVENTS.forEach((event) => {
             window.addEventListener(event, updateActivity, { passive: true });
         });
 
-        // Visibility change listener - handles tab becoming active/hidden with threshold
+        // Visibility change: update activity when tab becomes visible
         const handleVisibilityChange = () => {
             if (!document.hidden) {
-                // Tab became visible - clear any pending idle timeout
-                if (visibilityTimeoutRef.current) {
-                    clearTimeout(visibilityTimeoutRef.current);
-                    visibilityTimeoutRef.current = null;
+                // Tab became visible - update activity and sync
+                const now = Date.now();
+                lastActivityRef.current = now;
+                lastActivityUpdateRef.current = now;
+
+                if (channelRef.current && trackPresenceRef.current) {
+                    trackPresenceRef.current();
                 }
-                tabHiddenSinceRef.current = null;
-
-                // Update activity and force presence sync
-                lastActivityRef.current = Date.now();
-
-                // Check if channel is still connected
-                if (channelRef.current) {
-                    // Force re-track presence to sync with server (status will be "active")
-                    trackPresence();
-                }
-            } else {
-                // Tab became hidden - start the threshold timer
-                tabHiddenSinceRef.current = Date.now();
-
-                // After threshold, update presence status to idle
-                visibilityTimeoutRef.current = setTimeout(() => {
-                    if (channelRef.current && document.hidden) {
-                        trackPresence(); // Will now calculate status as "idle"
-                    }
-                }, VISIBILITY_IDLE_THRESHOLD);
             }
         };
-        document.addEventListener("visibilitychange", handleVisibilityChange);
 
-        // Also handle window focus (in addition to visibility)
+        // Window focus: also update activity
         const handleWindowFocus = () => {
-            lastActivityRef.current = Date.now();
-            if (channelRef.current) {
-                trackPresence();
+            const now = Date.now();
+            lastActivityRef.current = now;
+            lastActivityUpdateRef.current = now;
+
+            if (channelRef.current && trackPresenceRef.current) {
+                trackPresenceRef.current();
             }
         };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
         window.addEventListener("focus", handleWindowFocus);
 
         return () => {
@@ -511,22 +453,20 @@ export function useOnlinePresence() {
             });
             document.removeEventListener(
                 "visibilitychange",
-                handleVisibilityChange
+                handleVisibilityChange,
             );
             window.removeEventListener("focus", handleWindowFocus);
-            // Clear visibility timeout on cleanup
-            if (visibilityTimeoutRef.current) {
-                clearTimeout(visibilityTimeoutRef.current);
-                visibilityTimeoutRef.current = null;
-            }
         };
-    }, [isConnected, updateActivity, trackPresence]);
+    }, [isConnected, updateActivity]);
 
-    // Update database on unmount (to save last_seen)
+    // ========================================================================
+    // CLEANUP ON UNMOUNT
+    // ========================================================================
+
     useEffect(() => {
         return () => {
             if (currentPlayerId && kicker) {
-                // Fire and forget - don't await on unmount
+                // Fire and forget - save last_seen on unmount
                 upsertPlayerPresence(currentPlayerId, kicker).catch(() => {});
             }
         };
@@ -536,9 +476,33 @@ export function useOnlinePresence() {
         onlinePlayers,
         isConnected,
         currentPlayerId,
-        // Expose cleanup for logout
         goOffline: cleanupChannel,
     };
+}
+
+/**
+ * Shallow comparison of two Maps to prevent unnecessary re-renders.
+ * Compares keys and a subset of values.
+ */
+function mapsAreEqual(map1, map2) {
+    if (map1.size !== map2.size) return false;
+
+    for (const [key, value1] of map1) {
+        const value2 = map2.get(key);
+        if (!value2) return false;
+
+        // Compare key fields that affect rendering
+        if (
+            value1.player_id !== value2.player_id ||
+            value1.player_name !== value2.player_name ||
+            value1.player_avatar !== value2.player_avatar ||
+            value1.last_activity_at !== value2.last_activity_at
+        ) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 export default useOnlinePresence;
