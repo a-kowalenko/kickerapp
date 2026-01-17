@@ -941,7 +941,12 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                     {getMediaPreviewUrl(replyTo.content) && (
                         <ReplyMediaPreview
                             src={getMediaPreviewUrl(replyTo.content).url}
-                            alt={getMediaPreviewUrl(replyTo.content).type === "gif" ? "GIF" : "Image"}
+                            alt={
+                                getMediaPreviewUrl(replyTo.content).type ===
+                                "gif"
+                                    ? "GIF"
+                                    : "Image"
+                            }
                         />
                     )}
                     <BannerContent>

@@ -1050,7 +1050,12 @@ const ChatInput = forwardRef(function ChatInput(
                     {getMediaPreviewUrl(replyTo.content) && (
                         <ReplyMediaPreview
                             src={getMediaPreviewUrl(replyTo.content).url}
-                            alt={getMediaPreviewUrl(replyTo.content).type === "gif" ? "GIF" : "Image"}
+                            alt={
+                                getMediaPreviewUrl(replyTo.content).type ===
+                                "gif"
+                                    ? "GIF"
+                                    : "Image"
+                            }
                         />
                     )}
                     <ReplyContent>
