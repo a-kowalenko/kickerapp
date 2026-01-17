@@ -372,9 +372,7 @@ function ChatTab() {
         if (!newestOtherMessage) return;
 
         // If lastReadAt is now >= newest other message, clear the divider
-        if (
-            new Date(lastReadAt) >= new Date(newestOtherMessage.created_at)
-        ) {
+        if (new Date(lastReadAt) >= new Date(newestOtherMessage.created_at)) {
             dividerClearedRef.current = true;
         }
     }, [lastReadAt, messages, currentPlayerId]);

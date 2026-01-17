@@ -21,7 +21,7 @@ export function useGlobalChatSubscription() {
     const { currentKicker: kicker } = useKicker();
     const { data: currentPlayer } = useOwnPlayer();
     const queryClient = useQueryClient();
-    
+
     // Use ref to avoid re-subscribing when currentPlayer changes
     const currentPlayerIdRef = useRef(null);
     currentPlayerIdRef.current = currentPlayer?.id;

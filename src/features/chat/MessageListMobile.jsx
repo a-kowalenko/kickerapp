@@ -281,7 +281,7 @@ function MessageListMobile({
         // Skip if not yet captured initial value or already cleared
         if (!initialLastReadAtRef.current || dividerClearedRef.current) return;
         if (!messages?.length || !lastReadAt) return;
-        
+
         // Only clear if lastReadAt has actually changed from initial
         if (lastReadAt === initialLastReadAtRef.current) return;
 
@@ -292,9 +292,7 @@ function MessageListMobile({
         if (!newestOtherMessage) return;
 
         // If lastReadAt is now >= newest other message, clear the divider
-        if (
-            new Date(lastReadAt) >= new Date(newestOtherMessage.created_at)
-        ) {
+        if (new Date(lastReadAt) >= new Date(newestOtherMessage.created_at)) {
             dividerClearedRef.current = true;
         }
     }, [lastReadAt, messages, currentPlayerId]);
