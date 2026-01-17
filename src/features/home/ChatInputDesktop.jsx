@@ -34,6 +34,40 @@ import { useCanUploadImages } from "../../hooks/useCanUploadImages";
 import { useImageUpload } from "../../hooks/useImageUpload";
 import toast from "react-hot-toast";
 
+// Helper function to format reply preview text
+function formatReplyPreview(text, maxLength = 50) {
+    if (!text) return "";
+
+    let formatted = text
+        // Convert @[Name](id) to @Name
+        .replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1")
+        // Convert #[Display](id) to #Display
+        .replace(/#\[([^\]]+)\]\(\d+\)/g, "#$1")
+        // Convert [gif:url] to [GIF]
+        .replace(/\[gif:[^\]]+\]/g, "[GIF]")
+        // Convert [img:url] to [Image]
+        .replace(/\[img:[^\]]+\]/g, "[Image]");
+
+    // Truncate if needed
+    if (formatted.length > maxLength) {
+        formatted = formatted.substring(0, maxLength) + "...";
+    }
+
+    return formatted;
+}
+
+// Helper function to extract media URL from reply content
+function getMediaPreviewUrl(text) {
+    if (!text) return null;
+    // Check for GIF
+    const gifMatch = text.match(/\[gif:(https?:\/\/[^\]]+)\]/);
+    if (gifMatch) return { type: "gif", url: gifMatch[1] };
+    // Check for image
+    const imgMatch = text.match(/\[img:(https?:\/\/[^\]]+)\]/);
+    if (imgMatch) return { type: "img", url: imgMatch[1] };
+    return null;
+}
+
 // Animations
 const scaleIn = keyframes`
     0% { transform: scale(0); opacity: 0; }
@@ -70,10 +104,19 @@ const ReplyBanner = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
     padding: 0.8rem 1.2rem;
     background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-md);
     border-left: 3px solid var(--primary-button-color);
+`;
+
+const ReplyMediaPreview = styled.img`
+    width: 4rem;
+    height: 4rem;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm);
+    flex-shrink: 0;
 `;
 
 const WhisperBanner = styled.div`
@@ -999,11 +1042,19 @@ const ChatInputDesktop = forwardRef(function ChatInputDesktop(
             {/* Reply Banner */}
             {replyTo && (
                 <ReplyBanner>
+                    {getMediaPreviewUrl(replyTo.content) && (
+                        <ReplyMediaPreview
+                            src={getMediaPreviewUrl(replyTo.content).url}
+                            alt={getMediaPreviewUrl(replyTo.content).type === "gif" ? "GIF" : "Image"}
+                        />
+                    )}
                     <BannerContent>
                         <BannerLabel>
                             Replying to {replyTo.player?.name}
                         </BannerLabel>
-                        <BannerText>{replyTo.content}</BannerText>
+                        <BannerText>
+                            {formatReplyPreview(replyTo.content, 60)}
+                        </BannerText>
                     </BannerContent>
                     <CloseButton onClick={onCancelReply}>
                         <HiXMark />
