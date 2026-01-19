@@ -81,7 +81,8 @@ function ChatPageMobile() {
     // Determine initial tab from URL or localStorage
     const [activeTab, setActiveTab] = useState(() => {
         const urlTab = searchParams.get("tab");
-        if (urlTab === "chat" || urlTab === "comments" || urlTab === "activity") return urlTab;
+        if (urlTab === "chat" || urlTab === "comments" || urlTab === "activity")
+            return urlTab;
         const saved = localStorage.getItem(MOBILE_CHAT_TAB_KEY);
         if (saved === "comments" || saved === "activity") return saved;
         return "chat";

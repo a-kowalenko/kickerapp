@@ -62,7 +62,7 @@ function getHighestInChain(statuses, chainName) {
  * @param {string[]} statuses - List of asset keys
  * @returns {string[]} - Filtered unique statuses
  */
-function getUniqueStatuses(statuses) {
+export function getUniqueStatuses(statuses) {
     if (!statuses || statuses.length === 0) return [];
 
     const result = [];
@@ -412,7 +412,7 @@ export function usePlayerStatusForAvatar(playerId) {
     // Uses asset_keys (camelCase) to match displayConfig
     const displayableStatuses = filterDisplayableStatuses(
         allActiveAssetKeys,
-        displayConfig
+        displayConfig,
     );
 
     // displayableStatuses are already asset_keys, so use directly
@@ -421,7 +421,7 @@ export function usePlayerStatusForAvatar(playerId) {
     // Calculate combined bounty from all gamemodes
     const totalBounty = (statuses || []).reduce(
         (sum, s) => sum + (s.current_bounty || 0),
-        0
+        0,
     );
 
     // Extract bounty per gamemode
@@ -461,7 +461,7 @@ export function usePlayerStatusForAvatar(playerId) {
             }
             return best;
         },
-        { streak: 0, gamemode: null, statuses: [] }
+        { streak: 0, gamemode: null, statuses: [] },
     );
 
     const bestStreak = bestStreakData.streak;
@@ -489,7 +489,7 @@ export function usePlayerStatusForAvatar(playerId) {
 
     // Check for special statuses across all gamemodes
     const specialStatus = displayableStatuses.find((s) =>
-        SPECIAL_STATUSES.includes(s)
+        SPECIAL_STATUSES.includes(s),
     );
 
     if (specialStatus) {
@@ -505,12 +505,12 @@ export function usePlayerStatusForAvatar(playerId) {
         if (bestStreak > 0) {
             primaryStatusAsset = getHighestInChain(
                 bestGamemodeAssetKeys,
-                "winStreak"
+                "winStreak",
             );
         } else if (bestStreak < 0) {
             primaryStatusAsset = getHighestInChain(
                 bestGamemodeAssetKeys,
-                "lossStreak"
+                "lossStreak",
             );
         }
     }
@@ -523,7 +523,7 @@ export function usePlayerStatusForAvatar(playerId) {
     // Get the full status definition for the primary status
     const primaryStatusDef = primaryStatusAsset
         ? Object.values(statusMap).find(
-              (def) => def.asset_key === primaryStatusAsset
+              (def) => def.asset_key === primaryStatusAsset,
           )
         : null;
 

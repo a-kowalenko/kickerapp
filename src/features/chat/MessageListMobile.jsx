@@ -635,11 +635,28 @@ function MessageListMobile({
     const handleReactionEmojiSelect = useCallback(
         (emoji) => {
             if (reactionPickerMessageId) {
-                toggleReaction({ messageId: reactionPickerMessageId, emoji });
+                toggleReaction({
+                    messageId: reactionPickerMessageId,
+                    playerId: currentPlayerId,
+                    reactionType: emoji,
+                });
                 setReactionPickerMessageId(null);
             }
         },
-        [reactionPickerMessageId, toggleReaction],
+        [reactionPickerMessageId, toggleReaction, currentPlayerId],
+    );
+
+    // Handle toggle reaction from ChatMessage (includes playerId)
+    const handleToggleReaction = useCallback(
+        ({ messageId, reactionType }) => {
+            if (!currentPlayerId) return;
+            toggleReaction({
+                messageId,
+                playerId: currentPlayerId,
+                reactionType,
+            });
+        },
+        [toggleReaction, currentPlayerId],
     );
 
     // Prepare messages with date dividers and unread divider
@@ -743,7 +760,10 @@ function MessageListMobile({
         if (currentIsWhisper !== prevIsWhisper) return false;
 
         // Don't group whispers to different recipients
-        if (currentIsWhisper && currentMsg.recipient_id !== prevMsg.recipient_id)
+        if (
+            currentIsWhisper &&
+            currentMsg.recipient_id !== prevMsg.recipient_id
+        )
             return false;
 
         const currentTime = new Date(currentMsg.created_at);
@@ -830,7 +850,7 @@ function MessageListMobile({
                     const msg = item.data;
                     const prevItem = messagesWithDividers[index + 1];
                     const isGrouped = shouldGroupMessage(item, prevItem);
-                    const reactions = messageReactionsMap?.[msg.id] || [];
+                    const reactions = messageReactionsMap?.[msg.id] || {};
 
                     return (
                         <ChatMessage
@@ -843,7 +863,7 @@ function MessageListMobile({
                             isHighlighted={
                                 highlightedMessageId === String(msg.id)
                             }
-                            reactions={reactions}
+                            messageReactions={reactions}
                             currentPlayerId={currentPlayerId}
                             onEdit={(id, content) =>
                                 updateChatMessage({ id, content })
@@ -853,9 +873,7 @@ function MessageListMobile({
                                 setReplyTo(message);
                                 chatInputRef.current?.focus?.();
                             }}
-                            onReaction={(emoji) =>
-                                toggleReaction({ messageId: msg.id, emoji })
-                            }
+                            onToggleReaction={handleToggleReaction}
                             isUpdating={isUpdating}
                             isDeleting={isDeleting}
                             isTogglingReaction={isTogglingReaction}

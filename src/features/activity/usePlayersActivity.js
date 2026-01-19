@@ -7,6 +7,7 @@ import { getPlayersActivity } from "./apiPresence";
 import {
     usePlayersStatuses,
     useStatusDefinitions,
+    getUniqueStatuses,
 } from "../players/usePlayerStatus";
 
 // ============================================================================
@@ -194,12 +195,26 @@ export function usePlayersActivity() {
                 bestStreakGamemode = "2on2";
             }
 
-            // Get active statuses
-            const statuses1on1 = status1on1.active_statuses || [];
-            const statuses2on2 = status2on2.active_statuses || [];
+            // Get active statuses (raw from DB for primaryStatus calculation)
+            const rawStatuses1on1 = status1on1.active_statuses || [];
+            const rawStatuses2on2 = status2on2.active_statuses || [];
+
+            // Calculate primary status from raw DB keys
             const primaryStatus =
-                getPrimaryStatus(statuses1on1) ||
-                getPrimaryStatus(statuses2on2);
+                getPrimaryStatus(rawStatuses1on1) ||
+                getPrimaryStatus(rawStatuses2on2);
+
+            // Convert to asset_keys and filter for display (tooltips, badges)
+            const statuses1on1 = getUniqueStatuses(
+                rawStatuses1on1
+                    .map((key) => statusDefsMap[key]?.asset_key)
+                    .filter(Boolean),
+            );
+            const statuses2on2 = getUniqueStatuses(
+                rawStatuses2on2
+                    .map((key) => statusDefsMap[key]?.asset_key)
+                    .filter(Boolean),
+            );
 
             // Build enriched player object
             const enrichedPlayer = {
@@ -319,6 +334,7 @@ export function usePlayersActivity() {
         playersInMatch,
         activeMatch,
         statusMap,
+        statusDefsMap,
         getPrimaryStatus,
         isPlayerIdle,
         isConnected,

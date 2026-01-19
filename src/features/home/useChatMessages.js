@@ -48,7 +48,7 @@ export function useChatMessages() {
             try {
                 const newMessage = await getChatMessageById(
                     payload.new.id,
-                    currentPlayerId
+                    currentPlayerId,
                 );
 
                 // If newMessage is null, the whisper isn't visible to this user
@@ -69,7 +69,7 @@ export function useChatMessages() {
                         const newPages = [...oldData.pages];
                         newPages[0] = [newMessage, ...newPages[0]];
                         return { ...oldData, pages: newPages };
-                    }
+                    },
                 );
             } catch (err) {
                 // Fallback to just invalidating
@@ -80,7 +80,7 @@ export function useChatMessages() {
                 ]);
             }
         },
-        [queryClient, kicker, currentPlayerId]
+        [queryClient, kicker, currentPlayerId],
     );
 
     const handleRealtimeUpdate = useCallback(() => {
@@ -101,7 +101,9 @@ export function useChatMessages() {
 
         // Remove existing channel if any
         if (channelRef.current) {
-            console.log("[Chat Realtime] Removing old channel before resubscribe");
+            console.log(
+                "[Chat Realtime] Removing old channel before resubscribe",
+            );
             isRemovingChannelRef.current = true;
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
@@ -121,7 +123,7 @@ export function useChatMessages() {
                     table: CHAT_MESSAGES,
                     filter: `kicker_id=eq.${kicker}`,
                 },
-                handleRealtimeInsert
+                handleRealtimeInsert,
             )
             .on(
                 "postgres_changes",
@@ -131,7 +133,7 @@ export function useChatMessages() {
                     table: CHAT_MESSAGES,
                     filter: `kicker_id=eq.${kicker}`,
                 },
-                handleRealtimeUpdate
+                handleRealtimeUpdate,
             )
             .on(
                 "postgres_changes",
@@ -140,7 +142,7 @@ export function useChatMessages() {
                     schema: databaseSchema,
                     table: CHAT_MESSAGES,
                 },
-                handleRealtimeDelete
+                handleRealtimeDelete,
             )
             .subscribe((status, err) => {
                 console.log(`[Chat Realtime] Status: ${status}`, err || "");
@@ -156,18 +158,27 @@ export function useChatMessages() {
                     }
                 }
                 if (status === "CHANNEL_ERROR") {
-                    console.log("[Chat Realtime] ❌ Channel Error - will attempt reconnect on visibility change");
+                    console.log(
+                        "[Chat Realtime] ❌ Channel Error - will attempt reconnect on visibility change",
+                    );
                     setConnectionStatus("disconnected");
                 }
                 if (status === "TIMED_OUT") {
-                    console.log("[Chat Realtime] ❌ Timed Out - will attempt reconnect on visibility change");
+                    console.log(
+                        "[Chat Realtime] ❌ Timed Out - will attempt reconnect on visibility change",
+                    );
                     setConnectionStatus("disconnected");
                 }
             });
 
         channelRef.current = channel;
         return channel;
-    }, [kicker, handleRealtimeInsert, handleRealtimeUpdate, handleRealtimeDelete]);
+    }, [
+        kicker,
+        handleRealtimeInsert,
+        handleRealtimeUpdate,
+        handleRealtimeDelete,
+    ]);
 
     // Initial subscription setup
     useEffect(() => {
@@ -179,7 +190,9 @@ export function useChatMessages() {
         // This handles cases where the subscribe callback doesn't fire properly
         const connectionCheckTimeout = setTimeout(() => {
             if (channelRef.current?.state === "joined") {
-                console.log("[Chat Realtime] Fallback check: Channel is joined");
+                console.log(
+                    "[Chat Realtime] Fallback check: Channel is joined",
+                );
                 setConnectionStatus("connected");
             }
         }, 500);
@@ -202,8 +215,10 @@ export function useChatMessages() {
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible") {
-                console.log("[Chat Realtime] Tab visible - checking connection...");
-                
+                console.log(
+                    "[Chat Realtime] Tab visible - checking connection...",
+                );
+
                 // Always refetch to catch any missed messages
                 queryClient.invalidateQueries([
                     CHAT_MESSAGES,
@@ -215,14 +230,16 @@ export function useChatMessages() {
                 if (channelRef.current) {
                     const state = channelRef.current.state;
                     console.log(`[Chat Realtime] Channel state: ${state}`);
-                    
+
                     if (state !== "joined") {
                         console.log("[Chat Realtime] 🔄 Reconnecting...");
                         setConnectionStatus("connecting");
                         subscribeToChannel();
                     }
                 } else {
-                    console.log("[Chat Realtime] 🔄 No channel found, subscribing...");
+                    console.log(
+                        "[Chat Realtime] 🔄 No channel found, subscribing...",
+                    );
                     setConnectionStatus("connecting");
                     subscribeToChannel();
                 }
@@ -232,7 +249,10 @@ export function useChatMessages() {
         document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
-            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange,
+            );
         };
     }, [kicker, currentPlayerId, queryClient, subscribeToChannel]);
 
