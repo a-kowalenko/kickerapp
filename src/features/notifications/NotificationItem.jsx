@@ -225,8 +225,8 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
             return `/matches/${match_id}?scrollTo=comment-${source_id}`;
         } else if (type === "chat") {
             // On mobile (when MobileBottomNav is shown), navigate to /chat page
-            // On desktop, navigate to /home with chat tab
-            const basePath = isDesktop ? "/home" : "/chat";
+            // On desktop, navigate to /home with chat tab (outdated)
+            const basePath = "/chat";
             return `${basePath}?tab=chat&scrollTo=message-${source_id}&_t=${Date.now()}`;
         } else if (type === "team_invite") {
             return "/teams/my";
