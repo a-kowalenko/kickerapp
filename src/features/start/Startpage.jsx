@@ -36,6 +36,7 @@ import PlatformShowcase from "./PlatformShowcase";
 import ScreenshotCarousel from "./ScreenshotCarousel";
 import PublicStats from "./PublicStats";
 import ContactForm from "./ContactForm";
+import useWindowWidth from "../../hooks/useWindowWidth";
 import { screenshotsUrl } from "../../services/supabase";
 
 // Screenshot filenames for PlatformShowcase
@@ -103,7 +104,9 @@ const SidebarBackdrop = styled.div`
     z-index: 98;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    transition:
+        opacity 0.3s ease-in-out,
+        visibility 0.3s ease-in-out;
 
     &.active {
         opacity: 1;
@@ -253,7 +256,9 @@ const DesktopKickerButton = styled.button`
     }
 
     & > svg {
-        transition: transform 0.3s ease, color 0.2s ease;
+        transition:
+            transform 0.3s ease,
+            color 0.2s ease;
         transform: ${(props) =>
             props.$isOpen ? "rotate(180deg)" : "rotate(0deg)"};
         color: ${(props) =>
@@ -513,7 +518,9 @@ const ActionCard = styled.div`
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     flex: 1;
     max-width: 32rem;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
 
     &:hover {
         transform: translateY(-4px);
@@ -577,7 +584,9 @@ const ActionIcon = styled.div`
         var(--color-${(props) => props.$color}-100) 0%,
         var(--color-${(props) => props.$color}-200) 100%
     );
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition:
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
 
     & svg {
         width: 2.4rem;
@@ -631,7 +640,9 @@ const CreateKickerContainer = styled.div`
 
     & button {
         width: 100%;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
 
         &:hover {
             transform: translateY(-2px);
@@ -649,7 +660,9 @@ const JoinKickerContainer = styled.div`
 
     & button {
         width: 100%;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
 
         &:hover {
             transform: translateY(-2px);
@@ -768,6 +781,7 @@ function Startpage() {
     // Smart header visibility - hide on scroll down, show on scroll up
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const lastScrollY = useRef(0);
+    const { isDesktop } = useWindowWidth();
 
     const handleScroll = useCallback(() => {
         const currentScrollY = window.scrollY;
@@ -1083,141 +1097,153 @@ function Startpage() {
             </Navbar>
 
             {/* Unified Sidebar (mobile: nav + kickers, desktop: kickers only) */}
-            <SidebarBackdrop
-                className={sidebarActive ? "active" : ""}
-                onClick={() => setSidebarActive(false)}
-            />
-            <Sidebar
-                className={sidebarActive ? "active" : ""}
-                onClick={() => setSidebarActive(false)}
-            >
-                <SidebarContent onClick={(e) => e.stopPropagation()}>
-                    {/* Navigation Section - shown on mobile for all users */}
-                    <SidebarSection className="mobile-only">
-                        <SidebarSectionTitle>Navigation</SidebarSectionTitle>
-                        <SidebarNavLinks>
-                            {NAV_SECTIONS.map((section) => (
-                                <SidebarNavLinkItem
-                                    key={section.id}
-                                    onClick={() => scrollToSection(section.id)}
-                                >
-                                    <section.icon />
-                                    {section.label}
-                                </SidebarNavLinkItem>
-                            ))}
-                        </SidebarNavLinks>
-                    </SidebarSection>
-
-                    {/* Kickers Section - shown for authenticated users */}
-                    {!isLoading && isAuthenticated && (
-                        <SidebarSection>
+            {(!isDesktop || isAuthenticated) && (
+                <SidebarBackdrop
+                    className={sidebarActive ? "active" : ""}
+                    onClick={() => setSidebarActive(false)}
+                />
+            )}
+            {(!isDesktop || isAuthenticated) && (
+                <Sidebar
+                    className={sidebarActive ? "active" : ""}
+                    onClick={() => setSidebarActive(false)}
+                >
+                    <SidebarContent onClick={(e) => e.stopPropagation()}>
+                        {/* Navigation Section - shown on mobile for all users */}
+                        <SidebarSection className="mobile-only">
                             <SidebarSectionTitle>
-                                Your Kickers
+                                Navigation
                             </SidebarSectionTitle>
-                            {isLoadingKickers ? (
-                                <SpinnerMini />
-                            ) : localKickers?.length > 0 ? (
-                                <KickerList>
-                                    {localKickers.map((kicker, index) => (
-                                        <KickerCard
-                                            key={kicker.id}
-                                            draggable
-                                            onDragStart={(e) =>
-                                                handleDragStart(e, index)
-                                            }
-                                            onDragEnd={handleDragEnd}
-                                            onDragOver={(e) =>
-                                                handleDragOver(e, index)
-                                            }
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={(e) => handleDrop(e, index)}
-                                            className={
-                                                dragOverIndex === index
-                                                    ? "drag-over"
-                                                    : ""
-                                            }
-                                            onClick={() =>
-                                                handleKickerSelect(kicker.id)
-                                            }
-                                        >
-                                            {kicker.avatar ? (
-                                                <KickerAvatar
-                                                    src={kicker.avatar}
-                                                    alt=""
-                                                />
-                                            ) : (
-                                                <AvatarPlaceholder>
-                                                    {kicker.name
-                                                        .substring(0, 2)
-                                                        .toUpperCase()}
-                                                </AvatarPlaceholder>
-                                            )}
-                                            <KickerCardName>
-                                                {kicker.name}
-                                            </KickerCardName>
-                                            <DragHandle
-                                                onClick={(e) =>
-                                                    e.stopPropagation()
-                                                }
-                                                title="Drag to reorder"
-                                            >
-                                                <MdDragIndicator />
-                                            </DragHandle>
-                                        </KickerCard>
-                                    ))}
-                                </KickerList>
-                            ) : (
-                                <EmptyStateContainer>
-                                    <EmptyStateIcon>
-                                        <HiOutlineSquare3Stack3D />
-                                    </EmptyStateIcon>
-                                    <EmptyStateText>
-                                        No kickers yet
-                                    </EmptyStateText>
-                                    <EmptyStateHint>
-                                        Create or join a kicker below to get
-                                        started
-                                    </EmptyStateHint>
-                                </EmptyStateContainer>
-                            )}
+                            <SidebarNavLinks>
+                                {NAV_SECTIONS.map((section) => (
+                                    <SidebarNavLinkItem
+                                        key={section.id}
+                                        onClick={() =>
+                                            scrollToSection(section.id)
+                                        }
+                                    >
+                                        <section.icon />
+                                        {section.label}
+                                    </SidebarNavLinkItem>
+                                ))}
+                            </SidebarNavLinks>
                         </SidebarSection>
-                    )}
-                </SidebarContent>
 
-                {/* Auth Buttons - mobile only */}
-                <SidebarAuthButtons className="mobile-only">
-                    {!isLoading && !isAuthenticated && (
-                        <>
+                        {/* Kickers Section - shown for authenticated users */}
+                        {!isLoading && isAuthenticated && (
+                            <SidebarSection>
+                                <SidebarSectionTitle>
+                                    Your Kickers
+                                </SidebarSectionTitle>
+                                {isLoadingKickers ? (
+                                    <SpinnerMini />
+                                ) : localKickers?.length > 0 ? (
+                                    <KickerList>
+                                        {localKickers.map((kicker, index) => (
+                                            <KickerCard
+                                                key={kicker.id}
+                                                draggable
+                                                onDragStart={(e) =>
+                                                    handleDragStart(e, index)
+                                                }
+                                                onDragEnd={handleDragEnd}
+                                                onDragOver={(e) =>
+                                                    handleDragOver(e, index)
+                                                }
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={(e) =>
+                                                    handleDrop(e, index)
+                                                }
+                                                className={
+                                                    dragOverIndex === index
+                                                        ? "drag-over"
+                                                        : ""
+                                                }
+                                                onClick={() =>
+                                                    handleKickerSelect(
+                                                        kicker.id
+                                                    )
+                                                }
+                                            >
+                                                {kicker.avatar ? (
+                                                    <KickerAvatar
+                                                        src={kicker.avatar}
+                                                        alt=""
+                                                    />
+                                                ) : (
+                                                    <AvatarPlaceholder>
+                                                        {kicker.name
+                                                            .substring(0, 2)
+                                                            .toUpperCase()}
+                                                    </AvatarPlaceholder>
+                                                )}
+                                                <KickerCardName>
+                                                    {kicker.name}
+                                                </KickerCardName>
+                                                <DragHandle
+                                                    onClick={(e) =>
+                                                        e.stopPropagation()
+                                                    }
+                                                    title="Drag to reorder"
+                                                >
+                                                    <MdDragIndicator />
+                                                </DragHandle>
+                                            </KickerCard>
+                                        ))}
+                                    </KickerList>
+                                ) : (
+                                    <EmptyStateContainer>
+                                        <EmptyStateIcon>
+                                            <HiOutlineSquare3Stack3D />
+                                        </EmptyStateIcon>
+                                        <EmptyStateText>
+                                            No kickers yet
+                                        </EmptyStateText>
+                                        <EmptyStateHint>
+                                            Create or join a kicker below to get
+                                            started
+                                        </EmptyStateHint>
+                                    </EmptyStateContainer>
+                                )}
+                            </SidebarSection>
+                        )}
+                    </SidebarContent>
+
+                    {/* Auth Buttons - mobile only */}
+                    <SidebarAuthButtons className="mobile-only">
+                        {!isLoading && !isAuthenticated && (
+                            <>
+                                <Button
+                                    as={NavLink}
+                                    to="/register"
+                                    onClick={() => setSidebarActive(false)}
+                                >
+                                    Sign Up
+                                </Button>
+                                <Button
+                                    as={NavLink}
+                                    to="/login"
+                                    $variation="secondary"
+                                    onClick={() => setSidebarActive(false)}
+                                >
+                                    Sign In
+                                </Button>
+                            </>
+                        )}
+                        {!isLoading && isAuthenticated && (
                             <Button
-                                as={NavLink}
-                                to="/register"
-                                onClick={() => setSidebarActive(false)}
+                                $variation="danger"
+                                onClick={() => {
+                                    setSidebarActive(false);
+                                    logout();
+                                }}
                             >
-                                Sign Up
+                                Logout
                             </Button>
-                            <Button
-                                as={NavLink}
-                                to="/login"
-                                $variation="secondary"
-                                onClick={() => setSidebarActive(false)}
-                            >
-                                Sign In
-                            </Button>
-                        </>
-                    )}
-                    {!isLoading && isAuthenticated && (
-                        <Button
-                            $variation="danger"
-                            onClick={() => {
-                                setSidebarActive(false);
-                                logout();
-                            }}
-                        >
-                            Logout
-                        </Button>
-                    )}
-                </SidebarAuthButtons>
-            </Sidebar>
+                        )}
+                    </SidebarAuthButtons>
+                </Sidebar>
+            )}
             <Main>
                 <HeroSection id="hero">
                     <Title>Welcome to KickerApp</Title>
@@ -1323,7 +1349,10 @@ function Startpage() {
                 <ContactForm id="contact" />
             </Main>
             <Footer>
-                <div>© 2023-{new Date().getFullYear()} KickerApp. All rights reserved.</div>
+                <div>
+                    © 2023-{new Date().getFullYear()} KickerApp. All rights
+                    reserved.
+                </div>
                 <FooterLinks>
                     <Link to="/imprint">Imprint</Link>
                     <span>|</span>
