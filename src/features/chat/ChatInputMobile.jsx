@@ -889,14 +889,13 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         const messageData = {
             playerId: currentPlayer.id,
             content: content.trim(),
-            kicker_id: kicker,
         };
 
         if (replyTo) {
-            messageData.reply_to_id = replyTo.id;
+            messageData.replyToId = replyTo.id;
         }
         if (whisperRecipient) {
-            messageData.recipient_id = whisperRecipient.id;
+            messageData.recipientId = whisperRecipient.id;
         }
 
         onSubmit(messageData);

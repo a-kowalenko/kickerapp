@@ -95,6 +95,10 @@ export function useChatMessages() {
     const subscribeToChannel = useCallback(() => {
         if (!kicker) return null;
 
+        // Set status to connecting FIRST, before any channel operations
+        // This prevents the status flickering to "disconnected" during resubscription
+        setConnectionStatus("connecting");
+
         // Remove existing channel if any
         if (channelRef.current) {
             console.log("[Chat Realtime] Removing old channel before resubscribe");
@@ -106,8 +110,6 @@ export function useChatMessages() {
                 isRemovingChannelRef.current = false;
             });
         }
-
-        setConnectionStatus("connecting");
 
         const channel = supabase
             .channel(`chat-messages-${kicker}`)

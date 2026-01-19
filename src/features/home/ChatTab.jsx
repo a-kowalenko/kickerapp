@@ -1287,6 +1287,10 @@ function ChatTab() {
 
         const currentTime = new Date(currentMsg.created_at);
         const prevTime = new Date(prevMsg.created_at);
+
+        // Don't group messages from different days
+        if (!isSameDay(currentTime, prevTime)) return false;
+
         const timeDiffMinutes = Math.abs(currentTime - prevTime) / (1000 * 60);
 
         return timeDiffMinutes <= 10;

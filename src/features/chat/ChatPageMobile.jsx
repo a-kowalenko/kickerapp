@@ -12,7 +12,6 @@ import PlayerActivityListMobile from "../activity/PlayerActivityListMobile";
 import { useKicker } from "../../contexts/KickerContext";
 import { useUser } from "../authentication/useUser";
 import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
-import { useChatMessages } from "../home/useChatMessages";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
 import { useKeyboard } from "../../contexts/KeyboardContext";
@@ -77,6 +76,7 @@ const TabContent = styled.div`
 
 function ChatPageMobile() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const [connectionStatus, setConnectionStatus] = useState("connected");
 
     // Determine initial tab from URL or localStorage
     const [activeTab, setActiveTab] = useState(() => {
@@ -104,7 +104,11 @@ function ChatPageMobile() {
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
     const { blurInput } = useKeyboard();
-    const { connectionStatus } = useChatMessages();
+
+    // Callback to receive connection status from MessageListMobile
+    const handleConnectionStatusChange = useCallback((status) => {
+        setConnectionStatus(status);
+    }, []);
 
     // Switch to chat tab if scrollTo param is present
     useEffect(() => {
@@ -184,6 +188,7 @@ function ChatPageMobile() {
                         scrollToMessageId={scrollToMessageId}
                         scrollTimestamp={scrollTimestamp}
                         onScrollComplete={handleScrollComplete}
+                        onConnectionStatusChange={handleConnectionStatusChange}
                     />
                 )}
                 {activeTab === "comments" && <MatchCommentsTab />}

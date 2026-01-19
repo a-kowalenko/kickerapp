@@ -205,6 +205,7 @@ function MessageListMobile({
     scrollToMessageId,
     scrollTimestamp,
     onScrollComplete,
+    onConnectionStatusChange,
 }) {
     const containerRef = useRef(null);
     const loadMoreRef = useRef(null);
@@ -236,7 +237,13 @@ function MessageListMobile({
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
+        connectionStatus,
     } = useChatMessages();
+
+    // Report connection status changes to parent
+    useEffect(() => {
+        onConnectionStatusChange?.(connectionStatus);
+    }, [connectionStatus, onConnectionStatusChange]);
 
     const { createChatMessage, isCreating } = useCreateChatMessage();
     const { updateChatMessage, isUpdating } = useUpdateChatMessage();
@@ -597,7 +604,7 @@ function MessageListMobile({
     const handleSendMessage = useCallback(
         async (messageData) => {
             if (replyTo) {
-                messageData.reply_to_id = replyTo.id;
+                messageData.replyToId = replyTo.id;
             }
             // Ensure we scroll to bottom when our message arrives
             isAtBottomRef.current = true;
@@ -716,15 +723,38 @@ function MessageListMobile({
         [lastReadAt, currentPlayerId],
     );
 
-    // Group messages by sender
+    // Group messages by sender (matches desktop logic)
     const shouldGroupMessage = useCallback((current, previous) => {
         if (!previous || previous.type !== "message") return false;
         const currentMsg = current.data;
         const prevMsg = previous.data;
+
+        // Don't group replies
+        if (currentMsg.reply_to_id) return false;
+
+        // Must be same sender
         if (currentMsg.player_id !== prevMsg.player_id) return false;
-        const timeDiff =
-            new Date(prevMsg.created_at) - new Date(currentMsg.created_at);
-        return timeDiff < 5 * 60 * 1000; // 5 minutes
+
+        // Check whisper compatibility
+        const currentIsWhisper = currentMsg.recipient_id !== null;
+        const prevIsWhisper = prevMsg.recipient_id !== null;
+
+        // Don't group whisper with public message
+        if (currentIsWhisper !== prevIsWhisper) return false;
+
+        // Don't group whispers to different recipients
+        if (currentIsWhisper && currentMsg.recipient_id !== prevMsg.recipient_id)
+            return false;
+
+        const currentTime = new Date(currentMsg.created_at);
+        const prevTime = new Date(prevMsg.created_at);
+
+        // Don't group messages from different days
+        if (!isSameDay(currentTime, prevTime)) return false;
+
+        // Group if within 10 minutes
+        const timeDiffMinutes = Math.abs(currentTime - prevTime) / (1000 * 60);
+        return timeDiffMinutes <= 10;
     }, []);
 
     if (isLoading) {
