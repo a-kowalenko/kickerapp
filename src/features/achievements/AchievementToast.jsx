@@ -42,7 +42,7 @@ const Container = styled.div`
     position: fixed;
     bottom: 2rem;
     right: 2rem;
-    z-index: 9999;
+    z-index: 99999;
     animation: ${slideIn} 0.5s ease-out;
 
     ${media.mobile} {
@@ -93,7 +93,7 @@ const ToastCard = styled.div`
         max-width: unset;
         width: 100%;
         gap: 0.8rem;
-        padding: 0.8rem 1rem;
+        padding: 2rem 1rem;
     }
 `;
 
@@ -151,7 +151,7 @@ const AchievementName = styled.div`
     font-weight: 700;
 
     ${media.mobile} {
-        font-size: 1.3rem;
+        font-size: 1.5rem;
     }
 `;
 

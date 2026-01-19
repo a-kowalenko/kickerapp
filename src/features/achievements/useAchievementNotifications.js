@@ -47,14 +47,14 @@ function useAchievementNotifications() {
             try {
                 // Fetch the achievement definition to get name, icon, points
                 const definition = await getAchievementDefinition(
-                    newAchievement.achievement_id
+                    newAchievement.achievement_id,
                 );
 
                 // Achievements are now global - no kicker_id check needed
                 if (definition) {
                     // Get the player name for the toast
                     const playerData = await getPlayerById(
-                        newAchievement.player_id
+                        newAchievement.player_id,
                     );
                     const playerName =
                         playerData?.[0]?.name || "Unknown Player";
@@ -105,7 +105,7 @@ function useAchievementNotifications() {
                     schema: databaseSchema,
                     table: "player_achievements",
                 },
-                handleNewAchievement
+                handleNewAchievement,
             )
             .subscribe();
 
