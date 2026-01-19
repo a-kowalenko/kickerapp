@@ -57,6 +57,7 @@ const fadeInUp = keyframes`
     }
 `;
 
+// Overlay sidebar on all screen sizes
 const Sidebar = styled.aside`
     background-color: var(--secondary-background-color);
     color: var(--primary-text-color);
@@ -66,7 +67,7 @@ const Sidebar = styled.aside`
     left: 0;
     width: 32rem;
     transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 99;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
     border-right: 1px solid var(--primary-border-color);
@@ -93,24 +94,29 @@ const SidebarContent = styled.div`
     overflow-y: auto;
 `;
 
-/* Unified sidebar backdrop - closes on any click */
+/* Unified sidebar backdrop - only on mobile/tablet (overlay mode) */
 const SidebarBackdrop = styled.div`
-    position: fixed;
-    top: 66px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 98;
-    opacity: 0;
-    visibility: hidden;
-    transition:
-        opacity 0.3s ease-in-out,
-        visibility 0.3s ease-in-out;
+    display: none; /* Hidden on desktop - push sidebar doesn't need backdrop */
 
-    &.active {
-        opacity: 1;
-        visibility: visible;
+    ${media.tablet} {
+        display: block;
+        position: fixed;
+        top: 66px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 98;
+        opacity: 0;
+        visibility: hidden;
+        transition:
+            opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+            visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        &.active {
+            opacity: 1;
+            visibility: visible;
+        }
     }
 `;
 
@@ -772,7 +778,7 @@ const Main = styled.main`
 function Startpage() {
     const [sidebarActive, setSidebarActive] = useLocalStorageState(
         null,
-        "sidebar-open"
+        "sidebar-open",
     );
     const toggleSidebar = () => {
         setSidebarActive(!sidebarActive);
@@ -784,6 +790,12 @@ function Startpage() {
     const { isDesktop } = useWindowWidth();
 
     const handleScroll = useCallback(() => {
+        // On desktop, header always stays visible
+        if (isDesktop) {
+            setIsHeaderVisible(true);
+            return;
+        }
+
         const currentScrollY = window.scrollY;
         const scrollDiff = Math.abs(currentScrollY - lastScrollY.current);
 
@@ -819,7 +831,7 @@ function Startpage() {
         }
 
         lastScrollY.current = currentScrollY;
-    }, [sidebarActive]);
+    }, [sidebarActive, isDesktop]);
 
     // Scroll event listener
     useEffect(() => {
@@ -840,11 +852,11 @@ function Startpage() {
 
     const [createName, setCreateName] = useLocalStorageState(
         "",
-        "kicker_create_name"
+        "kicker_create_name",
     );
     const [joinAccessToken, setJoinAccessToken] = useLocalStorageState(
         "",
-        "kicker_join_access_token"
+        "kicker_join_access_token",
     );
 
     const { createKicker, isLoading: isCreatingKicker } = useCreateKicker();
@@ -921,23 +933,39 @@ function Startpage() {
                 navigate("/home");
             }
         },
-        [isLoading, isAuthenticated, currentKicker, navigate]
+        [isLoading, isAuthenticated, currentKicker, navigate],
     );
 
-    useEffect(() => {
-        const isDesktop = window.innerWidth > 768;
-        const savedState = localStorage.getItem("sidebar-open");
+    // Track if user just logged in (for auto-opening sidebar)
+    const wasAuthenticatedRef = useRef(isAuthenticated);
 
-        // On desktop, default to open if user has kickers and hasn't explicitly closed it
-        if (!isLoading && isAuthenticated && kickers?.length > 0 && isDesktop) {
-            // Only respect saved state if it was explicitly set to false
-            if (savedState === "false") {
-                setSidebarActive(false);
-            } else {
+    useEffect(() => {
+        // Detect fresh login: user was not authenticated before, now is
+        const justLoggedIn = !wasAuthenticatedRef.current && isAuthenticated;
+        wasAuthenticatedRef.current = isAuthenticated;
+
+        // On desktop, force open sidebar when user logs in (fresh login)
+        if (!isLoading && isAuthenticated && isDesktop) {
+            if (justLoggedIn) {
+                // Fresh login: always open sidebar regardless of saved state
                 setSidebarActive(true);
+            } else if (kickers?.length > 0) {
+                // Returning user: respect saved state, but default to open if no preference
+                const savedState = localStorage.getItem("sidebar-open");
+                if (savedState === "false") {
+                    setSidebarActive(false);
+                } else {
+                    setSidebarActive(true);
+                }
             }
         }
-    }, [isLoading, isAuthenticated, kickers?.length, setSidebarActive]);
+    }, [
+        isLoading,
+        isAuthenticated,
+        kickers?.length,
+        isDesktop,
+        setSidebarActive,
+    ]);
 
     if (isCreatingKicker || isJoiningKicker) {
         return <Spinner />;
@@ -946,7 +974,7 @@ function Startpage() {
     function handleCreateKicker() {
         if (!createName) {
             return toast.error(
-                "A name for the kicker is needed to create a new kicker"
+                "A name for the kicker is needed to create a new kicker",
             );
         }
 
@@ -962,14 +990,14 @@ function Startpage() {
                 {
                     onSuccess: (data) =>
                         toast.success(
-                            `Kicker "${data.name}" created successfully`
+                            `Kicker "${data.name}" created successfully`,
                         ),
 
                     onError: (data) =>
                         toast.error(
-                            `Error while creating kicker. ${data.message}`
+                            `Error while creating kicker. ${data.message}`,
                         ),
-                }
+                },
             );
         }
     }
@@ -977,7 +1005,7 @@ function Startpage() {
     function handleJoinKicker() {
         if (!joinAccessToken) {
             return toast.error(
-                "An access token is needed to join an existing kicker"
+                "An access token is needed to join an existing kicker",
             );
         }
 
@@ -998,7 +1026,7 @@ function Startpage() {
                     onError: (data) => {
                         toast.error(data.message);
                     },
-                }
+                },
             );
         }
     }
@@ -1031,7 +1059,7 @@ function Startpage() {
 
             setIsHeaderVisible(true);
         }
-        setSidebarActive(false);
+        // setSidebarActive(false);
     }
 
     return (
@@ -1044,10 +1072,10 @@ function Startpage() {
                     <DesktopKickerButton
                         $isOpen={sidebarActive}
                         onClick={toggleSidebar}
-                        title="Your Kickers"
+                        title="My Kickers"
                     >
                         <HiOutlineSquare3Stack3D />
-                        <KickerButtonLabel>Kickers</KickerButtonLabel>
+                        <KickerButtonLabel>My Kickers</KickerButtonLabel>
                     </DesktopKickerButton>
                 )}
                 <BurgerMenuContainer>
@@ -1103,6 +1131,7 @@ function Startpage() {
                     onClick={() => setSidebarActive(false)}
                 />
             )}
+
             {(!isDesktop || isAuthenticated) && (
                 <Sidebar
                     className={sidebarActive ? "active" : ""}
@@ -1132,9 +1161,9 @@ function Startpage() {
                         {/* Kickers Section - shown for authenticated users */}
                         {!isLoading && isAuthenticated && (
                             <SidebarSection>
-                                <SidebarSectionTitle>
+                                {/* <SidebarSectionTitle>
                                     Your Kickers
-                                </SidebarSectionTitle>
+                                </SidebarSectionTitle> */}
                                 {isLoadingKickers ? (
                                     <SpinnerMini />
                                 ) : localKickers?.length > 0 ? (
@@ -1161,7 +1190,7 @@ function Startpage() {
                                                 }
                                                 onClick={() =>
                                                     handleKickerSelect(
-                                                        kicker.id
+                                                        kicker.id,
                                                     )
                                                 }
                                             >
@@ -1304,7 +1333,7 @@ function Startpage() {
                                             value={joinAccessToken}
                                             onChange={(e) =>
                                                 setJoinAccessToken(
-                                                    e.target.value
+                                                    e.target.value,
                                                 )
                                             }
                                             onKeyDown={(e) =>
