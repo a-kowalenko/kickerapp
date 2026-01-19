@@ -8,6 +8,7 @@ import {
     forwardRef,
     useImperativeHandle,
 } from "react";
+import toast from "react-hot-toast";
 import {
     HiOutlineFaceSmile,
     HiPaperAirplane,
@@ -26,11 +27,44 @@ import GifPicker from "../../ui/GifPicker";
 import MatchDropdown from "../../ui/MatchDropdown";
 import RichTextInput from "../../ui/RichTextInput";
 import SpinnerMini from "../../ui/SpinnerMini";
-import MentionText from "../../ui/MentionText";
 import { useCanUploadImages } from "../../hooks/useCanUploadImages";
 import { useImageUpload } from "../../hooks/useImageUpload";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 import { getMatch, formatMatchDisplay } from "../../services/apiMatches";
+
+// Helper function to format reply preview text
+function formatReplyPreview(text, maxLength = 50) {
+    if (!text) return "";
+
+    let formatted = text
+        // Convert @[Name](id) to @Name
+        .replace(/@\[([^\]]+)\]\(\d+\)/g, "@$1")
+        // Convert #[Display](id) to #Display
+        .replace(/#\[([^\]]+)\]\(\d+\)/g, "#$1")
+        // Convert [gif:url] to [GIF]
+        .replace(/\[gif:[^\]]+\]/g, "[GIF]")
+        // Convert [img:url] to [Image]
+        .replace(/\[img:[^\]]+\]/g, "[Image]");
+
+    // Truncate if needed
+    if (formatted.length > maxLength) {
+        formatted = formatted.substring(0, maxLength) + "...";
+    }
+
+    return formatted;
+}
+
+// Helper function to extract media URL from reply content
+function getMediaPreviewUrl(text) {
+    if (!text) return null;
+    // Check for GIF
+    const gifMatch = text.match(/\[gif:(https?:\/\/[^\]]+)\]/);
+    if (gifMatch) return { type: "gif", url: gifMatch[1] };
+    // Check for image
+    const imgMatch = text.match(/\[img:(https?:\/\/[^\]]+)\]/);
+    if (imgMatch) return { type: "img", url: imgMatch[1] };
+    return null;
+}
 
 // Animations
 const scaleIn = keyframes`
@@ -50,21 +84,34 @@ const Container = styled.div`
     background-color: var(--secondary-background-color);
     border-top: 1px solid var(--primary-border-color);
     padding: 0.8rem;
-    padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
-    gap: 0.6rem;
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    /* gap: 0.6rem; */
     flex-shrink: 0;
     /* Prevent zoom on mobile */
     touch-action: manipulation;
+    /* Swipe-to-dismiss keyboard support */
+    will-change: transform;
+    z-index: 100;
 `;
 
 const ReplyBanner = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
     padding: 0.6rem 1rem;
+    margin-bottom: 0.6rem;
     background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-sm);
     border-left: 3px solid var(--primary-button-color);
+`;
+
+const ReplyMediaPreview = styled.img`
+    width: 3.6rem;
+    height: 3.6rem;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm);
+    flex-shrink: 0;
 `;
 
 const WhisperBanner = styled.div`
@@ -72,6 +119,7 @@ const WhisperBanner = styled.div`
     align-items: center;
     gap: 0.8rem;
     padding: 0.6rem 1rem;
+    margin-bottom: 0.6rem;
     background-color: rgba(34, 197, 94, 0.15);
     border-radius: var(--border-radius-sm);
     border-left: 3px solid var(--color-green-500);
@@ -173,6 +221,9 @@ const SendButton = styled.button`
     cursor: pointer;
     border-radius: 50%;
     transform-origin: center;
+    /* Prevent touch from causing input blur */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 
     ${(props) =>
         props.$visible
@@ -270,7 +321,7 @@ const BottomSheet = styled.div`
     border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
     z-index: 999;
     animation: ${slideUp} 0.25s cubic-bezier(0.32, 0.72, 0, 1);
-    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0));
+    padding-bottom: calc(0 + env(safe-area-inset-bottom, 0));
     touch-action: none;
     will-change: transform;
 `;
@@ -361,6 +412,7 @@ const UploadProgress = styled.div`
     align-items: center;
     gap: 0.8rem;
     padding: 0.6rem 1rem;
+    margin-bottom: 0.6rem;
     background-color: var(--tertiary-background-color);
     border-radius: var(--border-radius-sm);
     font-size: 1.2rem;
@@ -395,8 +447,10 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         lastWhisperFrom,
         onTyping,
         stopTyping,
+        containerRef,
+        dragOffset = 0,
     },
-    ref
+    ref,
 ) {
     const [content, setContent] = useState("");
     const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -438,12 +492,12 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                 inputRef.current?.focus?.();
             },
             insertMention: (player) => {
-                inputRef.current?.insertMention?.(player.name, player.id);
+                inputRef.current?.appendMention?.(player);
                 inputRef.current?.focus?.();
             },
             focus: () => inputRef.current?.focus?.(),
         }),
-        []
+        [],
     );
 
     // Track if there's content for send button visibility
@@ -455,12 +509,12 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
     // Filter players
     const availablePlayers = useMemo(
         () => players?.filter((p) => p.id !== currentPlayer?.id) || [],
-        [players, currentPlayer?.id]
+        [players, currentPlayer?.id],
     );
 
     const EVERYONE_OPTION = useMemo(
         () => ({ id: "everyone", name: "everyone", isEveryone: true }),
-        []
+        [],
     );
 
     const filteredPlayers = useMemo(() => {
@@ -468,7 +522,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         if (dropdownMode !== "mention" && dropdownMode !== "whisper") return [];
         const search = (playerSearch || "").toLowerCase();
         let filtered = availablePlayers.filter((p) =>
-            p.name?.toLowerCase().includes(search)
+            p.name?.toLowerCase().includes(search),
         );
         // Add @everyone for mentions only (not whispers)
         if (dropdownMode === "mention" && "everyone".includes(search)) {
@@ -551,7 +605,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
 
         // Check for whisper command with partial name (show dropdown)
         const whisperPartialMatch = newValue.match(
-            /^\/(?:w|whisper)\s+(\S*)$/i
+            /^\/(?:w|whisper)\s+(\S*)$/i,
         );
         if (whisperPartialMatch && !whisperRecipient) {
             const searchTerm = whisperPartialMatch[1] || "";
@@ -662,24 +716,24 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                         const display = formatMatchDisplay(matchData);
                         inputRef.current?.replaceMatchPlaceholder(
                             matchId,
-                            display
+                            display,
                         );
                     } else {
                         inputRef.current?.replaceMatchPlaceholder(
                             matchId,
-                            `Match ${matchId}`
+                            `Match ${matchId}`,
                         );
                     }
                 } catch (error) {
                     console.error("Failed to load match:", error);
                     inputRef.current?.replaceMatchPlaceholder(
                         matchId,
-                        `Match ${matchId}`
+                        `Match ${matchId}`,
                     );
                 }
             }
         },
-        [kicker]
+        [kicker],
     );
 
     function handleKeyDown(e) {
@@ -702,7 +756,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setSelectedPlayerIndex((i) =>
-                    Math.min(i + 1, filteredPlayers.length - 1)
+                    Math.min(i + 1, filteredPlayers.length - 1),
                 );
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
@@ -803,22 +857,30 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         if (!file || !canUploadImages) return;
         e.target.value = "";
 
-        const url = await uploadImageFile(file);
-        if (url) {
-            inputRef.current?.appendImageTag?.(url);
-            inputRef.current?.focus?.();
+        try {
+            const url = await uploadImageFile(file);
+            if (url) {
+                inputRef.current?.appendImageTag?.(url);
+                inputRef.current?.focus?.();
+            }
+        } catch (error) {
+            toast.error(error.message || "Image upload failed");
         }
     }
 
     const handleImagePaste = useCallback(
         async (file) => {
             if (!canUploadImages) return;
-            const url = await uploadImageFile(file);
-            if (url) {
-                inputRef.current?.appendImageTag?.(url);
+            try {
+                const url = await uploadImageFile(file);
+                if (url) {
+                    inputRef.current?.appendImageTag?.(url);
+                }
+            } catch (error) {
+                toast.error(error.message || "Image upload failed");
             }
         },
-        [canUploadImages, uploadImageFile]
+        [canUploadImages, uploadImageFile],
     );
 
     function handleSubmit() {
@@ -857,8 +919,14 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
 
     if (!currentPlayer) return null;
 
+    // Calculate drag styles for swipe-to-dismiss keyboard
+    const dragStyle = {
+        transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+        transition: dragOffset > 0 ? "none" : "transform 0.2s ease-out",
+    };
+
     return (
-        <Container>
+        <Container ref={containerRef} style={dragStyle}>
             {/* Upload progress */}
             {isUploading && (
                 <UploadProgress>
@@ -873,15 +941,23 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
             {/* Reply banner */}
             {replyTo && (
                 <ReplyBanner>
+                    {getMediaPreviewUrl(replyTo.content) && (
+                        <ReplyMediaPreview
+                            src={getMediaPreviewUrl(replyTo.content).url}
+                            alt={
+                                getMediaPreviewUrl(replyTo.content).type ===
+                                "gif"
+                                    ? "GIF"
+                                    : "Image"
+                            }
+                        />
+                    )}
                     <BannerContent>
                         <BannerLabel>
                             Replying to {replyTo.player?.name}
                         </BannerLabel>
                         <BannerText>
-                            <MentionText
-                                text={replyTo.content}
-                                maxLength={50}
-                            />
+                            {formatReplyPreview(replyTo.content, 50)}
                         </BannerText>
                     </BannerContent>
                     <CloseButton onClick={onCancelReply}>
@@ -890,8 +966,8 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                 </ReplyBanner>
             )}
 
-            {/* Whisper banner */}
-            {whisperRecipient && !replyTo && (
+            {/* Whisper banner - shown alongside reply banner when both exist */}
+            {whisperRecipient && (
                 <WhisperBanner>
                     <BannerContent>
                         <BannerLabel $whisper>
@@ -981,7 +1057,6 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                         $visible={hasContent}
                         onClick={handleSubmit}
                         onMouseDown={(e) => e.preventDefault()}
-                        onTouchStart={(e) => e.preventDefault()}
                         disabled={!canSubmit || isSubmitting}
                         type="button"
                     >

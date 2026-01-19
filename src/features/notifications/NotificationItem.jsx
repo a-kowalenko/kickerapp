@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Avatar from "../../ui/Avatar";
+import CountBadge from "../../ui/CountBadge";
 import { DEFAULT_AVATAR } from "../../utils/constants";
 import { useKicker } from "../../contexts/KickerContext";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
@@ -29,7 +30,9 @@ const ItemContainer = styled.div`
     gap: 1.2rem;
     padding: 1.2rem 1.4rem;
     cursor: pointer;
-    transition: background-color 0.15s ease, transform 0.1s ease;
+    transition:
+        background-color 0.15s ease,
+        transform 0.1s ease;
     border-left: 3px solid
         ${(props) => (props.$isUnread ? "var(--color-red-700)" : "transparent")};
     background-color: ${(props) =>
@@ -143,15 +146,6 @@ const MatchInfo = styled.span`
     text-overflow: ellipsis;
 `;
 
-const UnreadDot = styled.span`
-    width: 0.8rem;
-    height: 0.8rem;
-    border-radius: 50%;
-    background-color: var(--color-red-700);
-    flex-shrink: 0;
-    margin-left: auto;
-`;
-
 /**
  * Format match info string from match_info JSONB
  */
@@ -195,7 +189,7 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
     const { isDesktop } = useWindowWidth();
     const [autoSwitchKicker, setAutoSwitchKicker] = useLocalStorageState(
         false,
-        "autoSwitchKickerOnNotification"
+        "autoSwitchKickerOnNotification",
     );
     const [showSwitchModal, setShowSwitchModal] = useState(false);
     const [pendingNavigation, setPendingNavigation] = useState(null);
@@ -298,7 +292,7 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
         setAutoSwitchKicker(true);
         localStorage.setItem(
             "autoSwitchKickerOnNotification",
-            JSON.stringify(true)
+            JSON.stringify(true),
         );
     }
 
@@ -327,7 +321,7 @@ function NotificationItem({ notification, onMarkAsRead, onClose }) {
                 <Header>
                     <SenderName>{sender_player_name}</SenderName>
                     <TimeAgo>{timeAgo}</TimeAgo>
-                    {!is_read && <UnreadDot />}
+                    {!is_read && <CountBadge dot size="sm" />}
                 </Header>
 
                 <ContentPreview>{cleanedPreview}</ContentPreview>

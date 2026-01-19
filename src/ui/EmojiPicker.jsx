@@ -8,6 +8,8 @@ import { createPortal } from "react-dom";
 const PickerWrapper = styled.div`
     position: fixed;
     z-index: 10001;
+    /* Prevent touch events from propagating through */
+    touch-action: pan-y;
 `;
 
 const Overlay = styled.div`
@@ -17,6 +19,8 @@ const Overlay = styled.div`
     right: 0;
     bottom: 0;
     z-index: 10000;
+    /* Block all touch interactions with elements behind */
+    touch-action: none;
 `;
 
 // Calculate position immediately (not in useEffect)
@@ -191,6 +195,26 @@ function EmojiPicker({
         document.addEventListener("wheel", handleWheel, { passive: false });
         return () => {
             document.removeEventListener("wheel", handleWheel);
+        };
+    }, []);
+
+    // Prevent touch scroll events from propagating to elements behind the picker
+    useEffect(() => {
+        const pickerElement = pickerRef.current;
+        if (!pickerElement) return;
+
+        function handleTouchMove(event) {
+            // Allow scrolling within the picker, but prevent it from bubbling
+            // to elements behind (like the message list)
+            event.stopPropagation();
+        }
+
+        // Use capture phase to intercept before other handlers
+        pickerElement.addEventListener("touchmove", handleTouchMove, {
+            passive: true,
+        });
+        return () => {
+            pickerElement.removeEventListener("touchmove", handleTouchMove);
         };
     }, []);
 

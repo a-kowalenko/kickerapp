@@ -37,7 +37,7 @@ import Divider from "../../ui/Divider";
 import { useKickerInfo } from "../../hooks/useKickerInfo";
 
 const StyledTimePlayedChart = styled(ContentBox)`
-    grid-area: 5 / 1 / 8 / 5;
+    grid-area: 4 / 1 / 7 / 5;
 
     @media (max-width: 1350px) {
         grid-area: 7 / 1 / 8 / 3;
@@ -123,7 +123,7 @@ function TimePlayedChart() {
             matches,
             data,
             history,
-            isCumulated
+            isCumulated,
         );
     }
     const finalData = transformToMonthlyData(month, year, data);
@@ -131,7 +131,7 @@ function TimePlayedChart() {
     const playersWithMatches = getPlayersWithMatchesInCategory(
         players,
         data,
-        gamemode
+        gamemode,
     );
     const { options, gamemodeOptions, monthOptions, yearOptions } =
         createDropdownOptionLists(
@@ -140,7 +140,7 @@ function TimePlayedChart() {
             kickerInfo,
             year,
             currentMonth,
-            currentYear
+            currentYear,
         );
 
     function handleTypeFilter(option) {
@@ -170,7 +170,7 @@ function TimePlayedChart() {
                     options={options}
                     onSelect={(option) => handleTypeFilter(option)}
                     initSelected={options.find(
-                        (option) => option.value === type
+                        (option) => option.value === type,
                     )}
                 />
                 <Dropdown
@@ -195,7 +195,7 @@ function TimePlayedChart() {
                                       "LLLL",
                                       {
                                           locale: enUS,
-                                      }
+                                      },
                                   ),
                                   value: month,
                               }
@@ -339,7 +339,7 @@ function createDropdownOptionLists(
     kickerInfo,
     year,
     currentMonth,
-    currentYear
+    currentYear,
 ) {
     const options = [
         { text: "Duration", value: "duration" },
@@ -410,7 +410,8 @@ function transformToMonthlyData(month, year, data) {
             for (let i = 1; i <= maxDays; i++) {
                 const dataset = data?.find(
                     (item) =>
-                        item.date === format(new Date(year, m, i), "dd.MM.yyyy")
+                        item.date ===
+                        format(new Date(year, m, i), "dd.MM.yyyy"),
                 );
                 if (dataset) {
                     finalData.push(dataset);
@@ -427,7 +428,7 @@ function transformToMonthlyData(month, year, data) {
     for (let i = 1; i <= maxDays; i++) {
         const dataset = data?.find(
             (item) =>
-                item.date === format(new Date(year, month, i), "dd.MM.yyyy")
+                item.date === format(new Date(year, month, i), "dd.MM.yyyy"),
         );
         if (dataset) {
             finalData.push(dataset);
@@ -444,7 +445,7 @@ function calculateHistoryData(
     matches,
     data,
     history,
-    isCumulated
+    isCumulated,
 ) {
     let todaysDataObject = {};
     for (const player of players) {
@@ -474,7 +475,7 @@ function calculateHistoryData(
             const mode = cur.gamemode;
             const { player1, player2, player3, player4 } = cur;
             const playersList = [player1, player2, player3, player4].filter(
-                (p) => p !== null
+                (p) => p !== null,
             );
             const duration =
                 (new Date(cur.end_time) - new Date(cur.start_time)) / 1000;

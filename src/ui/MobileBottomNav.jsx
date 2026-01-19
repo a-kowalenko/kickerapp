@@ -10,6 +10,7 @@ import {
 import { media } from "../utils/constants";
 import { useUnreadChatCount } from "../features/chat/useUnreadChatCount";
 import { useKeyboard } from "../contexts/KeyboardContext";
+import CountBadge from "./CountBadge";
 
 // Check if device is a real mobile device (phone/tablet, not laptop with touchscreen)
 const isMobileDevice = () => {
@@ -35,7 +36,7 @@ const NavContainer = styled.nav`
         background-color: var(--primary-background-color);
         border-top: 1px solid var(--secondary-border-color);
         padding: 0.8rem 1.6rem;
-        padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
         z-index: 9999;
         justify-content: space-around;
         align-items: center;
@@ -108,24 +109,6 @@ const IconWrapper = styled.span`
     justify-content: center;
 `;
 
-const NotificationBadge = styled.span`
-    position: absolute;
-    top: -0.4rem;
-    right: -0.6rem;
-    min-width: 1.6rem;
-    height: 1.6rem;
-    padding: 0 0.4rem;
-    background-color: var(--color-red-700);
-    color: white;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: var(--border-radius-pill);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-`;
-
 const Label = styled.span`
     font-size: 1.1rem;
 `;
@@ -165,11 +148,13 @@ function MobileBottomNav() {
                             ) : (
                                 <HiOutlineChatBubbleLeftRight />
                             )}
-                            {unreadCount > 0 && (
-                                <NotificationBadge>
-                                    {unreadCount > 99 ? "99+" : unreadCount}
-                                </NotificationBadge>
-                            )}
+                            <CountBadge
+                                count={unreadCount}
+                                size="xs"
+                                position="absolute"
+                                top="-0.4rem"
+                                right="-0.6rem"
+                            />
                         </IconWrapper>
                         <Label>Chat</Label>
                     </>

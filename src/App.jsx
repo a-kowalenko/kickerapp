@@ -40,6 +40,7 @@ import Testwiese from "./pages/Testwiese";
 import Notifications from "./pages/Notifications";
 import Impressum from "./pages/Impressum";
 import Datenschutz from "./pages/Datenschutz";
+import Contact from "./pages/Contact";
 import ConsentBanner from "./ui/ConsentBanner";
 
 const queryClient = new QueryClient({
@@ -86,6 +87,10 @@ function App() {
                                     <Route
                                         path="privacy"
                                         element={<Datenschutz />}
+                                    />
+                                    <Route
+                                        path="contact"
+                                        element={<Contact />}
                                     />
 
                                     <Route

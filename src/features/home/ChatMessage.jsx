@@ -1,4 +1,4 @@
-import styled, { css, keyframes } from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -57,7 +57,8 @@ const HighlightOverlay = styled.div`
         rgba(99, 160, 255, 0.3) 50%,
         rgba(59, 130, 246, 0.25) 100%
     );
-    box-shadow: 0 0 20px 0 rgba(59, 130, 246, 0.3),
+    box-shadow:
+        0 0 20px 0 rgba(59, 130, 246, 0.3),
         inset 0 0 20px 0 rgba(255, 255, 255, 0.1);
     border-radius: inherit;
     pointer-events: none;
@@ -65,7 +66,11 @@ const HighlightOverlay = styled.div`
     z-index: 0;
 `;
 
-const MessageContainer = styled.div`
+const MessageContainer = styled.div.attrs((props) => ({
+    style: props.$swipeOffset
+        ? { transform: `translateX(${props.$swipeOffset}px)` }
+        : undefined,
+}))`
     display: flex;
     gap: 1rem;
     padding: ${(props) =>
@@ -82,8 +87,13 @@ const MessageContainer = styled.div`
             props.$isUnread && !props.$isWhisper
                 ? "var(--primary-button-color)"
                 : "transparent"};
-    transition: background-color 0.15s, border-left-color 0.2s, transform 0.15s;
+    transition:
+        background-color 0.15s,
+        border-left-color 0.2s,
+        transform 0.15s;
     position: relative;
+    /* z-index based on stack position - ensures avatar overlays appear above messages below */
+    z-index: ${(props) => props.$stackIndex || 1};
 
     /* Scale effect during long press */
     transform: ${(props) =>
@@ -100,21 +110,16 @@ const MessageContainer = styled.div`
             background-color: var(--tertiary-background-color) !important;
         }
     }
-
-    ${(props) =>
-        props.$swipeOffset &&
-        css`
-            transform: translateX(${props.$swipeOffset}px);
-        `}
 `;
 
-const SwipeIndicator = styled.div`
+const SwipeIndicator = styled.div.attrs((props) => ({
+    style: { opacity: Math.min(props.$offset / 60, 1) },
+}))`
     position: absolute;
     left: -4rem;
     top: 50%;
     transform: translateY(-50%);
     color: var(--primary-button-color);
-    opacity: ${(props) => Math.min(props.$offset / 60, 1)};
     font-size: 2rem;
 `;
 
@@ -141,7 +146,9 @@ const HoverToolbar = styled.div`
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.15s, visibility 0.15s;
+    transition:
+        opacity 0.15s,
+        visibility 0.15s;
     z-index: 20;
 
     /* Only show on hover for devices that support hover (not touch) */
@@ -248,6 +255,7 @@ const AuthorName = styled(Link)`
 // Wrapper for avatar to handle context menu separately from Link
 const AvatarWrapper = styled.div`
     cursor: pointer;
+    height: fit-content;
 `;
 
 // Wrapper for author name to handle context menu separately from Link
@@ -491,6 +499,8 @@ function ChatMessage({
     onWhisper,
     onMention,
     onFocusInput,
+    stackIndex = 1,
+    onOpenReactionPicker,
 }) {
     const navigate = useNavigate();
     const [isEditing, setIsEditing] = useState(false);
@@ -506,7 +516,7 @@ function ChatMessage({
 
     // Load bounty data for the message author (always show if any gamemode has bounty)
     const { bounty1on1, bounty2on2 } = usePlayerStatusForAvatar(
-        message.player?.id
+        message.player?.id,
     );
 
     const isAuthor = message.player_id === currentPlayerId;
@@ -746,13 +756,20 @@ function ChatMessage({
         return () => {
             window.removeEventListener(
                 "closeChatContextMenus",
-                handleCloseMenus
+                handleCloseMenus,
             );
         };
     }, [contextMenu]);
 
     // Handle switching to emoji picker from context menu
     function handleOpenReactionPicker() {
+        // On mobile, use the parent's fixed-position picker if available
+        if (contextMenu?.isMobile && onOpenReactionPicker) {
+            setContextMenu(null);
+            onOpenReactionPicker();
+            return;
+        }
+        // On desktop, show inline picker in context menu
         setContextMenu((prev) => ({
             ...prev,
             type: "react",
@@ -910,6 +927,7 @@ function ChatMessage({
             $swipeOffset={swipeOffset}
             $isGrouped={isGrouped}
             $isLongPressing={isLongPressing}
+            $stackIndex={stackIndex}
             onTouchStart={(e) => {
                 handleTouchStart(e);
                 longPressHandlers.onTouchStart(e);
@@ -924,6 +942,8 @@ function ChatMessage({
             }}
             onContextMenu={handleMessageContextMenu}
             data-message-id={message.id}
+            data-message-created-at={message.created_at}
+            data-message-player-id={message.player_id}
         >
             {/* Highlight overlay for notification scroll */}
             {isHighlighted && <HighlightOverlay ref={highlightRef} />}
@@ -1082,7 +1102,7 @@ function ChatMessage({
                                 new Date(message.created_at).getDate() ===
                                     new Date().getDate()
                                     ? "HH:mm"
-                                    : "dd.MM.yyyy - HH:mm"
+                                    : "dd.MM.yyyy - HH:mm",
                             )}
                         </Timestamp>
                         {message.edited_at && (
@@ -1119,7 +1139,7 @@ function ChatMessage({
                                     // Only show content if user was involved in the whisper
                                     if (isWhisperSender || isWhisperRecipient) {
                                         return stripMentions(
-                                            message.reply_to.content
+                                            message.reply_to.content,
                                         );
                                     }
                                     return "Whispered message";
@@ -1215,6 +1235,7 @@ function ChatMessage({
                     position={contextMenu.position}
                     onClose={closeContextMenu}
                     anchorRef={containerRef}
+                    isMobile={contextMenu.isMobile}
                 />
             )}
 
@@ -1224,6 +1245,7 @@ function ChatMessage({
                     position={contextMenu.position}
                     onClose={closeContextMenu}
                     anchorRef={containerRef}
+                    isMobile={contextMenu.isMobile}
                 />
             )}
 

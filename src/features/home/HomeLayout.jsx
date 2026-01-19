@@ -43,7 +43,7 @@ function HomeLayout() {
                 <MonthlyFatalities />
                 <MostPlayed />
                 <RecentMatches />
-                {isDesktop && <ChatSection />}
+                {/* {isDesktop && <ChatSection />} */}
                 <TimePlayedChart />
             </StatsGrid>
         </StyledHomeLayout>

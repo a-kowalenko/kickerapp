@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
     HiMagnifyingGlass,
     HiOutlineHeart,
@@ -37,6 +38,8 @@ const PickerWrapper = styled.div`
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* Prevent touch events from propagating through */
+    touch-action: pan-y;
 `;
 
 const Overlay = styled.div`
@@ -46,6 +49,8 @@ const Overlay = styled.div`
     right: 0;
     bottom: 0;
     z-index: 9999;
+    /* Block all touch interactions with elements behind */
+    touch-action: none;
 `;
 
 const SearchContainer = styled.div`
@@ -272,26 +277,13 @@ const Attribution = styled.div`
     background-color: var(--tertiary-background-color);
 `;
 
-const LoadMoreButton = styled.button`
+const LoadMoreTrigger = styled.div`
     grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     padding: 1rem;
-    border: 1px dashed var(--primary-border-color);
-    background: transparent;
-    color: var(--secondary-text-color);
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    font-size: 1.3rem;
-    transition: all 0.2s;
-
-    &:hover {
-        background-color: var(--tertiary-background-color);
-        color: var(--primary-text-color);
-    }
-
-    &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
+    min-height: 4rem;
 `;
 
 const CategoriesGrid = styled.div`
@@ -414,6 +406,8 @@ function GifPicker({
     const searchInputRef = useRef(null);
     const searchTimeoutRef = useRef(null);
     const categorySearchRef = useRef(false); // Track if search was from category click
+    const loadMoreTriggerRef = useRef(null);
+    const gifGridRef = useRef(null);
 
     // Calculate initial position synchronously
     const initialPosition = useMemo(
@@ -595,6 +589,62 @@ function GifPicker({
         };
     }, []);
 
+    // Prevent touch scroll events from propagating to elements behind the picker
+    useEffect(() => {
+        const pickerElement = pickerRef.current;
+        if (!pickerElement) return;
+
+        function handleTouchMove(event) {
+            // Allow scrolling within the picker, but prevent it from bubbling
+            event.stopPropagation();
+        }
+
+        pickerElement.addEventListener("touchmove", handleTouchMove, {
+            passive: true,
+        });
+        return () => {
+            pickerElement.removeEventListener("touchmove", handleTouchMove);
+        };
+    }, []);
+
+    // Infinite scroll - load more when trigger is visible
+    useEffect(() => {
+        const trigger = loadMoreTriggerRef.current;
+        const container = gifGridRef.current;
+        if (!trigger || !container || !hasMore || isLoading || isLoadingMore)
+            return;
+        if (activeTab === TABS.FAVORITES || activeTab === TABS.CATEGORIES)
+            return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+                    const nextPage = page + 1;
+                    setPage(nextPage);
+
+                    if (activeTab === TABS.RECENT) {
+                        fetchRecentGifs(nextPage, true);
+                    } else {
+                        fetchGifs(searchQuery, nextPage, true);
+                    }
+                }
+            },
+            { root: container, threshold: 0.1 }
+        );
+
+        observer.observe(trigger);
+        return () => observer.disconnect();
+    }, [
+        hasMore,
+        isLoading,
+        isLoadingMore,
+        activeTab,
+        page,
+        searchQuery,
+        fetchGifs,
+        fetchRecentGifs,
+    ]);
+
     // Handle search with debounce
     function handleSearchChange(e) {
         const query = e.target.value;
@@ -611,18 +661,6 @@ function GifPicker({
             setActiveTab(TABS.TRENDING); // Switch to trending tab for search
             fetchGifs(query, 1);
         }, 300);
-    }
-
-    // Handle load more
-    function handleLoadMore() {
-        const nextPage = page + 1;
-        setPage(nextPage);
-
-        if (activeTab === TABS.RECENT) {
-            fetchRecentGifs(nextPage, true);
-        } else {
-            fetchGifs(searchQuery, nextPage, true);
-        }
     }
 
     // Handle GIF selection
@@ -738,7 +776,7 @@ function GifPicker({
         );
     }
 
-    return (
+    return createPortal(
         <>
             <Overlay onClick={onClose} />
             <PickerWrapper
@@ -832,7 +870,7 @@ function GifPicker({
                         )}
                     </CategoriesGrid>
                 ) : (
-                    <GifGrid data-gif-grid="true">
+                    <GifGrid data-gif-grid="true" ref={gifGridRef}>
                         {isLoading ? (
                             <LoadingContainer style={{ gridColumn: "1 / -1" }}>
                                 <SpinnerMini />
@@ -858,16 +896,9 @@ function GifPicker({
                                     )
                                 )}
                                 {hasMore && activeTab !== TABS.FAVORITES && (
-                                    <LoadMoreButton
-                                        onClick={handleLoadMore}
-                                        disabled={isLoadingMore}
-                                    >
-                                        {isLoadingMore ? (
-                                            <SpinnerMini />
-                                        ) : (
-                                            "Load more"
-                                        )}
-                                    </LoadMoreButton>
+                                    <LoadMoreTrigger ref={loadMoreTriggerRef}>
+                                        {isLoadingMore && <SpinnerMini />}
+                                    </LoadMoreTrigger>
                                 )}
                             </>
                         )}
@@ -876,7 +907,8 @@ function GifPicker({
 
                 <Attribution>Powered by KLIPY</Attribution>
             </PickerWrapper>
-        </>
+        </>,
+        document.body
     );
 }
 

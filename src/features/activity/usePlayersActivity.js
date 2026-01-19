@@ -9,7 +9,15 @@ import {
     useStatusDefinitions,
 } from "../players/usePlayerStatus";
 
-// Constants
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Idle threshold: If lastActivityAt is older than this, player is considered idle
+// This is RECEIVER-CALCULATED - each client determines idle status from the timestamp
+const IDLE_THRESHOLD = 2 * 60 * 1000; // 2 minutes
+
+// Inactive threshold: Players not seen for 60+ days are considered inactive
 const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 
 /**
@@ -24,27 +32,35 @@ export const ACTIVITY_STATUS = {
 };
 
 /**
- * Hook to get all players grouped by their activity status
- * Combines real-time presence data with database fallback for offline players
+ * Hook to get all players grouped by their activity status.
  *
- * @returns {Object} - { inMatch, online, offline, inactive, isLoading }
- * - inMatch: Players currently in a match
- * - online: Players currently online (active or idle)
- * - offline: Players offline for less than 30 days
- * - inactive: Players offline for more than 30 days
- * - isLoading: Loading state
+ * Key design principle: RECEIVER-CALCULATED IDLE STATUS
+ * - The presence system only sends timestamps (onlineAt, lastActivityAt)
+ * - This hook calculates whether a player is "idle" based on:
+ *   Date.now() - lastActivityAt > IDLE_THRESHOLD (2 minutes)
+ * - This eliminates synchronization bugs between sender/receiver status calculations
+ *
+ * @returns {Object} - { inMatch, online, offline, inactive, isLoading, isConnected, currentPlayerId }
  */
 export function usePlayersActivity() {
     const { currentKicker: kicker } = useKicker();
     const { activeMatch } = useMatchContext();
-    // Use context instead of hook directly - presence is tracked in OnlinePresenceProvider
+
+    // Get presence data from context
     const presenceContext = useOnlinePresenceContext();
     const onlinePlayers = useMemo(
         () => presenceContext?.onlinePlayers || new Map(),
-        [presenceContext?.onlinePlayers]
+        [presenceContext?.onlinePlayers],
     );
     const isConnected = presenceContext?.isConnected || false;
     const currentPlayerId = presenceContext?.currentPlayerId;
+
+    // BRIDGING CACHE: Recently-offline players with accurate timestamps
+    // This provides accurate "last seen" before DB cache refreshes
+    const recentOfflineActivity = useMemo(
+        () => presenceContext?.recentOfflineActivity || new Map(),
+        [presenceContext?.recentOfflineActivity],
+    );
 
     // Fetch all players with their last_seen from database
     const { data: playersFromDb, isLoading: isLoadingDb } = useQuery({
@@ -52,7 +68,7 @@ export function usePlayersActivity() {
         queryFn: () => getPlayersActivity(kicker),
         enabled: !!kicker,
         staleTime: 1000 * 60, // 1 minute
-        refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
+        refetchInterval: 1000 * 60 * 1, // Refetch every 1 minute
     });
 
     // Get all player IDs for status fetching
@@ -62,7 +78,7 @@ export function usePlayersActivity() {
 
     // Fetch statuses for all players (for bounty/streak display)
     const { statusMap, isLoading: isLoadingStatuses } = usePlayersStatuses(
-        allPlayerIds.length > 0 ? allPlayerIds : null
+        allPlayerIds.length > 0 ? allPlayerIds : null,
     );
 
     // Fetch status definitions to compute primary_status from active_statuses
@@ -92,16 +108,14 @@ export function usePlayersActivity() {
 
             return primaryStatus;
         },
-        [statusDefsMap]
+        [statusDefsMap],
     );
 
-    // Get players in current active match
+    // Get players in current active match (receiver-calculated from MatchContext)
     const playersInMatch = useMemo(() => {
         if (!activeMatch) return new Set();
 
         const matchPlayers = new Set();
-        // activeMatch.player1, player2, etc. are player OBJECTS, not IDs
-        // We need to extract the .id property
         if (activeMatch.player1?.id) matchPlayers.add(activeMatch.player1.id);
         if (activeMatch.player2?.id) matchPlayers.add(activeMatch.player2.id);
         if (activeMatch.player3?.id) matchPlayers.add(activeMatch.player3.id);
@@ -109,6 +123,16 @@ export function usePlayersActivity() {
 
         return matchPlayers;
     }, [activeMatch]);
+
+    /**
+     * Determine if a player is idle based on their lastActivityAt timestamp.
+     * This is the core of receiver-calculated idle status.
+     */
+    const isPlayerIdle = useCallback((lastActivityAt) => {
+        if (!lastActivityAt) return false;
+        const timeSinceActivity = Date.now() - lastActivityAt;
+        return timeSinceActivity > IDLE_THRESHOLD;
+    }, []);
 
     // Categorize players into inMatch, online, offline, and inactive
     const { inMatch, online, offline, inactive } = useMemo(() => {
@@ -128,11 +152,25 @@ export function usePlayersActivity() {
             const playerId = player.player_id;
             const presenceData = onlinePlayers.get(playerId);
             const isInMatch = playersInMatch.has(playerId);
-            const lastSeenDb = player.last_seen
+            const isCurrentPlayer = playerId === currentPlayerId;
+
+            // PRIORITY LOGIC FOR LAST_SEEN:
+            // 1. Bridging cache (high priority - immediate accuracy)
+            // 2. DB last_seen (low priority - eventually consistent)
+            const recentOffline = recentOfflineActivity.get(playerId);
+            const lastSeenFromBridgingCache = recentOffline?.lastActivityAt;
+            const lastSeenFromDb = player.last_seen
                 ? new Date(player.last_seen).getTime()
                 : null;
 
-            // Get player status data
+            // Use bridging cache if available and more recent than DB
+            const lastSeenTimestamp =
+                lastSeenFromBridgingCache &&
+                (!lastSeenFromDb || lastSeenFromBridgingCache > lastSeenFromDb)
+                    ? lastSeenFromBridgingCache
+                    : lastSeenFromDb;
+
+            // Get player status data (bounty/streak)
             const playerStatuses = statusMap[playerId] || {};
             const status1on1 = playerStatuses["1on1"] || {};
             const status2on2 = playerStatuses["2on2"] || {};
@@ -159,7 +197,6 @@ export function usePlayersActivity() {
             // Get active statuses
             const statuses1on1 = status1on1.active_statuses || [];
             const statuses2on2 = status2on2.active_statuses || [];
-            // Compute primary status from active_statuses array
             const primaryStatus =
                 getPrimaryStatus(statuses1on1) ||
                 getPrimaryStatus(statuses2on2);
@@ -170,6 +207,8 @@ export function usePlayersActivity() {
                 player_name: player.player_name,
                 player_avatar: player.player_avatar,
                 last_seen: player.last_seen,
+                // Use bridging cache for accurate last_seen_timestamp
+                last_seen_timestamp: lastSeenTimestamp,
                 // Status data
                 bounty1on1,
                 bounty2on2,
@@ -186,32 +225,49 @@ export function usePlayersActivity() {
                 matchGamemode: isInMatch ? activeMatch?.gamemode : null,
             };
 
-            // Determine activity status
+            // ================================================================
+            // RECEIVER-CALCULATED ACTIVITY STATUS
+            // Priority: IN_MATCH > IDLE > ACTIVE > OFFLINE > INACTIVE
+            //
+            // Special handling:
+            // 1. Current player is ALWAYS online if isConnected (optimistic)
+            // 2. Match participants are ALWAYS shown as IN_MATCH/ACTIVE
+            // ================================================================
+
+            // CASE 1: Player has presence data - they are connected
             if (presenceData) {
-                // Player has presence data - they are online
-                const presenceStatus = presenceData.status;
+                const lastActivityAt = presenceData.last_activity_at;
+                const idle = isPlayerIdle(lastActivityAt);
 
                 if (isInMatch) {
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.IN_MATCH;
-                    enrichedPlayer.presenceStatus = presenceStatus;
                     inMatchList.push(enrichedPlayer);
-                } else if (presenceStatus === "idle") {
+                } else if (idle) {
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.IDLE;
-                    enrichedPlayer.presenceStatus = presenceStatus;
                     onlineList.push(enrichedPlayer);
                 } else {
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.ACTIVE;
-                    enrichedPlayer.presenceStatus = presenceStatus;
                     onlineList.push(enrichedPlayer);
                 }
-            } else if (isInMatch) {
-                // Player is in match but no presence data (counts as in match)
+            }
+            // CASE 2: Current player without presence data but connected (optimistic self)
+            else if (isCurrentPlayer && isConnected) {
+                if (isInMatch) {
+                    enrichedPlayer.activityStatus = ACTIVITY_STATUS.IN_MATCH;
+                    inMatchList.push(enrichedPlayer);
+                } else {
+                    enrichedPlayer.activityStatus = ACTIVITY_STATUS.ACTIVE;
+                    onlineList.push(enrichedPlayer);
+                }
+            }
+            // CASE 3: Player is in match but no presence data (force online for match participants)
+            else if (isInMatch) {
                 enrichedPlayer.activityStatus = ACTIVITY_STATUS.IN_MATCH;
                 inMatchList.push(enrichedPlayer);
-            } else {
-                // Player is offline - check last_seen for inactive (60+ days or never seen)
-                if (!lastSeenDb || lastSeenDb < sixtyDaysAgo) {
-                    // No last_seen (never active) or inactive for 60+ days
+            }
+            // CASE 4: Player is offline - check last_seen for inactive classification
+            else {
+                if (!lastSeenTimestamp || lastSeenTimestamp < sixtyDaysAgo) {
                     enrichedPlayer.activityStatus = ACTIVITY_STATUS.INACTIVE;
                     inactiveList.push(enrichedPlayer);
                 } else {
@@ -227,7 +283,6 @@ export function usePlayersActivity() {
 
         // Online: Active first, then idle, then by name
         onlineList.sort((a, b) => {
-            // Active before idle
             if (
                 a.activityStatus === ACTIVITY_STATUS.ACTIVE &&
                 b.activityStatus === ACTIVITY_STATUS.IDLE
@@ -238,14 +293,13 @@ export function usePlayersActivity() {
                 a.activityStatus === ACTIVITY_STATUS.IDLE
             )
                 return 1;
-            // Then by name
             return a.player_name.localeCompare(b.player_name);
         });
 
-        // Offline: Sort by last_seen (most recent first)
+        // Offline: Sort by last_seen (most recent first) - use bridging cache timestamp
         offlineList.sort((a, b) => {
-            const aTime = a.last_seen ? new Date(a.last_seen).getTime() : 0;
-            const bTime = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+            const aTime = a.last_seen_timestamp || 0;
+            const bTime = b.last_seen_timestamp || 0;
             return bTime - aTime;
         });
 
@@ -261,10 +315,14 @@ export function usePlayersActivity() {
     }, [
         playersFromDb,
         onlinePlayers,
+        recentOfflineActivity,
         playersInMatch,
         activeMatch,
         statusMap,
         getPrimaryStatus,
+        isPlayerIdle,
+        isConnected,
+        currentPlayerId,
     ]);
 
     return {
