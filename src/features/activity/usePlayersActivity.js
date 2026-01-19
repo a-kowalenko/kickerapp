@@ -15,7 +15,7 @@ import {
 
 // Idle threshold: If lastActivityAt is older than this, player is considered idle
 // This is RECEIVER-CALCULATED - each client determines idle status from the timestamp
-const IDLE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+const IDLE_THRESHOLD = 2 * 60 * 1000; // 2 minutes
 
 // Inactive threshold: Players not seen for 60+ days are considered inactive
 const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
@@ -37,7 +37,7 @@ export const ACTIVITY_STATUS = {
  * Key design principle: RECEIVER-CALCULATED IDLE STATUS
  * - The presence system only sends timestamps (onlineAt, lastActivityAt)
  * - This hook calculates whether a player is "idle" based on:
- *   Date.now() - lastActivityAt > IDLE_THRESHOLD (5 minutes)
+ *   Date.now() - lastActivityAt > IDLE_THRESHOLD (2 minutes)
  * - This eliminates synchronization bugs between sender/receiver status calculations
  *
  * @returns {Object} - { inMatch, online, offline, inactive, isLoading, isConnected, currentPlayerId }
@@ -68,7 +68,7 @@ export function usePlayersActivity() {
         queryFn: () => getPlayersActivity(kicker),
         enabled: !!kicker,
         staleTime: 1000 * 60, // 1 minute
-        refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
+        refetchInterval: 1000 * 60 * 1, // Refetch every 1 minute
     });
 
     // Get all player IDs for status fetching
