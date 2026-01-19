@@ -4,9 +4,11 @@ import { useSearchParams } from "react-router-dom";
 import {
     HiChatBubbleLeftRight,
     HiChatBubbleOvalLeftEllipsis,
+    HiUsers,
 } from "react-icons/hi2";
 import MessageListMobile from "./MessageListMobile";
 import MatchCommentsTab from "../home/MatchCommentsTab";
+import PlayerActivityListMobile from "../activity/PlayerActivityListMobile";
 import { useKicker } from "../../contexts/KickerContext";
 import { useUser } from "../authentication/useUser";
 import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
@@ -77,9 +79,10 @@ function ChatPageMobile() {
     // Determine initial tab from URL or localStorage
     const [activeTab, setActiveTab] = useState(() => {
         const urlTab = searchParams.get("tab");
-        if (urlTab === "chat" || urlTab === "comments") return urlTab;
+        if (urlTab === "chat" || urlTab === "comments" || urlTab === "activity") return urlTab;
         const saved = localStorage.getItem(MOBILE_CHAT_TAB_KEY);
-        return saved === "comments" ? "comments" : "chat";
+        if (saved === "comments" || saved === "activity") return saved;
+        return "chat";
     });
 
     // Deep link message ID from URL
@@ -162,6 +165,13 @@ function ChatPageMobile() {
                     Comments
                     <CountBadge count={unreadCount} size="sm" />
                 </TabButton>
+                <TabButton
+                    $active={activeTab === "activity"}
+                    onClick={() => handleTabChange("activity")}
+                >
+                    <HiUsers />
+                    Activity
+                </TabButton>
             </TabBar>
 
             <TabContent>
@@ -173,6 +183,7 @@ function ChatPageMobile() {
                     />
                 )}
                 {activeTab === "comments" && <MatchCommentsTab />}
+                {activeTab === "activity" && <PlayerActivityListMobile />}
             </TabContent>
         </PageContainer>
     );
