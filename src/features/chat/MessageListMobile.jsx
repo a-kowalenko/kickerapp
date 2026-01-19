@@ -205,7 +205,6 @@ function MessageListMobile({
     scrollToMessageId,
     scrollTimestamp,
     onScrollComplete,
-    onConnectionStatusChange,
 }) {
     const containerRef = useRef(null);
     const loadMoreRef = useRef(null);
@@ -237,13 +236,7 @@ function MessageListMobile({
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
-        connectionStatus,
     } = useChatMessages();
-
-    // Report connection status changes to parent
-    useEffect(() => {
-        onConnectionStatusChange?.(connectionStatus);
-    }, [connectionStatus, onConnectionStatusChange]);
 
     const { createChatMessage, isCreating } = useCreateChatMessage();
     const { updateChatMessage, isUpdating } = useUpdateChatMessage();

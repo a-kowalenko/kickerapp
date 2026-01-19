@@ -32,6 +32,7 @@ import Recovery from "./pages/Recovery";
 import UpdatePassword from "./pages/UpdatePassword";
 import InvitePage from "./pages/InvitePage";
 import { KickerProvider } from "./contexts/KickerContext";
+import { ChatProvider } from "./contexts/ChatContext";
 import Start from "./pages/Start";
 import Settings from "./pages/Settings";
 import { MatchProvider } from "./contexts/MatchContext";
@@ -98,8 +99,10 @@ function App() {
                                             <ProtectedRoute>
                                                 <MatchProvider>
                                                     <OnlinePresenceProvider>
-                                                        <UnreadBadgeManager />
-                                                        <AppLayout />
+                                                        <ChatProvider>
+                                                            <UnreadBadgeManager />
+                                                            <AppLayout />
+                                                        </ChatProvider>
                                                     </OnlinePresenceProvider>
                                                 </MatchProvider>
                                             </ProtectedRoute>

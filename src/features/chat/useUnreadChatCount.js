@@ -1,9 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { useQueryClient } from "react-query";
 import { useChatMessages } from "../home/useChatMessages";
 import { useChatReadStatus } from "../../hooks/useChatReadStatus";
 import { useKicker } from "../../contexts/KickerContext";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
+import { useChatConnection } from "../../contexts/ChatContext";
+import { CHAT_MESSAGES } from "../../utils/constants";
 
 /**
  * Hook to get the count of unread chat messages for the current kicker
@@ -12,10 +15,26 @@ import { useOwnPlayer } from "../../hooks/useOwnPlayer";
 export function useUnreadChatCount() {
     const { currentKicker } = useKicker();
     const { data: currentPlayer } = useOwnPlayer();
+    const currentPlayerId = currentPlayer?.id;
     const { messages, isLoading: isLoadingMessages } = useChatMessages();
     const { lastReadAt, isLoading: isLoadingReadStatus } =
         useChatReadStatus(currentKicker);
     const location = useLocation();
+    const queryClient = useQueryClient();
+    const { subscribeToInserts } = useChatConnection();
+
+    // Subscribe to realtime inserts to refetch when new messages arrive
+    useEffect(() => {
+        const unsubscribe = subscribeToInserts(() => {
+            // Invalidate messages query to get fresh count
+            queryClient.invalidateQueries([
+                CHAT_MESSAGES,
+                currentKicker,
+                currentPlayerId,
+            ]);
+        });
+        return unsubscribe;
+    }, [subscribeToInserts, queryClient, currentKicker, currentPlayerId]);
 
     const unreadCount = useMemo(() => {
         // Don't show badge if user is currently viewing the chat

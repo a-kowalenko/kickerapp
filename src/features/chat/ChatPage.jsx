@@ -11,7 +11,7 @@ import { useUser } from "../authentication/useUser";
 import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
-import { useChatMessages } from "../home/useChatMessages";
+import { useChatConnection } from "../../contexts/ChatContext";
 import CountBadge from "../../ui/CountBadge";
 import ConnectionStatusDot from "../../ui/ConnectionStatusDot";
 
@@ -101,7 +101,7 @@ function ChatPage() {
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
-    const { connectionStatus } = useChatMessages();
+    const { connectionStatus } = useChatConnection();
 
     // Persist tab selection
     useEffect(() => {
