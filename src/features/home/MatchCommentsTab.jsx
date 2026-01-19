@@ -15,6 +15,7 @@ import MatchCommentItem from "./MatchCommentItem";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
 import JumpToLatestButton from "../../ui/JumpToLatestButton";
+import CountBadge from "../../ui/CountBadge";
 import { media } from "../../utils/constants";
 
 const ContentWrapper = styled.div`
@@ -89,20 +90,6 @@ const EmptyText = styled.p`
     font-size: 1.4rem;
 `;
 
-const NewCommentsBadge = styled.span`
-    position: absolute;
-    top: -0.4rem;
-    right: -0.4rem;
-    background-color: var(--color-red-700);
-    color: white;
-    padding: 0.2rem 0.5rem;
-    border-radius: var(--border-radius-pill);
-    font-size: 1rem;
-    font-weight: 600;
-    min-width: 1.8rem;
-    text-align: center;
-`;
-
 function MatchCommentsTab() {
     const commentsContainerRef = useRef(null);
     const loadMoreRef = useRef(null);
@@ -159,7 +146,7 @@ function MatchCommentsTab() {
     // Get comment IDs for reactions
     const commentIds = useMemo(
         () => comments?.map((c) => c.id) || [],
-        [comments]
+        [comments],
     );
     const {
         groupedByComment: commentReactionsMap,
@@ -202,7 +189,7 @@ function MatchCommentsTab() {
                     fetchNextPage();
                 }
             },
-            { root: container, threshold: 0.1 }
+            { root: container, threshold: 0.1 },
         );
 
         if (loadMoreRef.current) {
@@ -408,9 +395,13 @@ function MatchCommentsTab() {
             {showJumpToLatest && (
                 <JumpToLatestButton onClick={handleJumpToLatest}>
                     <HiChevronDoubleDown />
-                    {newCommentsCount > 0 && (
-                        <NewCommentsBadge>{newCommentsCount}</NewCommentsBadge>
-                    )}
+                    <CountBadge
+                        count={newCommentsCount}
+                        size="sm"
+                        position="absolute"
+                        top="-0.4rem"
+                        right="-0.4rem"
+                    />
                 </JumpToLatestButton>
             )}
         </ContentWrapper>

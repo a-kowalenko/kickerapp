@@ -26,12 +26,14 @@ import { useKeyboard } from "../../contexts/KeyboardContext";
 import { useChatReadStatus } from "../../hooks/useChatReadStatus";
 import { updateChatReadStatus } from "../../services/apiChat";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
+import { useMessageVisibility } from "../../hooks/useMessageVisibility";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import ChatInputDesktop from "./ChatInputDesktop";
 import LoadingSpinner from "../../ui/LoadingSpinner";
 import SpinnerMini from "../../ui/SpinnerMini";
 import JumpToLatestButton from "../../ui/JumpToLatestButton";
+import CountBadge from "../../ui/CountBadge";
 import useWindowWidth from "../../hooks/useWindowWidth";
 import { media } from "../../utils/constants";
 
@@ -117,7 +119,9 @@ const MediaLoadingOverlay = styled.div`
     z-index: 10;
     opacity: ${(props) => (props.$isVisible ? 1 : 0)};
     visibility: ${(props) => (props.$isVisible ? "visible" : "hidden")};
-    transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+    transition:
+        opacity 0.2s ease-out,
+        visibility 0.2s ease-out;
 `;
 
 const EmptyText = styled.p`
@@ -165,20 +169,6 @@ const TypingDot = styled.span`
     }
 `;
 
-const NewMessagesBadge = styled.span`
-    position: absolute;
-    top: -0.4rem;
-    right: -0.4rem;
-    background-color: var(--color-red-700);
-    color: white;
-    padding: 0.2rem 0.5rem;
-    border-radius: var(--border-radius-pill);
-    font-size: 1rem;
-    font-weight: 600;
-    min-width: 1.8rem;
-    text-align: center;
-`;
-
 const ContentWrapper = styled.div`
     display: flex;
     flex-direction: column;
@@ -215,6 +205,31 @@ const DateLabel = styled.span`
     color: var(--tertiary-text-color);
     font-weight: 500;
     white-space: nowrap;
+`;
+
+const UnreadDividerContainer = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+    margin: 0.4rem 0;
+
+    &::before,
+    &::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background-color: var(--color-red-700);
+    }
+`;
+
+const UnreadLabel = styled.span`
+    font-size: 1.2rem;
+    color: var(--color-red-700);
+    font-weight: 600;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 `;
 
 // Helper function to format date for dividers
@@ -298,7 +313,7 @@ function ChatTab() {
     // Get message IDs for reactions
     const messageIds = useMemo(
         () => messages?.map((m) => m.id) || [],
-        [messages]
+        [messages],
     );
     const {
         groupedByMessage: messageReactionsMap,
@@ -328,6 +343,46 @@ function ChatTab() {
     const { lastReadAt, invalidate: invalidateChatReadStatus } =
         useChatReadStatus(currentKicker);
 
+    // Track the initial lastReadAt when component mounts for unread divider
+    // This captures what was unread when entering the chat, and persists during session
+    const initialLastReadAtRef = useRef(null);
+    // Track whether we've already cleared the divider (once read, stay cleared)
+    const dividerClearedRef = useRef(false);
+
+    // Capture initial lastReadAt SYNCHRONOUSLY on first available value
+    // This ensures the divider shows on the very first render when data is ready
+    if (lastReadAt && initialLastReadAtRef.current === null) {
+        initialLastReadAtRef.current = lastReadAt;
+    }
+
+    // Clear divider once all messages are read (lastReadAt catches up)
+    // Only runs AFTER the initial capture, when lastReadAt actually changes
+    useEffect(() => {
+        // Skip if not yet captured initial value or already cleared
+        if (!initialLastReadAtRef.current || dividerClearedRef.current) return;
+        if (!messages?.length || !lastReadAt) return;
+
+        // Only clear if lastReadAt has actually changed from initial
+        if (lastReadAt === initialLastReadAtRef.current) return;
+
+        // Find the newest message not from current user
+        const newestOtherMessage = messages.find(
+            (m) => m.player_id !== currentPlayerId,
+        );
+        if (!newestOtherMessage) return;
+
+        // If lastReadAt is now >= newest other message, clear the divider
+        if (new Date(lastReadAt) >= new Date(newestOtherMessage.created_at)) {
+            dividerClearedRef.current = true;
+        }
+    }, [lastReadAt, messages, currentPlayerId]);
+
+    // Reset refs when kicker changes
+    useEffect(() => {
+        initialLastReadAtRef.current = null;
+        dividerClearedRef.current = false;
+    }, [currentKicker]);
+
     // Typing indicator
     const { typingText, onTyping, stopTyping } =
         useTypingIndicator(currentPlayerId);
@@ -355,7 +410,7 @@ function ChatTab() {
             // Find all images that need to load
             const images = container.querySelectorAll("img");
             const unloadedImages = Array.from(images).filter(
-                (img) => !img.complete
+                (img) => !img.complete,
             );
 
             // If no images or all loaded, we're done
@@ -423,13 +478,13 @@ function ChatTab() {
 
         // Check if message exists in current messages
         const messageExists = messages.some(
-            (m) => String(m.id) === String(pendingScrollToMessageId)
+            (m) => String(m.id) === String(pendingScrollToMessageId),
         );
 
         if (messageExists) {
             // Message found - scroll to it immediately
             const messageElement = container.querySelector(
-                `[data-message-id="${pendingScrollToMessageId}"]`
+                `[data-message-id="${pendingScrollToMessageId}"]`,
             );
 
             if (messageElement) {
@@ -450,7 +505,7 @@ function ChatTab() {
             window.history.replaceState(
                 null,
                 "",
-                `${window.location.pathname}${newSearch ? `?${newSearch}` : ""}`
+                `${window.location.pathname}${newSearch ? `?${newSearch}` : ""}`,
             );
         } else if (hasNextPage) {
             // Message not in current batch - load more
@@ -459,7 +514,7 @@ function ChatTab() {
             // No more pages, message not found
             console.log(
                 "[ChatTab] Message not found:",
-                pendingScrollToMessageId
+                pendingScrollToMessageId,
             );
             setPendingScrollToMessageId(null);
         }
@@ -489,46 +544,41 @@ function ChatTab() {
             // Reset after a short delay to allow subsequent reads (e.g., new messages)
             setTimeout(() => {
                 hasMarkedAsReadRef.current = false;
-            }, 1000);
+            }, 500); // Reduced from 1000ms for faster response
         }
     }, [currentKicker, invalidateUnreadBadge, invalidateChatReadStatus]);
 
-    // Track if user is viewing the chat (at bottom of messages)
-    const markAsReadIfAtBottom = useCallback(() => {
-        if (isNearBottomRef.current && currentKicker && hasInitiallyScrolled) {
-            markAsRead();
-        }
-    }, [currentKicker, hasInitiallyScrolled, markAsRead]);
+    // Callback when a message is seen (50% visible for 300ms)
+    const handleMessageSeen = useCallback(() => {
+        markAsRead();
+    }, [markAsRead]);
 
-    // Mark as read when user scrolls to bottom OR when chat is initially loaded
-    // Note: markAsRead is intentionally excluded from deps to prevent infinite loops
-    // The hasMarkedAsReadRef guard ensures we don't make duplicate API calls
+    // Message visibility tracking (WhatsApp/Discord-style)
+    const { observeMessages, resetTracking } = useMessageVisibility({
+        containerRef: messagesContainerRef,
+        onMessageSeen: handleMessageSeen,
+        lastReadAt,
+        currentPlayerId,
+        enabled: !isLoadingMessages && !!messages?.length,
+    });
+
+    // Re-observe messages when they change
     useEffect(() => {
-        if (hasInitiallyScrolled && currentKicker && isNearBottomRef.current) {
-            // Mark as read immediately when chat opens and user is at bottom
-            markAsRead();
+        if (messages?.length) {
+            // Small delay to ensure DOM is updated
+            requestAnimationFrame(() => {
+                observeMessages();
+            });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasInitiallyScrolled, currentKicker]);
+    }, [messages, observeMessages]);
 
-    // Mark as read when tab becomes visible AND user is at bottom
+    // Reset tracking when kicker changes
     useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === "visible" && currentKicker) {
-                setTimeout(() => {
-                    markAsReadIfAtBottom();
-                }, 500);
-            }
-        };
+        resetTracking();
+    }, [currentKicker, resetTracking]);
 
-        document.addEventListener("visibilitychange", handleVisibilityChange);
-        return () => {
-            document.removeEventListener(
-                "visibilitychange",
-                handleVisibilityChange
-            );
-        };
-    }, [currentKicker, markAsReadIfAtBottom]);
+    // Note: Old scroll-based markAsReadIfAtBottom and hasInitiallyScrolled effects removed
+    // Visibility tracking now handles when messages are considered "read"
 
     // Handle scroll for showing/hiding jump to latest
     // Mobile (column): near bottom = scrollTop + clientHeight >= scrollHeight - threshold
@@ -552,7 +602,6 @@ function ChatTab() {
             nearBottom = Math.abs(container.scrollTop) < threshold;
         }
 
-        const wasNearBottom = isNearBottomRef.current;
         isNearBottomRef.current = nearBottom;
 
         if (nearBottom) {
@@ -560,16 +609,13 @@ function ChatTab() {
             setNewMessagesCount(0);
             // User returned to bottom - reset scroll away flag
             userScrolledAwayRef.current = false;
-
-            if (!wasNearBottom && currentKicker) {
-                markAsRead();
-            }
+            // Note: markAsRead is now handled by visibility observer
         } else {
             setShowJumpToLatest(true);
             // User scrolled away from bottom - set flag to prevent auto-scroll
             userScrolledAwayRef.current = true;
         }
-    }, [currentKicker, markAsRead, isMobile]);
+    }, [isMobile]);
 
     // Infinite scroll - load more when scrolling to top (Mobile)
     // Anchor-based scroll restoration: find the anchor message and restore scroll relative to it
@@ -592,7 +638,7 @@ function ChatTab() {
         ) {
             // Find the anchor message element by its data attribute
             const anchorElement = container.querySelector(
-                `[data-message-id="${restoration.anchorMessageId}"]`
+                `[data-message-id="${restoration.anchorMessageId}"]`,
             );
 
             if (anchorElement) {
@@ -675,7 +721,7 @@ function ChatTab() {
                 root: container,
                 // Lower threshold for more reliable triggering on mobile
                 threshold: 0.01,
-            }
+            },
         );
 
         if (loadMoreRef.current) {
@@ -707,7 +753,7 @@ function ChatTab() {
                     }, 500);
                 }
             },
-            { root: container, threshold: 0.1 }
+            { root: container, threshold: 0.1 },
         );
 
         if (loadMoreRef.current) {
@@ -765,7 +811,7 @@ function ChatTab() {
                 requestAnimationFrame(retryScroll);
             }
         },
-        [isMobile]
+        [isMobile],
     );
 
     // Fix iOS Safari scroll position after keyboard opens
@@ -1065,7 +1111,7 @@ function ChatTab() {
                                 observeImage(node);
                             }
                             node.querySelectorAll?.("img").forEach(
-                                observeImage
+                                observeImage,
                             );
                         }
                     });
@@ -1137,7 +1183,7 @@ function ChatTab() {
         if (!container) return;
 
         const messageElement = container.querySelector(
-            `[data-message-id="${messageId}"]`
+            `[data-message-id="${messageId}"]`,
         );
         if (messageElement) {
             messageElement.scrollIntoView({
@@ -1266,7 +1312,7 @@ function ChatTab() {
                 return displayMsgs[index + 1];
             }
         },
-        [isMobile]
+        [isMobile],
     );
 
     if (isLoadingMessages) {
@@ -1327,13 +1373,13 @@ function ChatTab() {
                             {displayMessages?.map((message, index) => {
                                 const adjacentMessage = getAdjacentMessage(
                                     displayMessages,
-                                    index
+                                    index,
                                 );
                                 const isGrouped =
                                     adjacentMessage &&
                                     shouldGroupWithPrevious(
                                         message,
-                                        adjacentMessage
+                                        adjacentMessage,
                                     );
 
                                 // Message is unread if:
@@ -1341,13 +1387,16 @@ function ChatTab() {
                                 // - Not from the current user
                                 // - lastReadAt must be a valid date string
                                 // - If no lastReadAt exists (null), all messages are considered READ
-                                // TEMPORARILY DISABLED - all messages shown as read
-                                const isUnread = false;
+                                const isUnread =
+                                    lastReadAt &&
+                                    message.player_id !== currentPlayerId &&
+                                    new Date(message.created_at) >
+                                        new Date(lastReadAt);
 
                                 // Check if we need a date divider
                                 // Show divider when this message is on a different day than the adjacent (older) one
                                 const currentDate = new Date(
-                                    message.created_at
+                                    message.created_at,
                                 );
                                 const adjacentDate = adjacentMessage
                                     ? new Date(adjacentMessage.created_at)
@@ -1356,6 +1405,25 @@ function ChatTab() {
                                     !adjacentDate ||
                                     !isSameDay(currentDate, adjacentDate);
 
+                                // Check if we need an unread divider (WhatsApp style)
+                                // Show when this is the FIRST unread message based on initial lastReadAt
+                                // The divider stays fixed at this position during the session
+                                // Once messages are read, the divider disappears
+                                const initialLastRead =
+                                    initialLastReadAtRef.current;
+                                const showUnreadDivider =
+                                    !dividerClearedRef.current &&
+                                    initialLastRead &&
+                                    message.player_id !== currentPlayerId &&
+                                    new Date(message.created_at) >
+                                        new Date(initialLastRead) &&
+                                    // Check that the adjacent (older) message is NOT unread
+                                    (!adjacentMessage ||
+                                        adjacentMessage.player_id ===
+                                            currentPlayerId ||
+                                        new Date(adjacentMessage.created_at) <=
+                                            new Date(initialLastRead));
+
                                 return (
                                     <React.Fragment key={message.id}>
                                         {/* Mobile: Date divider BEFORE message (at top of day group) */}
@@ -1363,10 +1431,18 @@ function ChatTab() {
                                             <DateDividerContainer>
                                                 <DateLabel>
                                                     {formatDateDivider(
-                                                        currentDate
+                                                        currentDate,
                                                     )}
                                                 </DateLabel>
                                             </DateDividerContainer>
+                                        )}
+                                        {/* Mobile: Unread divider BEFORE first unread message */}
+                                        {isMobile && showUnreadDivider && (
+                                            <UnreadDividerContainer>
+                                                <UnreadLabel>
+                                                    Unread messages
+                                                </UnreadLabel>
+                                            </UnreadDividerContainer>
                                         )}
                                         <ChatMessage
                                             message={message}
@@ -1414,10 +1490,18 @@ function ChatTab() {
                                             <DateDividerContainer>
                                                 <DateLabel>
                                                     {formatDateDivider(
-                                                        currentDate
+                                                        currentDate,
                                                     )}
                                                 </DateLabel>
                                             </DateDividerContainer>
+                                        )}
+                                        {/* Desktop: Unread divider AFTER first unread message (column-reverse) */}
+                                        {!isMobile && showUnreadDivider && (
+                                            <UnreadDividerContainer>
+                                                <UnreadLabel>
+                                                    Unread messages
+                                                </UnreadLabel>
+                                            </UnreadDividerContainer>
                                         )}
                                     </React.Fragment>
                                 );
@@ -1460,11 +1544,13 @@ function ChatTab() {
                 {showJumpToLatest && (
                     <JumpToLatestButton onClick={handleJumpToLatest}>
                         <HiChevronDoubleDown />
-                        {newMessagesCount > 0 && (
-                            <NewMessagesBadge>
-                                {newMessagesCount}
-                            </NewMessagesBadge>
-                        )}
+                        <CountBadge
+                            count={newMessagesCount}
+                            size="sm"
+                            position="absolute"
+                            top="-0.4rem"
+                            right="-0.4rem"
+                        />
                     </JumpToLatestButton>
                 )}
             </ContentWrapper>

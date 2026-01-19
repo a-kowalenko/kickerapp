@@ -7,6 +7,7 @@ import { useNotifications } from "./useNotifications";
 import NotificationItem from "./NotificationItem";
 import ButtonIcon from "../../ui/ButtonIcon";
 import SpinnerMini from "../../ui/SpinnerMini";
+import CountBadge from "../../ui/CountBadge";
 
 const NotificationWrapper = styled.div`
     position: relative;
@@ -14,24 +15,6 @@ const NotificationWrapper = styled.div`
 
 const BellButton = styled(ButtonIcon)`
     position: relative;
-`;
-
-const NotificationBadge = styled.span`
-    position: absolute;
-    top: -0.2rem;
-    right: -0.2rem;
-    min-width: 1.8rem;
-    height: 1.8rem;
-    padding: 0 0.5rem;
-    background-color: var(--color-red-700);
-    color: white;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: var(--border-radius-pill);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
 `;
 
 const Dropdown = styled.div`
@@ -282,16 +265,16 @@ function NotificationBell() {
         }
     }
 
-    // Format badge count (max 99+)
-    const badgeCount = unreadCount > 99 ? "99+" : unreadCount;
-
     return (
         <NotificationWrapper ref={dropdownRef}>
             <BellButton onClick={handleToggle} title="Notifications">
                 <HiOutlineBell />
-                {unreadCount > 0 && (
-                    <NotificationBadge>{badgeCount}</NotificationBadge>
-                )}
+                <CountBadge
+                    count={unreadCount}
+                    position="absolute"
+                    top="-0.2rem"
+                    right="-0.2rem"
+                />
             </BellButton>
 
             {isOpen && (

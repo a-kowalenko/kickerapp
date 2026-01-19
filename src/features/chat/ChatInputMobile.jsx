@@ -221,6 +221,9 @@ const SendButton = styled.button`
     cursor: pointer;
     border-radius: 50%;
     transform-origin: center;
+    /* Prevent touch from causing input blur */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 
     ${(props) =>
         props.$visible
@@ -447,7 +450,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         containerRef,
         dragOffset = 0,
     },
-    ref
+    ref,
 ) {
     const [content, setContent] = useState("");
     const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -494,7 +497,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
             },
             focus: () => inputRef.current?.focus?.(),
         }),
-        []
+        [],
     );
 
     // Track if there's content for send button visibility
@@ -506,12 +509,12 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
     // Filter players
     const availablePlayers = useMemo(
         () => players?.filter((p) => p.id !== currentPlayer?.id) || [],
-        [players, currentPlayer?.id]
+        [players, currentPlayer?.id],
     );
 
     const EVERYONE_OPTION = useMemo(
         () => ({ id: "everyone", name: "everyone", isEveryone: true }),
-        []
+        [],
     );
 
     const filteredPlayers = useMemo(() => {
@@ -519,7 +522,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
         if (dropdownMode !== "mention" && dropdownMode !== "whisper") return [];
         const search = (playerSearch || "").toLowerCase();
         let filtered = availablePlayers.filter((p) =>
-            p.name?.toLowerCase().includes(search)
+            p.name?.toLowerCase().includes(search),
         );
         // Add @everyone for mentions only (not whispers)
         if (dropdownMode === "mention" && "everyone".includes(search)) {
@@ -602,7 +605,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
 
         // Check for whisper command with partial name (show dropdown)
         const whisperPartialMatch = newValue.match(
-            /^\/(?:w|whisper)\s+(\S*)$/i
+            /^\/(?:w|whisper)\s+(\S*)$/i,
         );
         if (whisperPartialMatch && !whisperRecipient) {
             const searchTerm = whisperPartialMatch[1] || "";
@@ -713,24 +716,24 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                         const display = formatMatchDisplay(matchData);
                         inputRef.current?.replaceMatchPlaceholder(
                             matchId,
-                            display
+                            display,
                         );
                     } else {
                         inputRef.current?.replaceMatchPlaceholder(
                             matchId,
-                            `Match ${matchId}`
+                            `Match ${matchId}`,
                         );
                     }
                 } catch (error) {
                     console.error("Failed to load match:", error);
                     inputRef.current?.replaceMatchPlaceholder(
                         matchId,
-                        `Match ${matchId}`
+                        `Match ${matchId}`,
                     );
                 }
             }
         },
-        [kicker]
+        [kicker],
     );
 
     function handleKeyDown(e) {
@@ -753,7 +756,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setSelectedPlayerIndex((i) =>
-                    Math.min(i + 1, filteredPlayers.length - 1)
+                    Math.min(i + 1, filteredPlayers.length - 1),
                 );
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
@@ -877,7 +880,7 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                 toast.error(error.message || "Image upload failed");
             }
         },
-        [canUploadImages, uploadImageFile]
+        [canUploadImages, uploadImageFile],
     );
 
     function handleSubmit() {
@@ -1054,7 +1057,6 @@ const ChatInputMobile = forwardRef(function ChatInputMobile(
                         $visible={hasContent}
                         onClick={handleSubmit}
                         onMouseDown={(e) => e.preventDefault()}
-                        onTouchStart={(e) => e.preventDefault()}
                         disabled={!canSubmit || isSubmitting}
                         type="button"
                     >
