@@ -12,10 +12,12 @@ import PlayerActivityListMobile from "../activity/PlayerActivityListMobile";
 import { useKicker } from "../../contexts/KickerContext";
 import { useUser } from "../authentication/useUser";
 import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
+import { useChatMessages } from "../home/useChatMessages";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
 import { useKeyboard } from "../../contexts/KeyboardContext";
 import CountBadge from "../../ui/CountBadge";
+import ConnectionStatusDot from "../../ui/ConnectionStatusDot";
 
 const MOBILE_CHAT_TAB_KEY = "zerohero-mobile-chat-tab";
 
@@ -102,6 +104,7 @@ function ChatPageMobile() {
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
     const { blurInput } = useKeyboard();
+    const { connectionStatus } = useChatMessages();
 
     // Switch to chat tab if scrollTo param is present
     useEffect(() => {
@@ -156,6 +159,7 @@ function ChatPageMobile() {
                 >
                     <HiChatBubbleLeftRight />
                     Chat
+                    <ConnectionStatusDot status={connectionStatus} />
                 </TabButton>
                 <TabButton
                     $active={activeTab === "comments"}

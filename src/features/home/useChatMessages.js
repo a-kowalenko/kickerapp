@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQueryClient } from "react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getChatMessages, getChatMessageById } from "../../services/apiChat";
 import { useKicker } from "../../contexts/KickerContext";
 import { useOwnPlayer } from "../../hooks/useOwnPlayer";
@@ -12,6 +12,8 @@ export function useChatMessages() {
     const currentPlayerId = currentPlayer?.id;
     const queryClient = useQueryClient();
     const channelRef = useRef(null);
+    const isRemovingChannelRef = useRef(false);
+    const [connectionStatus, setConnectionStatus] = useState("connecting");
 
     const {
         data,
@@ -96,9 +98,16 @@ export function useChatMessages() {
         // Remove existing channel if any
         if (channelRef.current) {
             console.log("[Chat Realtime] Removing old channel before resubscribe");
+            isRemovingChannelRef.current = true;
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
+            // Reset after a microtask to allow CLOSED callback to fire first
+            Promise.resolve().then(() => {
+                isRemovingChannelRef.current = false;
+            });
         }
+
+        setConnectionStatus("connecting");
 
         const channel = supabase
             .channel(`chat-messages-${kicker}`)
@@ -135,15 +144,22 @@ export function useChatMessages() {
                 console.log(`[Chat Realtime] Status: ${status}`, err || "");
                 if (status === "SUBSCRIBED") {
                     console.log("[Chat Realtime] ✅ Connected");
+                    setConnectionStatus("connected");
                 }
                 if (status === "CLOSED") {
                     console.log("[Chat Realtime] ❌ Closed");
+                    // Only set disconnected if this wasn't an intentional removal
+                    if (!isRemovingChannelRef.current) {
+                        setConnectionStatus("disconnected");
+                    }
                 }
                 if (status === "CHANNEL_ERROR") {
                     console.log("[Chat Realtime] ❌ Channel Error - will attempt reconnect on visibility change");
+                    setConnectionStatus("disconnected");
                 }
                 if (status === "TIMED_OUT") {
                     console.log("[Chat Realtime] ❌ Timed Out - will attempt reconnect on visibility change");
+                    setConnectionStatus("disconnected");
                 }
             });
 
@@ -157,11 +173,23 @@ export function useChatMessages() {
 
         subscribeToChannel();
 
+        // Fallback check: verify connection state after a short delay
+        // This handles cases where the subscribe callback doesn't fire properly
+        const connectionCheckTimeout = setTimeout(() => {
+            if (channelRef.current?.state === "joined") {
+                console.log("[Chat Realtime] Fallback check: Channel is joined");
+                setConnectionStatus("connected");
+            }
+        }, 500);
+
         return () => {
+            clearTimeout(connectionCheckTimeout);
             if (channelRef.current) {
                 console.log("[Chat Realtime] Cleanup - removing channel");
+                isRemovingChannelRef.current = true;
                 supabase.removeChannel(channelRef.current);
                 channelRef.current = null;
+                // Don't reset the flag - component is unmounting anyway
             }
         };
     }, [kicker, subscribeToChannel]);
@@ -188,10 +216,12 @@ export function useChatMessages() {
                     
                     if (state !== "joined") {
                         console.log("[Chat Realtime] 🔄 Reconnecting...");
+                        setConnectionStatus("connecting");
                         subscribeToChannel();
                     }
                 } else {
                     console.log("[Chat Realtime] 🔄 No channel found, subscribing...");
+                    setConnectionStatus("connecting");
                     subscribeToChannel();
                 }
             }
@@ -211,5 +241,6 @@ export function useChatMessages() {
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage,
+        connectionStatus,
     };
 }

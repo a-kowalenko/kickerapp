@@ -11,7 +11,9 @@ import { useUser } from "../authentication/useUser";
 import { useUnreadCommentCount } from "../home/useUnreadCommentCount";
 import useUnreadBadge from "../../hooks/useUnreadBadge";
 import { updateCommentReadStatus } from "../../services/apiComments";
+import { useChatMessages } from "../home/useChatMessages";
 import CountBadge from "../../ui/CountBadge";
+import ConnectionStatusDot from "../../ui/ConnectionStatusDot";
 
 const DESKTOP_CHAT_TAB_KEY = "zerohero-desktop-chat-tab";
 
@@ -99,6 +101,7 @@ function ChatPage() {
     const { unreadCount, invalidate: invalidateUnreadCount } =
         useUnreadCommentCount();
     const { invalidateUnreadBadge } = useUnreadBadge(user?.id);
+    const { connectionStatus } = useChatMessages();
 
     // Persist tab selection
     useEffect(() => {
@@ -132,6 +135,7 @@ function ChatPage() {
                 >
                     <HiChatBubbleLeftRight />
                     Chat
+                    <ConnectionStatusDot status={connectionStatus} />
                 </TabButton>
                 <TabButton
                     $active={activeTab === "comments"}
